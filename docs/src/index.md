@@ -1,9 +1,10 @@
 # Aletheia.jl
 
-Aletheia is an early-stage Julia package providing the foundation for
-propositional, modal, many-valued, and first-order logic. The package is
-currently scaffolding only; its logic implementation will be developed in
-later stages.
+Aletheia is a syntax-first foundation for propositional, modal,
+many-valued, and first-order logic. Its first layer defines Blackburn-style
+similarity types, immutable hash-consed formulas, extensible connective
+traits, and precedence-aware parsing and printing. Semantics and evaluation
+are deliberately left to later stages.
 
 Its design is grounded in five references:
 
@@ -20,6 +21,13 @@ redistributed with this package.
 
 ```@docs
 Aletheia
+```
+
+## Syntax API
+
+```@autodocs
+Modules = [Aletheia]
+Order = [:type, :function, :constant]
 ```
 
 ## References
