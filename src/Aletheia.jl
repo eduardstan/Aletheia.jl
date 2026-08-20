@@ -12,7 +12,7 @@ include("syntax.jl")
 include("parse.jl")
 
 export Signature, Formula, FormulaPool, Atom, Branch, DAGNode
-export atom, branch, children, value, operator, head, pool, id
+export atom, branch, children, nchildren, value, operator, head, pool, id
 export isatom, isbranch, dag, subterms, nsubterms, signature, connectives
 export arity, dual, hasconnective, hasdual, precedence, associativity, commutative
 export iscommutative, modality, ismodality, notation, relation, syntaxstring
