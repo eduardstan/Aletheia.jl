@@ -4,8 +4,8 @@ Aletheia is a syntax-first foundation for propositional, modal,
 many-valued, and first-order logic. Its first layer defines Blackburn-style
 similarity types, immutable hash-consed formulas, extensible connective
 traits, precedence-aware parsing and printing, truth algebras, relational
-frames, models, and atom interpretation. Compound-formula evaluation is
-left to a later stage.
+frames, models, and atom interpretation. Compound formulas are evaluated
+bottom-up over their interned syntax DAG.
 
 Its design is grounded in five references:
 
@@ -26,7 +26,8 @@ built-in [`BooleanAlgebra`](@ref), [`GodelAlgebra`](@ref), and
 `join`, `implication`, and `negation` interface.  A [`Frame`](@ref) stores
 stable worlds and named accessibility relations; [`Model`](@ref) adds a
 valuation and an algebra.  [`interpret`](@ref) intentionally has an atom-only
-surface.  Compound formulas will consume the syntax DAG in the next stage.
+surface.  [`check`](@ref) and [`extension`](@ref) consume the syntax DAG
+with one bottom-up evaluation path.
 
 ```julia
 pool = FormulaPool(Signature((¬, ∧)))
@@ -36,6 +37,8 @@ boolean = Model(frame, BooleanAlgebra(), Dict("p" => Set([:only])))
 gödel = Model(frame, GodelAlgebra(), Dict("p" => Dict(:only => 0.5)))
 interpret(p, boolean, :only) # true
 interpret(p, gödel, :only)   # 0.5
+check(p, boolean, :only)      # true
+extension(p, boolean)          # BitVector([1])
 ```
 
 ## Module

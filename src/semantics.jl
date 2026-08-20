@@ -243,6 +243,13 @@ function _world_index(worldtuple::Tuple, requested)
     requested isa AbstractDict || throw(ArgumentError("index must be false, true, or a dictionary"))
     result = Dict(requested)
     all(world -> haskey(result, world), worldtuple) || throw(ArgumentError("world index must contain every world"))
+    positions = Int[]
+    for world in worldtuple
+        result[world] isa Integer || throw(ArgumentError("world index positions must be integers"))
+        push!(positions, Int(result[world]))
+    end
+    sort!(positions) == collect(1:length(worldtuple)) ||
+        throw(ArgumentError("world index positions must be a permutation of 1:length(worlds)"))
     result
 end
 
@@ -441,13 +448,24 @@ function _lookup_atom(data::AbstractDict, atom::Atom, world)
     haskey(data, pair1) && return data[pair1]
     haskey(data, pair2) && return data[pair2]
     haskey(data, atom) && return _nested_value(data[atom], world)
+    if haskey(data, world)
+        nested = data[world]
+        nested isa AbstractDict && haskey(nested, atom) && return nested[atom]
+        return _nested_value(nested, value(atom))
+    end
     _lookup_valuation(data, value(atom), world)
 end
 
 function _lookup_atom(data::Valuation, atom::Atom, world)
     raw = data.data
-    if raw isa AbstractDict && (haskey(raw, atom) || haskey(raw, (atom, world)) || haskey(raw, (world, atom)))
-        return _lookup_valuation(data, atom, world)
+    if raw isa AbstractDict
+        if haskey(raw, atom) || haskey(raw, (atom, world)) || haskey(raw, (world, atom))
+            return _lookup_valuation(data, atom, world)
+        elseif haskey(raw, world)
+            nested = raw[world]
+            nested isa AbstractDict && haskey(nested, atom) && return nested[atom]
+            return _nested_value(nested, value(atom))
+        end
     end
     _lookup_valuation(data, value(atom), world)
 end
@@ -455,6 +473,24 @@ _lookup_atom(data, atom::Atom, world) = _lookup_valuation(data, value(atom), wor
 
 function (valuation::Valuation)(atom_value, world)
     _lookup_valuation(valuation.data, atom_value, world)
+end
+
+struct _RelationAdjacency
+    rows::Vector{Vector{Int}}
+    columns::Vector{BitVector}
+end
+
+mutable struct _ModelEvaluationCache
+    positions::Dict{Any,Int}
+    adjacency::Dict{Any,_RelationAdjacency}
+    lock::ReentrantLock
+end
+
+function _model_positions(frame::Frame)
+    indexed = world_index(frame)
+    indexed === nothing ?
+        Dict{Any,Int}(world => position for (position, world) in enumerate(worlds(frame))) :
+        Dict{Any,Int}(world => Int(indexed[world]) for world in worlds(frame))
 end
 
 """
@@ -470,7 +506,14 @@ struct Model{T,A<:TruthAlgebra{T},F<:Frame,V}
     frame::F
     algebra::A
     valuation::V
+    cache::_ModelEvaluationCache
 end
+
+function Model(frame::Frame, algebra::TruthAlgebra, valuation)
+    cache = _ModelEvaluationCache(_model_positions(frame), Dict{Any,_RelationAdjacency}(), ReentrantLock())
+    Model(frame, algebra, valuation, cache)
+end
+
 
 Model(frame::Frame, valuation::AbstractDict, algebra::TruthAlgebra) = Model(frame, algebra, valuation)
 Model(frame::Frame, valuation::Function, algebra::TruthAlgebra) = Model(frame, algebra, valuation)
@@ -498,8 +541,9 @@ end
     interpret(atom, model, world)
 
 Interpret an **atom only** at `world`, returning exactly the carrier type of
-`model`'s truth algebra.  Compound `Branch` interpretation belongs to the next
-stage, which will consume the syntax DAG and apply these algebra operations.
+`model`'s truth algebra.  Compound formulas are evaluated through [`check`](@ref)
+and [`extension`](@ref), which consume the syntax DAG and apply these algebra
+operations.
 """
 function interpret(atom::Atom, model::Model{T}, world)::T where T
     _check_world(model.frame, world)

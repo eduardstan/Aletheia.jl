@@ -19,5 +19,5 @@ When updating this file, preserve this bar for all agents and keep entries conci
 
 ## Semantics layer
 
-- `src/semantics.jl` is the authoritative layer for `TruthAlgebra`, `Frame`, `Model`, and atom-only `interpret`; compound DAG evaluation is intentionally deferred.
-- Semantics tests live in `test/semantics.jl`; validate package tests, coverage, and docs with the commands above.
+- `src/semantics.jl` is the authoritative layer for `TruthAlgebra`, `Frame`, `Model`, and atom-only `interpret`; `src/evaluation.jl` provides the shared DAG walk for `check` and `extension`.
+- Semantics and evaluation tests live in `test/semantics.jl` and `test/evaluation.jl`; validate package tests, coverage, and docs with the commands above.
