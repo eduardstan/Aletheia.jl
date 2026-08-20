@@ -1,0 +1,5 @@
+references/
+*.pdf
+!references/
+!references/README.md
+docs/build/
