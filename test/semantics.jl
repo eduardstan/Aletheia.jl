@@ -1,4 +1,5 @@
 struct TestSymbolAlgebra <: TruthAlgebra{Symbol} end
+struct IncompleteAlgebra <: TruthAlgebra{Int} end
 Aletheia.top(::TestSymbolAlgebra) = :top
 Aletheia.bottom(::TestSymbolAlgebra) = :bottom
 Aletheia.meet(::TestSymbolAlgebra, ::Symbol, ::Symbol) = :meet
@@ -60,7 +61,13 @@ Aletheia.negation(::TestSymbolAlgebra, ::Symbol) = :negation
     @test join(TestSymbolAlgebra(), :a, :b) == :join
     @test implication(TestSymbolAlgebra(), :a, :b) == :implication
     @test negation(TestSymbolAlgebra(), :a) == :negation
-    @test_throws MethodError top(TruthAlgebra{Int}())
+    incomplete = IncompleteAlgebra()
+    @test_throws MethodError top(incomplete)
+    @test_throws MethodError bottom(incomplete)
+    @test_throws MethodError meet(incomplete, 1, 2)
+    @test_throws MethodError join(incomplete, 1, 2)
+    @test_throws MethodError implication(incomplete, 1, 2)
+    @test_throws MethodError negation(incomplete, 1)
 end
 
 struct BadIndexData end
