@@ -195,14 +195,16 @@ end
     Branch(pool, connective, children...)
 
 Intern a connective application in `pool`.  The number of children must equal
-the connective's declared arity.  Children must have been made by the same
-pool, which keeps ids local and makes equality an integer comparison.
+the connective's declared arity.  A branch stores only pool-local child ids;
+[`children`](@ref) reconstructs immutable handles when they are requested.
+Children must have been made by the same pool, which keeps ids local and makes
+equality an integer comparison.
 """
-struct Branch{C,T<:Tuple,P<:FormulaPool} <: Formula
+struct Branch{C,N,P<:FormulaPool} <: Formula
     pool::P
     id::Int
     connective::C
-    children::T
+    children::NTuple{N,Int}
 end
 
 """Return the signature of an atom."""
@@ -233,15 +235,55 @@ operator(branch::Branch) = branch.connective
 """Alias for [`operator`](@ref), useful when treating a branch as an application."""
 head(branch::Branch) = operator(branch)
 
-"""Return the number of children of an atom."""
-arity(::Atom) = 0
+"""
+    nchildren(formula)
 
-"""Return the number of children of a branch."""
-arity(branch::Branch) = length(branch.children)
+Return the number of immediate children of a formula.  This name keeps the
+formula accessor distinct from the `arity` trait for connective values.
+"""
+nchildren(::Atom) = 0
+nchildren(branch::Branch) = length(branch.children)
 
-"""Return a formula branch's immediate children, or `()` for an atom."""
-children(atom::Atom) = ()
-children(branch::Branch) = branch.children
+"""Return the number of immediate children; retained as an alias for `nchildren`."""
+arity(formula::Atom) = nchildren(formula)
+arity(formula::Branch) = nchildren(formula)
+
+function _branch_from_ids(pool::FormulaPool, id::Int, connective, ids, ::Val{N}) where N
+    typed_ids = ntuple(i -> ids[i], N)
+    Branch(pool, id, connective, typed_ids)
+end
+
+function _formula_unlocked(pool::FormulaPool, id::Int)
+    node = pool.nodes[id]
+    if node.kind == 0x01
+        Atom(pool, id, node.payload)
+    else
+        _branch_from_ids(pool, id, node.payload, node.children, Val(length(node.children)))
+    end
+end
+
+function _formula(pool::FormulaPool, id::Int)
+    lock(pool.lock)
+    try
+        1 <= id <= length(pool.nodes) || throw(BoundsError(pool.nodes, id))
+        _formula_unlocked(pool, id)
+    finally
+        unlock(pool.lock)
+    end
+end
+
+"""Return a formula's immediate children, rebuilding pool handles as needed."""
+children(::Atom) = ()
+
+function children(branch::Branch{C,N,P}) where {C,N,P}
+    pool = branch.pool
+    lock(pool.lock)
+    try
+        ntuple(i -> _formula_unlocked(pool, branch.children[i]), N)
+    finally
+        unlock(pool.lock)
+    end
+end
 
 """Return whether a formula is an atom."""
 isatom(::Atom) = true
@@ -292,7 +334,7 @@ function branch(pool::FormulaPool, connective, childtuple::Tuple)
         throw(ArgumentError("$(repr(connective)) expects $(arity(pool.signature, connective)) children, got $(length(childtuple))"))
     ids = _branch_children(pool, childtuple)
     branch_id = _intern!(pool, 0x02, connective, ids)
-    Branch(pool, branch_id, connective, childtuple)
+    _branch_from_ids(pool, branch_id, connective, ids, Val(length(ids)))
 end
 
 """Intern a branch from vararg immediate children."""
@@ -545,21 +587,22 @@ end
 
 function _print_formula(formula::Branch, parent, position::Symbol)
     c = formula.connective
-    n = length(formula.children)
+    formula_children = children(formula)
+    n = length(formula_children)
     token = notation(c)
     result = if n == 0
         token
     elseif n == 1
-        child = formula.children[1]
+        child = formula_children[1]
         text = _print_formula(child, c, :only)
         token * text
     elseif n == 2
-        left, right = formula.children
+        left, right = formula_children
         lt = _print_formula(left, c, :left)
         rt = _print_formula(right, c, :right)
         "$(lt) $(token) $(rt)"
     else
-        "$(token)(" * join((_print_formula(ch, nothing, :only) for ch in formula.children), ", ") * ")"
+        "$(token)(" * join((_print_formula(ch, nothing, :only) for ch in formula_children), ", ") * ")"
     end
     if parent !== nothing && _needs_parentheses(parent, formula, position)
         "(" * result * ")"

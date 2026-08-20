@@ -36,7 +36,13 @@ Aletheia.notation(::TestXor) = "⊻"
     @test string(branch(pool, →, branch(pool, →, p, q), p)) == "(p → q) → p"
 
     repeated = branch(pool, ∧, branch(pool, TestXor(), p, q), branch(pool, TestXor(), p, q))
-    @test id(repeated.children[1]) == id(repeated.children[2])
+    @test id(children(repeated)[1]) == id(children(repeated)[2])
+    shallow = branch(pool, ∧, p, q)
+    deep = branch(pool, ∧, shallow, q)
+    @test typeof(shallow) == typeof(deep)
+    @test fieldtype(typeof(shallow), 4) == NTuple{2,Int}
+    @test nchildren(deep) == arity(deep) == 2
+    @test children(deep)[1] == shallow
     @test nsubterms(repeated) == 4
     ids = subterms(repeated)
     @test ids == sort(ids)
