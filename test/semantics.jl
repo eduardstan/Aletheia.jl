@@ -21,6 +21,7 @@ Aletheia.negation(::TestSymbolAlgebra, ::Symbol) = :negation
 
     g = GodelAlgebra()
     @test g isa TruthAlgebra{Float64}
+    @test truth_type(GodelAlgebra) === Float64
     @test top(g) == 1.0 && bottom(g) == 0.0
     @test Base.invokelatest(top, g) == 1.0 && Base.invokelatest(bottom, g) == 0.0
     @test meet(g, 0.2, 0.7) == 0.2 && join(g, 0.2, 0.7) == 0.7
@@ -34,6 +35,7 @@ Aletheia.negation(::TestSymbolAlgebra, ::Symbol) = :negation
     @test isfinitechain(GodelAlgebra(3))
 
     l = LukasiewiczAlgebra()
+    @test truth_type(LukasiewiczAlgebra) === Float64
     @test domain(l) == (0.0, 1.0)
     @test top(l) == 1.0 && bottom(l) == 0.0
     @test Base.invokelatest(top, l) == 1.0 && Base.invokelatest(bottom, l) == 0.0
