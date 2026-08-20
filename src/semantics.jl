@@ -221,8 +221,8 @@ position dictionary for algorithms that use stable positions.  A one-world
 frame uses this same ordinary type; no propositional special case exists.
 See Blackburn, de Rijke, and Venema, *Modal Logic*, §1.3 [blackburn2001](@cite).
 """
-struct Frame{W,RS,I}
-    worlds::Tuple{Vararg{W}}
+struct Frame{W<:Tuple,RS,I}
+    worlds::W
     relations::RS
     index::I
 end
@@ -313,7 +313,7 @@ function Frame(worlds, relations; index=false, world_index=nothing)
     requested = world_index === nothing ? index : world_index
     normalized = _normalize_relations(relations, worldtuple)
     indexed = _world_index(worldtuple, requested)
-    Frame{eltype(worldtuple),typeof(normalized),typeof(indexed)}(worldtuple, normalized, indexed)
+    Frame{typeof(worldtuple),typeof(normalized),typeof(indexed)}(worldtuple, normalized, indexed)
 end
 
 Frame(worlds; index=false, world_index=nothing) = Frame(worlds, Dict(); index=index, world_index=world_index)
