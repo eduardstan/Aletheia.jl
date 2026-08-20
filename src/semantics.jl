@@ -444,7 +444,13 @@ function _lookup_atom(data::AbstractDict, atom::Atom, world)
     _lookup_valuation(data, value(atom), world)
 end
 
-_lookup_atom(data::Valuation, atom::Atom, world) = _lookup_atom(data.data, atom, world)
+function _lookup_atom(data::Valuation, atom::Atom, world)
+    raw = data.data
+    if raw isa AbstractDict && (haskey(raw, atom) || haskey(raw, (atom, world)) || haskey(raw, (world, atom)))
+        return _lookup_valuation(data, atom, world)
+    end
+    _lookup_valuation(data, value(atom), world)
+end
 _lookup_atom(data, atom::Atom, world) = _lookup_valuation(data, value(atom), world)
 
 function (valuation::Valuation)(atom_value, world)
