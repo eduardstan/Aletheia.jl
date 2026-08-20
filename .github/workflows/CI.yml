@@ -50,4 +50,3 @@ jobs:
       - name: Enforce line coverage
         shell: bash
         run: julia --project=coverage -e 'using Pkg; Pkg.instantiate(); include("coverage/check.jl")'
-
