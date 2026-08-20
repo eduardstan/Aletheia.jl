@@ -65,12 +65,30 @@ for n in (DEEP ? (8, 16, 24, 32, 64, 128) : (8, 16, 24, 32, 64))
         guarded_pair("Aletheia == chain=$n", "equality_eq", "aletheia", "$n"))
 end
 
-# Deliberately empty extension points.  A row is printed rather than silently
-# omitted, so a report cannot imply that later semantic stages were measured.
+# Modal breadth now has one deterministic interval-temporal case. Both sides
+# go through the process-boundary timeout guard; the incumbent's structural
+# operations are never allowed to hang the benchmark process.
+println("[interval-temporal]")
+interval_n = DEEP ? 12 : 6
+interval_inc = guarded_measure("SoleLogics interval relation", "interval", "incumbent", string(interval_n),
+    () -> begin
+        sf = SoleLogics.FullDimensionalFrame((interval_n,), SoleLogics.Interval{Int})
+        sw = first(SoleLogics.allworlds(sf))
+        collect(SoleLogics.accessibles(sf, sw, SoleLogics.IA_L))
+    end)
+interval_ale = guarded_measure("Aletheia interval relation", "interval", "aletheia", string(interval_n),
+    () -> begin
+        af = Aletheia.interval_frame(interval_n)
+        aw = first(Aletheia.worlds(af))
+        collect(Aletheia.accessible(af, aw, Aletheia.BEFORE))
+    end)
+addrow!("interval-temporal / generated IA-before", interval_inc, interval_ale)
+
+# Remaining semantic extensions are intentionally named, so future benchmark
+# reports do not silently imply coverage that has not landed yet.
 for suite in ("propositional checking (stage 2: semantics)",
-              "modal checking / random Kripke structures (stage 2)",
-              "interval-temporal checking / dimensional frames (stage 2)",
-              "many-valued checking (stage 2)")
+              "modal checking / random Kripke structures (later stage)",
+              "many-valued checking (later stage)")
     addrow!(suite, missing, missing)
 end
 
@@ -81,8 +99,9 @@ load_a = raw"""t0=time_ns(); using Aletheia; t1=time_ns(); s=Aletheia.Signature(
 load_s = raw"""t0=time_ns(); using SoleLogics; t1=time_ns(); SoleLogics.syntaxstring(SoleLogics.parseformula("p")); t2=time_ns(); println((t1-t0)/1e6, " ", (t2-t0)/1e6)"""
 la = external_measure(load_a)
 ls = external_measure(load_s)
-addrow!("cold package load", Measurement(ls[1] * 1e6, missing, missing), Measurement(la[1] * 1e6, missing, missing); allocations=false)
-addrow!("cold time-to-first-result", Measurement(ls[2] * 1e6, missing, missing), Measurement(la[2] * 1e6, missing, missing); allocations=false)
+cold_measure(x, i) = x === nothing ? missing : Measurement(x[i] * 1e6, missing, missing)
+addrow!("cold package load", cold_measure(ls, 1), cold_measure(la, 1); allocations=false)
+addrow!("cold time-to-first-result", cold_measure(ls, 2), cold_measure(la, 2); allocations=false)
 
 println()
 print_report()

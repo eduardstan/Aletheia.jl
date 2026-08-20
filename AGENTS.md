@@ -17,6 +17,11 @@ When updating this file, preserve this bar for all agents and keep entries conci
 - Validate both package tests and the citation-aware docs build with `julia --project=. -e 'using Pkg; Pkg.test()'` and `julia --project=docs docs/make.jl`.
 - CI enforces source line coverage with `julia --project=. -e 'using Pkg; Pkg.test(coverage=true)'` followed by `julia --project=coverage -e 'using Pkg; Pkg.instantiate(); include("coverage/check.jl")'`; do not commit generated `.cov` or manifests.
 
+## Modal breadth
+
+- Relation values and their generic `relation_holds` protocol live in `src/relations.jl`; generated interval/rectangle/point constructors live in `src/dimensional.jl`, and frame-condition traits/axiom schemas live in `src/frameclasses.jl`.
+- Dimensional constructors return the existing `Frame` with a callable accessibility provider, so `src/evaluation.jl` remains unchanged; RCC8 is the selected topological fragment and `RCC5` is intentionally later.
+
 ## Semantics layer
 
 - `src/semantics.jl` is the authoritative layer for `TruthAlgebra`, `Frame`, `Model`, and atom-only `interpret`; `src/evaluation.jl` provides the shared DAG walk for `check` and `extension`.

@@ -231,6 +231,7 @@ end
 
 include("semantics.jl")
 include("evaluation.jl")
+include("relations.jl")
 @testset "Aletheia" begin
     Aqua.test_all(Aletheia)
     if pkgversion(JET) < v"0.11"
