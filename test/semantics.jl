@@ -105,6 +105,9 @@ Base.getindex(::BadIndexData, ::Any) = error("bad index")
     @test_throws ArgumentError Frame((1,), Dict(:R => 1))
     @test_throws ArgumentError Frame((1,), Dict(:R => Dict(1 => [1])); index=:bad)
     @test_throws ArgumentError Frame((1,), Dict(:R => Dict(1 => [1])); index=Dict())
+    @test_throws ArgumentError Frame((1, 2), Dict(); index=Dict(1 => 1, 2 => 1))
+    @test_throws ArgumentError Frame((1, 2), Dict(); index=Dict(1 => 1, 2 => 3))
+    @test_throws ArgumentError Frame((1, 2), Dict(); index=Dict(1 => "one", 2 => 2))
 
     function relation_function(world, rel)
         rel == :R ? (world == 1 ? (2,) : ()) : ()
@@ -159,6 +162,9 @@ end
     @test_throws ArgumentError interpret(p, Model(f, Dict("p"=>Set([:w1])), GodelAlgebra()), :w1)
     @test interpret(p, Model(f, Dict("p"=>Set([:w1]))), :w1) === true
     @test interpret(p, Model(f, Dict(p => Set([:w1]))), :w1) === true
+    @test interpret(p, Model(f, Dict(:w1 => Dict(p => true))), :w1) === true
+    @test interpret(p, Model(f, Valuation(Dict(:w1 => Dict(p => true))), BooleanAlgebra()), :w1) === true
+    @test interpret(p, Model(f, Valuation(Dict(:w1 => Dict("p" => true))), BooleanAlgebra()), :w1) === true
     @test interpret(p, Model(f, Dict((p, :w1) => true)), :w1) === true
     @test interpret(p, Model(f, Valuation(Dict(p => Dict(:w1 => true)))), :w1) === true
     @test_throws ArgumentError interpret(p, Model(f, 1), :w1)
