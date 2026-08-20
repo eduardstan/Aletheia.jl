@@ -18,32 +18,6 @@ function _is_literal(formula::Branch)
     !(c isa Negation || c isa Conjunction || c isa Disjunction || c isa Implication)
 end
 
-function _clauses(formula::Atom)
-    [[formula]]
-end
-function _clauses(formula::Branch)
-    c, child = operator(formula), children(formula)
-    if c isa Conjunction
-        return vcat(_clauses(child[1]), _clauses(child[2]))
-    elseif c isa Disjunction
-        left, right = _clauses(child[1]), _clauses(child[2])
-        return [[a..., b...] for a in left for b in right]
-    end
-    [[formula]]
-end
-function _dnf_terms(formula::Atom)
-    [[formula]]
-end
-function _dnf_terms(formula::Branch)
-    c, child = operator(formula), children(formula)
-    if c isa Disjunction
-        return vcat(_dnf_terms(child[1]), _dnf_terms(child[2]))
-    elseif c isa Conjunction
-        left, right = _dnf_terms(child[1]), _dnf_terms(child[2])
-        return [[a..., b...] for a in left for b in right]
-    end
-    [[formula]]
-end
 
 function _nnf(formula::Atom, polarity::Bool)
     polarity ? formula : branch(pool(formula), ¬, formula)
@@ -186,8 +160,8 @@ function _dnf_from_nnf(formula)
     end
     c, child = operator(formula), children(formula)
     c isa Disjunction && return vcat(_dnf_from_nnf(child[1]), _dnf_from_nnf(child[2]))
-    c isa Conjunction && return [[a..., b...] for a in _dnf_from_nnf(child[1]) for b in _dnf_from_nnf(child[2])]
-    [[(formula, true)]]
+    # A non-literal NNF node is necessarily a conjunction.
+    [[a..., b...] for a in _dnf_from_nnf(child[1]) for b in _dnf_from_nnf(child[2])]
 end
 const cnf = to_cnf
 const dnf = to_dnf

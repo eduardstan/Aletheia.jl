@@ -52,8 +52,11 @@ that target syntax; it is not a first-order prover.
 
 [`bisimilar`](@ref) implements the finite labelled bisimulation game from BDV
 §2.2 [blackburn2001](@cite), and [`bisimulation_contraction`](@ref) computes
-the largest auto-bisimulation quotient.  `contraction_world` maps an original
-world to its quotient class, so modal evaluation can be compared directly.
+the largest auto-bisimulation quotient.  The direct game check uses
+O(n₁n₂r(d₁+d₂)) time per refinement pass, O(n₁n₂) space, and at most n₁n₂
+passes; contraction uses O(n²rd log d) worst-case time and O(nrd+n) working
+space.  `contraction_world` maps an original world to its quotient class, so
+modal evaluation can be compared directly.
 `iscnf`/`isdnf` and [`to_cnf`](@ref)/[`to_dnf`](@ref) perform classical Boolean
 normalization in the original formula pool; modal subformulas are treated as
 propositional letters.  As expected, these conversions are not advertised as

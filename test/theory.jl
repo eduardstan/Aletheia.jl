@@ -6,13 +6,30 @@ struct TheoryUnknownTerm <: FirstOrderTerm end
 struct TheoryUnknownFO <: FirstOrderFormula end
 struct TheoryDummyProver <: AbstractProver end
 
+function theory_random_formula(pool, p, q, rng, depth)
+    depth == 0 && return rand(rng, (p, q))
+    choice = rand(rng, 1:5)
+    choice == 1 && return branch(pool, ¬, theory_random_formula(pool, p, q, rng, depth - 1))
+    choice == 2 && return branch(pool, Diamond(:R), theory_random_formula(pool, p, q, rng, depth - 1))
+    choice == 3 && return branch(pool, Box(:R), theory_random_formula(pool, p, q, rng, depth - 1))
+    connective = choice == 4 ? (∧) : (∨)
+    branch(pool, connective, theory_random_formula(pool, p, q, rng, depth - 1),
+        theory_random_formula(pool, p, q, rng, depth - 1))
+end
+
 @testset "standard translation and first-order core" begin
     @test Variable("x") == Variable(:x)
     @test string(Predicate(:p, Variable(:x))) == "p(x)"
+    @test string(Predicate(:p, (Variable(:x),))) == "p(x)"
+    @test string(Predicate(:p, [Variable(:x)])) == "p(x)"
+    @test sprint(show, Predicate(:p, Variable(:x))) == "p(x)"
     @test string(FOAnd(Predicate(:p, Variable(:x)), FOOr(Predicate(:q, Variable(:x)), Predicate(:r, Variable(:x))))) ==
         "p(x) ∧ (q(x) ∨ r(x))"
     interpretation = FirstOrderInterpretation((1, 2), Dict(:p => Set([1, 2]), :R => Set([(1, 2)])))
+    keyword_interpretation = FirstOrderInterpretation((1,); predicates=Dict(:p => Set([1])))
+    @test domain(keyword_interpretation) == (1,)
     @test evaluate(Predicate(:p, Variable(:x)), interpretation, Dict(:x => 1))
+    @test interpret(Predicate(:p, Variable(:x)), interpretation, Dict(:x => 1))
     @test evaluate(Exists(Variable(:y), Predicate(:p, Variable(:y))), interpretation)
     @test evaluate(Forall(Variable(:y), FOImplies(Predicate(:R, Variable(:x), Variable(:y)),
         Predicate(:p, Variable(:y)))), interpretation, Dict(:x => 1))
@@ -42,7 +59,28 @@ struct TheoryDummyProver <: AbstractProver end
         @test all(evaluate(standard_translation(random_formula), random_fo, Dict(:x => world)) ==
             check(random_formula, random_model, world) for world in worlds(frame0))
     end
+
+    # Random finite frames and valuations exercise every standard-translation
+    # clause against the direct Boolean evaluator, not just its printed shape.
+    rng = MersenneTwister(0xA1E7)
+    for trial in 1:24
+        n = rand(rng, 2:5)
+        random_worlds = Tuple(1:n)
+        random_adjacency = Dict(world => [target for target in random_worlds if rand(rng, Bool)]
+                                 for world in random_worlds)
+        random_frame = Frame(random_worlds, Dict(:R => random_adjacency); index=true)
+        random_valuation = Dict(name => Set(world for world in random_worlds if rand(rng, Bool))
+                                 for name in ("p", "q"))
+        random_model = Model(random_frame, BOOLEAN, random_valuation)
+        random_formula = theory_random_formula(pool, p, q, rng, 3)
+        translation = standard_translation(random_formula)
+        interpretation = first_order_interpretation(random_model)
+        @test all(evaluate(translation, interpretation, Dict(:x => world)) ==
+            check(random_formula, random_model, world) for world in random_worlds)
+    end
+
     @test standard_translation(p; world=:root) isa FirstOrderFormula
+    @test standard_translation(p, :root) isa FirstOrderFormula
     @test_throws ArgumentError standard_translation(branch(pool, TheoryXor(), p, q))
 end
 
@@ -55,6 +93,7 @@ end
     m1 = Model(f1, BOOLEAN, Dict("p" => Set([1])))
     m2 = Model(f2, BOOLEAN, Dict("p" => Set([:a])))
     @test bisimilar(m1, 1, m2, :a; atoms=["p"], relations=[:R])
+    @test bisimilar(m1, 1, m2, :a, ["p"])
     @test !bisimilar(m1, 2, m2, :a; atoms=["p"], relations=[:R])
     bad = Model(Frame((:a, :b), Dict(:R => Dict(:a => [], :b => [])); index=true), BOOLEAN,
                 Dict("p" => Set([:a])))
@@ -67,6 +106,14 @@ end
     @test length(classes(quotient)) == 1
     @test contraction_world(quotient, 1) == first(classes(quotient))
     @test worlds(frame(quotient)) == classes(quotient)
+    @test model(quotient) === quotient.model
+    @test world_map(quotient) === quotient.world_map
+    @test algebra(quotient) === BOOLEAN
+    @test valuation(quotient) === valuation(quotient.model)
+    quotient_world = first(classes(quotient))
+    @test contraction_world(quotient, quotient_world) === quotient_world
+    @test collect(accessible(quotient, quotient_world, :R)) == [quotient_world]
+    @test extension(p, quotient) == BitVector([true])
     for world in worlds(redundant)
         @test check(p, redundant_model, world) == check(p, quotient, world)
         @test check(branch(pool, Diamond(:R), p), redundant_model, world) ==
@@ -75,7 +122,7 @@ end
 end
 
 @testset "normal forms" begin
-    sig = Signature((¬, ∧, ∨, →, Diamond(:R)))
+    sig = Signature((¬, ∧, ∨, →, Diamond(:R), Box(:R)))
     pool = FormulaPool(sig)
     p, q, r = atom(pool, "p"), atom(pool, "q"), atom(pool, "r")
     formula = branch(pool, →, branch(pool, ∧, p, q), branch(pool, ∨, q, r))
@@ -89,6 +136,18 @@ end
         valuation = Dict(name => (values[i] ? Set([:w]) : Set{Symbol}()) for (i, name) in enumerate(("p", "q", "r")))
         model = Model(frame0, BOOLEAN, valuation)
         @test check(formula, model, :w) == check(c, model, :w) == check(d, model, :w)
+    end
+    # Semantic preservation is also checked over random formulas and valuations;
+    # CNF/DNF shape predicates are only secondary sanity checks.
+    rng = MersenneTwister(0xC0FFEE)
+    for trial in 1:24
+        random_formula = theory_random_formula(pool, p, q, rng, 3)
+        random_valuation = Dict(name => (rand(rng, Bool) ? Set([:w]) : Set{Symbol}())
+                                 for name in ("p", "q"))
+        random_model = Model(frame0, BOOLEAN, random_valuation)
+        random_cnf, random_dnf = to_cnf(random_formula), to_dnf(random_formula)
+        @test check(random_formula, random_model, :w) == check(random_cnf, random_model, :w) ==
+            check(random_dnf, random_model, :w)
     end
     modal = branch(pool, Diamond(:R), p)
     @test iscnf(modal) && isdnf(modal)
@@ -105,6 +164,17 @@ end
     @test isvalid(prover, tautology) === true
     @test issatisfiable(prover, contradiction) === false
     @test entails(p, p, prover) === true
+    @test Bool(ProverResult(:valid; answer=true))
+    @test prove(tautology, prover).status == :sat
+    @test prove_valid(tautology, prover).status == :valid
+    @test issatisfiable(contradiction, prover) === false
+    @test isvalid(tautology, prover) === true
+    @test entails((p,), p, prover) === true
+    @test entails(p, p) === true
+    @test issatisfiable(tautology) === true
+    @test_throws MethodError prove(TheoryDummyProver(), p)
+    @test_throws MethodError prove_valid(TheoryDummyProver(), p)
+    @test_throws ArgumentError entails(prover, p, TheoryDummyProver())
     @test isvalid(tautology) === true
     @test issatisfiable(prover, branch(pool, Diamond(:R), p)) === nothing
     @test prove_valid(prover, tautology).status == :valid
