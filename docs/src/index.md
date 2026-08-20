@@ -41,6 +41,71 @@ check(p, boolean, :only)      # true
 extension(p, boolean)          # BitVector([1])
 ```
 
+## Theory layer
+
+Aletheia's theory layer keeps the interned modal formula as the only source
+representation. [`standard_translation`](@ref) produces a deliberately small
+first-order syntax (`Variable`, `Predicate`, equality, Boolean connectives, and
+`Exists`/`Forall`) using the standard translation of Blackburn, de Rijke, and
+Venema §2.4 [blackburn2001](@cite).  `evaluate` is a reference evaluator for
+that target syntax; it is not a first-order prover.
+
+[`bisimilar`](@ref) implements the finite labelled bisimulation game from BDV
+§2.2 [blackburn2001](@cite), and [`bisimulation_contraction`](@ref) computes
+the largest auto-bisimulation quotient.  The direct game check uses
+O(n₁n₂r d₁d₂) time per refinement pass, O(n₁n₂) space, and at most n₁n₂
+passes; contraction uses O(n²rd log d) worst-case time and O(nrd+n) working
+space.  `contraction_world` maps an original world to its quotient class, so
+modal evaluation can be compared directly.
+`iscnf`/`isdnf` and [`to_cnf`](@ref)/[`to_dnf`](@ref) perform classical Boolean
+normalization in the original formula pool; modal subformulas are treated as
+propositional letters.  As expected, these conversions are not advertised as
+many-valued equivalences.
+
+Proof search is intentionally only a boundary. [`AbstractProver`](@ref)
+defines the question, while a backend supplies the answer (and may provide a
+countermodel or certificate in [`ProverResult`](@ref)).  The shipped
+[`PropositionalProver`](@ref) is an exhaustive truth-table fallback and returns
+`nothing` for modal or custom connectives.  A concrete adapter can therefore
+implement `prove`, `prove_valid`, and entailment without changing Aletheia.
+
+### SoleReasoners adapter sketch
+
+`SoleReasoners.jl` is deliberately not a dependency of Aletheia and its
+modal/many-valued engines remain there.  Its actual propositional entry points
+are `SoleReasoners.sat` (exported; satisfiability) and the module-qualified
+`SoleReasoners.prove` in `src/propositional-tableau/propositional-tableau.jl`
+(validity; not exported).  A downstream adapter can use the following shape:
+
+```julia
+struct SoleReasonersProver <: Aletheia.AbstractProver
+    choose::Function
+    metrics::Tuple
+end
+function Aletheia.prove(p::SoleReasonersProver, f)
+    sf = to_sole(f) # recursively maps Atom/¬/∧/∨/→; rejects unsupported modalities
+    answer = SoleReasoners.sat(sf, p.choose, p.metrics...)
+    Aletheia.ProverResult(answer === nothing ? :unknown : (answer ? :sat : :unsat);
+                          answer=answer, certificate=:tableau)
+end
+function Aletheia.prove_valid(p::SoleReasonersProver, f)
+    sf = to_sole(f)
+    # The safe public alternative to the module-private `prove`:
+    answer = SoleReasoners.sat(SoleLogics.¬(sf), p.choose, p.metrics...)
+    Aletheia.ProverResult(answer === nothing ? :unknown : (!answer ? :valid : :invalid);
+                          answer=answer === nothing ? nothing : !answer,
+                          certificate=:tableau)
+end
+```
+
+The real converter constructs `SoleLogics.Atom(value(f))` and recursively
+constructs the four propositional connectives.  Relational modalities require
+an explicit bridge to SoleLogics relation objects; arbitrary Aletheia relation
+payloads are rejected rather than silently reinterpreted.  The many-valued
+`alphasat`/`alphaval` entry points in SoleReasoners additionally require a
+finite algebra and a tableau type, so they belong in that downstream adapter,
+not in this package.
+
 ## Module
 
 ```@docs
