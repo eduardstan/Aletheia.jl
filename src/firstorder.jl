@@ -17,7 +17,6 @@ struct Predicate <: FirstOrderFormula
     name::Any
     arguments::Tuple{Vararg{FirstOrderTerm}}
 end
-Predicate(name, arguments::Tuple) = Predicate(name, convert(Tuple{Vararg{FirstOrderTerm}}, arguments))
 Predicate(name, arguments::AbstractVector) = Predicate(name, tuple(arguments...))
 Predicate(name, arguments::FirstOrderTerm...) = Predicate(name, arguments)
 struct Equality <: FirstOrderFormula
