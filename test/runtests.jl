@@ -28,7 +28,7 @@ Aletheia.notation(::TestEmptyNotation) = ""
 
 struct TestDelimiterNotation end
 Aletheia.arity(::TestDelimiterNotation) = 1
-Aletheia.notation(::TestDelimiterNotation) = "(" 
+Aletheia.notation(::TestDelimiterNotation) = "("
 
 struct TestUnspecified end
 
