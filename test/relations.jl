@@ -2,6 +2,25 @@ struct ExternalFamilyRelation end
 Base.show(io::IO, ::ExternalFamilyRelation) = print(io, "external")
 Aletheia.relation_holds(::ExternalFamilyRelation, source::Int, target::Int) = iseven(source + target)
 
+# Independent endpoint oracle: this intentionally does not call relation_holds or inverse.
+function allen_definition(relation, source::Interval, target::Interval)
+    sx, sy, tx, ty = source.x, source.y, target.x, target.y
+    relation === BEFORE ? sy < tx :
+    relation === MEETS ? sy == tx :
+    relation === OVERLAPS ? sx < tx < sy < ty :
+    relation === STARTS ? sx == tx && sy < ty :
+    relation === DURING ? tx < sx && sy < ty :
+    relation === FINISHES ? tx < sx && sy == ty :
+    relation === EQUALS ? sx == tx && sy == ty :
+    relation === AFTER ? ty < sx :
+    relation === MET_BY ? sx == ty :
+    relation === OVERLAPPED_BY ? tx < sx < ty < sy :
+    relation === STARTED_BY ? sx == tx && ty < sy :
+    relation === CONTAINS ? sx < tx && ty < sy :
+    relation === FINISHED_BY ? sx < tx && sy == ty :
+    throw(ArgumentError("unknown Allen relation"))
+end
+
 @testset "relation families and dimensional frames" begin
     I = Interval
     a, b = I(1, 3), I(3, 5)
@@ -29,6 +48,7 @@ Aletheia.relation_holds(::ExternalFamilyRelation, source::Int, target::Int) = is
     end
     @test inverse(EQUALS) === EQUALS
     @test inverse(IDENTITY) === IDENTITY
+    @test sprint(show, IDENTITY) == "identity"
     @test_throws MethodError relation_holds(:not-a-relation, a, b)
     @test_throws MethodError inverse(:not-a-relation)
     @test_throws MethodError Base.invokelatest(Aletheia.relation_holds, :not-a-relation, a, b)
@@ -50,6 +70,8 @@ Aletheia.relation_holds(::ExternalFamilyRelation, source::Int, target::Int) = is
     interval_worlds = worlds(interval_frame(3))
     @test all(sum(relation_holds(r, source, target) for r in ALLEN_RELATIONS) == 1
         for source in interval_worlds for target in interval_worlds)
+    @test all(relation_holds(r, source, target) == allen_definition(r, source, target)
+        for r in ALLEN_RELATIONS for source in interval_worlds for target in interval_worlds)
 
     @test relation_holds(DC, I(1, 2), I(3, 4))
     @test relation_holds(EC, I(1, 2), I(2, 3))
@@ -80,6 +102,8 @@ Aletheia.relation_holds(::ExternalFamilyRelation, source::Int, target::Int) = is
         for source in rectangles for target in rectangles)
     rr = rectangle_relation(MEETS, MEETS)
     @test inverse(rr) == rectangle_relation(MET_BY, MET_BY)
+    @test isequal(rr, rectangle_relation(MEETS, MEETS))
+    @test sprint(show, rr) == "rectangle-relation"
     @test relation_holds(rr, Rectangle((1, 2), (2, 3)), Rectangle((2, 3), (3, 4)))
 
     struct CustomPointRelation <: Aletheia.PointRelation end
