@@ -53,7 +53,7 @@ that target syntax; it is not a first-order prover.
 [`bisimilar`](@ref) implements the finite labelled bisimulation game from BDV
 §2.2 [blackburn2001](@cite), and [`bisimulation_contraction`](@ref) computes
 the largest auto-bisimulation quotient.  The direct game check uses
-O(n₁n₂r(d₁+d₂)) time per refinement pass, O(n₁n₂) space, and at most n₁n₂
+O(n₁n₂r d₁d₂) time per refinement pass, O(n₁n₂) space, and at most n₁n₂
 passes; contraction uses O(n²rd log d) worst-case time and O(nrd+n) working
 space.  `contraction_world` maps an original world to its quotient class, so
 modal evaluation can be compared directly.
