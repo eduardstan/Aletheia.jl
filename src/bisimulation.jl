@@ -78,8 +78,8 @@ end
 bisimilar(m1::Model, w1, m2::Model, w2, atoms) = bisimilar(m1, w1, m2, w2; atoms=atoms)
 
 """An equivalence class of worlds in a bisimulation quotient."""
-struct BisimulationClass{W}
-    members::Tuple{Vararg{W}}
+struct BisimulationClass
+    members::Tuple
 end
 Base.show(io::IO, class::BisimulationClass) = print(io, "Class(", join(repr.(class.members), ", "), ")")
 
