@@ -4,14 +4,14 @@
 Aletheia provides syntax-first foundations for logical languages.  It contains
 similarity types, immutable hash-consed formulas, connective traits, a
 precedence-aware parser/printer, truth algebras, relational frames, models,
-and atom interpretation.  Compound-formula evaluation is deliberately left to
-the next stage.
+and atom interpretation, plus type-stable compound-formula evaluation.
 """
 module Aletheia
 
 include("syntax.jl")
 include("parse.jl")
 include("semantics.jl")
+include("evaluation.jl")
 
 export Signature, Formula, FormulaPool, Atom, Branch, DAGNode
 export atom, branch, children, nchildren, value, operator, head, pool, id
@@ -27,6 +27,7 @@ export BOOLEAN, truth_type, truthtype, carrier, top, bottom, bot, meet, join
 export domain
 export implication, negation, implies, negate, levels, isfinitechain
 export Frame, worlds, relations, world_index, hasworldindex, world_position, accessible
+export check, extension
 export Valuation, Model, frame, algebra, valuation, interpret
 
 end

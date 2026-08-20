@@ -4,7 +4,7 @@ Aletheia is a syntax-first Julia package for foundations of propositional,
 modal, many-valued, and first-order logic. The initial layers provide explicit
 similarity types, hash-consed immutable formulas, extensible connective traits,
 round-trippable parsing/printing, truth algebras, relational frames, models,
-and atom interpretation; compound-formula evaluation arrives in a later stage.
+and atom interpretation; compound-formula evaluation is available through `check` and `extension`.
 
 ## Grounding references
 
