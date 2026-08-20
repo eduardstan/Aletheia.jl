@@ -18,11 +18,11 @@ struct Rectangle{T<:Real}
 end
 
 """A small immutable point value (provided for dimensional API compatibility)."""
-struct Point{N,T<:Real}
-    coordinates::NTuple{N,T}
+struct Point{T<:Real}
+    coordinates::Tuple{Vararg{T}}
 end
-Point(x::T) where {T<:Real} = Point{1,T}((x,))
-Point(x::T, y::T) where {T<:Real} = Point{2,T}((x, y))
+Point(x::T) where {T<:Real} = Point{T}((x,))
+Point(x::T, y::T) where {T<:Real} = Point{T}((x, y))
 Rectangle(x::Tuple{T,T}, y::Tuple{T,T}) where {T<:Real} = Rectangle(Interval(x...), Interval(y...))
 const Interval2D = Rectangle
 
