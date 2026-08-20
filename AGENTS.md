@@ -16,3 +16,8 @@ When updating this file, preserve this bar for all agents and keep entries conci
 - The syntax implementation lives in `src/syntax.jl` and `src/parse.jl`; it is deliberately semantic-free.
 - Validate both package tests and the citation-aware docs build with `julia --project=. -e 'using Pkg; Pkg.test()'` and `julia --project=docs docs/make.jl`.
 - CI enforces source line coverage with `julia --project=. -e 'using Pkg; Pkg.test(coverage=true)'` followed by `julia --project=coverage -e 'using Pkg; Pkg.instantiate(); include("coverage/check.jl")'`; do not commit generated `.cov` or manifests.
+
+## Semantics layer
+
+- `src/semantics.jl` is the authoritative layer for `TruthAlgebra`, `Frame`, `Model`, and atom-only `interpret`; compound DAG evaluation is intentionally deferred.
+- Semantics tests live in `test/semantics.jl`; validate package tests, coverage, and docs with the commands above.
