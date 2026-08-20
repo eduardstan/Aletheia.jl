@@ -66,3 +66,5 @@ formula values is pathological. `SyntaxBranch`'s field is actually
 type, so we do not claim a nested-concrete-type cause without evidence. We do
 not change or work around the incumbent; the guarded `==` rows preserve the
 finding.
+
+The theory row is intentionally a measurement, not a promise. In the recorded quick run (600 dense, identically labelled worlds), raw checking was 0.64 ms and contraction plus checking was 16.97 ms: contraction did **not** win once quotient construction was included. That negative result is published rather than hidden; a downstream workload may amortize the quotient across many checks.

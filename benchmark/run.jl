@@ -65,6 +65,28 @@ for n in (DEEP ? (8, 16, 24, 32, 64, 128) : (8, 16, 24, 32, 64))
         guarded_pair("Aletheia == chain=$n", "equality_eq", "aletheia", "$n"))
 end
 
+# Theory measurement: on a redundant dense frame, compare raw checking with
+# contraction plus checking (including quotient construction); it does not call
+# the incumbent.
+println("[theory contraction]")
+theory_signature = Aletheia.Signature((Aletheia.NEGATION, Aletheia.CONJUNCTION,
+    Aletheia.DISJUNCTION, Aletheia.IMPLICATION, Aletheia.Box(:R)))
+theory_pool = Aletheia.FormulaPool(theory_signature)
+theory_atom = Aletheia.atom(theory_pool, "p")
+theory_formula = Aletheia.branch(theory_pool, Aletheia.Box(:R),
+    Aletheia.branch(theory_pool, Aletheia.Box(:R), theory_atom))
+theory_worlds = ntuple(identity, DEEP ? 800 : 600)
+theory_targets = Dict(world => theory_worlds for world in theory_worlds)
+theory_frame = Aletheia.Frame(theory_worlds, Dict(:R => theory_targets); index=true)
+theory_model = Aletheia.Model(theory_frame, Aletheia.BOOLEAN,
+    Dict("p" => Set(theory_worlds)))
+raw_theory = measure(() -> Aletheia.check(theory_formula, theory_model, 1))
+contracted_theory = measure(() -> begin
+    quotient = Aletheia.bisimulation_contraction(theory_model; atoms=["p"], relations=[:R])
+    Aletheia.check(theory_formula, quotient, 1)
+end)
+addrow!("theory raw check / contraction + check", raw_theory, contracted_theory)
+
 # Deliberately empty extension points.  A row is printed rather than silently
 # omitted, so a report cannot imply that later semantic stages were measured.
 for suite in ("propositional checking (stage 2: semantics)",
