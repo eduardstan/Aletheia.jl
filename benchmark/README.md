@@ -5,10 +5,12 @@ runners are noisy and are not a useful gate. The deterministic differential suit
 is also kept here, rather than in Aletheia's package tests, so Aletheia never
 depends on SoleLogics.
 
-The harness currently measures the syntax layer only (construction, parsing,
-printing, round-trips, and equality). Semantic suites are named and printed as
-empty rows until stages 2 and 3 provide propositional, modal, interval-temporal,
-and many-valued evaluators. Empty is intentional; it is not a fake benchmark.
+The harness measures the syntax layer (construction, parsing, printing,
+round-trips, and equality) plus a guarded generated interval-temporal relation
+case. The interval row compares Aletheia's generated Allen-before frame access
+with SoleLogics' IA-L access; every incumbent call runs in a fresh process with
+a timeout. Propositional random-frame, general modal, and many-valued rows
+remain explicitly empty until their later benchmark stages.
 
 ## Reproduce
 

@@ -103,17 +103,26 @@ function guarded_measure(label, kind, side, argument, f)
     flush(stdout)
     status, _ = warmup_case(kind, side, argument)
     status == 124 && return Measurement(missing, missing, missing, ">10s (not sampled)")
-    status == 0 || error("warm-up failed for $label (exit code $status)")
-    measure(f)
+    status != 0 && return Measurement(missing, missing, missing, "unavailable (guarded exit code $status)")
+    try
+        measure(f)
+    catch
+        Measurement(missing, missing, missing, "unavailable (measurement failed)")
+    end
 end
 function guarded_pair(label, kind, side, argument)
     println("[case] ", label)
     flush(stdout)
     status, output = warmup_case(kind, side, argument)
     status == 124 && return Measurement(missing, missing, missing, ">10s first call (second unavailable)")
-    status == 0 || error("warm-up failed for $label (exit code $status)")
-    values = parse.(Float64, split(strip(output)))
-    length(values) == 2 || error("expected first/second timings for $label: $(repr(output))")
+    (status != 0 || isempty(strip(output))) &&
+        return Measurement(missing, missing, missing, "unavailable (guarded exit code $status)")
+    values = try
+        parse.(Float64, split(strip(output)))
+    catch
+        return Measurement(missing, missing, missing, "unavailable (invalid guarded output)")
+    end
+    length(values) == 2 || return Measurement(missing, missing, missing, "unavailable (invalid guarded output)")
     first_ms, second_ms = values
     note = @sprintf("first %.3f ms; second %.3f ms; not sampled", first_ms, second_ms)
     Measurement(second_ms * 1_000_000, missing, missing, note)
@@ -124,12 +133,21 @@ function external_measure(code; reps=DEEP ? 2 : 1)
     values = Tuple{Float64,Float64}[]
     for _ in 1:reps
         command = `timeout -k 1s 30s $julia --startup-file=no --project=$project -e $code`
-        output = read(command, String)
+        output = try
+            read(command, String)
+        catch
+            return nothing
+        end
         parts = split(strip(output))
-        length(parts) >= 2 || error("cold-process timing failed: $(repr(output))")
-        push!(values, (parse(Float64, parts[1]), parse(Float64, parts[2])))
+        length(parts) >= 2 || return nothing
+        parsed = try
+            (parse(Float64, parts[1]), parse(Float64, parts[2]))
+        catch
+            return nothing
+        end
+        push!(values, parsed)
     end
-    (median(first.(values)), median(last.(values)))
+    isempty(values) ? nothing : (median(first.(values)), median(last.(values)))
 end
 
 function fmt_time(x)

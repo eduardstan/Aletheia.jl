@@ -41,6 +41,56 @@ check(p, boolean, :only)      # true
 extension(p, boolean)          # BitVector([1])
 ```
 
+## Relation families and generated frames
+
+Relations are immutable values carried by `Diamond` and `Box`; a relation family
+never requires a new frame type. `BEFORE`, `MEETS`, `OVERLAPS`, `STARTS`,
+`DURING`, `FINISHES`, `EQUALS` and their six converses implement Allen's
+thirteen basic interval relations. `relation_holds(r, source, target)` uses the
+usual subject/object orientation: for example, `STARTS` means that `source`
+has the same left endpoint as `target` and a smaller right endpoint, while
+`BEFORE` means `source.y < target.x`. The `IA_*` spellings are compatibility
+aliases for Sole's accessibility orientation (`IA_B` is `STARTED_BY`, for
+example). `RCC8_RELATIONS` includes the formal eighth `RCC_EQ`; the
+seven-relation incumbent list is available as `RCC8_BASICS`. RCC8 is the selected
+fragment because it is the incumbent's complete topological implementation; RCC5
+composition is intentionally left for a later stage.
+
+`interval_frame(n)` generates all intervals over `n` cells and
+`rectangle_frame(nx, ny)` generates all axis-aligned rectangles. Their worlds
+are immutable values, and both are ordinary [`Frame`](@ref) instances, so the
+existing adjacency cache and evaluator are used unchanged:
+
+```julia
+sig = Signature((Diamond(BEFORE), Box(BEFORE)))
+pool = FormulaPool(sig)
+p = atom(pool, "p")
+frame = interval_frame(4)
+model = Model(frame, BOOLEAN, Dict("p" => Set([Interval(2, 3)])))
+check(branch(pool, Diamond(BEFORE), p), model, Interval(1, 2))
+```
+
+A new family can be defined outside Aletheia by extending the single protocol
+method, without adding a frame×family file:
+
+```julia
+struct SameParity end
+Aletheia.relation_holds(::SameParity, a::Int, b::Int) = iseven(a) == iseven(b)
+frame = point_frame(1:4)
+```
+
+## Frame classes and correspondence
+
+`isreflexive`, `istransitive`, `issymmetric`, and `isserial` are finite-frame
+traits. `satisfies(frame, T, relation)` and the corresponding `S4`/`S5` checks
+compose these traits; `K` imposes no frame condition. The correspondence
+schemas are `T`: `□p → p`, `4`: `□p → □□p`, `B`: `p → □◇p`, and `D`:
+`□p → ◇p`. These correspondences and the named systems follow Blackburn,
+de Rijke, and Venema, Chapter 3 [blackburn2001](@cite), and Schwarz's modal
+logic notes [schwarz2024](@cite). `axioms(pool, S4)` and
+`axioms(pool, S5)` expose the individual schemas; `axiom` conjoins them when
+the signature contains `∧`.
+
 ## Module
 
 ```@docs
