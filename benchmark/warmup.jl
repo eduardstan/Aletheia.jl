@@ -47,6 +47,30 @@ elseif kind == "interval"
     sw = first(SoleLogics.allworlds(sf))
     timed(selected(() -> collect(SoleLogics.accessibles(sf, sw, SoleLogics.IA_L)),
         () -> collect(Aletheia.accessible(af, aw, Aletheia.BEFORE))))
+elseif kind == "interval_adjacency"
+    n = parse(Int, argument)
+    if side == "incumbent"
+        frame = SoleLogics.FullDimensionalFrame((n,), SoleLogics.Interval{Int})
+        frame_worlds = collect(SoleLogics.allworlds(frame))
+        timed(() -> interval_adjacency_s(frame, SoleLogics.IA_L, frame_worlds))
+    else
+        frame = Aletheia.interval_frame(n)
+        frame_worlds = collect(Aletheia.worlds(frame))
+        timed(() -> interval_adjacency_a(frame, Aletheia.BEFORE, frame_worlds))
+    end
+elseif kind == "interval_check"
+    n = parse(Int, argument)
+    if side == "incumbent"
+        frame, frame_worlds, formula, valuation = interval_check_s_setup(n)
+        tiny_frame, tiny_worlds, tiny_formula, tiny_valuation = interval_check_s_setup(1)
+        SoleLogics.check(tiny_formula, SoleLogics.KripkeStructure(tiny_frame, tiny_valuation), first(tiny_worlds))
+        timed(() -> SoleLogics.check(formula, SoleLogics.KripkeStructure(frame, valuation), first(frame_worlds)))
+    else
+        frame, frame_worlds, formula, valuation = interval_check_a_setup(n)
+        tiny_frame, tiny_worlds, tiny_formula, tiny_valuation = interval_check_a_setup(1)
+        Aletheia.check(tiny_formula, Aletheia.Model(tiny_frame, Aletheia.BOOLEAN, tiny_valuation), first(tiny_worlds))
+        timed(() -> Aletheia.check(formula, Aletheia.Model(frame, Aletheia.BOOLEAN, valuation), first(frame_worlds)))
+    end
 elseif kind in ("equality", "equality_eq")
     n = parse(Int, argument)
     r = chain(n)
