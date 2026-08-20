@@ -58,6 +58,48 @@ function pool_a()
     Aletheia.FormulaPool(SIGNATURE)
 end
 
+# Interval-temporal benchmark helpers. The Aletheia path calls the same
+# adjacency builder used by the evaluator; the incumbent path mirrors its
+# resulting row/column representation using direct successor enumeration.
+function interval_adjacency_a(frame, relation_name, frame_worlds)
+    positions = Dict(world => position for (position, world) in enumerate(frame_worlds))
+    Aletheia._relation_adjacency(frame, relation_name, positions)
+end
+function interval_adjacency_s(frame, relation_name, frame_worlds)
+    positions = Dict(world => position for (position, world) in enumerate(frame_worlds))
+    world_count = length(frame_worlds)
+    rows = Vector{Vector{Int}}(undef, world_count)
+    columns = [falses(world_count) for _ in 1:world_count]
+    for (source_position, source) in enumerate(frame_worlds)
+        targets = Int[]
+        for target in SoleLogics.accessibles(frame, source, relation_name)
+            target_position = positions[target]
+            push!(targets, target_position)
+            columns[target_position][source_position] = true
+        end
+        rows[source_position] = targets
+    end
+    rows, columns
+end
+
+function interval_check_a_setup(n)
+    frame = Aletheia.interval_frame(n)
+    frame_worlds = collect(Aletheia.worlds(frame))
+    pool = Aletheia.FormulaPool(Aletheia.Signature((Aletheia.Diamond(Aletheia.BEFORE),)))
+    p = Aletheia.atom(pool, "p")
+    formula = Aletheia.branch(pool, Aletheia.Diamond(Aletheia.BEFORE), p)
+    valuation = Dict("p" => Set(frame_worlds))
+    frame, frame_worlds, formula, valuation
+end
+function interval_check_s_setup(n)
+    frame = SoleLogics.FullDimensionalFrame((n,), SoleLogics.Interval{Int})
+    frame_worlds = collect(SoleLogics.allworlds(frame))
+    p = SoleLogics.Atom("p")
+    formula = SoleLogics.SyntaxBranch(SoleLogics.DiamondRelationalConnective(SoleLogics.IA_L), p)
+    valuation = Dict(world => SoleLogics.TruthDict([p => true]) for world in frame_worlds)
+    frame, frame_worlds, formula, valuation
+end
+
 # A canonical representation independent of package-specific formula handles.
 canonical(f::Aletheia.Atom) = (:atom, Aletheia.value(f))
 function canonical(f::Aletheia.Branch)
