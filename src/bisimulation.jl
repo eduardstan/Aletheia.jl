@@ -41,8 +41,11 @@ end
 Decide the standard labelled bisimulation game for finite models.  The
 implementation starts with all label-compatible world pairs and repeatedly
 refines that partition using the forth and back conditions for every named
-relation.  The naive refinement is O(|W₁||W₂|·|R|·(d₁+d₂)) and uses O(|W₁||W₂|)
-space.  Definitions and invariance are those of BDV §2.2 [blackburn2001](@cite).
+relation.  With nᵢ = |Wᵢ|, r named relations, and dᵢ maximum out-degree, one
+refinement pass is O(n₁n₂r(d₁+d₂)) time and O(n₁n₂) space; because this
+straightforward implementation can make at most n₁n₂ passes, its worst-case
+time is O((n₁n₂)²r(d₁+d₂)).  Definitions and invariance are those of BDV §2.2
+[blackburn2001](@cite).
 When omitted, `atoms` and `relations` are inferred from dictionary-backed
 models and frames; pass them explicitly for callable valuations/relations.
 """
@@ -134,8 +137,11 @@ end
 
 The result is a `BisimulationContraction` wrapper.  `contraction_world(q, w)`
 selects the quotient world corresponding to an original world, while `check`
-and `extension` delegate normally.  Relation functions must be accompanied by
-`relations`; dictionary-backed frames infer relation names.
+and `extension` delegate normally.  For n worlds, r relations, and maximum
+out-degree d, partition refinement costs O(n²rd log d) worst-case time and
+O(nrd + n) working space; quotient construction adds O(nrd) time and storage.
+Relation functions must be accompanied by `relations`; dictionary-backed frames
+infer relation names.
 """
 function bisimulation_contraction(model::Model; atoms=nothing, relations=nothing)
     atoms === nothing && _opaque_valuation(model) &&
