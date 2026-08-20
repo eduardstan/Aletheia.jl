@@ -7,7 +7,15 @@ Return the finite arity of a connective.  This is a trait: packages defining a
 connective only need to add a method for their own value or type.
 """
 function arity(connective)
-    throw(MethodError(arity, (connective,)))
+    if connective isa Negation
+        1
+    elseif connective isa Conjunction || connective isa Disjunction || connective isa Implication
+        2
+    elseif connective isa Diamond || connective isa Box
+        1
+    else
+        throw(MethodError(arity, (connective,)))
+    end
 end
 
 """
@@ -17,7 +25,19 @@ Return the syntactic dual of `connective`, or throw when no dual is declared.
 Duality is only a connective property; this layer does not interpret formulas.
 """
 function dual(connective)
-    throw(ArgumentError("no dual is declared for $(typeof(connective))"))
+    if connective isa Negation
+        NEGATION
+    elseif connective isa Conjunction
+        DISJUNCTION
+    elseif connective isa Disjunction
+        CONJUNCTION
+    elseif connective isa Diamond
+        Box(connective.relation)
+    elseif connective isa Box
+        Diamond(connective.relation)
+    else
+        throw(ArgumentError("no dual is declared for $(typeof(connective))"))
+    end
 end
 
 """
@@ -25,7 +45,10 @@ end
 
 Return whether a connective has a syntactic dual.
 """
-hasdual(connective) = false
+function hasdual(connective)
+    connective isa Negation || connective isa Conjunction || connective isa Disjunction ||
+        connective isa Diamond || connective isa Box
+end
 
 """
     precedence(connective)
@@ -34,7 +57,21 @@ Return the binding precedence used by the printer and parser.  Larger values
 bind more tightly.  Custom connectives should define this trait when they are
 printed in infix or prefix notation.
 """
-precedence(connective) = 0
+function precedence(connective)
+    if connective isa Negation
+        80
+    elseif connective isa Diamond || connective isa Box
+        90
+    elseif connective isa Conjunction
+        30
+    elseif connective isa Disjunction
+        20
+    elseif connective isa Implication
+        10
+    else
+        0
+    end
+end
 
 """
     associativity(connective)
@@ -42,7 +79,17 @@ precedence(connective) = 0
 Return `:left`, `:right`, or `:none` for a connective.  The default is
 `:none`, which makes equal-precedence children parenthesized conservatively.
 """
-associativity(connective) = :none
+function associativity(connective)
+    if connective isa Negation || connective isa Diamond || connective isa Box
+        :right
+    elseif connective isa Conjunction || connective isa Disjunction
+        :left
+    elseif connective isa Implication
+        :right
+    else
+        :none
+    end
+end
 
 """
     commutative(connective)
@@ -50,7 +97,9 @@ associativity(connective) = :none
 Return whether a connective is commutative.  Commutativity is recorded as a
 trait for later normalization stages; it never changes syntax or equality.
 """
-commutative(connective) = false
+function commutative(connective)
+    connective isa Conjunction || connective isa Disjunction
+end
 
 """
     modality(connective)
@@ -58,7 +107,9 @@ commutative(connective) = false
 Return whether a connective is a modality.  This is a syntactic trait and has
 no semantic consequence in the syntax layer.
 """
-modality(connective) = false
+function modality(connective)
+    connective isa Diamond || connective isa Box
+end
 
 """
     notation(connective)
@@ -66,7 +117,23 @@ modality(connective) = false
 Return the text used for a connective in formulas.  Defining this trait is the
 only printing hook needed by a user-defined connective.
 """
-notation(connective) = string(connective)
+function notation(connective)
+    if connective isa Negation
+        "¬"
+    elseif connective isa Conjunction
+        "∧"
+    elseif connective isa Disjunction
+        "∨"
+    elseif connective isa Implication
+        "→"
+    elseif connective isa Diamond
+        "⟨$(connective.relation)⟩"
+    elseif connective isa Box
+        "[$(connective.relation)]"
+    else
+        string(connective)
+    end
+end
 
 """Alias for [`commutative`](@ref), retained as a readable predicate."""
 iscommutative(connective) = commutative(connective)
@@ -514,45 +581,6 @@ const ¬ = NEGATION
 const ∧ = CONJUNCTION
 const ∨ = DISJUNCTION
 const → = IMPLICATION
-
-arity(::Negation) = 1
-arity(::Conjunction) = 2
-arity(::Disjunction) = 2
-arity(::Implication) = 2
-arity(::Diamond) = 1
-arity(::Box) = 1
-precedence(::Negation) = 80
-precedence(::Diamond) = 90
-precedence(::Box) = 90
-precedence(::Conjunction) = 30
-precedence(::Disjunction) = 20
-precedence(::Implication) = 10
-associativity(::Negation) = :right
-associativity(::Diamond) = :right
-associativity(::Box) = :right
-associativity(::Conjunction) = :left
-associativity(::Disjunction) = :left
-associativity(::Implication) = :right
-commutative(::Conjunction) = true
-commutative(::Disjunction) = true
-modality(::Diamond) = true
-modality(::Box) = true
-hasdual(::Negation) = true
-hasdual(::Conjunction) = true
-hasdual(::Disjunction) = true
-hasdual(::Diamond) = true
-hasdual(::Box) = true
-dual(::Negation) = NEGATION
-dual(::Conjunction) = DISJUNCTION
-dual(::Disjunction) = CONJUNCTION
-dual(d::Diamond) = Box(d.relation)
-dual(b::Box) = Diamond(b.relation)
-notation(::Negation) = "¬"
-notation(::Conjunction) = "∧"
-notation(::Disjunction) = "∨"
-notation(::Implication) = "→"
-notation(d::Diamond) = "⟨$(d.relation)⟩"
-notation(b::Box) = "[$(b.relation)]"
 
 """Return the modal relation carried by a [`Diamond`](@ref) or [`Box`](@ref)."""
 relation(modal::Diamond) = modal.relation
