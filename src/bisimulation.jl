@@ -42,9 +42,9 @@ Decide the standard labelled bisimulation game for finite models.  The
 implementation starts with all label-compatible world pairs and repeatedly
 refines that partition using the forth and back conditions for every named
 relation.  With nᵢ = |Wᵢ|, r named relations, and dᵢ maximum out-degree, one
-refinement pass is O(n₁n₂r(d₁+d₂)) time and O(n₁n₂) space; because this
-straightforward implementation can make at most n₁n₂ passes, its worst-case
-time is O((n₁n₂)²r(d₁+d₂)).  Definitions and invariance are those of BDV §2.2
+refinement pass is O(n₁n₂r d₁d₂) time and O(n₁n₂) space; because this
+straightforward implementation can make at most n₁n₂ passes, its worst-case time is
+O((n₁n₂)²r d₁d₂).  Definitions and invariance are those of BDV §2.2
 [blackburn2001](@cite).
 When omitted, `atoms` and `relations` are inferred from dictionary-backed
 models and frames; pass them explicitly for callable valuations/relations.
