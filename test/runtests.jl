@@ -229,6 +229,7 @@ end
     @test_throws ArgumentError parse(pool, "z(p)")
 end
 
+include("semantics.jl")
 @testset "Aletheia" begin
     Aqua.test_all(Aletheia)
     if pkgversion(JET) < v"0.11"
