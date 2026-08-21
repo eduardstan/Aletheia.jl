@@ -41,13 +41,10 @@ const Formula = Aletheia.Formula
 const SyntaxStructure = Aletheia.Formula
 const SyntaxTree = Aletheia.Formula
 const SyntaxLeaf = Aletheia.Atom
-const SyntaxBranch = Aletheia.Branch
-const Branch = Aletheia.Branch
 const Operator = Union{Aletheia.Negation,Aletheia.Conjunction,Aletheia.Disjunction,
     Aletheia.Implication,Aletheia.Diamond,Aletheia.Box}
 const Connective = Operator
 const AbstractAtom = Aletheia.Atom
-const Atom = Aletheia.Atom
 const AbstractRelation = Aletheia.RelationFamily
 const BoxRelationalConnective = Aletheia.Box
 const DiamondRelationalConnective = Aletheia.Diamond
@@ -81,8 +78,9 @@ collatetruth(args...) = _unsupported(:collatetruth,
 
 # Sole's poolless constructors are retained as a migration convenience. They
 # construct ordinary Aletheia atoms/branches; no second formula representation
-# is introduced.
-function Aletheia.Atom(value)
+# is introduced. These are local compatibility functions, rather than methods
+# on Aletheia.Atom or Aletheia.Branch, so loading Aletheia alone stays explicit.
+function Atom(value)
     value isa Aletheia.Formula && _unsupported(:Atom,
         "Aletheia atoms cannot contain formulas; use children/branch instead")
     value isa Truth && _unsupported(:Atom,
@@ -115,14 +113,15 @@ end
 _repool(value, target) = _unsupported(:SyntaxBranch,
     "children must be Aletheia formulas (got $(typeof(value)))")
 
-function Aletheia.Branch(connective::_LegacyConnective, children::Tuple)
+function Branch(connective::_LegacyConnective, children::Tuple)
     connective isa _UnsupportedName && _unsupported(:SyntaxBranch,
         "the requested connective is not implemented by Aletheia")
     pool = _formula_pool_for(connective, children)
     normalized = Tuple(_repool(child, pool) for child in children)
     Aletheia.branch(pool, connective, normalized)
 end
-Aletheia.Branch(connective::_LegacyConnective, children...) = Aletheia.Branch(connective, children)
+Branch(connective::_LegacyConnective, children...) = Branch(connective, children)
+const SyntaxBranch = Branch
 
 # Old accessors and tree walks.
 function token(formula::Aletheia.Atom)
@@ -184,10 +183,10 @@ nconjuncts(formula::Aletheia.Formula) = length(conjuncts(formula))
 
 # Poolless spellings remain available for old call sites; explicit pool forms
 # are also accepted and preserve Aletheia's pool semantics.
-atom(value) = Aletheia.Atom(value)
+atom(value) = Atom(value)
 atom(pool::Aletheia.FormulaPool, value) = Aletheia.atom(pool, value)
 branch(pool::Aletheia.FormulaPool, connective, children...) = Aletheia.branch(pool, connective, children...)
-branch(connective::_LegacyConnective, children...) = Aletheia.Branch(connective, children...)
+branch(connective::_LegacyConnective, children...) = Branch(connective, children...)
 
 function syntaxstring(formula::Aletheia.Formula; kwargs...)
     allowed = (:threshold_digits, :function_notation, :remove_redundant_parentheses, :parenthesize_atoms)
