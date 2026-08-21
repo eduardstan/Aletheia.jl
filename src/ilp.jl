@@ -295,12 +295,18 @@ function Base.iterate(iterator::_UniqueIterator, state=(Set{Any}(), nothing, fal
     end
 end
 
-function _proper_specialization(parent::Clause, child::Clause)
+function _proper_specialization(parent::Union{Clause,HornClause}, child::Union{Clause,HornClause})
     subsumes(parent, child) && !subsumes(child, parent)
 end
-function _proper_generalization(parent::Clause, child::Clause)
+function _proper_generalization(parent::Union{Clause,HornClause}, child::Union{Clause,HornClause})
     subsumes(child, parent) && !subsumes(parent, child)
 end
+
+# Refining a Horn clause must retain its invariant and type.  HornClause's
+# constructor deliberately rejects an added positive head when one already
+# exists, rather than silently widening the result to an ordinary Clause.
+_refinement_candidate(parent::Clause, candidate::Clause) = candidate
+_refinement_candidate(parent::HornClause, candidate::Clause) = HornClause(candidate)
 
 function _fresh_variable(clause::Clause, index::Int)
     used = Set{Symbol}()
@@ -369,14 +375,22 @@ The one-step operator applies supplied substitutions and/or adds one supplied
 literal template, exactly the two operations described in Muggleton & De Raedt
 (1994), §5.2.2. Finite `literals`/`predicates` and a finite substitution set
 make this one-step space locally finite; iterable vocabularies are consumed
-lazily, so an unbounded language can be sampled without materialization. The
-operator is sound and proper, but is not claimed complete or optimal: it cannot
-generate literals outside the bias and does not perform reduced-clause
-canonicalization.
+lazily, so an unbounded language can be sampled without materialization. A
+`max_literals` bound applies to every emitted candidate, including substitutions;
+it must be `nothing` or a non-negative integer. Refining a `HornClause` returns
+`HornClause` values and rejects additions that would create a second positive
+literal. The operator is sound and proper, but is not claimed complete or
+optimal: it cannot generate literals outside the bias and does not perform
+reduced-clause canonicalization.
 """
 function downward_refinements(clause::Union{Clause,HornClause}; literals=nothing, predicates=nothing,
                               substitutions=nothing, max_literals=nothing)
+    max_literals === nothing || (max_literals isa Integer && max_literals >= 0) ||
+        throw(ArgumentError("max_literals must be nothing or a non-negative integer"))
     base = clause isa HornClause ? clause.clause : clause
+    within_limit(candidate) = max_literals === nothing || length(candidate) <= max_literals
+    can_keep = max_literals === nothing || length(base) <= max_literals
+    can_add = max_literals === nothing || length(base) < max_literals
     # Candidate vocabularies are iterated, not collected: an unbounded language
     # bias can therefore be consumed with `Iterators.take`.
     templates = if literals === nothing
@@ -391,21 +405,33 @@ function downward_refinements(clause::Union{Clause,HornClause}; literals=nothing
         substitutions_source = tuple((s isa Substitution ? s : Substitution(s) for s in substitutions)...)
         # Iterate a lazy literal stream outside the finite substitution tuple,
         # so a non-collection vocabulary is reusable for every supplied θ.
-        base_candidates = (substitute(base, substitution) for substitution in substitutions_source)
-        per_template = (Iterators.flatten(((Clause((substitute(base, substitution).literals..., template) ) for substitution in substitutions_source
-             if max_literals === nothing || length(base) < max_literals),)) for template in templates)
+        base_candidates = can_keep ?
+            (_refinement_candidate(clause, candidate) for candidate in
+             (substitute(base, substitution) for substitution in substitutions_source)
+             if within_limit(candidate)) : ()
+        per_template = can_add ?
+            ((_refinement_candidate(clause, candidate) for candidate in
+              (Clause((substitute(base, substitution).literals..., template)) for substitution in substitutions_source)
+              if within_limit(candidate)) for template in templates) : ()
         source = Iterators.flatten((base_candidates, Iterators.flatten(per_template)))
     else
         substitutions_source = substitutions === nothing ? (Substitution(),) :
             (substitutions isa Substitution ? (substitutions,) :
              substitutions isa AbstractDict ? (Substitution(substitutions),) :
              (s isa Substitution ? s : Substitution(s) for s in substitutions))
-        per_substitution = (Iterators.flatten(((substitute(base, substitution),),
-            (Clause((substitute(base, substitution).literals..., template) ) for template in templates
-             if max_literals === nothing || length(base) < max_literals))) for substitution in substitutions_source)
+        per_substitution = (
+            Iterators.flatten((
+                can_keep ?
+                    (_refinement_candidate(clause, candidate) for candidate in
+                     (substitute(base, substitution),) if within_limit(candidate)) : (),
+                can_add ?
+                    (_refinement_candidate(clause, candidate) for candidate in
+                     (Clause((substitute(base, substitution).literals..., template)) for template in templates)
+                     if within_limit(candidate)) : ()
+            )) for substitution in substitutions_source)
         source = Iterators.flatten(per_substitution)
     end
-    _UniqueIterator(Iterators.filter(candidate -> _proper_specialization(base, candidate), source))
+    _UniqueIterator(Iterators.filter(candidate -> _proper_specialization(clause, candidate), source))
 end
 
 """Return a lazy stream of proper generalizations under θ-subsumption.
@@ -464,8 +490,13 @@ end
 ProofExample(proof; positive=true) = ProofExample(proof, Bool(positive))
 """Construct an example for learning from entailment [muggleton1994](@cite)."""
 learning_from_entailment(example; positive=true) = EntailmentExample(example; positive=positive)
-"""Construct an example for learning from interpretations [muggleton1994](@cite)."""
-learning_from_interpretations(example; positive=true) = InterpretationExample(example; positive=positive)
+"""Construct a modal `Model` example for learning from interpretations [muggleton1994](@cite).
+
+The named learning-setting constructor intentionally follows [`interpretation_example`](@ref)
+and rejects first-order adapters; callers with another interpretation type can use
+[`InterpretationExample`](@ref) directly.
+"""
+learning_from_interpretations(example; positive=true) = interpretation_example(example; positive=positive)
 """Construct an example for learning from proofs [muggleton1994](@cite)."""
 learning_from_proofs(example; positive=true) = ProofExample(example; positive=positive)
 

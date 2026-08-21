@@ -93,6 +93,8 @@ end
     result = _unit_value(value)
     if n != 0
         step = 1.0 / (n - 1)
+        # Floating-point chain levels are accepted within 8eps(Float64) of a
+        # level, then canonicalized to that level.
         isapprox(result / step, round(result / step); atol=8eps(Float64)) ||
             throw(ArgumentError("truth value $result is not on the $n-element chain"))
         return round(result / step) * step
@@ -537,6 +539,10 @@ function _check_world(frame::Frame, world)
     world
 end
 
+@inline _validate_atom_value(::TruthAlgebra, value) = value
+@inline _validate_atom_value(::Union{GodelAlgebra{N},LukasiewiczAlgebra{N}}, value::Float64) where N =
+    _chain_value(value, N)
+
 """
     interpret(atom, model, world)
 
@@ -549,5 +555,5 @@ function interpret(atom::Atom, model::Model{T}, world)::T where T
     _check_world(model.frame, world)
     raw = _lookup_atom(model.valuation, atom, world)
     raw isa T || throw(ArgumentError("valuation returned $(typeof(raw)); expected $T"))
-    raw
+    _validate_atom_value(model.algebra, raw)
 end
