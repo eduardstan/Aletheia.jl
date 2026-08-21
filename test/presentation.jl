@@ -108,4 +108,76 @@ using Aletheia
     @test occursin("EntailmentExample (+): p(x)", sprint(show, MIME("text/plain"), ee))
     @test occursin("InterpretationExample (+): Model(2 worlds", sprint(show, MIME("text/plain"), ie))
     @test occursin("ProofExample (-): proof", sprint(show, MIME("text/plain"), pe))
+
+
+    # Branch coverage: bounded displays and edge cases.
+    @test sprint(show, MIME("text/plain"), Extension(BitVector([0, 0]), m1)) ==
+        "Extension (0 of 2 worlds satisfy)\n  Satisfied at: (none)\n  Unsatisfied at: :w1, :w2"
+    @test sprint(show, MIME("text/plain"), Extension(BitVector([1, 1]), m1)) ==
+        "Extension (2 of 2 worlds satisfy)\n  Satisfied at: :w1, :w2\n  Unsatisfied at: (none)"
+    @test sprint(show, Extension(BitVector([0, 0]), m1)) == "Extension(Bool[0, 0])"
+
+    # Exercise the large Boolean extension's elision branch and its terse form.
+    ext_large = Extension(BitVector(ones(Bool, length(large_worlds))), f_large.worlds)
+    s_ext_large = sprint(show, MIME("text/plain"), ext_large)
+    @test occursin("Satisfied at: :w1, :w2, :w3, :w4, :w5, … (15 elided)", s_ext_large)
+    @test sprint(show, ext_large) == "Extension(Bool[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])"
+
+    # Valuation summaries accept the supported world/atom dictionary shapes.
+    m_world_nested = Model(f1, BOOLEAN, Dict(:w1 => Dict("p" => true), :w2 => Dict("p" => false)))
+    @test occursin("p: {:w1 => true, :w2 => false}", sprint(show, MIME("text/plain"), m_world_nested))
+    m_pairs = Model(f1, BOOLEAN, Dict((:w1, "p") => true, ("q", :w2) => true, ("unused", :w1) => false))
+    @test occursin("p: {:w1}", sprint(show, MIME("text/plain"), m_pairs))
+    @test occursin("q: {:w2}", sprint(show, MIME("text/plain"), m_pairs))
+    m_atom_map = Model(f1, BOOLEAN, Dict("p" => Dict(:w1 => true), "empty" => Dict(:ghost => true)))
+    s_atom_map = sprint(show, MIME("text/plain"), m_atom_map)
+    @test occursin("empty: {}", s_atom_map)
+    @test occursin("p: {:w1}", s_atom_map)
+    m_constant = Model(f1, BOOLEAN, Dict("p" => true))
+    @test occursin("p: {}", sprint(show, MIME("text/plain"), m_constant))
+
+    # Callable relation entries and large graded extensions exercise compact paths.
+    f_callable_entry = Frame((:a, :b), Dict(:R => (w -> (:b,))); index=true)
+    @test occursin("<callable>", sprint(show, MIME("text/plain"), f_callable_entry))
+    m_callable_entry = Model(f_callable_entry, (a, w) -> true, BOOLEAN)
+    @test occursin("<callable>", sprint(show, MIME("text/plain"), m_callable_entry))
+    ext_g_large = Extension(fill(0.5, length(large_worlds)), large_worlds)
+    @test occursin("… (15 elided)", sprint(show, MIME("text/plain"), ext_g_large))
+
+    # Both terse and rich forms of finite algebras remain distinct.
+    @test sprint(show, H4) == "FiniteFLewAlgebra{4}(bottom=2, top=1)"
+    @test sprint(show, MIME("text/plain"), H4) isa String
+    @test occursin("Carrier: 1:11", sprint(show, MIME("text/plain"), Aletheia._chain_flew(11, :godel)))
+
+    # Large quotient output elides classes after the first five.
+    worlds_11 = tuple([Symbol("u", i) for i in 1:11]...)
+    vals_11 = Dict("p$(i)" => Set([worlds_11[i]]) for i in 1:11)
+    f_11 = Frame(worlds_11, Dict(:R => Dict()); index=true)
+    q_11 = bisimulation_contraction(Model(f_11, BOOLEAN, vals_11))
+    @test occursin("… (6 elided)", sprint(show, MIME("text/plain"), q_11))
+
+    # Quotients with no collapse and complete collapse.
+    q_none = bisimulation_contraction(m1)
+    @test occursin("0% collapse ratio", sprint(show, MIME("text/plain"), q_none))
+    @test sprint(show, q_none) == "BisimulationContraction(2 → 2 worlds)"
+    f_same = Frame((:a, :b), Dict(:R => Dict()); index=true)
+    m_same = Model(f_same, BOOLEAN, Dict("p" => Set{Symbol}()))
+    q_all = bisimulation_contraction(m_same)
+    s_q_all = sprint(show, MIME("text/plain"), q_all)
+    @test occursin("BisimulationContraction (2 → 1 worlds, 50% collapse ratio)", s_q_all)
+    @test occursin("Class 1: :a, :b", s_q_all)
+    @test sprint(show, q_all) == "BisimulationContraction(2 → 1 worlds)"
+
+    clauses_16 = ClauseSet([HornClause(Predicate(:p, (Variable(:z),))) for _ in 1:16])
+    # ClauseSet canonicalization removes duplicates; use distinct predicates for elision.
+    clauses_16 = ClauseSet([HornClause(Predicate(Symbol("p", i), (Variable(:z),))) for i in 1:16])
+    @test occursin("… (6 elided)", sprint(show, MIME("text/plain"), clauses_16))
+
+    # Empty ILP bodies and rich/terse substitution displays.
+    @test sprint(show, MIME("text/plain"), hc2) == "p(x)"
+    @test sprint(show, MIME("text/plain"), HornClause(nothing)) == "⊥"
+    @test sprint(show, MIME("text/plain"), Substitution()) == "Substitution: {}"
+    @test sprint(show, Substitution()) == "Substitution()"
+    @test sprint(show, f1) == "Frame(2 worlds)"
+    @test sprint(show, m1) == "Model(2 worlds, BooleanAlgebra())"
 end
