@@ -64,8 +64,8 @@ The nested `ManyValuedLogics` imports are `FiniteFLewAlgebra`, `FiniteTruth`,
 | Incumbent name | Compatibility result |
 | --- | --- |
 | `Formula`, `SyntaxStructure`, `SyntaxTree` | `Aletheia.Formula`; formulas are pool-local DAG handles. |
-| `Atom(value)` | `Aletheia.Atom`, with a migration-only default pool. New code should use `atom(pool, value)`. |
-| `SyntaxBranch(op, children...)` | `Aletheia.Branch` over the children's pool; children are repooled when a modal connective is added. |
+| `Atom(value)` | A local compatibility constructor over `Aletheia.atom`, using a migration-only default pool. New code should use `atom(pool, value)`. |
+| `SyntaxBranch(op, children...)` | A local compatibility constructor over `Aletheia.branch`, using the children's pool and repooling when a modal connective is added. |
 | `children`, `value`, `token`, `tree` | `children`/`value` are direct; `token` returns the atom itself for a leaf and `operator` for a branch; `tree` is identity. |
 | `syntaxstring`, `arity`, `nchildren`, `height`, `atoms`, `leaves`, `operators`, `ntokens`, `natoms`, `nleaves`, `nconnectives`, `noperators` | Tree-walk adapters over ordinary Aletheia formulas. Display-only Sole keywords are accepted and ignored. |
 | `parseformula` | Parses through an explicit compatibility pool; `atom_parser` callbacks returning a compatibility `Atom` are unwrapped to their payload. |
@@ -75,6 +75,13 @@ The nested `ManyValuedLogics` imports are `FiniteFLewAlgebra`, `FiniteTruth`,
 | `Interval`, `Interval2D`, `Point`, `Point1D`, `Point2D`, `FullDimensionalFrame`, `IA_*`, `IARelations` | Data-level aliases to Aletheia's dimensional and Allen APIs. `IARelations` keeps Sole's 12-value order and excludes `EQUALS`. |
 | `diamond`, `box`, `TruthDict`, `KripkeStructure`, `allworlds`, `accessibles` | Small adapters to `Diamond`/`Box`, `Valuation`/Boolean `Model`, and lazy frame access (the latter is collected). |
 | `ManyValuedLogics` | Exists as a nested namespace. Aletheia's `BooleanAlgebra`, `GodelAlgebra`, and `LukasiewiczAlgebra` are available; old tableau algebras are not. |
+
+The poolless `Atom(value)` and `SyntaxBranch(op, children...)` spellings are
+deliberate conveniences of the legacy path only. The hidden default pool used
+by `Atom` is local to `Aletheia.SoleLogics`; formula identity and equality
+remain pool-local, so these conveniences are not equivalent to threading an
+explicit pool through new code. Explicit `Aletheia.atom(pool, ...)` and
+`Aletheia.branch(pool, ...)` remain the core API.
 
 ## Deliberate gaps
 
