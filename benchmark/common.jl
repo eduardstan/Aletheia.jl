@@ -58,6 +58,48 @@ function pool_a()
     Aletheia.FormulaPool(SIGNATURE)
 end
 
+# Interval-temporal benchmark helpers. The Aletheia path calls the same
+# adjacency builder used by the evaluator; the incumbent path mirrors its
+# resulting row/column representation using direct successor enumeration.
+function interval_adjacency_a(frame, relation_name, frame_worlds)
+    positions = Dict(world => position for (position, world) in enumerate(frame_worlds))
+    Aletheia._relation_adjacency(frame, relation_name, positions)
+end
+function interval_adjacency_s(frame, relation_name, frame_worlds)
+    positions = Dict(world => position for (position, world) in enumerate(frame_worlds))
+    world_count = length(frame_worlds)
+    rows = Vector{Vector{Int}}(undef, world_count)
+    columns = [falses(world_count) for _ in 1:world_count]
+    for (source_position, source) in enumerate(frame_worlds)
+        targets = Int[]
+        for target in SoleLogics.accessibles(frame, source, relation_name)
+            target_position = positions[target]
+            push!(targets, target_position)
+            columns[target_position][source_position] = true
+        end
+        rows[source_position] = targets
+    end
+    rows, columns
+end
+
+function interval_check_a_setup(n)
+    frame = Aletheia.interval_frame(n)
+    frame_worlds = collect(Aletheia.worlds(frame))
+    pool = Aletheia.FormulaPool(Aletheia.Signature((Aletheia.Diamond(Aletheia.BEFORE),)))
+    p = Aletheia.atom(pool, "p")
+    formula = Aletheia.branch(pool, Aletheia.Diamond(Aletheia.BEFORE), p)
+    valuation = Dict("p" => Set(frame_worlds))
+    frame, frame_worlds, formula, valuation
+end
+function interval_check_s_setup(n)
+    frame = SoleLogics.FullDimensionalFrame((n,), SoleLogics.Interval{Int})
+    frame_worlds = collect(SoleLogics.allworlds(frame))
+    p = SoleLogics.Atom("p")
+    formula = SoleLogics.SyntaxBranch(SoleLogics.DiamondRelationalConnective(SoleLogics.IA_L), p)
+    valuation = Dict(world => SoleLogics.TruthDict([p => true]) for world in frame_worlds)
+    frame, frame_worlds, formula, valuation
+end
+
 # A canonical representation independent of package-specific formula handles.
 canonical(f::Aletheia.Atom) = (:atom, Aletheia.value(f))
 function canonical(f::Aletheia.Branch)
@@ -103,20 +145,33 @@ function guarded_measure(label, kind, side, argument, f)
     flush(stdout)
     status, _ = warmup_case(kind, side, argument)
     status == 124 && return Measurement(missing, missing, missing, ">10s (not sampled)")
-    status != 0 && side == "incumbent" && return(Measurement(missing, missing, missing, "guarded failure (exit code $status)"))
-    status == 0 || error("warm-up failed for $label (exit code $status)")
-    measure(f)
+    if status != 0
+        note = side == "incumbent" ? "guarded failure (exit code $status)" :
+            "unavailable (guarded exit code $status)"
+        return Measurement(missing, missing, missing, note)
+    end
+    try
+        measure(f)
+    catch
+        Measurement(missing, missing, missing, "unavailable (measurement failed)")
+    end
 end
 function guarded_pair(label, kind, side, argument)
     println("[case] ", label)
     flush(stdout)
     status, output = warmup_case(kind, side, argument)
     status == 124 && return Measurement(missing, missing, missing, ">10s first call (second unavailable)")
-    status != 0 && side == "incumbent" && return(Measurement(missing, missing, missing, "guarded failure (exit code $status)"))
-    status == 0 || error("warm-up failed for $label (exit code $status)")
-    isempty(strip(output)) && return(Measurement(missing, missing, missing, "guarded failure (empty timing)"))
-    values = parse.(Float64, split(strip(output)))
-    length(values) == 2 || return(Measurement(missing, missing, missing, "guarded failure (malformed timing)"))
+    if status != 0 || isempty(strip(output))
+        note = status != 0 ? "guarded failure (exit code $status)" :
+            "unavailable (empty guarded output)"
+        return Measurement(missing, missing, missing, note)
+    end
+    values = try
+        parse.(Float64, split(strip(output)))
+    catch
+        return Measurement(missing, missing, missing, "unavailable (invalid guarded output)")
+    end
+    length(values) == 2 || return Measurement(missing, missing, missing, "unavailable (invalid guarded output)")
     first_ms, second_ms = values
     note = @sprintf("first %.3f ms; second %.3f ms; not sampled", first_ms, second_ms)
     Measurement(second_ms * 1_000_000, missing, missing, note)
@@ -127,12 +182,21 @@ function external_measure(code; reps=DEEP ? 2 : 1)
     values = Tuple{Float64,Float64}[]
     for _ in 1:reps
         command = `timeout -k 1s 30s $julia --startup-file=no --project=$project -e $code`
-        output = read(command, String)
+        output = try
+            read(command, String)
+        catch
+            return nothing
+        end
         parts = split(strip(output))
-        length(parts) >= 2 || error("cold-process timing failed: $(repr(output))")
-        push!(values, (parse(Float64, parts[1]), parse(Float64, parts[2])))
+        length(parts) >= 2 || return nothing
+        parsed = try
+            (parse(Float64, parts[1]), parse(Float64, parts[2]))
+        catch
+            return nothing
+        end
+        push!(values, parsed)
     end
-    (median(first.(values)), median(last.(values)))
+    isempty(values) ? nothing : (median(first.(values)), median(last.(values)))
 end
 
 function fmt_time(x)

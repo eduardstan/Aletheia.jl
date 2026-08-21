@@ -15,3 +15,15 @@ and atom interpretation; compound-formula evaluation is available through `check
 - Filip Železný and Nada Lavrač (eds), *Inductive Logic Programming: 18th International Conference, ILP 2008*, LNAI 5194, Springer, 2008.
 
 Released under the [MIT License](LICENSE).
+
+## Modal breadth
+
+Named Allen interval, point, and RCC8 relation values compose with generated
+`interval_frame` and `rectangle_frame` worlds. Frame conditions are traits
+(`isreflexive`, `istransitive`, `issymmetric`, `isserial`) and the named systems
+`K`, `T`, `S4`, and `S5`, rather than a cross-product of frame types and
+relation families. See the documentation for the endpoint conventions and the
+RCC8 choice (the incumbent-compatible seven-relation list is `RCC8_BASICS`;
+formal `RCC8_RELATIONS` also includes equality). RCC8 is selected because it is the
+incumbent's complete topological fragment; RCC5 composition is left for a later
+stage.
