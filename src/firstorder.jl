@@ -12,6 +12,18 @@ struct Constant <: FirstOrderTerm
     value::Any
 end
 
+"""A first-order function term. Function symbols are uninterpreted syntax here;
+function symbols are part of the clause language in Muggleton & De Raedt, §5.2
+[muggleton1994](@cite)."""
+struct FunctionTerm <: FirstOrderTerm
+    name::Any
+    arguments::Tuple{Vararg{FirstOrderTerm}}
+end
+FunctionTerm(name, arguments::AbstractVector) = FunctionTerm(name, tuple(arguments...))
+FunctionTerm(name, arguments::FirstOrderTerm...) = FunctionTerm(name, arguments)
+const FOFunction = FunctionTerm
+const CompoundTerm = FunctionTerm
+
 abstract type FirstOrderFormula end
 struct Predicate <: FirstOrderFormula
     name::Any
@@ -66,8 +78,10 @@ Base.show(io::IO, c::Constant) = print(io, repr(c.value))
 function _fo_term_text(term)
     term isa Variable && return string(term.name)
     term isa Constant && return repr(term.value)
+    term isa FunctionTerm && return "$(term.name)(" * join((_fo_term_text(t) for t in term.arguments), ", ") * ")"
     string(typeof(term))
 end
+Base.show(io::IO, t::FunctionTerm) = print(io, _fo_term_text(t))
 function _fo_text(formula::FirstOrderFormula, parent::Symbol=:root)
     if formula isa Predicate
         return "$(formula.name)(" * join((_fo_term_text(t) for t in formula.arguments), ", ") * ")"
@@ -100,19 +114,23 @@ Base.show(io::IO, f::FirstOrderFormula) = print(io, _fo_text(f))
 Base.string(f::FirstOrderFormula) = _fo_text(f)
 
 """A finite first-order interpretation used by `evaluate` and translation tests."""
-struct FirstOrderInterpretation{D,P,E}
+struct FirstOrderInterpretation{D,P,E,F}
     domain::D
     predicates::P
     equality::E
+    functions::F
 end
-FirstOrderInterpretation(domain; predicates=Dict(), equality=(==)) =
-    FirstOrderInterpretation(domain, predicates; equality=equality)
+FirstOrderInterpretation(domain; predicates=Dict(), equality=(==), functions=Dict()) =
+    FirstOrderInterpretation(domain, predicates; equality=equality, functions=functions)
 
-function FirstOrderInterpretation(domain, predicates; equality=(==))
+function FirstOrderInterpretation(domain, predicates; equality=(==), functions=Dict())
     values = tuple(domain...)
     isempty(values) && throw(ArgumentError("a first-order domain must be non-empty"))
-    FirstOrderInterpretation(values, predicates, equality)
+    FirstOrderInterpretation{typeof(values),typeof(predicates),typeof(equality),typeof(functions)}(
+        values, predicates, equality, functions)
 end
+FirstOrderInterpretation(domain, predicates, equality) =
+    FirstOrderInterpretation(domain, predicates; equality=equality)
 const FOInterpretation = FirstOrderInterpretation
 const FOModel = FirstOrderInterpretation
 domain(interpretation::FirstOrderInterpretation) = interpretation.domain
@@ -128,6 +146,23 @@ function _term_value(term::Variable, interpretation, assignment)
     value
 end
 _term_value(term::Constant, interpretation, assignment) = term.value
+function _function_value(table, args)
+    table isa Function && return table(args...)
+    table isa AbstractDict && haskey(table, args) && return table[args]
+    throw(KeyError(args))
+end
+function _term_value(term::FunctionTerm, interpretation, assignment)
+    args = Tuple(_term_value(t, interpretation, assignment) for t in term.arguments)
+    table = interpretation.functions
+    if table isa AbstractDict
+        key = (term.name, length(args))
+        haskey(table, key) && return _function_value(table[key], args)
+        haskey(table, term.name) && return _function_value(table[term.name], args)
+    elseif table isa Function
+        return table(term.name, args...)
+    end
+    throw(KeyError(term.name))
+end
 
 function _predicate_value(table, args)
     table isa Function && return Bool(table(args...))
