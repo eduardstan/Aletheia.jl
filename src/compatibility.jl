@@ -20,12 +20,17 @@ const hasdual = Aletheia.hasdual
 const dual = Aletheia.dual
 const relation = Aletheia.relation
 
-"""An error-producing marker for an old API with no faithful Aletheia value."""
-struct _UnsupportedName
-    name::Symbol
-end
-Base.show(io::IO, value::_UnsupportedName) = print(io, "unsupported SoleLogics.", value.name)
-(value::_UnsupportedName)(args...) = _unsupported(value.name, "this legacy value is a deliberate compatibility gap")
+"""An error-producing marker for an old API with no faithful Aletheia value.
+
+The symbol is a type parameter so every marker has a distinct dispatch type.
+That matters for consumers which define one method per legacy relation name.
+"""
+struct _UnsupportedName{Name} end
+Base.show(io::IO, ::_UnsupportedName{Name}) where Name =
+    print(io, "unsupported SoleLogics.", Name)
+(value::_UnsupportedName{Name})(args...) where Name =
+    _unsupported(Name, "this legacy value is a deliberate compatibility gap")
+_unsupported_name(name::Symbol) = _UnsupportedName{name}()
 
 function _unsupported(name::Symbol, detail::AbstractString)
     throw(ArgumentError("SoleLogics.$name has no faithful Aletheia equivalent: $detail"))
@@ -40,17 +45,20 @@ const _DEFAULT_POOL = Aletheia.FormulaPool(_DEFAULT_SIGNATURE)
 const Formula = Aletheia.Formula
 const SyntaxStructure = Aletheia.Formula
 const SyntaxTree = Aletheia.Formula
-const SyntaxLeaf = Aletheia.Atom
-const Operator = Union{Aletheia.Negation,Aletheia.Conjunction,Aletheia.Disjunction,
-    Aletheia.Implication,Aletheia.Diamond,Aletheia.Box}
+abstract type NamedConnective{Name} end
+struct _CompatConnective{Name,C} <: NamedConnective{Name}
+    native::C
+end
+const _NOT = _CompatConnective{:¬,Aletheia.Negation}(Aletheia.:¬)
+const _AND = _CompatConnective{:∧,Aletheia.Conjunction}(Aletheia.:∧)
+const _OR = _CompatConnective{:∨,Aletheia.Disjunction}(Aletheia.:∨)
+const _IMP = _CompatConnective{:→,Aletheia.Implication}(Aletheia.:→)
+const Operator = NamedConnective
 const Connective = Operator
-const AbstractAtom = Aletheia.Atom
 const AbstractRelation = Aletheia.RelationFamily
-const BoxRelationalConnective = Aletheia.Box
-const DiamondRelationalConnective = Aletheia.Diamond
-const NamedConnective = Union{Aletheia.Negation,Aletheia.Conjunction,Aletheia.Disjunction,
-    Aletheia.Implication,Aletheia.Diamond,Aletheia.Box}
-const _LegacyConnective = NamedConnective
+const BoxRelationalConnective = Aletheia.Box{<:Any}
+const DiamondRelationalConnective = Aletheia.Diamond{<:Any}
+const _LegacyConnective = Union{Aletheia.Negation,Aletheia.Conjunction,Aletheia.Disjunction,Aletheia.Implication}
 
 # Truth values are intentionally separate from formulas. Keeping markers for
 # old spellings makes a bad migration fail at the point of use, with a useful
@@ -76,24 +84,55 @@ collatetruth(args...) = _unsupported(:collatetruth,
     "Aletheia evaluates semantic values through TruthAlgebra and never treats them as formulas")
 
 
-# Sole's poolless constructors are retained as a migration convenience. They
-# construct ordinary Aletheia atoms/branches; no second formula representation
-# is introduced. These are local compatibility functions, rather than methods
-# on Aletheia.Atom or Aletheia.Branch, so loading Aletheia alone stays explicit.
+# Compatibility formulas wrap ordinary Aletheia DAG handles.  Keeping the
+# wrapper type here (rather than extending Aletheia.Atom's constructor) makes
+# the migration constructor local while allowing `Atom` in `isa` and dispatch.
+struct Atom <: Aletheia.Formula
+    native::Aletheia.Atom
+    Atom(native::Aletheia.Atom, ::Val{:native}) = new(native)
+end
+struct _CompatBranch{C,N} <: Aletheia.Formula
+    native::Aletheia.Branch{C,N}
+end
+const _CompatFormula = Union{Atom,_CompatBranch}
+const SyntaxLeaf = Atom
+const AbstractAtom = Atom
+_wrap(formula::Atom) = formula
+_wrap(formula::_CompatBranch) = formula
+_wrap(formula::Aletheia.Atom) = Atom(formula, Val(:native))
+_wrap(formula::Aletheia.Branch) = _CompatBranch(formula)
+function _unwrap(formula::Atom)
+    formula.native
+end
+function _unwrap(formula::_CompatBranch)
+    formula.native
+end
+_unwrap(formula::Aletheia.Formula) = formula
+
 function Atom(value)
     value isa Aletheia.Formula && _unsupported(:Atom,
         "Aletheia atoms cannot contain formulas; use children/branch instead")
     value isa Truth && _unsupported(:Atom,
         "truth values are semantic values, not formulas in Aletheia")
-    Aletheia.atom(_DEFAULT_POOL, value)
+    _wrap(Aletheia.atom(_DEFAULT_POOL, value))
+end
+
+# Sole treats connective values as constructors.  Keep Aletheia's values (and
+# thus their type-level dispatch identity) while adding the opt-in call form.
+function (connective::Aletheia.Negation)(formula::Aletheia.Formula)
+    Branch(connective, formula)
+end
+function (connective::Union{Aletheia.Conjunction,Aletheia.Disjunction,
+        Aletheia.Implication})(left::Aletheia.Formula, right::Aletheia.Formula)
+    Branch(connective, left, right)
 end
 
 function _formula_pool_for(connective, formulas)
     fs = Tuple(formulas)
     existing = filter(x -> x isa Aletheia.Formula, fs)
     if !isempty(existing)
-        candidate = Aletheia.pool(first(existing))
-        if all(Aletheia.pool(f) === candidate for f in existing) &&
+        candidate = Aletheia.pool(_unwrap(first(existing)))
+        if all(Aletheia.pool(_unwrap(f)) === candidate for f in existing) &&
                 Aletheia.hasconnective(Aletheia.signature(candidate), connective)
             return candidate
         end
@@ -103,39 +142,60 @@ function _formula_pool_for(connective, formulas)
     Aletheia.FormulaPool(Aletheia.Signature((Aletheia.:¬, Aletheia.:∧, Aletheia.:∨, Aletheia.:→, connective)))
 end
 
-function _repool(formula::Aletheia.Atom, target)
-    Aletheia.atom(target, Aletheia.value(formula))
+function _repool(formula, target)
+    native = _unwrap(formula)
+    native isa Aletheia.Atom && return _wrap(Aletheia.atom(target, Aletheia.value(native)))
+    native isa Aletheia.Branch || _unsupported(:SyntaxBranch,
+        "children must be Aletheia formulas (got $(typeof(formula)))")
+    _wrap(Aletheia.branch(target, Aletheia.operator(native),
+        Tuple(_unwrap(_repool(child, target)) for child in Aletheia.children(native))))
 end
-function _repool(formula::Aletheia.Branch, target)
-    Aletheia.branch(target, Aletheia.operator(formula),
-        Tuple(_repool(child, target) for child in Aletheia.children(formula)))
-end
-_repool(value, target) = _unsupported(:SyntaxBranch,
-    "children must be Aletheia formulas (got $(typeof(value)))")
 
 function Branch(connective::_LegacyConnective, children::Tuple)
     connective isa _UnsupportedName && _unsupported(:SyntaxBranch,
         "the requested connective is not implemented by Aletheia")
     pool = _formula_pool_for(connective, children)
     normalized = Tuple(_repool(child, pool) for child in children)
-    Aletheia.branch(pool, connective, normalized)
+    _wrap(Aletheia.branch(pool, connective, Tuple(_unwrap.(normalized))))
 end
 Branch(connective::_LegacyConnective, children...) = Branch(connective, children)
+Branch(connective::Aletheia.Diamond, children...) = begin
+    pool = _formula_pool_for(connective, children)
+    normalized = Tuple(_repool(child, pool) for child in children)
+    _wrap(Aletheia.branch(pool, connective, Tuple(_unwrap.(normalized))))
+end
+Branch(connective::Aletheia.Box, children...) = begin
+    pool = _formula_pool_for(connective, children)
+    normalized = Tuple(_repool(child, pool) for child in children)
+    _wrap(Aletheia.branch(pool, connective, Tuple(_unwrap.(normalized))))
+end
 const SyntaxBranch = Branch
 
 # Old accessors and tree walks.
-function token(formula::Aletheia.Atom)
-    formula
+token(formula::Atom) = formula
+function token(formula::_CompatBranch)
+    native = Aletheia.operator(formula.native)
+    native isa Aletheia.Negation && return _NOT
+    native isa Aletheia.Conjunction && return _AND
+    native isa Aletheia.Disjunction && return _OR
+    native isa Aletheia.Implication && return _IMP
+    native
 end
+token(formula::Aletheia.Atom) = formula
 token(formula::Aletheia.Branch) = Aletheia.operator(formula)
+Aletheia.arity(connective::_CompatConnective) = Aletheia.arity(connective.native)
+Aletheia.notation(connective::_CompatConnective) = Aletheia.notation(connective.native)
 token(value::Truth) = value
 op(value) = token(value)
-
+value(formula::Atom) = Aletheia.value(formula.native)
+children(::Atom) = ()
+children(formula::_CompatBranch) = Tuple(_wrap.(Aletheia.children(formula.native)))
+nchildren(formula::Union{Atom,_CompatBranch}) = length(children(formula))
 tree(formula::Aletheia.Formula) = formula
 nchildren(formula::Aletheia.Formula) = Aletheia.nchildren(formula)
 
 function _walk(formula::Aletheia.Formula, out::Vector)
-    for child in Aletheia.children(formula)
+    for child in children(formula)
         _walk(child, out)
     end
     push!(out, formula)
@@ -149,13 +209,13 @@ function subformulas(formula::Aletheia.Formula; sorted=true)
     sorted ? sort!(result, by=height) : result
 end
 function atoms(formula::Aletheia.Formula)
-    [node for node in formulas(formula) if node isa Aletheia.Atom]
+    [node for node in formulas(formula) if node isa Atom || node isa Aletheia.Atom]
 end
 function leaves(formula::Aletheia.Formula)
     atoms(formula)
 end
 function connectives(formula::Aletheia.Formula)
-    [token(node) for node in formulas(formula) if node isa Aletheia.Branch]
+    [token(node) for node in formulas(formula) if node isa _CompatBranch || node isa Aletheia.Branch]
 end
 operators(formula::Aletheia.Formula) = connectives(formula)
 ntokens(formula::Aletheia.Formula) = length(formulas(formula))
@@ -164,28 +224,30 @@ nleaves(formula::Aletheia.Formula) = natoms(formula)
 nconnectives(formula::Aletheia.Formula) = length(connectives(formula))
 noperators(formula::Aletheia.Formula) = nconnectives(formula)
 function height(formula::Aletheia.Formula)
-    isempty(Aletheia.children(formula)) ? 0 : 1 + maximum(height, Aletheia.children(formula))
+    isempty(children(formula)) ? 0 : 1 + maximum(height, children(formula))
 end
 
 # Aletheia's normal forms are ordinary hash-consed formulas, not Sole's
 # leftmost wrapper types. These helpers are useful for formulas after parsing.
 function _flatten(formula::Aletheia.Formula, connective)
-    if formula isa Aletheia.Branch && Aletheia.operator(formula) isa connective
-        child = Aletheia.children(formula)
+    if (formula isa _CompatBranch && token(formula).native isa connective) ||
+            (formula isa Aletheia.Branch && Aletheia.operator(formula) isa connective)
+        child = children(formula)
         return vcat(_flatten(child[1], connective), _flatten(child[2], connective))
     end
     [formula]
 end
 conjuncts(formula::Aletheia.Formula) = _flatten(formula, Aletheia.Conjunction)
 disjuncts(formula::Aletheia.Formula) = _flatten(formula, Aletheia.Disjunction)
-grandchildren(formula::Aletheia.Formula) = Aletheia.children(formula)
+grandchildren(formula::Aletheia.Formula) = children(formula)
 nconjuncts(formula::Aletheia.Formula) = length(conjuncts(formula))
 
 # Poolless spellings remain available for old call sites; explicit pool forms
 # are also accepted and preserve Aletheia's pool semantics.
 atom(value) = Atom(value)
-atom(pool::Aletheia.FormulaPool, value) = Aletheia.atom(pool, value)
-branch(pool::Aletheia.FormulaPool, connective, children...) = Aletheia.branch(pool, connective, children...)
+atom(pool::Aletheia.FormulaPool, value) = _wrap(Aletheia.atom(pool, value))
+branch(pool::Aletheia.FormulaPool, connective, children...) =
+    _wrap(Aletheia.branch(pool, connective, Tuple(_unwrap.(children))))
 branch(connective::_LegacyConnective, children...) = Branch(connective, children...)
 
 function syntaxstring(formula::Aletheia.Formula; kwargs...)
@@ -193,8 +255,9 @@ function syntaxstring(formula::Aletheia.Formula; kwargs...)
     unknown = setdiff(collect(keys(kwargs)), collect(allowed))
     isempty(unknown) || _unsupported(:syntaxstring,
         "Aletheia's printer does not accept keyword(s) $(join(string.(unknown), ", ")).")
-    Aletheia.syntaxstring(formula)
+    Aletheia.syntaxstring(_unwrap(formula))
 end
+syntaxstring(connective::_CompatConnective; kwargs...) = Aletheia.notation(connective.native)
 syntaxstring(connective::_LegacyConnective; kwargs...) = Aletheia.notation(connective)
 syntaxstring(value; kwargs...) = string(value)
 
@@ -204,7 +267,7 @@ function _payload(atom_parser, text)
     parsed = atom_parser(text)
     parsed isa Truth && _unsupported(:parseformula,
         "truth values are not formula leaves in Aletheia")
-    parsed isa Aletheia.Atom ? Aletheia.value(parsed) : parsed
+    parsed isa Atom ? value(parsed) : parsed isa Aletheia.Atom ? Aletheia.value(parsed) : parsed
 end
 function _parse_pool(additional_operators)
     extras = additional_operators === nothing ? () : Tuple(additional_operators)
@@ -219,7 +282,7 @@ function parseformula(expr::AbstractString; atom_parser=identity,
     isempty(unknown) || _unsupported(:parseformula,
         "Aletheia's parser does not accept keyword(s) $(join(string.(unknown), ", "))")
     pool = additional_operators === nothing ? _DEFAULT_POOL : _parse_pool(additional_operators)
-    Aletheia.parse(pool, expr; atom_parser=text -> _payload(atom_parser, text))
+    _wrap(Aletheia.parse(pool, expr; atom_parser=text -> _payload(atom_parser, text)))
 end
 parseformula(::Type{<:Aletheia.Formula}, expr::AbstractString; kwargs...) = parseformula(expr; kwargs...)
 parseformula(expr::AbstractString, additional_operators; kwargs...) =
@@ -228,9 +291,12 @@ parseformula(::Type{<:Aletheia.Formula}, expr::AbstractString, additional_operat
     parseformula(expr; additional_operators=additional_operators, kwargs...)
 
 # Core evaluation/model names retain their Aletheia meaning. In particular,
-# check now consumes a Model rather than Sole's InterpretationSet.
-check = Aletheia.check
-interpret = Aletheia.interpret
+# check now consumes a Model rather than Sole's InterpretationSet.  Formula
+# wrappers are unwrapped at this boundary.
+check(formula::Aletheia.Formula, args...) =
+    Aletheia.check(_unwrap(formula), args...)
+interpret(formula::Aletheia.Formula, args...) =
+    Aletheia.interpret(_unwrap(formula), args...)
 frame = Aletheia.frame
 algebra = Aletheia.algebra
 domain = Aletheia.domain
@@ -255,7 +321,7 @@ struct Literal
         _legacy_container(:Literal, args...)
     end
 end
-const AbstractInterpretationSet = _UnsupportedName(:AbstractInterpretationSet)
+const AbstractInterpretationSet = _unsupported_name(:AbstractInterpretationSet)
 function _legacy_container(name, args...)
     _unsupported(name, "Aletheia has ordinary Formula DAGs, not Sole leftmost/interpretation-set containers")
 end
@@ -290,7 +356,7 @@ KripkeStructure(frame_value, valuation_value) = Aletheia.Model(frame_value, Alet
 
 # Names used by Sole's modal and collection helpers.
 const IARelations = (IA_A, IA_L, IA_B, IA_E, IA_D, IA_O, IA_Ai, IA_Li, IA_Bi, IA_Ei, IA_Di, IA_Oi)
-const RCC5Relations = _UnsupportedName(:RCC5Relations)
+const RCC5Relations = _unsupported_name(:RCC5Relations)
 function alphabet(args...)
     _unsupported(:alphabet, "Aletheia has no model-wide alphabet object; collect Atom payloads from a Formula")
 end
@@ -314,26 +380,47 @@ function worldtype(::Aletheia.Frame)
 end
 name(connective) = Symbol(Aletheia.notation(connective))
 
-# Old truth/relational constants which consumers import are kept as explicit
-# gap markers. Merely loading a consumer therefore works; executing its
-# unsupported many-valued tableau path reports the missing semantic feature.
-for name in (:CL_N, :CL_S, :CL_E, :CL_W,
-    :LRCC8_Rec_DC, :LRCC8_Rec_EC, :LRCC8_Rec_PO, :LRCC8_Rec_TPP,
-    :LRCC8_Rec_TPPi, :LRCC8_Rec_NTPP, :LRCC8_Rec_NTPPi,
-    :HS_A, :HS_L, :HS_B, :HS_E, :HS_D, :HS_O,
-    :HS_Ai, :HS_Li, :HS_Bi, :HS_Ei, :HS_Di, :HS_Oi,
-    :LTLFP_F, :LTLFP_P)
-    @eval const $(name) = _UnsupportedName($(QuoteNode(name)))
-end
+# These names preserve the incumbent aliases to Aletheia's relation values;
+# use the definitions from SoleLogics rather than guessing from their spelling.
+const CL_N = Aletheia.CL_N
+const CL_S = Aletheia.CL_S
+const CL_E = Aletheia.CL_E
+const CL_W = Aletheia.CL_W
+const CL_NE = Aletheia.CL_NE
+const CL_NW = Aletheia.CL_NW
+const CL_SE = Aletheia.CL_SE
+const CL_SW = Aletheia.CL_SW
+const HS_A = Aletheia.IA_A
+const HS_L = Aletheia.IA_L
+const HS_B = Aletheia.IA_B
+const HS_E = Aletheia.IA_E
+const HS_D = Aletheia.IA_D
+const HS_O = Aletheia.IA_O
+const HS_Ai = Aletheia.IA_Ai
+const HS_Li = Aletheia.IA_Li
+const HS_Bi = Aletheia.IA_Bi
+const HS_Ei = Aletheia.IA_Ei
+const HS_Di = Aletheia.IA_Di
+const HS_Oi = Aletheia.IA_Oi
+const LRCC8_Rec_DC = Aletheia.Topo_DC
+const LRCC8_Rec_EC = Aletheia.Topo_EC
+const LRCC8_Rec_PO = Aletheia.Topo_PO
+const LRCC8_Rec_TPP = Aletheia.Topo_TPP
+const LRCC8_Rec_TPPi = Aletheia.Topo_TPPi
+const LRCC8_Rec_NTPP = Aletheia.Topo_NTPP
+const LRCC8_Rec_NTPPi = Aletheia.Topo_NTPPi
+const LTLFP_F = Aletheia.GREATER
+const LTLFP_P = Aletheia.LESSER
 
 # A small, explicit nested replacement for SoleLogics.ManyValuedLogics.
 module ManyValuedLogics
 import ...Aletheia
-struct _UnsupportedMV
-    name::Symbol
-end
-Base.show(io::IO, value::_UnsupportedMV) = print(io, "unsupported SoleLogics.ManyValuedLogics.", value.name)
-(value::_UnsupportedMV)(args...) = _unsupported(value.name, "this many-valued legacy value is a deliberate compatibility gap")
+struct _UnsupportedMV{Name} end
+Base.show(io::IO, ::_UnsupportedMV{Name}) where Name =
+    print(io, "unsupported SoleLogics.ManyValuedLogics.", Name)
+(value::_UnsupportedMV{Name})(args...) where Name =
+    _unsupported(Name, "this many-valued legacy value is a deliberate compatibility gap")
+_unsupported_mv(name::Symbol) = _UnsupportedMV{name}()
 export FiniteTruth, ContinuousTruth, FiniteFLewAlgebra, getdomain
 export GodelAlgebra, LukasiewiczAlgebra, BooleanAlgebra
 export booleanalgebra, precedeq, succeedeq, maximalmembers, minimalmembers
@@ -358,10 +445,10 @@ succeedeq(args...) = _unsupported(:succeedeq,
     "Aletheia's chain algebra does not implement Sole's successor protocol")
 maximalmembers(args...) = _unsupported(:maximalmembers, "many-valued tableau order helpers are not in Aletheia")
 minimalmembers(args...) = _unsupported(:minimalmembers, "many-valued tableau order helpers are not in Aletheia")
-const α = _UnsupportedMV(:α)
-const β = _UnsupportedMV(:β)
+const α = _unsupported_mv(:α)
+const β = _unsupported_mv(:β)
 for name in (:G3, :G4, :G5, :G6, :H4, :H6, :H6_1, :H6_2, :H6_3, :H9, :Ł3, :Ł4)
-    @eval const $(name) = _UnsupportedMV($(QuoteNode(name)))
+    @eval const $(name) = _unsupported_mv($(QuoteNode(name)))
 end
 end
 export Formula, SyntaxStructure, SyntaxTree, SyntaxLeaf, SyntaxBranch, Branch
@@ -380,7 +467,7 @@ export LeftmostDisjunctiveForm, DNF, CNF, Literal, AbstractInterpretationSet, is
 export IARelations, RCC5Relations, alphabet, feature, condition, threshold, name, sample
 export TruthDict, KripkeStructure
 export ManyValuedLogics
-for name in (:CL_N, :CL_S, :CL_E, :CL_W,
+for name in (:CL_N, :CL_S, :CL_E, :CL_W, :CL_NE, :CL_NW, :CL_SE, :CL_SW,
     :LRCC8_Rec_DC, :LRCC8_Rec_EC, :LRCC8_Rec_PO, :LRCC8_Rec_TPP,
     :LRCC8_Rec_TPPi, :LRCC8_Rec_NTPP, :LRCC8_Rec_NTPPi,
     :HS_A, :HS_L, :HS_B, :HS_E, :HS_D, :HS_O,
@@ -389,8 +476,8 @@ for name in (:CL_N, :CL_S, :CL_E, :CL_W,
     @eval export $(name)
 end
 
-const dnf = Aletheia.dnf
-const cnf = Aletheia.cnf
+dnf(formula::Aletheia.Formula) = _wrap(Aletheia.dnf(_unwrap(formula)))
+cnf(formula::Aletheia.Formula) = _wrap(Aletheia.cnf(_unwrap(formula)))
 
 # Aletheia names useful to a consumer that is being migrated incrementally.
 const FormulaPool = Aletheia.FormulaPool
