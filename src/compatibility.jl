@@ -331,7 +331,8 @@ end
 @inline _native_connective(formula::_CompatBranch) = formula.pool.nodes[formula.id].payload
 @inline _native_connective(formula::Aletheia.Branch) = Aletheia.operator(formula)
 function _flatten!(out::Vector{Aletheia.Formula}, formula::Aletheia.Formula, connective)
-    if formula isa Aletheia.Branch && _native_connective(formula) isa connective
+    if (formula isa _CompatBranch || formula isa Aletheia.Branch) &&
+            _native_connective(formula) isa connective
         child = children(formula)
         _flatten!(out, child[1], connective)
         _flatten!(out, child[2], connective)
