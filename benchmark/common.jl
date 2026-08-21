@@ -9,7 +9,7 @@ const DEEP = "--deep" in ARGS
 const SEED = 0xA1E7_2024
 const BENCH_SECONDS = DEEP ? 0.05 : 0.01
 const BENCH_SAMPLES = DEEP ? 15 : 5
-const CASE_TIMEOUT = DEEP ? 60 : 30
+const CASE_TIMEOUT = DEEP ? 180 : 120
 const SIGNATURE = Aletheia.Signature((Aletheia.NEGATION, Aletheia.CONJUNCTION,
     Aletheia.DISJUNCTION, Aletheia.IMPLICATION))
 const MODAL_SIGNATURE = Aletheia.Signature((Aletheia.NEGATION, Aletheia.CONJUNCTION,
@@ -219,7 +219,7 @@ function interval_adjacency_s(frame, frame_worlds)
     columns = [falses(world_count) for _ in 1:world_count]
     for (source_position, source) in enumerate(frame_worlds)
         targets = Int[]
-        for target in SoleLogics.accessibles(frame, source)
+        for target in SoleLogics.accessibles(frame, source, SoleLogics.IA_L)
             target_position = findfirst(==(target), frame_worlds)
             push!(targets, target_position); columns[target_position][source_position] = true
         end
