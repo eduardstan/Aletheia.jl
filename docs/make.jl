@@ -11,7 +11,7 @@ bibliography = CitationBibliography(joinpath(@__DIR__, "src", "refs.bib"))
 
 makedocs(
     sitename = "Aletheia.jl",
-    modules = [Aletheia],
-    pages = ["Home" => "index.md"],
+    modules = [Aletheia, Aletheia.SoleLogics],
+    pages = ["Home" => "index.md", "Migration" => "compatibility.md"],
     plugins = [bibliography],
 )
