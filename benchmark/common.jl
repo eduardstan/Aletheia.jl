@@ -210,7 +210,8 @@ function s_boolean_model(n, edges; sets=nothing)
 end
 
 function interval_adjacency_a(frame, relation_name, frame_worlds)
-    positions = Dict(world => position for (position, world) in enumerate(frame_worlds))
+    positions = Aletheia.world_index(frame)
+    positions === nothing && (positions = Dict(world => position for (position, world) in enumerate(frame_worlds)))
     Aletheia._relation_adjacency(frame, relation_name, positions)
 end
 function interval_adjacency_s(frame, frame_worlds)
@@ -226,6 +227,15 @@ function interval_adjacency_s(frame, frame_worlds)
         rows[source_position] = targets
     end
     rows, columns
+end
+
+function interval_subset_a(frame, relation_set, frame_worlds)
+    sum(length(collect(Aletheia.accessible(frame, source, relation)))
+        for relation in relation_set for source in frame_worlds)
+end
+function interval_subset_s(frame, relation_set, frame_worlds)
+    sum(length(collect(SoleLogics.accessibles(frame, source, relation)))
+        for relation in relation_set for source in frame_worlds)
 end
 function interval_check_a_setup(n)
     frame = Aletheia.interval_frame(n)

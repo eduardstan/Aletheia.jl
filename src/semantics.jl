@@ -211,6 +211,8 @@ domain(algebra::GodelAlgebra{0}) = (0.0, 1.0)
 domain(algebra::LukasiewiczAlgebra{0}) = (0.0, 1.0)
 domain(algebra::Union{GodelAlgebra,LukasiewiczAlgebra}) = Tuple(levels(algebra))
 
+abstract type _RelationProvider end
+
 """
     Frame(worlds, relations; index=false)
 
@@ -289,7 +291,7 @@ function _normalize_adjacency(adjacency, worlds::Tuple)
             result[source] = _check_targets(worlds, source, targets)
         end
         return result
-    elseif adjacency isa Function
+    elseif adjacency isa Function || adjacency isa _RelationProvider
         return adjacency
     elseif _edge_list(adjacency)
         result = Dict{Any,Any}()
@@ -305,9 +307,9 @@ function _normalize_adjacency(adjacency, worlds::Tuple)
 end
 
 function _normalize_relations(relations, worlds::Tuple)
-    relations isa AbstractDict || relations isa Function ||
-        throw(ArgumentError("relations must be a dictionary or a function"))
-    if relations isa Function
+    relations isa AbstractDict || relations isa Function || relations isa _RelationProvider ||
+        throw(ArgumentError("relations must be a dictionary, function, or relation provider"))
+    if relations isa Function || relations isa _RelationProvider
         return relations
     end
     result = Dict{Any,Any}()
@@ -352,7 +354,7 @@ end
 function _relation_targets(frame::Frame, world, relation_name)
     _is_world(frame.worlds, world) || throw(KeyError(world))
     stored = frame.relations
-    if stored isa Function
+    if stored isa Function || stored isa _RelationProvider
         if applicable(stored, world, relation_name)
             return stored(world, relation_name)
         elseif applicable(stored, relation_name, world)
