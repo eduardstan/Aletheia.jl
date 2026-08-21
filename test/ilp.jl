@@ -135,6 +135,17 @@ end
     @test_throws ArgumentError collect(downward_refinements(base; predicates=[:malformed]))
     @test_throws ArgumentError collect(downward_refinements(base; substitutions=[Dict(:X => :bad)]))
     @test !isempty(collect(downward_refinements(base; literals=[Predicate(:q, X)], substitutions=Dict(:X => Constant(:a)))))
+    horn = HornClause(Predicate(:head, X), Literal(Predicate(:body, X), false))
+    horn_negative = collect(downward_refinements(horn; literals=[Literal(Predicate(:newbody, X), false)]))
+    @test !isempty(horn_negative) && all(candidate isa HornClause && ishorn(candidate) for candidate in horn_negative)
+    @test all(subsumes(horn, candidate) && !subsumes(candidate, horn) for candidate in horn_negative)
+    @test all(candidate isa HornClause for candidate in collect(downward_refinements(horn; substitutions=[Substitution(:X => Constant(:a))])))
+    @test_throws ArgumentError collect(downward_refinements(horn; literals=[Predicate(:newhead, X)]))
+    substitution = Substitution(:X => Constant(:a))
+    @test isempty(collect(downward_refinements(base; substitutions=[substitution], max_literals=0)))
+    @test_throws ArgumentError collect(downward_refinements(base; substitutions=[substitution], max_literals=-1))
+    bounded = collect(downward_refinements(base; substitutions=[substitution], max_literals=1))
+    @test !isempty(bounded) && all(length(candidate) <= 1 for candidate in bounded)
     substitutions = [Substitution(:X => Constant(:a)), Substitution(:X => Constant(:b))]
     multi = collect(downward_refinements(base; literals=(Predicate(:q, Constant(i)) for i in 1:2), substitutions=substitutions))
     @test length(multi) == 6
@@ -163,5 +174,7 @@ end
     @test learning_from_interpretations(model).interpretation === model
     @test learning_from_entailment(Predicate(:p, Constant(:a))).example isa Predicate
     @test learning_from_proofs(:proof).proof == :proof
-    @test_throws ArgumentError interpretation_example(FirstOrderInterpretation((1,), Dict()))
+    first_order = FirstOrderInterpretation((1,), Dict())
+    @test_throws ArgumentError interpretation_example(first_order)
+    @test_throws ArgumentError learning_from_interpretations(first_order)
 end

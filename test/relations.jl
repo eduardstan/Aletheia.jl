@@ -141,7 +141,14 @@ end
     @test relation_holds(SUCCESSOR, 1, 2) && !relation_holds(SUCCESSOR, 1, 3)
     @test relation_holds(PREDECESSOR, 2, 1) && relation_holds(GREATER, 1, 2)
     @test relation_holds(LESSER, 2, 1)
+    @test !relation_holds(SUCCESSOR, 10, 20)
+    @test relation_holds(SUCCESSOR, 10, 20, worlds(points))
+    @test relation_holds(MINIMUM, 20, 10, worlds(points))
+    @test relation_holds(MAXIMUM, 20, 40, worlds(points))
     for r in POINT_RELATIONS
+        @test all((target in collect(accessible(points, source, r))) ==
+                  relation_holds(r, source, target, worlds(points))
+                  for source in worlds(points), target in worlds(points))
         @test sprint(show, r) isa String
         @test inverse(inverse(r)) == r
     end

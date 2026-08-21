@@ -15,11 +15,21 @@ abstract type RCCRelation <: RelationFamily end
 
 Return whether `target` is related to `source` by `relation`. This is the
 extension point for relation families: a package or user can define a new
-immutable relation value and add one method without changing Aletheia.
+immutable relation value and add one method without changing Aletheia. A
+bounded relation may instead implement the domain-aware form
+`relation_holds(relation, source, target, worlds)`.
 """
 function relation_holds(relation, source, target)
     throw(MethodError(relation_holds, (relation, source, target)))
 end
+
+"""Domain-aware relation predicate used by bounded generated frames.
+
+The default preserves the three-argument protocol. Relation families whose
+meaning depends on the finite world domain can specialize this four-argument
+form without putting a mutable domain into a relation value.
+"""
+relation_holds(relation, source, target, worlds) = relation_holds(relation, source, target)
 
 """
     relation_successors(relation, source, worlds)
@@ -195,9 +205,9 @@ const MAX = MAXIMUM
 const POINT_RELATIONS = (MINIMUM, MAXIMUM, SUCCESSOR, PREDECESSOR, GREATER, LESSER)
 const PointRelations = POINT_RELATIONS
 
-# These six relations are defined for the integer linear orders used by the
-# generated point frames. The min/max methods are completed by the frame's
-# bounded-domain dispatcher in dimensional.jl.
+# The three-argument successor/predecessor methods describe arithmetic unit
+# spacing. Generated finite point frames use the domain-aware four-argument
+# protocol for positional order and its min/max boundaries.
 relation_holds(::SuccessorRelation, a::Real, b::Real) = b == a + one(a)
 relation_holds(::PredecessorRelation, a::Real, b::Real) = b == a - one(a)
 relation_holds(::GreaterRelation, a::Real, b::Real) = b > a

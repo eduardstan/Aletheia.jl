@@ -176,6 +176,10 @@ end
     @test_throws MethodError prove_valid(TheoryDummyProver(), p)
     @test_throws ArgumentError entails(prover, p, TheoryDummyProver())
     @test isvalid(tautology) === true
+    @test prove(prover, tautology; atoms=[p]).status == :sat
+    @test_throws ArgumentError prove(prover, tautology; atoms=["q"])
+    @test_throws ArgumentError prove_valid(prover, tautology; atoms=["q"])
+    @test_throws ArgumentError entails(prover, (p,), p; atoms=["q"])
     @test issatisfiable(prover, branch(pool, Diamond(:R), p)) === nothing
     @test prove_valid(prover, tautology).status == :valid
     @test prove(prover, contradiction).status == :unsat

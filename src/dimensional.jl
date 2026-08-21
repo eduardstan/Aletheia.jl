@@ -175,13 +175,35 @@ function relation_successors(relation::IntervalRelation, source::Interval, world
 end
 
 # Bounded-domain point dispatch. A user-defined relation uses the public
-# relation_holds method directly and is therefore independent of this file.
+# three-argument predicate by default, while built-in point relations can use
+# the finite world domain through the four-argument protocol.
 function _point_relation_holds(relation::PointRelation, source, target, worlds)
-    relation_holds(relation, source, target)
+    relation_holds(relation, source, target, worlds)
+end
+
+@inline _point_position(source, worlds) = findfirst(value -> isequal(value, source), worlds)
+relation_holds(::MinimumRelation, source, target, worlds) =
+    !isempty(worlds) && _point_position(source, worlds) !== nothing && isequal(target, first(worlds))
+relation_holds(::MaximumRelation, source, target, worlds) =
+    !isempty(worlds) && _point_position(source, worlds) !== nothing && isequal(target, last(worlds))
+function relation_holds(::SuccessorRelation, source, target, worlds)
+    position = _point_position(source, worlds)
+    position !== nothing && position < length(worlds) && isequal(target, worlds[position + 1])
+end
+function relation_holds(::PredecessorRelation, source, target, worlds)
+    position = _point_position(source, worlds)
+    position !== nothing && position > 1 && isequal(target, worlds[position - 1])
+end
+function relation_holds(::GreaterRelation, source, target, worlds)
+    source_position, target_position = _point_position(source, worlds), _point_position(target, worlds)
+    source_position !== nothing && target_position !== nothing && target_position > source_position
+end
+function relation_holds(::LesserRelation, source, target, worlds)
+    source_position, target_position = _point_position(source, worlds), _point_position(target, worlds)
+    source_position !== nothing && target_position !== nothing && target_position < source_position
 end
 function _dimensional_relation_holds(relation, source, target, worlds)
-    relation isa PointRelation ? _point_relation_holds(relation, source, target, worlds) :
-        relation_holds(relation, source, target)
+    relation_holds(relation, source, target, worlds)
 end
 
 # Optional arithmetic successor paths for generated point frames. A family that
