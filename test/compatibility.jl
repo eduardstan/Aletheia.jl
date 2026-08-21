@@ -137,6 +137,25 @@ using Aletheia.SoleLogics
 marker_method(::typeof(AbstractInterpretationSet)) = :interpretation
 end
 
+@testset "compatibility wrappers stay concrete during traversal" begin
+    p, q, conjunction, _ = CompatibilityClient.basic()
+    function walk_compatibility(formula)
+        total = 0
+        for _ in 1:1000
+            for child in CompatibilityClient.children(formula)
+                total += CompatibilityClient.nchildren(child)
+            end
+        end
+        total
+    end
+    walk_compatibility(conjunction)
+    @test @inferred(CompatibilityClient.children(conjunction)) isa
+        Aletheia.SoleLogics._CompatChildren
+    @test @allocated(walk_compatibility(conjunction)) < 4096
+    CompatibilityClient.Branch(CompatibilityClient.:∧, p, q)
+    @test @allocated(CompatibilityClient.Branch(CompatibilityClient.:∧, p, q)) < 4096
+end
+
 @testset "consumer-facing Atom and relation aliases" begin
     @test CompatibilityClient.Atom isa Type
     atom_value = CompatibilityClient.Atom(:r)
