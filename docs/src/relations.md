@@ -103,9 +103,10 @@ true
 true
 ```
 
-Allen and RCC8 are relation-family implementations, not claims that the five
-references define those particular application fragments. RCC5 composition is
-intentionally left for later work rather than exposing an incomplete API.
+Allen, RCC8, and Compass 2D point relations are relation-family implementations,
+not claims that the five references define those particular application fragments.
+RCC5 composition is intentionally left for later work rather than exposing an
+incomplete API.
 
 ## Compass logic 2D point relations
 
