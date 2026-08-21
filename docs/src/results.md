@@ -1,92 +1,117 @@
 # Measured results
 
-These numbers are published with the negative results because benchmark scope
-matters. The harness is human-run, not a CI gate: shared-runner timings are too
-noisy. The deterministic differential suite remains outside package tests so
-Aletheia never depends on SoleLogics.
-
-## Protocol and reproduction
-
-The authoritative commands are:
+The benchmark is reproducible from a fresh checkout with one command:
 
 ```sh
-julia --project=benchmark benchmark/run.jl
-julia --project=benchmark benchmark/differential.jl
+SOLELOGICS_PATH=/path/to/SoleLogics.jl julia --project=benchmark benchmark/run.jl
 ```
 
-Set `SOLELOGICS_PATH=/path/to/SoleLogics.jl` when the incumbent checkout is not
-at the launch-brief default. The quick run uses five BenchmarkTools samples and
-a 0.01-second per-case budget; `--deep` uses 15 samples and 0.05 seconds. It
-prints Julia version, CPU, thread count, and checkout path. Cold-load rows use
-fresh Julia processes; ordinary rows use warmed BenchmarkTools trials and
-should not be compared as if they were the same kind of measurement.
+`run.jl` prints Julia/CPU, the fixed seed, medians, allocation counts, a
+correctness gate, and its wall clock. `--deep` expands the size and ratio
+sweeps. Each section runs in a warmed child Julia process; GNU `timeout` kills a
+section at the printed hard bound (120 s quick, 180 s deep). A timeout is
+reported as data, not silently dropped. Cold-load rows are intentionally fresh
+process measurements.
 
-The report below is the merged-base quick run on **Julia 1.12.7**, CPU
-**`alderlake`**, **12 threads**, with **SoleLogics 0.13.7**. Times are medians;
-the ratio is SoleLogics/Aletheia, so a ratio above 1 means Aletheia is faster.
-The differential run used seed `0xA1E7_2024`, 64 formulas over seven atom names,
-and passed 577/577 checks.
+The quick run below used Julia 1.12.7, `alderlake`, 12 threads, SoleLogics
+0.13.7, seed `0xA1E7_2024` (decimal 2716278820), five samples, and completed in
+**590.2 s (9.8 min)**. The ratio is SoleLogics/Aletheia; allocations are
+`count / bytes`. The section process amortisation is why this is finite rather
+than paying package startup once per cell.
 
 ## Syntax and loading
 
-| row | SoleLogics | Aletheia | ratio (S/A) |
-| --- | ---: | ---: | ---: |
-| parsing, depth 6 | 1.13 ms | 69.52 μs | 16.32× |
-| printing, depth 6 | 166.89 μs | 48.00 μs | 3.48× |
-| round-trip, depth 6 | 15.30 ms | 111.34 μs | 137.41× |
-| `isequal`, chain 256 | 31.64 μs | 14 ns | 2,260× |
-| cold package load | 719.69 ms | 2.52 ms | 285.41× |
-| cold time to first result | 2,485.53 ms | 860.16 ms | 2.89× |
+| case | SoleLogics | Aletheia | ratio | allocations |
+| --- | ---: | ---: | ---: | ---: |
+| construction, depth 2 (unshared) | 3.55 μs | 1.70 μs | 2.09× | 37 / 1.281 KiB ; 56 / 2.594 KiB |
+| construction, depth 2 (shared) | 3.27 μs | 1.46 μs | 2.24× | 37 / 1.281 KiB ; 50 / 2.203 KiB |
+| parsing, depth 2 | 37.58 μs | 5.52 μs | 6.81× | 275 / 11.672 KiB ; 63 / 3.719 KiB |
+| printing, depth 2 | 6.53 μs | 2.55 μs | 2.56× | 45 / 1.641 KiB ; 19 / 800 B |
+| round-trip, depth 2 | 47.44 μs | 8.94 μs | 5.31× | 320 / 13.312 KiB ; 82 / 4.500 KiB |
+| `isequal`, chain 16 | 2.18 μs | 16.0 ns | 136.00× | 32 / 1.469 KiB ; 0 / 0 B |
+| cold package load | 722.60 ms | 8.58 ms | 84.17× | n/a |
+| cold time to first result | 2,497.63 ms | 747.12 ms | 3.34× | n/a |
 
-The construction rows also include shared and unshared formulas; at depths 2,
-4, and 6 their ratios range from 1.62× to 2.46×. The differential test treats
-pool-local integer equality and DAG subterms as deliberate representation
-differences rather than pretending they are tree-occurrence semantics.
+The load ratio is measured across fresh processes and is not attributed to the
+evaluator. The equality ratio is the pool-local integer identity path versus
+the incumbent structural comparison; it is not a claim that the APIs have the
+same representation.
 
-The benchmark separately guards generic `==` in fresh processes. On this
-machine the incumbent's warmed chain-24 call remained 273.17 ms, while
-Aletheia's was 2.89 μs; chain 32 and 64 timed out at 10 seconds on the
-incumbent. This paragraph reports observable code behavior only. It is not a
-claim about why the implementation was written that way.
+## Evaluation suites
 
-## Interval accessibility: the loss is part of the result
+| case | SoleLogics | Aletheia | ratio | allocations |
+| --- | ---: | ---: | ---: | ---: |
+| propositional check, depth 2 | 1.92 μs | 2.08 μs | 0.92× | 29 / 752 B ; 48 / 2.422 KiB |
+| propositional check, depth 4 | 10.23 μs | 4.52 μs | 2.26× | 155 / 4.109 KiB ; 91 / 5.188 KiB |
+| propositional check, depth 6 | 42.27 μs | 4.37 μs | 9.67× | 659 / 17.609 KiB ; 99 / 5.641 KiB |
+| extension, 8 worlds / depth 3 | 1.05 ms | 9.54 μs | 110.04× | 12,604 / 479.500 KiB ; 143 / 11.641 KiB |
+| extension, 32 worlds / depth 4 | 12.29 ms | 36.48 μs | 336.89× | 78,436 / 3.120 MiB ; 339 / 80.812 KiB |
+| random modal, 8 worlds / .15 / depth 2 | 7.19 μs | 2.57 μs | 2.80× | 153 / 5.828 KiB ; 64 / 4.438 KiB |
+| random modal, 24 worlds / .15 / depth 2 | 8.25 μs | 5.60 μs | 1.47× | 191 / 8.594 KiB ; 96 / 14.062 KiB |
+| random modal, 8 worlds / .50 / depth 2 | 5.88 μs | 2.73 μs | 2.15× | 153 / 6.000 KiB ; 64 / 4.438 KiB |
+| random modal, 24 worlds / .50 / depth 2 | 7.99 μs | 5.58 μs | 1.43× | 185 / 9.859 KiB ; 96 / 14.062 KiB |
+| random modal, 8 worlds / .15 / depth 4 | 17.37 μs | 2.80 μs | 6.21× | 337 / 11.750 KiB ; 74 / 4.891 KiB |
+| random modal, 24 worlds / .15 / depth 4 | 21.06 μs | 6.34 μs | 3.32× | 409 / 17.703 KiB ; 106 / 14.516 KiB |
+| random modal, 8 worlds / .50 / depth 4 | 18.87 μs | 3.28 μs | 5.75× | 341 / 12.234 KiB ; 74 / 4.891 KiB |
+| random modal, 24 worlds / .50 / depth 4 | 20.19 μs | 7.03 μs | 2.87× | 406 / 20.781 KiB ; 106 / 14.516 KiB |
+| interval adjacency, n=6 | 1.14 μs | 31.52 μs | 0.04× | 103 / 4.141 KiB ; 111 / 5.406 KiB |
+| Allen BEFORE check, n=6 | 11.22 μs | 6.36 μs | 1.76× | 230 / 32.234 KiB ; 183 / 22.906 KiB |
+| finite chain G3 check, depth 2 | 2.32 μs | 1.70 μs | 1.36× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
+| finite chain Ł3 check, depth 2 | 2.23 μs | 2.08 μs | 1.08× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
+| non-chain H4 check, depth 2 | 2.47 μs | 2.07 μs | 1.19× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
+| learning from interpretations, 8 models / 4 hypotheses | 235.70 μs | 71.03 μs | 3.32× | 6,354 / 226.531 KiB ; 1,928 / 115.469 KiB |
 
-A single generated `BEFORE` accessibility query is not Aletheia's strong case:
+The extension comparison is explicitly an equivalent all-world check loop on
+SoleLogics because it has no `extension` API; it is not labelled as an
+unsupported incumbent win. Modal rows use the fixed seed above and disable
+normalization to isolate evaluation. The ILP row constructs
+`learning_from_interpretations` examples and scores hypotheses over all
+interpretations through the check/eval loop. H4 is the landed finite
+non-chain FLew algebra, not a fabricated placeholder.
 
-| row | SoleLogics | Aletheia | ratio (S/A) |
-| --- | ---: | ---: | ---: |
-| one query, generated interval `n=6` | 216 ns | 6.08 μs | 0.04× |
-| full adjacency, `n=24` | 193.81 μs | 342.21 μs | 0.57× |
-| end-to-end check, `n=24` | 720.50 μs | 786.28 μs | 0.92× |
+The largest evaluation ratios are attributable to allocation shape: the
+incumbent all-world extension loop allocates a fresh structural evaluation per
+world (12,604 and 78,436 allocations), while Aletheia evaluates the formula DAG
+once into a BitVector (143 and 339). The random modal ratios shrink with larger
+world counts because both sides then pay relation traversal; this is measured
+allocation/time behavior, not an assumed cause.
 
-The one-query row loses by about 28×. The evaluator-relevant end-to-end row is
-near parity because it amortizes adjacency over the check. The current numbers
-use the lazy arithmetic successor hook and the reused adjacency buffer. An
-earlier allocating hook raised Aletheia's allocations from 4,093 to 17,002 at
-`n=24`; that was fixed as an allocation-shape bug, not explained away as
-noise. External relation families still use the generic fallback.
+## Bisimulation contraction amortisation
 
-## Contraction: another honest loss
+The correctness gate ran **96 seeded random labelled models** and 16 random
+modal formulas per model (plus the deterministic differential suite); every
+original-world truth value equalled its quotient-class value before timing.
+The same gate is asserted in `test/theory.jl`, so a disagreement fails tests
+rather than becoming a performance result.
 
-The theory harness uses 600 densely connected, identically labelled worlds:
+| original n | quotient q | q/n | C | P_orig | P_quot | K* |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 48 | 1 | 0.021 | 622.55 μs | 69.67 μs | 16.08 μs | 11.6 |
+| 48 | 48 | 1.000 | 1.31 ms | 6.33 μs | 28.49 μs | ∞ |
 
-| workload | raw check | contraction + check | ratio (raw / contracted) |
-| --- | ---: | ---: | ---: |
-| one formula | 984.90 μs | 16.20 ms | 0.06× |
+`K* = C / (P_orig − P_quot)`; infinity means the quotient is slower per
+formula or there is no positive saving. Measured total crossover (raw original
+batch / contraction plus quotient batch) was:
 
-Quotient construction does **not** pay for itself on one check. It may amortize
-when the same quotient serves many formulas; Aletheia does not claim that
-workload without a measurement.
+| q/n | K=1 | K=8 | K=32 |
+| ---: | ---: | ---: | ---: |
+| 0.021 | 0.114 ms / 0.671 ms | 0.858 ms / 0.779 ms | 3.126 ms / 1.808 ms |
+| 1.000 (already minimal) | 0.006 ms / 1.347 ms | 0.057 ms / 1.600 ms | 0.282 ms / 2.438 ms |
 
-## Deliberate gaps
+SoleLogics is **unsupported** for this experiment: v0.13.7 has no
+bisimulation contraction API. It is not assigned a ratio.
 
-The benchmark still leaves later-stage rows explicitly empty: random modal
-checking, many-valued checking in the comparison harness, and future relation
-fragments. RCC5 composition is also intentionally absent. The package's
-semantic/evaluation tests do cover Boolean, Gödel,
-Łukasiewicz, modal, generated-frame, and custom-family behavior; an empty
-comparison row is not an unimplemented package API silently presented as a win.
+The measured rule is: for a highly redundant model (q/n≈0.02), contraction
+paid back at about 12 formulas in this run; the measured curve crossed between
+K=8 and K=32. On an already minimal model contraction is pure overhead and
+never pays. This is evidence for a workload-dependent rule, not a universal
+threshold; the `--deep` ratio sweep is the reproducible follow-up.
 
-For source-level validation, run package tests, the JET gate, and the coverage
-project described in `AGENTS.md`. The documentation build itself is
-citation-aware and runs all doctests.
+## Correctness and coverage
+
+`benchmark/differential.jl` uses the same fixed seed and passes its syntax and
+semantic checks before timings. Run package tests with:
+
+```sh
+julia --project=. -e 'using Pkg; Pkg.test()'
+```
