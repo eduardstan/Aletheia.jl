@@ -1,15 +1,23 @@
+# Pull requests run the full three-version Linux and Windows matrix, documentation,
+# and coverage checks. Manual dispatch runs the same checks; there is no push-to-main
+# run because squash merges already-green pull requests without changing the tree.
+
 name: CI
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     name: Julia ${{ matrix.julia-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -24,8 +32,10 @@ jobs:
       - uses: julia-actions/julia-runtest@v1
 
   documentation:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     name: Documentation
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
@@ -37,8 +47,10 @@ jobs:
         run: julia --project=docs docs/make.jl
 
   coverage:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     name: Line coverage
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
