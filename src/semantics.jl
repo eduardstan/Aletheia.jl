@@ -399,6 +399,25 @@ struct Valuation{V}
     data::V
 end
 
+"""
+    ValuationCallback(scalar; vectorized=nothing)
+
+A valuation callback for models whose atom truth is computed on demand.  The
+`scalar` callback receives `(atom, world)`.  An optional `vectorized` callback
+receives `(atom, worlds)` and returns one value per world; the evaluator uses it
+when computing an extension, while scalar interpretation remains available for
+`check`.
+"""
+struct ValuationCallback{S,B}
+    scalar::S
+    vectorized::B
+end
+
+ValuationCallback(scalar; vectorized=nothing) =
+    ValuationCallback{typeof(scalar),typeof(vectorized)}(scalar, vectorized)
+
+(valuation::ValuationCallback)(atom_value, world) = valuation.scalar(atom_value, world)
+
 function _nested_value(data, world)
     if data isa Function
         return data(world)
@@ -474,9 +493,22 @@ function _lookup_atom(data::Valuation, atom::Atom, world)
     _lookup_valuation(data, value(atom), world)
 end
 _lookup_atom(data, atom::Atom, world) = _lookup_valuation(data, value(atom), world)
+_lookup_atom(data::ValuationCallback, atom::Atom, world) = data(value(atom), world)
 
 function (valuation::Valuation)(atom_value, world)
     _lookup_valuation(valuation.data, atom_value, world)
+end
+
+"""Return atom values in the supplied world order, using a batch callback when available."""
+function atom_values(valuation, atom::Atom, worlds)
+    [ _lookup_atom(valuation, atom, world) for world in worlds ]
+end
+
+function atom_values(valuation::ValuationCallback, atom::Atom, worlds)
+    batch = valuation.vectorized
+    batch === nothing ?
+        [valuation.scalar(value(atom), world) for world in worlds] :
+        collect(batch(value(atom), worlds))
 end
 
 struct _RelationAdjacency

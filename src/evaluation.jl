@@ -101,8 +101,18 @@ end
 function _atom_extension(node::_EvaluationNode, formula::Formula, model::Model{T}, positions, ::Type{Vector{T}})::Vector{T} where T
     values = Vector{T}(undef, length(frame(model)))
     atom_formula = _node_atom(formula, node)
-    for world in worlds(frame(model))
-        values[positions[world]] = interpret(atom_formula, model, world)
+    if model.valuation isa ValuationCallback && model.valuation.vectorized !== nothing
+        raw_values = atom_values(model.valuation, atom_formula, worlds(frame(model)))
+        length(raw_values) == length(values) || throw(ArgumentError("valuation callback returned $(length(raw_values)) values for $(length(values)) worlds"))
+        for (slot, world) in enumerate(worlds(frame(model)))
+            raw = raw_values[slot]
+            raw isa T || throw(ArgumentError("valuation returned $(typeof(raw)); expected $T"))
+            values[positions[world]] = _validate_atom_value(model.algebra, raw)
+        end
+    else
+        for world in worlds(frame(model))
+            values[positions[world]] = interpret(atom_formula, model, world)
+        end
     end
     values
 end
@@ -110,8 +120,18 @@ end
 function _atom_extension(node::_EvaluationNode, formula::Formula, model::Model{Bool,A}, positions, ::Type{BitVector})::BitVector where {A<:BooleanAlgebra}
     values = falses(length(frame(model)))
     atom_formula = _node_atom(formula, node)
-    for world in worlds(frame(model))
-        values[positions[world]] = interpret(atom_formula, model, world)
+    if model.valuation isa ValuationCallback && model.valuation.vectorized !== nothing
+        raw_values = atom_values(model.valuation, atom_formula, worlds(frame(model)))
+        length(raw_values) == length(values) || throw(ArgumentError("valuation callback returned $(length(raw_values)) values for $(length(values)) worlds"))
+        for (slot, world) in enumerate(worlds(frame(model)))
+            raw = raw_values[slot]
+            raw isa Bool || throw(ArgumentError("valuation returned $(typeof(raw)); expected Bool"))
+            values[positions[world]] = raw
+        end
+    else
+        for world in worlds(frame(model))
+            values[positions[world]] = interpret(atom_formula, model, world)
+        end
     end
     values
 end
