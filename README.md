@@ -6,6 +6,46 @@ similarity types, hash-consed immutable formulas, extensible connective traits,
 round-trippable parsing/printing, truth algebras, relational frames, models,
 and atom interpretation; compound-formula evaluation is available through `check` and `extension`.
 
+## Start here
+
+From a terminal, clone the repository and run the first result:
+
+```sh
+git clone https://github.com/eduardstan/Aletheia.jl.git
+cd Aletheia.jl
+julia --project=.
+```
+
+Paste this into the Julia prompt (or save it as a script):
+
+```julia
+using Aletheia
+
+signature = Signature((¬, ∧, Diamond(:R), Box(:R)))
+pool = FormulaPool(signature)
+p = atom(pool, "p")
+q = atom(pool, "q")
+formula = parse(pool, "⟨R⟩p ∧ [R]q")
+println(syntaxstring(formula))
+
+frame = Frame((:w₁, :w₂),
+    Dict(:R => Dict(:w₁ => [:w₂], :w₂ => [:w₂])); index=true)
+model = Model(frame, BOOLEAN,
+    Dict("p" => Set([:w₂]), "q" => Set([:w₁, :w₂])))
+println(check(formula, model, :w₁))
+```
+
+Expected output:
+
+```text
+⟨R⟩p ∧ [R]q
+true
+```
+
+For the same steps as a runnable file, use `julia --project=. examples/quickstart.jl`.
+Then continue with the [Quick start](https://eduardstan.github.io/Aletheia.jl/quickstart/) and the
+[runnable examples](examples/README.md).
+
 ## Grounding references
 
 - Patrick Blackburn, Maarten de Rijke, and Yde Venema, *Modal Logic*, Cambridge Tracts in Theoretical Computer Science 53, Cambridge University Press, 2001.

@@ -243,6 +243,7 @@ include("relations.jl")
 include("theory.jl")
 include("compatibility.jl")
 include("ilp.jl")
+include("examples.jl")
 @testset "Aletheia" begin
     Aqua.test_all(Aletheia)
     if pkgversion(JET) < v"0.11"
