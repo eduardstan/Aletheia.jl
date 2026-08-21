@@ -118,6 +118,34 @@ function guarded_measure(label, kind, side, argument, f=nothing; timeout=CASE_TI
     length(values) == 3 || return Measurement(missing, missing, missing, "unavailable (invalid measurement)")
     Measurement(values[1], Int(round(values[2])), Int(round(values[3])))
 end
+# One warmed child handles a complete suite section. The process boundary
+# remains the hard wall-clock kill switch while package loading is amortized.
+function section_measure(label, cases, side; timeout=CASE_TIMEOUT)
+    println("[section] ", label, " / ", side); flush(stdout)
+    project = @__DIR__; julia = Base.julia_cmd(); helper = joinpath(@__DIR__, "warmup.jl")
+    encoded = join((string(kind, "=", argument) for (kind, argument) in cases), ";")
+    command = `timeout -k 1s $(timeout)s $julia --startup-file=no --project=$project $helper section $side $encoded`
+    path, io = mktemp(); close(io)
+    process = run(pipeline(command, stdout=path, stderr=devnull); wait=false)
+    wait(process)
+    output = read(path, String); rm(path; force=true)
+    lines = [split(strip(line)) for line in splitlines(output) if !isempty(strip(line))]
+    if process.exitcode == 124 || process.exitcode == 137
+        return [Measurement(missing, missing, missing, "section timeout ($(timeout)s)") for _ in cases]
+    end
+    result = Measurement[]
+    for line in lines
+        length(line) == 3 || continue
+        parsed = try parse.(Float64, line) catch; nothing end
+        parsed === nothing ? push!(result, Measurement(missing, missing, missing, "invalid measurement")) :
+            push!(result, Measurement(parsed[1], Int(round(parsed[2])), Int(round(parsed[3])))
+    end
+    while length(result) < length(cases)
+        push!(result, Measurement(missing, missing, missing, "section unavailable (exit code $(process.exitcode))"))
+    end
+    result[1:length(cases)]
+end
+
 function measure(f; seconds=BENCH_SECONDS, samples=BENCH_SAMPLES)
     trial = run(@benchmarkable $f() seconds=seconds samples=samples evals=1)
     m = median(trial)
