@@ -154,12 +154,19 @@ end
     @test @allocated(walk_compatibility(conjunction)) == 0
     CompatibilityClient.Branch(CompatibilityClient.:∧, p, q)
     @test @allocated(CompatibilityClient.Branch(CompatibilityClient.:∧, p, q)) < 4096
+    @test CompatibilityClient.:¬(p) isa Aletheia.Formula
 
     # Exercise the legacy/native pool merge path and both cached tree walks.
     native_pool = Aletheia.FormulaPool(Aletheia.Signature((Aletheia.:∧,)))
     native_atom = Aletheia.atom(native_pool, "native")
     merged = CompatibilityClient.Branch(CompatibilityClient.:∧, p, native_atom)
     @test merged isa Aletheia.Formula
+    other_pool = CompatibilityClient.FormulaPool(CompatibilityClient.Signature((Aletheia.:∧,)))
+    other_atom = CompatibilityClient.atom(other_pool, "other")
+    @test CompatibilityClient.Branch(CompatibilityClient.:∧, p, other_atom) isa Aletheia.Formula
+    native_branch = Aletheia.branch(native_pool, Aletheia.:∧, native_atom, native_atom)
+    @test CompatibilityClient.Branch(CompatibilityClient.:∧, p, native_branch) isa Aletheia.Formula
+    @test_throws MethodError CompatibilityClient.Branch(CompatibilityClient.:∧, p, 1)
     CompatibilityClient.formulas(merged)
     @test CompatibilityClient.formulas(merged) === CompatibilityClient.formulas(merged)
     CompatibilityClient.subformulas(merged)

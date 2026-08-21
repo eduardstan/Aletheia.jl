@@ -410,9 +410,8 @@ function _cached_formulas(formula::Union{Atom,_CompatBranch})
     lock(_FORMULA_CACHE_LOCK)
     try
         cache = _FORMULA_CACHE[pool]
-        cached = cache[id]
-        cached === nothing && (cache[id] = result; return result)
-        cached
+        cache[id] = result
+        result
     finally
         unlock(_FORMULA_CACHE_LOCK)
     end
@@ -443,9 +442,8 @@ function _cached_subformulas(formula::Union{Atom,_CompatBranch})
     lock(_FORMULA_CACHE_LOCK)
     try
         cache = _SUBFORMULA_CACHE[pool]
-        cached = cache[id]
-        cached === nothing && (cache[id] = result; return result)
-        cached
+        cache[id] = result
+        result
     finally
         unlock(_FORMULA_CACHE_LOCK)
     end
