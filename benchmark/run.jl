@@ -1,9 +1,10 @@
 # Reproducible, human-run evaluation benchmark.  It is intentionally outside CI.
 import Pkg
-sole_path = normpath(get(ENV, "SOLELOGICS_PATH", joinpath(@__DIR__, "..", "..", "SoleLogics.jl")))
+sole_path = get(ENV, "SOLELOGICS_PATH", "../SoleLogics.jl")
 isdir(sole_path) || error("SoleLogics checkout not found at $sole_path; set SOLELOGICS_PATH")
 Pkg.develop(Pkg.PackageSpec(path=sole_path)); Pkg.instantiate()
 include(joinpath(@__DIR__, "common.jl"))
+const RUN_START_NS = time_ns()
 
 println("Aletheia vs SoleLogics evaluation benchmark")
 println("Julia: ", VERSION)
@@ -41,91 +42,70 @@ println("semantic differential: PASS; seed=$(SEED)")
 println("contraction gate: PASS; models=$(DEEP ? 192 : 96)")
 
 println("[syntax]")
-function add_section_rows!(section, labels, cases; note="")
-    incumbent = section_measure(section, cases, "incumbent")
-    aletheia = section_measure(section, cases, "aletheia")
-    for i in eachindex(labels)
-        addrow!(labels[i], incumbent[i], aletheia[i]; note=note)
+for depth in (DEEP ? (3, 6, 9) : (2, 4))
+    for (label, recipe_fn) in (("unshared", unshared), ("shared", shared))
+        r = recipe_fn(depth)
+        addrow!("construction/$label depth=$depth",
+            guarded_measure("Sole construction $label depth=$depth", "construction", "incumbent", "$label:$depth"),
+            guarded_measure("Aletheia construction $label depth=$depth", "construction", "aletheia", "$label:$depth"))
     end
+    r = unshared(depth); pa = build_a(r, pool_a()); ps = build_s(r); text = Aletheia.syntaxstring(pa)
+    addrow!("parsing depth=$depth", guarded_measure("Sole parsing depth=$depth", "parsing", "incumbent", "$depth"), guarded_measure("Aletheia parsing depth=$depth", "parsing", "aletheia", "$depth"))
+    addrow!("printing depth=$depth", guarded_measure("Sole printing depth=$depth", "printing", "incumbent", "$depth"), guarded_measure("Aletheia printing depth=$depth", "printing", "aletheia", "$depth"))
+    addrow!("round-trip depth=$depth", guarded_measure("Sole round-trip depth=$depth", "roundtrip", "incumbent", "$depth"), guarded_measure("Aletheia round-trip depth=$depth", "roundtrip", "aletheia", "$depth"))
 end
-syntax_cases = Tuple{String,String}[]; syntax_labels = String[]
-for depth in (DEEP ? (3, 6, 9) : (2,))
-    for label in ("unshared", "shared")
-        push!(syntax_cases, ("construction", "$label:$depth")); push!(syntax_labels, "construction/$label depth=$depth")
-    end
-    for (kind, name) in (("parsing", "parsing"), ("printing", "printing"), ("roundtrip", "round-trip"))
-        push!(syntax_cases, (kind, "$depth")); push!(syntax_labels, "$name depth=$depth")
-    end
+for n in (DEEP ? (16, 128, 512) : (16, 64))
+    addrow!("equality isequal chain=$n", guarded_measure("Sole isequal chain=$n", "equality", "incumbent", "$n"), guarded_measure("Aletheia equality chain=$n", "equality", "aletheia", "$n"))
 end
-for n in (DEEP ? (16, 128, 512) : (16,))
-    push!(syntax_cases, ("equality", "$n")); push!(syntax_labels, "equality isequal chain=$n")
-end
-add_section_rows!("syntax", syntax_labels, syntax_cases)
 
 println("[propositional check and extension]")
-prop_cases = [("prop_check", string(depth)) for depth in (DEEP ? (2, 4, 6, 8) : (2, 4, 6))]
-add_section_rows!("propositional check", ["propositional check depth=$(arg)" for (_, arg) in prop_cases], prop_cases)
-ext_cases = [("prop_extension", "$n:$depth") for (n, depth) in (DEEP ? ((8, 3), (32, 4), (128, 5), (256, 6)) : ((8, 3), (32, 4)))]
-add_section_rows!("extension", ["extension finite model worlds=$(split(arg, ':')[1]) depth=$(split(arg, ':')[2])" for (_, arg) in ext_cases], ext_cases;
-    note="SoleLogics has no extension API; incumbent cell is the equivalent all-world check loop")
+for depth in (DEEP ? (2, 4, 6, 8) : (2, 4, 6))
+    addrow!("propositional check depth=$depth", guarded_measure("Sole propositional check depth=$depth", "prop_check", "incumbent", "$depth"), guarded_measure("Aletheia propositional check depth=$depth", "prop_check", "aletheia", "$depth"))
+end
+for (n, depth) in (DEEP ? ((8, 3), (32, 4), (128, 5), (256, 6)) : ((8, 3), (32, 4)))
+    addrow!("extension finite model worlds=$n depth=$depth", guarded_measure("Sole all-world extension worlds=$n depth=$depth", "prop_extension", "incumbent", "$n:$depth"), guarded_measure("Aletheia BitVector extension worlds=$n depth=$depth", "prop_extension", "aletheia", "$n:$depth"), note="SoleLogics has no extension API; incumbent cell is the equivalent all-world check loop")
+end
 
 println("[random modal check; seed=$(SEED)]")
-modal_cases = [("modal_check", "$n:$density:$depth") for n in (DEEP ? (8, 24, 64) : (8, 24)), density in (0.15, 0.50), depth in (DEEP ? (2, 4, 6) : (2, 4))]
-add_section_rows!("random modal check", ["random modal check worlds=$(split(arg, ':')[1]) density=$(split(arg, ':')[2]) depth=$(split(arg, ':')[3])" for (_, arg) in modal_cases], modal_cases;
-    note="fixed seed $(SEED); normalization disabled to isolate evaluator")
+for n in (DEEP ? (8, 24, 64) : (8, 24)), density in (0.15, 0.50), depth in (DEEP ? (2, 4, 6) : (2, 4))
+    arg = "$n:$density:$depth"
+    addrow!("random modal check worlds=$n density=$density depth=$depth", guarded_measure("Sole modal check $arg", "modal_check", "incumbent", arg), guarded_measure("Aletheia modal check $arg", "modal_check", "aletheia", arg), note="fixed seed $(SEED); normalization disabled to isolate evaluator")
+end
 
 println("[interval / dimensional check]")
-interval_cases = Tuple{String,String}[]; interval_labels = String[]
-for n in (DEEP ? (6, 12, 24, 36) : (6,))
-    push!(interval_cases, ("interval_adjacency", string(n))); push!(interval_labels, "interval adjacency n=$n")
-    push!(interval_cases, ("interval_check", string(n))); push!(interval_labels, "Allen BEFORE check n=$n")
+for n in (DEEP ? (6, 12, 24, 36) : (6, 12))
+    addrow!("interval adjacency n=$n", guarded_measure("Sole interval adjacency n=$n", "interval_adjacency", "incumbent", "$n"), guarded_measure("Aletheia interval adjacency n=$n", "interval_adjacency", "aletheia", "$n"))
+    addrow!("Allen BEFORE check n=$n", guarded_measure("Sole Allen check n=$n", "interval_check", "incumbent", "$n"), guarded_measure("Aletheia Allen check n=$n", "interval_check", "aletheia", "$n"), note="Aletheia BEFORE / SoleLogics IA_L")
 end
-add_section_rows!("interval / dimensional", interval_labels, interval_cases; note="Aletheia BEFORE / SoleLogics IA_L")
 
 println("[many-valued check]")
-mv_cases = [("many_check", "$algebra_name:$depth") for algebra_name in ("godel", "lukasiewicz", "h4"), depth in (DEEP ? (2, 4, 6) : (2,))]
-mv_labels = String[]
-for (_, arg) in mv_cases
-    algebra, depth = split(arg, ':'); push!(mv_labels, "$(algebra == "h4" ? "non-chain H4" : "finite chain $algebra") value depth=$depth")
+for algebra_name in ("godel", "lukasiewicz"), depth in (DEEP ? (2, 4, 6) : (2, 4))
+    addrow!("finite chain $algebra_name value depth=$depth", guarded_measure("Sole $algebra_name value depth=$depth", "many_check", "incumbent", "$algebra_name:$depth"), guarded_measure("Aletheia $algebra_name check depth=$depth", "many_check", "aletheia", "$algebra_name:$depth"), note="SoleLogics check is threshold-valued; comparable row uses its interpret value path (G3/Ł3)")
 end
-add_section_rows!("many-valued", mv_labels, mv_cases; note="finite designated check; H4 is the landed non-chain FLew algebra")
+println("many-valued non-chain: pending — this checkout has no src/algebras.jl finite non-chain implementation; no row is fabricated")
 
 println("[learning from interpretations]")
-ilp_cases = [("ilp_score", "$model_count:$hypothesis_count") for (model_count, hypothesis_count) in (DEEP ? ((8, 4), (32, 12), (64, 24)) : ((8, 4),))]
-add_section_rows!("ILP interpretation scoring", ["ILP interpretation scoring models=$(split(arg, ':')[1]) hypotheses=$(split(arg, ':')[2])" for (_, arg) in ilp_cases], ilp_cases;
-    note="seeded learning_from_interpretations examples; hypotheses × interpretations check/eval hot path")
+for (model_count, hypothesis_count) in (DEEP ? ((8, 4), (32, 12), (64, 24)) : ((8, 4), (32, 12)))
+    arg = "$model_count:$hypothesis_count"
+    addrow!("ILP interpretation scoring models=$model_count hypotheses=$hypothesis_count", guarded_measure("Sole interpretation scoring $arg", "ilp_score", "incumbent", arg), guarded_measure("Aletheia interpretation scoring $arg", "ilp_score", "aletheia", arg), note="same seeded models; loops hypotheses × interpretation examples through check/eval")
+end
 
 println("[bisimulation contraction amortisation]")
 println("incumbent: unsupported — SoleLogics v0.13.7 has no bisimulation contraction API")
 println("n | quotient | ratio | C | P_orig | P_quot | K* | measured crossover (K: orig ms / quotient ms)")
-contraction_cases = Tuple{String,String}[]; contraction_ranges = NamedTuple[]
-contraction_models = DEEP ? (96, 192, 384) : (48,); contraction_counts = DEEP ? 5 : 2
-contraction_curve = DEEP ? (1, 2, 4, 8, 16, 32, 64) : (1, 8, 32)
-for n in contraction_models, q in (DEEP ? (1, 4, 16, n) : (1, n))
+for n in (DEEP ? (96, 192, 384) : (48,)), q in (DEEP ? (1, 4, 16, n) : (1, 16, n))
     q > n && continue
-    cindex = length(contraction_cases) + 1; push!(contraction_cases, ("contraction_cost", "$n:$q"))
-    orig_indices = Int[]; quot_indices = Int[]; curve_orig = Int[]; curve_quot = Int[]
-    for i in 1:contraction_counts
-        push!(contraction_cases, ("contraction_orig", "$n:$q:$i:8")); push!(orig_indices, length(contraction_cases))
-    end
-    for i in 1:contraction_counts
-        push!(contraction_cases, ("contraction_quot", "$n:$q:$i:8")); push!(quot_indices, length(contraction_cases))
-    end
-    for k in contraction_curve
-        push!(contraction_cases, ("contraction_batch_orig", "$n:$q:8:$k")); push!(curve_orig, length(contraction_cases))
-        push!(contraction_cases, ("contraction_batch_quot", "$n:$q:8:$k")); push!(curve_quot, length(contraction_cases))
-    end
-    push!(contraction_ranges, (n=n, q=q, c=cindex, orig=orig_indices, quot=quot_indices, curve_orig=curve_orig, curve_quot=curve_quot))
-end
-contraction_measurements = section_measure("contraction", contraction_cases, "aletheia"; timeout=DEEP ? 180 : 120)
-for entry in contraction_ranges
-    c = contraction_measurements[entry.c]; po = parse_ratio_measurements(contraction_measurements[entry.orig]); pq = parse_ratio_measurements(contraction_measurements[entry.quot])
-    ratio = entry.q / entry.n; delta = po.time === missing || pq.time === missing ? missing : po.time - pq.time
+    c = guarded_measure("contraction cost n=$n q=$q", "contraction_cost", "aletheia", "$n:$q")
+    po = parse_ratio_measurements([guarded_measure("original check n=$n q=$q formula=$i", "contraction_orig", "aletheia", "$n:$q:$(i):8") for i in 1:5])
+    pq = parse_ratio_measurements([guarded_measure("quotient check n=$n q=$q formula=$i", "contraction_quot", "aletheia", "$n:$q:$(i):8") for i in 1:5])
+    ratio = q / n
+    delta = po.time === missing || pq.time === missing ? missing : po.time - pq.time
     kstar = delta === missing || delta <= 0 ? Inf : c.time / delta
-    println("$(entry.n) | $(entry.q) | $(@sprintf("%.3f", ratio)) | $(fmt_measure(c)) | $(fmt_measure(po)) | $(fmt_measure(pq)) | $(isfinite(kstar) ? @sprintf("%.1f", kstar) : "∞") | ")
-    for (k, oi, qi) in zip(contraction_curve, entry.curve_orig, entry.curve_quot)
-        bo, bq = contraction_measurements[oi], contraction_measurements[qi]
-        println("  K=$k: $(bo.time === missing ? "timeout" : @sprintf("%.3f", bo.time / 1e6)) ms / $(bq.time === missing || c.time === missing ? "timeout" : @sprintf("%.3f", (c.time + bq.time) / 1e6)) ms (quotient includes C)")
+    println("$n | $q | $(@sprintf("%.3f", ratio)) | $(fmt_measure(c)) | $(fmt_measure(po)) | $(fmt_measure(pq)) | $(isfinite(kstar) ? @sprintf("%.1f", kstar) : "∞") | ")
+    for k in (1, 2, 4, 8, 16, 32, 64)
+        bo = guarded_measure("measured original curve n=$n q=$q K=$k", "contraction_batch_orig", "aletheia", "$n:$q:8:$k")
+        bq = guarded_measure("measured quotient curve n=$n q=$q K=$k", "contraction_batch_quot", "aletheia", "$n:$q:8:$k")
+        println("  K=$k: $(bo.time === missing ? "timeout" : @sprintf("%.3f", bo.time / 1e6)) ms / $(bq.time === missing ? "timeout" : @sprintf("%.3f", (c.time + bq.time) / 1e6)) ms (quotient includes C)")
     end
 end
 
@@ -137,4 +117,4 @@ cold_measure(x, i) = x === nothing ? Measurement(missing, missing, missing, "una
 addrow!("cold package load", cold_measure(ls, 1), cold_measure(la, 1); allocations=false)
 addrow!("cold time-to-first-result", cold_measure(ls, 2), cold_measure(la, 2); allocations=false)
 
-println(); print_report()
+println(); print_report(); println("benchmark wall clock: ", @sprintf("%.1f s", (time_ns() - RUN_START_NS) / 1e9))
