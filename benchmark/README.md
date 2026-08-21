@@ -92,21 +92,21 @@ frame paths) was:
 
 | row | SoleLogics | Aletheia | ratio (S/A) | allocations |
 | --- | ---: | ---: | ---: | ---: |
-| generated IA-before | 311 ns | 6.10 μs | 0.05x | 6 / 98 |
-| full adjacency n=6 (21 worlds) | 1.65 μs | 3.57 μs | 0.46x | 106 / 202 |
-| end-to-end check n=6 | 12.28 μs | 9.08 μs | 1.35x | 247 / 304 |
-| full adjacency n=12 (78 worlds) | 16.46 μs | 43.99 μs | 0.37x | 446 / 1534 |
-| end-to-end check n=12 | 567.28 μs | 85.33 μs | 6.65x | 745 / 1806 |
-| full adjacency n=24 (300 worlds) | 186.98 μs | 693.63 μs | 0.27x | 2047 / 16996 |
-| end-to-end check n=24 | 648.86 μs | 1.38 ms | 0.47x | 2852 / 17935 |
+| generated IA-before | 316 ns | 6.14 μs | 0.05x | 6 / 98 |
+| full adjacency n=6 (21 worlds) | 1.66 μs | 3.36 μs | 0.49x | 106 / 202 |
+| end-to-end check n=6 | 16.98 μs | 8.18 μs | 2.08x | 247 / 320 |
+| full adjacency n=12 (78 worlds) | 18.55 μs | 36.31 μs | 0.51x | 446 / 1534 |
+| end-to-end check n=12 | 81.53 μs | 86.84 μs | 0.94x | 745 / 1806 |
+| full adjacency n=24 (300 worlds) | 180.56 μs | 1.05 ms | 0.17x | 2047 / 17002 |
+| end-to-end check n=24 | 663.66 μs | 1.13 ms | 0.59x | 2852 / 18427 |
 
-The hook materially improves Aletheia's adjacency construction at n=12
-(353 μs → 44.0 μs). The n=24 row is variable on this shared runner (493 μs
-before versus 694 μs after in this run), so the hook does **not** close the gap
-reliably: Aletheia is still slower on the n=12 and n=24 adjacency rows in
-this after run, and remains 2.13x slower end-to-end at n=24. The n=12
-end-to-end incumbent measurement is an obvious noisy outlier, so it is not
-used to claim a general win. The single-query row is still about 20x slower.
+These are remeasurements after merging the theory stage into the branch. The
+hook materially improves Aletheia's n=12 adjacency construction versus the
+pre-hook row (353 μs → 36.3 μs), but the n=24 row is highly variable (493 μs
+pre-hook versus 1.05 ms here). The hook does **not** close the gap reliably:
+Aletheia remains 1.70x slower end-to-end at n=24, and the single-query row
+remains about 19x slower. The n=6 end-to-end case is 2.08x faster for Aletheia;
+n=12 is effectively tied at 0.94x.
 
 The hook is optional: generated interval, rectangle, and point frames provide
 arithmetic successor paths for their built-in relation families, while an
@@ -115,9 +115,9 @@ the generic predicate filter. The external-family tests cover both paths.
 
 ### Theory contraction
 
-The theory row is intentionally a measurement, not a promise. In the recorded
-quick run (600 dense, identically labelled worlds), raw checking was 0.64 ms
-and contraction plus checking was 16.97 ms: contraction did **not** win once
-quotient construction was included. That negative result is published rather
-than hidden; a downstream workload may amortize the quotient across many
+The theory row is intentionally a measurement, not a promise. In the merged-base
+quick run (600 dense, identically labelled worlds), raw checking was 976.77 μs
+and contraction plus checking was 16.05 ms (0.06x): contraction did **not**
+win once quotient construction was included. That negative result is published
+rather than hidden; a downstream workload may amortize the quotient across many
 checks.
