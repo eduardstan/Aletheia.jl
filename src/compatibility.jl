@@ -87,8 +87,8 @@ collatetruth(args...) = _unsupported(:collatetruth,
 # Compatibility formulas wrap ordinary Aletheia DAG handles.  Keeping the
 # wrapper type here (rather than extending Aletheia.Atom's constructor) makes
 # the migration constructor local while allowing `Atom` in `isa` and dispatch.
-# A tuple-shaped lazy view keeps the legacy indexing/destructuring surface while
-# deferring child wrapper construction until a consumer actually reads a child.
+# A tuple-shaped cached view keeps the legacy indexing/destructuring surface
+# while reusing canonical child wrappers for every traversal.
 struct _CompatChildren{N,P<:Aletheia.FormulaPool}
     pool::P
     ids::NTuple{N,Int}
@@ -132,7 +132,7 @@ struct _CompatBranch{C,N,P<:Aletheia.FormulaPool} <: Aletheia.Formula
         new{C,N,P}(pool, id, connective, _CompatChildren{N,P}(pool, ids))
     end
     _CompatBranch(native::Aletheia.Branch{C,N,P}) where {C,N,P<:Aletheia.FormulaPool} =
-        new{C,N,P}(native.pool, native.id, native.connective, _CompatChildren{N,P}(native.pool, native.children))
+        _CompatBranch{C,N,P}(native.pool, native.id, native.connective, native.children)
 end
 const _CompatFormula = Union{Atom,_CompatBranch}
 const _CompatCacheEntry = Union{Nothing,Atom,_CompatBranch}
@@ -306,6 +306,22 @@ end
     end
 end
 
+@inline function _compat_branch(connective, child::F) where {F<:_CompatFormula}
+    Aletheia.arity(connective) == 1 || return _compat_branch(connective, (child,))
+    pool = child.pool
+    _hasconnective(Aletheia.signature(pool), connective) || return _compat_branch(connective, (child,))
+    connective isa Aletheia.Negation && return _compat_negation(pool, child.id)
+    _wrap_id(pool, Aletheia._intern!(pool, 0x02, connective, (child.id,)))
+end
+@inline function _compat_branch(connective, left::F, right::G) where {F<:_CompatFormula,G<:_CompatFormula}
+    Aletheia.arity(connective) == 2 || return _compat_branch(connective, (left, right))
+    pool = left.pool
+    if right.pool === pool && _hasconnective(Aletheia.signature(pool), connective)
+        return _wrap_id(pool, Aletheia._intern!(pool, 0x02, connective, (left.id, right.id)))
+    end
+    _compat_branch(connective, (left, right))
+end
+
 function _compat_branch(connective, children::Tuple)
     pool = _formula_pool_for(connective, children)
     expected = Aletheia.arity(connective)
@@ -325,6 +341,12 @@ function Branch(connective::_LegacyConnective, children::Tuple)
         "the requested connective is not implemented by Aletheia")
     _compat_branch(connective, children)
 end
+Branch(connective::_LegacyConnective, children::Tuple{F}) where {F<:_CompatFormula} =
+    Aletheia.arity(connective) == 1 ? _compat_branch(connective, children[1]) :
+        _compat_branch(connective, children)
+Branch(connective::_LegacyConnective, children::Tuple{F,G}) where {F<:_CompatFormula,G<:_CompatFormula} =
+    Aletheia.arity(connective) == 2 ? _compat_branch(connective, children[1], children[2]) :
+        _compat_branch(connective, children)
 Branch(connective::_LegacyConnective, children...) = Branch(connective, children)
 Branch(connective::Aletheia.Diamond, children...) = _compat_branch(connective, children)
 Branch(connective::Aletheia.Box, children...) = _compat_branch(connective, children)

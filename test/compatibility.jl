@@ -151,9 +151,19 @@ end
     walk_compatibility(conjunction)
     @test @inferred(CompatibilityClient.children(conjunction)) isa
         Aletheia.SoleLogics._CompatChildren
-    @test @allocated(walk_compatibility(conjunction)) < 4096
+    @test @allocated(walk_compatibility(conjunction)) == 0
     CompatibilityClient.Branch(CompatibilityClient.:∧, p, q)
     @test @allocated(CompatibilityClient.Branch(CompatibilityClient.:∧, p, q)) < 4096
+
+    # Exercise the legacy/native pool merge path and both cached tree walks.
+    native_pool = Aletheia.FormulaPool(Aletheia.Signature((Aletheia.:∧,)))
+    native_atom = Aletheia.atom(native_pool, "native")
+    merged = CompatibilityClient.Branch(CompatibilityClient.:∧, p, native_atom)
+    @test merged isa Aletheia.Formula
+    CompatibilityClient.formulas(merged)
+    @test CompatibilityClient.formulas(merged) === CompatibilityClient.formulas(merged)
+    CompatibilityClient.subformulas(merged)
+    @test CompatibilityClient.subformulas(merged) === CompatibilityClient.subformulas(merged)
 end
 
 @testset "consumer-facing Atom and relation aliases" begin
