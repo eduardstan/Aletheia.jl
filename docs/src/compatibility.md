@@ -151,6 +151,38 @@ finite FLew algebras, but many-valued tableaux remain blocked by the missing
 SoleReasoners tableau truth-carrier and order-helper compatibility surface; that
 is the next independent blocker, not a silent semantic fallback.
 
+## Allocation profile and substrate rerun
+
+The pre-fix allocation profile used Julia's `Profile.Allocs.@profile` around ten
+warm tableau decisions. Its flat report attributed repeated compatibility work
+to `children` and both `_CompatChildren.iterate` methods, in addition to
+`Branch`/`_compat_branch`; this directly confirmed that traversal was boxing
+fresh adapters rather than the parser being the source of the search loss.
+After the fix, the same profile showed no repeated `children`, branch, or
+wrapper allocations; only the small iterator protocol tuples remained.
+The new wrapper fields retain the payload/connective and a precomputed child
+view, while the per-pool wrapper and formula caches make repeated DAG access
+reuse concrete immutable handles. The compatibility tests also assert inferred
+child-view types and a bounded allocation budget for 1,000 traversals.
+
+The agreement-first 72-formula sweep was rerun with the same seed and
+SoleReasoners propositional tableau. Both sides produced 72 decisions (36 SAT,
+36 UNSAT); timing was discarded for no disagreement. Medians below are
+Aletheia/native, and allocation counts are the corresponding native/Aletheia
+medians from the paired child-process runs:
+
+| section | before time ratio | after time ratio | before allocations | after allocations |
+| --- | ---: | ---: | ---: | ---: |
+| parse existing text | 0.185x | 0.117x | 645 / 146 | 459.5 / 96.5 |
+| construct from recipe | 62.30x | 1.10x | 136 / 1,427 | 94 / 85 |
+| pre-parsed tableau search | 2.38x | 0.78x | 340 / 1,921.5 | 144 / 116.5 |
+
+The post-fix paired search median is below the incumbent (0.78x), rather than
+quietly treating parity as success. Exact command shape, timeout/file
+isolation, and the fixed seed are the same as the benchmark Evidence section
+in the timing report; the profile was collected before changing the wrapper
+representation and repeated after it.
+
 ## Evidence
 
 A scratch copy of `SolePostHoc/src/shared_utils.jl` was loaded in a small module

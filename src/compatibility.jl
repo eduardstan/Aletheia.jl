@@ -87,27 +87,101 @@ collatetruth(args...) = _unsupported(:collatetruth,
 # Compatibility formulas wrap ordinary Aletheia DAG handles.  Keeping the
 # wrapper type here (rather than extending Aletheia.Atom's constructor) makes
 # the migration constructor local while allowing `Atom` in `isa` and dispatch.
-struct Atom <: Aletheia.Formula
-    native::Aletheia.Atom
-    Atom(native::Aletheia.Atom, ::Val{:native}) = new(native)
+# A tuple-shaped cached view keeps the legacy indexing/destructuring surface
+# while reusing canonical child wrappers for every traversal.
+struct _CompatChildren{N,P<:Aletheia.FormulaPool}
+    pool::P
+    ids::NTuple{N,Int}
 end
-struct _CompatBranch{C,N} <: Aletheia.Formula
-    native::Aletheia.Branch{C,N}
+Base.size(::_CompatChildren{N}) where N = (N,)
+Base.length(::_CompatChildren{N}) where N = N
+Base.firstindex(::_CompatChildren) = 1
+Base.lastindex(children::_CompatChildren{N}) where N = N
+Base.getindex(children::_CompatChildren, i::Int) =
+    _wrap_id(children.pool, children.ids[i])
+Base.iterate(::_CompatChildren{0}) = nothing
+@inline Base.iterate(children::_CompatChildren{N}) where N =
+    N == 0 ? nothing : (_wrap_id(children.pool, children.ids[1]), 2)
+@inline function Base.iterate(children::_CompatChildren{N}, state::Int) where N
+    state > N && return nothing
+    (_wrap_id(children.pool, children.ids[state]), state + 1)
+end
+Base.IteratorSize(::_CompatChildren) = Base.HasLength()
+Base.IteratorEltype(::_CompatChildren) = Base.EltypeUnknown()
+Base.:(==)(children::_CompatChildren, values::Tuple) =
+    length(children) == length(values) && all(children[i] == values[i] for i in eachindex(values))
+Base.:(==)(values::Tuple, children::_CompatChildren) = children == values
+
+# Compatibility formulas wrap ordinary Aletheia DAG handles.  Keeping the
+# wrapper type here (rather than extending Aletheia.Atom's constructor) makes
+# the migration constructor local while allowing `Atom` in `isa` and dispatch.
+struct Atom{V,P<:Aletheia.FormulaPool} <: Aletheia.Formula
+    pool::P
+    id::Int
+    payload::V
+    Atom{V,P}(pool::P, id::Int, payload::V) where {V,P<:Aletheia.FormulaPool} = new{V,P}(pool, id, payload)
+    Atom(native::Aletheia.Atom{V,P}, ::Val{:native}) where {V,P<:Aletheia.FormulaPool} =
+        new{V,P}(native.pool, native.id, native.value)
+end
+struct _CompatBranch{C,N,P<:Aletheia.FormulaPool} <: Aletheia.Formula
+    pool::P
+    id::Int
+    connective::C
+    childview::_CompatChildren{N,P}
+    function _CompatBranch{C,N,P}(pool::P, id::Int, connective::C, ids::NTuple{N,Int}) where {C,N,P<:Aletheia.FormulaPool}
+        new{C,N,P}(pool, id, connective, _CompatChildren{N,P}(pool, ids))
+    end
+    _CompatBranch(native::Aletheia.Branch{C,N,P}) where {C,N,P<:Aletheia.FormulaPool} =
+        _CompatBranch{C,N,P}(native.pool, native.id, native.connective, native.children)
 end
 const _CompatFormula = Union{Atom,_CompatBranch}
+const _CompatCacheEntry = Union{Nothing,Atom,_CompatBranch}
+const _WRAPPER_CACHE = IdDict{Aletheia.FormulaPool,Vector{_CompatCacheEntry}}()
+const _WRAPPER_CACHE_LOCK = ReentrantLock()
+const _NEGATION_CACHE = IdDict{Aletheia.FormulaPool,Vector{Int}}()
+const _NEGATION_CACHE_LOCK = ReentrantLock()
 const SyntaxLeaf = Atom
 const AbstractAtom = Atom
-_wrap(formula::Atom) = formula
-_wrap(formula::_CompatBranch) = formula
-_wrap(formula::Aletheia.Atom) = Atom(formula, Val(:native))
-_wrap(formula::Aletheia.Branch) = _CompatBranch(formula)
-function _unwrap(formula::Atom)
-    formula.native
+@inline _wrap(formula::Atom) = formula
+@inline _wrap(formula::_CompatBranch) = formula
+@inline _wrap(formula::Aletheia.Atom{V,P}) where {V,P<:Aletheia.FormulaPool} = _wrap_id(formula.pool, formula.id)
+@inline _wrap(formula::Aletheia.Branch{C,N,P}) where {C,N,P<:Aletheia.FormulaPool} = _wrap_id(formula.pool, formula.id)
+@inline _unwrap(formula::Atom) = Aletheia._formula_unlocked(formula.pool, formula.id)
+@inline _unwrap(formula::_CompatBranch) = Aletheia._formula_unlocked(formula.pool, formula.id)
+@inline _unwrap(formula::Aletheia.Formula) = formula
+@inline _formula_pool(formula::Atom) = formula.pool
+@inline _formula_pool(formula::_CompatBranch) = formula.pool
+Base.:(==)(left::Atom, right::Atom) = left.pool === right.pool && left.id == right.id
+Base.:(==)(left::_CompatBranch, right::_CompatBranch) = left.pool === right.pool && left.id == right.id
+Base.isequal(left::Atom, right::Atom) = left == right
+Base.isequal(left::_CompatBranch, right::_CompatBranch) = left == right
+Base.hash(formula::Atom, h::UInt) = hash(objectid(formula.pool), hash(formula.id, h))
+Base.hash(formula::_CompatBranch, h::UInt) = hash(objectid(formula.pool), hash(formula.id, h))
+@inline function _wrap_id(pool::P, id::Int) where {P<:Aletheia.FormulaPool}
+    cache = get(_WRAPPER_CACHE, pool, nothing)
+    if cache !== nothing && id <= length(cache)
+        cached = cache[id]
+        cached === nothing || return cached
+    end
+    lock(_WRAPPER_CACHE_LOCK)
+    try
+        cache = get!(_WRAPPER_CACHE, pool) do
+            _CompatCacheEntry[]
+        end
+        while id > length(cache)
+            push!(cache, nothing)
+        end
+        cached = cache[id]
+        cached === nothing || return cached
+        node = pool.nodes[id]
+        wrapped = node.kind == 0x01 ? Atom{typeof(node.payload),P}(pool, id, node.payload) :
+            _CompatBranch{typeof(node.payload),length(node.children),P}(pool, id, node.payload, node.children)
+        cache[id] = wrapped
+        wrapped
+    finally
+        unlock(_WRAPPER_CACHE_LOCK)
+    end
 end
-function _unwrap(formula::_CompatBranch)
-    formula.native
-end
-_unwrap(formula::Aletheia.Formula) = formula
 
 function Atom(value)
     value isa Aletheia.Formula && _unsupported(:Atom,
@@ -127,54 +201,165 @@ function (connective::Union{Aletheia.Conjunction,Aletheia.Disjunction,
     Branch(connective, left, right)
 end
 
-function _formula_pool_for(connective, formulas)
-    fs = Tuple(formulas)
-    existing = filter(x -> x isa Aletheia.Formula, fs)
-    if !isempty(existing)
-        candidate = Aletheia.pool(_unwrap(first(existing)))
-        if all(Aletheia.pool(_unwrap(f)) === candidate for f in existing) &&
-                Aletheia.hasconnective(Aletheia.signature(candidate), connective)
-            return candidate
-        end
-        connectives = Aletheia.connectives(Aletheia.signature(candidate))
-        return Aletheia.FormulaPool(Aletheia.Signature((connectives..., connective)))
+@inline function _hasconnective(signature::Aletheia.Signature, connective)
+    for candidate in Aletheia.connectives(signature)
+        isequal(candidate, connective) && return true
     end
-    Aletheia.FormulaPool(Aletheia.Signature((Aletheia.:¬, Aletheia.:∧, Aletheia.:∨, Aletheia.:→, connective)))
+    false
 end
 
-function _repool(formula, target)
-    native = _unwrap(formula)
-    native isa Aletheia.Atom && return _wrap(Aletheia.atom(target, Aletheia.value(native)))
-    native isa Aletheia.Branch || _unsupported(:SyntaxBranch,
+# The overwhelmingly common construction path has compatibility children from
+# one pool. Keep it straight-line: the previous generic pool merge allocated a
+# temporary Vector and repeatedly rebuilt tuples for every branch.
+function _formula_pool_for(connective, formulas::Tuple)
+    isempty(formulas) && return _DEFAULT_POOL
+    first_formula = formulas[1]
+    candidate = if first_formula isa _CompatFormula
+        _formula_pool(first_formula)
+    elseif first_formula isa Aletheia.Formula
+        Aletheia.pool(first_formula)
+    else
+        nothing
+    end
+    if candidate !== nothing
+        same = true
+        for i in 2:length(formulas)
+            formula = formulas[i]
+            pool = if formula isa _CompatFormula
+                _formula_pool(formula)
+            elseif formula isa Aletheia.Formula
+                Aletheia.pool(formula)
+            else
+                continue
+            end
+            if pool !== candidate
+                same = false
+                break
+            end
+        end
+        same && _hasconnective(Aletheia.signature(candidate), connective) && return candidate
+    end
+    _merge_formula_pools(connective, formulas)
+end
+
+function _merge_formula_pools(connective, formulas::Tuple)
+    merged = ()
+    for formula in formulas
+        formula isa Aletheia.Formula || continue
+        pool = formula isa _CompatFormula ? _formula_pool(formula) : Aletheia.pool(formula)
+        for candidate in Aletheia.connectives(Aletheia.signature(pool))
+            any(existing -> existing === candidate, merged) || (merged = (merged..., candidate))
+        end
+    end
+    any(candidate -> candidate === connective, merged) || (merged = (merged..., connective))
+    Aletheia.FormulaPool(Aletheia.Signature(merged))
+end
+
+@inline function _repool(formula::Atom, target)
+    formula.pool === target ? formula :
+        _wrap(Aletheia.atom(target, value(formula)))
+end
+@inline function _repool(formula::_CompatBranch{C,N,P}, target) where {C,N,P}
+    formula.pool === target ? formula : begin
+        cs = children(formula)
+        ids = ntuple(i -> _unwrap(_repool(cs[i], target)), N)
+        _wrap(Aletheia.branch(target, formula.connective, ids))
+    end
+end
+function _repool(formula::Aletheia.Formula, target)
+    Aletheia.pool(formula) === target && return _wrap(formula)
+    formula isa Aletheia.Atom && return _wrap(Aletheia.atom(target, Aletheia.value(formula)))
+    formula isa Aletheia.Branch || _unsupported(:SyntaxBranch,
         "children must be Aletheia formulas (got $(typeof(formula)))")
-    _wrap(Aletheia.branch(target, Aletheia.operator(native),
-        Tuple(_unwrap(_repool(child, target)) for child in Aletheia.children(native))))
+    _wrap(Aletheia.branch(target, Aletheia.operator(formula),
+        Tuple(_unwrap(_repool(child, target)) for child in Aletheia.children(formula))))
 end
 
+@inline _compat_child_id(child::Atom, pool) = child.pool === pool ? child.id : 0
+@inline _compat_child_id(child::_CompatBranch, pool) = child.pool === pool ? child.id : 0
+@inline _compat_child_id(child::Aletheia.Atom, pool) = Aletheia.pool(child) === pool ? Aletheia.id(child) : 0
+@inline _compat_child_id(child::Aletheia.Branch, pool) = Aletheia.pool(child) === pool ? Aletheia.id(child) : 0
+@inline _compat_child_id(child, pool) = 0
+
+@inline function _compat_negation(pool::P, child_id::Int) where {P<:Aletheia.FormulaPool}
+    cache = get(_NEGATION_CACHE, pool, nothing)
+    if cache !== nothing && child_id <= length(cache)
+        branch_id = cache[child_id]
+        branch_id != 0 && return _wrap_id(pool, branch_id)
+    end
+    lock(_NEGATION_CACHE_LOCK)
+    try
+        cache = get!(_NEGATION_CACHE, pool) do
+            Int[]
+        end
+        while child_id > length(cache)
+            push!(cache, 0)
+        end
+        branch_id = cache[child_id]
+        if branch_id == 0
+            branch_id = Aletheia._intern!(pool, 0x02, Aletheia.:¬, (child_id,))
+            cache[child_id] = branch_id
+        end
+        return _wrap_id(pool, branch_id)
+    finally
+        unlock(_NEGATION_CACHE_LOCK)
+    end
+end
+
+@inline function _compat_branch(connective, child::F) where {F<:_CompatFormula}
+    Aletheia.arity(connective) == 1 || return _compat_branch(connective, (child,))
+    pool = child.pool
+    _hasconnective(Aletheia.signature(pool), connective) || return _compat_branch(connective, (child,))
+    connective isa Aletheia.Negation && return _compat_negation(pool, child.id)
+    _wrap_id(pool, Aletheia._intern!(pool, 0x02, connective, (child.id,)))
+end
+@inline function _compat_branch(connective, left::F, right::G) where {F<:_CompatFormula,G<:_CompatFormula}
+    Aletheia.arity(connective) == 2 || return _compat_branch(connective, (left, right))
+    pool = left.pool
+    if right.pool === pool && _hasconnective(Aletheia.signature(pool), connective)
+        return _wrap_id(pool, Aletheia._intern!(pool, 0x02, connective, (left.id, right.id)))
+    end
+    _compat_branch(connective, (left, right))
+end
+
+function _compat_branch(connective, children::Tuple)
+    pool = _formula_pool_for(connective, children)
+    expected = Aletheia.arity(connective)
+    expected == length(children) || throw(ArgumentError(
+        "$(repr(connective)) expects $expected children, got $(length(children))"))
+    ids = ntuple(i -> _compat_child_id(children[i], pool), length(children))
+    if all(!iszero, ids) && _hasconnective(Aletheia.signature(pool), connective)
+        connective isa Aletheia.Negation && return _compat_negation(pool, ids[1])
+        branch_id = Aletheia._intern!(pool, 0x02, connective, ids)
+        return _wrap_id(pool, branch_id)
+    end
+    normalized = ntuple(i -> _repool(children[i], pool), length(children))
+    _wrap(Aletheia.branch(pool, connective, ntuple(i -> _unwrap(normalized[i]), length(normalized))))
+end
 function Branch(connective::_LegacyConnective, children::Tuple)
     connective isa _UnsupportedName && _unsupported(:SyntaxBranch,
         "the requested connective is not implemented by Aletheia")
-    pool = _formula_pool_for(connective, children)
-    normalized = Tuple(_repool(child, pool) for child in children)
-    _wrap(Aletheia.branch(pool, connective, Tuple(_unwrap.(normalized))))
+    _compat_branch(connective, children)
 end
+Branch(connective::_LegacyConnective, children::Tuple{F}) where {F<:_CompatFormula} =
+    Aletheia.arity(connective) == 1 ? _compat_branch(connective, children[1]) :
+        _compat_branch(connective, children)
+Branch(connective::_LegacyConnective, children::Tuple{F,G}) where {F<:_CompatFormula,G<:_CompatFormula} =
+    Aletheia.arity(connective) == 2 ? _compat_branch(connective, children[1], children[2]) :
+        _compat_branch(connective, children)
 Branch(connective::_LegacyConnective, children...) = Branch(connective, children)
-Branch(connective::Aletheia.Diamond, children...) = begin
-    pool = _formula_pool_for(connective, children)
-    normalized = Tuple(_repool(child, pool) for child in children)
-    _wrap(Aletheia.branch(pool, connective, Tuple(_unwrap.(normalized))))
-end
-Branch(connective::Aletheia.Box, children...) = begin
-    pool = _formula_pool_for(connective, children)
-    normalized = Tuple(_repool(child, pool) for child in children)
-    _wrap(Aletheia.branch(pool, connective, Tuple(_unwrap.(normalized))))
-end
+Branch(connective::Aletheia.Diamond, children...) = _compat_branch(connective, children)
+Branch(connective::Aletheia.Box, children...) = _compat_branch(connective, children)
 const SyntaxBranch = Branch
 
 # Old accessors and tree walks.
-token(formula::Atom) = formula
-function token(formula::_CompatBranch)
-    native = Aletheia.operator(formula.native)
+@inline token(formula::Atom) = formula
+@inline token(::_CompatBranch{Aletheia.Negation}) = _NOT
+@inline token(::_CompatBranch{Aletheia.Conjunction}) = _AND
+@inline token(::_CompatBranch{Aletheia.Disjunction}) = _OR
+@inline token(::_CompatBranch{Aletheia.Implication}) = _IMP
+@inline function token(formula::_CompatBranch)
+    native = formula.connective
     native isa Aletheia.Negation && return _NOT
     native isa Aletheia.Conjunction && return _AND
     native isa Aletheia.Disjunction && return _OR
@@ -187,10 +372,11 @@ Aletheia.arity(connective::_CompatConnective) = Aletheia.arity(connective.native
 Aletheia.notation(connective::_CompatConnective) = Aletheia.notation(connective.native)
 token(value::Truth) = value
 op(value) = token(value)
-value(formula::Atom) = Aletheia.value(formula.native)
-children(::Atom) = ()
-children(formula::_CompatBranch) = Tuple(_wrap.(Aletheia.children(formula.native)))
-nchildren(formula::Union{Atom,_CompatBranch}) = length(children(formula))
+@inline value(formula::Atom) = formula.payload
+@inline children(::Atom) = ()
+@inline children(formula::_CompatBranch) = formula.childview
+@inline nchildren(::Atom) = 0
+@inline nchildren(formula::_CompatBranch{C,N,P}) where {C,N,P} = N
 tree(formula::Aletheia.Formula) = formula
 nchildren(formula::Aletheia.Formula) = Aletheia.nchildren(formula)
 
@@ -201,8 +387,69 @@ function _walk(formula::Aletheia.Formula, out::Vector)
     push!(out, formula)
     out
 end
+const _FORMULA_CACHE_ENTRY = Union{Nothing,Vector{Aletheia.Formula}}
+const _FORMULA_CACHE = IdDict{Aletheia.FormulaPool,Vector{_FORMULA_CACHE_ENTRY}}()
+const _FORMULA_CACHE_LOCK = ReentrantLock()
+function _cached_formulas(formula::Union{Atom,_CompatBranch})
+    pool = formula.pool
+    id = formula.id
+    lock(_FORMULA_CACHE_LOCK)
+    try
+        cache = get!(_FORMULA_CACHE, pool) do
+            _FORMULA_CACHE_ENTRY[]
+        end
+        while id > length(cache)
+            push!(cache, nothing)
+        end
+        cached = cache[id]
+        cached === nothing || return cached
+    finally
+        unlock(_FORMULA_CACHE_LOCK)
+    end
+    result = _walk(formula, Aletheia.Formula[])
+    lock(_FORMULA_CACHE_LOCK)
+    try
+        cache = _FORMULA_CACHE[pool]
+        cache[id] = result
+        result
+    finally
+        unlock(_FORMULA_CACHE_LOCK)
+    end
+end
+formulas(formula::Atom) = _cached_formulas(formula)
+formulas(formula::_CompatBranch) = _cached_formulas(formula)
 function formulas(formula::Aletheia.Formula)
     _walk(formula, Aletheia.Formula[])
+end
+const _SUBFORMULA_CACHE = IdDict{Aletheia.FormulaPool,Vector{_FORMULA_CACHE_ENTRY}}()
+function _cached_subformulas(formula::Union{Atom,_CompatBranch})
+    pool = formula.pool
+    id = formula.id
+    lock(_FORMULA_CACHE_LOCK)
+    try
+        cache = get!(_SUBFORMULA_CACHE, pool) do
+            _FORMULA_CACHE_ENTRY[]
+        end
+        while id > length(cache)
+            push!(cache, nothing)
+        end
+        cached = cache[id]
+        cached === nothing || return cached
+    finally
+        unlock(_FORMULA_CACHE_LOCK)
+    end
+    result = sort!(copy(formulas(formula)), by=height)
+    lock(_FORMULA_CACHE_LOCK)
+    try
+        cache = _SUBFORMULA_CACHE[pool]
+        cache[id] = result
+        result
+    finally
+        unlock(_FORMULA_CACHE_LOCK)
+    end
+end
+function subformulas(formula::Union{Atom,_CompatBranch}; sorted=true)
+    sorted ? _cached_subformulas(formula) : formulas(formula)
 end
 function subformulas(formula::Aletheia.Formula; sorted=true)
     result = formulas(formula)
@@ -223,19 +470,33 @@ natoms(formula::Aletheia.Formula) = length(atoms(formula))
 nleaves(formula::Aletheia.Formula) = natoms(formula)
 nconnectives(formula::Aletheia.Formula) = length(connectives(formula))
 noperators(formula::Aletheia.Formula) = nconnectives(formula)
-function height(formula::Aletheia.Formula)
-    isempty(children(formula)) ? 0 : 1 + maximum(height, children(formula))
+function height(formula::Aletheia.Formula)::Int
+    cs = children(formula)
+    isempty(cs) && return 0
+    child_height = 0
+    for child in cs
+        child_height = max(child_height, height(child))
+    end
+    1 + child_height
 end
 
 # Aletheia's normal forms are ordinary hash-consed formulas, not Sole's
 # leftmost wrapper types. These helpers are useful for formulas after parsing.
-function _flatten(formula::Aletheia.Formula, connective)
-    if (formula isa _CompatBranch && token(formula).native isa connective) ||
-            (formula isa Aletheia.Branch && Aletheia.operator(formula) isa connective)
+@inline _native_connective(formula::_CompatBranch) = formula.connective
+@inline _native_connective(formula::Aletheia.Branch) = Aletheia.operator(formula)
+function _flatten!(out::Vector{Aletheia.Formula}, formula::Aletheia.Formula, connective)
+    if (formula isa _CompatBranch || formula isa Aletheia.Branch) &&
+            _native_connective(formula) isa connective
         child = children(formula)
-        return vcat(_flatten(child[1], connective), _flatten(child[2], connective))
+        _flatten!(out, child[1], connective)
+        _flatten!(out, child[2], connective)
+    else
+        push!(out, formula)
     end
-    [formula]
+    out
+end
+function _flatten(formula::Aletheia.Formula, connective)
+    _flatten!(Aletheia.Formula[], formula, connective)
 end
 conjuncts(formula::Aletheia.Formula) = _flatten(formula, Aletheia.Conjunction)
 disjuncts(formula::Aletheia.Formula) = _flatten(formula, Aletheia.Disjunction)
