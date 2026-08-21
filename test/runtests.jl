@@ -4,6 +4,13 @@ using Aqua
 using JET
 using Aletheia
 
+@testset "compatibility remains opt-in" begin
+    @test !hasmethod(Aletheia.Atom, Tuple{Any})
+    @test !applicable(Aletheia.Atom, :p)
+    @test !hasmethod(Aletheia.Branch, Tuple{Any,Tuple})
+    @test !applicable(Aletheia.Branch, Aletheia.:∧, ())
+end
+
 struct TestXor end
 Aletheia.arity(::TestXor) = 2
 Aletheia.precedence(::TestXor) = 15
