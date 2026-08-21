@@ -1,6 +1,5 @@
 include(joinpath(@__DIR__, "common.jl"))
-function main()
-    mode, kind, side, argument = ARGS
+function run_case(mode, kind, side, argument)
     parts = split(argument, ':')
 
 function execute(f)
@@ -80,9 +79,9 @@ elseif kind == "interval_check"
 elseif kind == "many_check"
     algebra_name, depth_text = parts; depth = parse(Int, depth_text); f, data, alg = mv_setup(side, algebra_name, depth)
     if side == "incumbent"
-        execute(() -> SoleLogics.interpret(f, data, alg))
+        execute(() -> SoleLogics.check(f, data, alg))
     else
-        execute(() -> Aletheia.check(f, data, 1))
+        execute(() -> Aletheia.check(f, data, 1) == Aletheia.top(alg))
     end
 elseif kind == "ilp_score"
     model_count, hypothesis_count = parse.(Int, parts)
@@ -97,7 +96,10 @@ elseif kind == "ilp_score"
         hs = Aletheia.Formula[]; p = modal_pool_a(); append!(hs, [build_a(modal_formula(1 + mod(i, 4)), p) for i in 1:hypothesis_count])
         examples = Aletheia.InterpretationExample[]
         for i in 1:model_count
-            n = 4 + mod(i, 4); m = a_boolean_model(n, edge_data(n, 0.35, SEED + i)); push!(examples, Aletheia.interpretation_example(m; positive=isodd(i)))
+            n = 4 + mod(i, 4); m = a_boolean_model(n, edge_data(n, 0.35, SEED + i));
+            # This is the ILP learning-from-interpretations constructor; the
+            # score loop below is the learner's eval/check hot path.
+            push!(examples, Aletheia.learning_from_interpretations(m; positive=isodd(i)))
         end
         execute(() -> score_a(hs, examples))
     end
@@ -120,5 +122,18 @@ else
     error("unknown warm-up case: $kind")
 end
 
+end
+
+function main()
+    if first(ARGS) == "section"
+        side = ARGS[2]
+        for item in split(ARGS[3], ';')
+            kind, argument = split(item, '='; limit=2)
+            run_case("benchmark", kind, side, argument)
+        end
+    else
+        mode, kind, side, argument = ARGS
+        run_case(mode, kind, side, argument)
+    end
 end
 main()

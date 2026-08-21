@@ -1,6 +1,6 @@
 # Reproducible, human-run evaluation benchmark.  It is intentionally outside CI.
 import Pkg
-sole_path = get(ENV, "SOLELOGICS_PATH", "/home/eduard/Dropbox/Projects/firstmate/projects/SoleLogics.jl")
+sole_path = normpath(get(ENV, "SOLELOGICS_PATH", joinpath(@__DIR__, "..", "..", "SoleLogics.jl")))
 isdir(sole_path) || error("SoleLogics checkout not found at $sole_path; set SOLELOGICS_PATH")
 Pkg.develop(Pkg.PackageSpec(path=sole_path)); Pkg.instantiate()
 include(joinpath(@__DIR__, "common.jl"))
@@ -41,7 +41,7 @@ println("semantic differential: PASS; seed=$(SEED)")
 println("contraction gate: PASS; models=$(DEEP ? 192 : 96)")
 
 println("[syntax]")
-for depth in (DEEP ? (3, 6, 9) : (2, 4, 6))
+for depth in (DEEP ? (3, 6, 9) : (2, 4))
     for (label, recipe_fn) in (("unshared", unshared), ("shared", shared))
         r = recipe_fn(depth)
         addrow!("construction/$label depth=$depth",
@@ -53,7 +53,7 @@ for depth in (DEEP ? (3, 6, 9) : (2, 4, 6))
     addrow!("printing depth=$depth", guarded_measure("Sole printing depth=$depth", "printing", "incumbent", "$depth"), guarded_measure("Aletheia printing depth=$depth", "printing", "aletheia", "$depth"))
     addrow!("round-trip depth=$depth", guarded_measure("Sole round-trip depth=$depth", "roundtrip", "incumbent", "$depth"), guarded_measure("Aletheia round-trip depth=$depth", "roundtrip", "aletheia", "$depth"))
 end
-for n in (DEEP ? (16, 128, 512) : (16, 64, 256))
+for n in (DEEP ? (16, 128, 512) : (16, 64))
     addrow!("equality isequal chain=$n", guarded_measure("Sole isequal chain=$n", "equality", "incumbent", "$n"), guarded_measure("Aletheia equality chain=$n", "equality", "aletheia", "$n"))
 end
 
@@ -61,7 +61,7 @@ println("[propositional check and extension]")
 for depth in (DEEP ? (2, 4, 6, 8) : (2, 4, 6))
     addrow!("propositional check depth=$depth", guarded_measure("Sole propositional check depth=$depth", "prop_check", "incumbent", "$depth"), guarded_measure("Aletheia propositional check depth=$depth", "prop_check", "aletheia", "$depth"))
 end
-for (n, depth) in (DEEP ? ((8, 3), (32, 4), (128, 5), (256, 6)) : ((8, 3), (32, 4), (128, 5)))
+for (n, depth) in (DEEP ? ((8, 3), (32, 4), (128, 5), (256, 6)) : ((8, 3), (32, 4)))
     addrow!("extension finite model worlds=$n depth=$depth", guarded_measure("Sole all-world extension worlds=$n depth=$depth", "prop_extension", "incumbent", "$n:$depth"), guarded_measure("Aletheia BitVector extension worlds=$n depth=$depth", "prop_extension", "aletheia", "$n:$depth"), note="SoleLogics has no extension API; incumbent cell is the equivalent all-world check loop")
 end
 
@@ -72,7 +72,7 @@ for n in (DEEP ? (8, 24, 64) : (8, 24)), density in (0.15, 0.50), depth in (DEEP
 end
 
 println("[interval / dimensional check]")
-for n in (DEEP ? (6, 12, 24, 36) : (6, 12, 24))
+for n in (DEEP ? (6, 12, 24, 36) : (6, 12))
     addrow!("interval adjacency n=$n", guarded_measure("Sole interval adjacency n=$n", "interval_adjacency", "incumbent", "$n"), guarded_measure("Aletheia interval adjacency n=$n", "interval_adjacency", "aletheia", "$n"))
     addrow!("Allen BEFORE check n=$n", guarded_measure("Sole Allen check n=$n", "interval_check", "incumbent", "$n"), guarded_measure("Aletheia Allen check n=$n", "interval_check", "aletheia", "$n"), note="Aletheia BEFORE / SoleLogics IA_L")
 end

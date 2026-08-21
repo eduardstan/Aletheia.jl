@@ -1,7 +1,7 @@
 # Deterministic differential correctness suite.  It is deliberately housed in
 # benchmark/ rather than test/ so Aletheia does not depend on SoleLogics.
 import Pkg
-sole_path = get(ENV, "SOLELOGICS_PATH", "../SoleLogics.jl")
+sole_path = normpath(get(ENV, "SOLELOGICS_PATH", joinpath(@__DIR__, "..", "..", "SoleLogics.jl")))
 isdir(sole_path) || error("SoleLogics checkout not found at $sole_path; set SOLELOGICS_PATH")
 Pkg.develop(Pkg.PackageSpec(path=sole_path))
 Pkg.instantiate()

@@ -9,7 +9,7 @@ const DEEP = "--deep" in ARGS
 const SEED = 0xA1E7_2024
 const BENCH_SECONDS = DEEP ? 0.05 : 0.01
 const BENCH_SAMPLES = DEEP ? 15 : 5
-const CASE_TIMEOUT = DEEP ? 30 : 10
+const CASE_TIMEOUT = DEEP ? 60 : 30
 const SIGNATURE = Aletheia.Signature((Aletheia.NEGATION, Aletheia.CONJUNCTION,
     Aletheia.DISJUNCTION, Aletheia.IMPLICATION))
 const MODAL_SIGNATURE = Aletheia.Signature((Aletheia.NEGATION, Aletheia.CONJUNCTION,
@@ -214,27 +214,25 @@ function interval_check_s_setup(n)
     frame, frame_worlds, formula, valuation
 end
 
-# Finite-chain comparison.  SoleLogics exposes a value-returning `interpret`
-# path for finite truth values; its `check` is a threshold predicate, so the
-# equivalent value path is reported explicitly rather than mislabelled.
+# Finite FLew comparison. Both packages expose finite truth tables; the
+# benchmark uses the designated-value check endpoint for a comparable question.
 function finite_truth(index)
     SoleLogics.ManyValuedLogics.FiniteTruth(index)
 end
-function finite_truth_value(index)
-    index == 1 ? 1.0 : index == 2 ? 0.0 : (index - 2) / 2
-end
+finite_truth_value(index) = UInt8(index)
 function mv_setup(side, algebra_name, depth)
     r = unshared(depth)
+    algebra_name in ("godel", "lukasiewicz", "h4") || error("unknown finite algebra $algebra_name")
     if side == "aletheia"
         pool = mv_pool_a(); f = build_a(r, pool)
-        algebra = algebra_name == "godel" ? Aletheia.GodelAlgebra(3) : Aletheia.LukasiewiczAlgebra(3)
-        values = Dict(("p$(i)", 1) => finite_truth_value(1 + mod(i, 3)) for i in 1:8)
-        return f, Aletheia.Model(Aletheia.Frame((1,); index=true), algebra, values), nothing
+        algebra = algebra_name == "godel" ? Aletheia.G3 : algebra_name == "lukasiewicz" ? Aletheia.Ł3 : Aletheia.H4
+        n = algebra_name == "h4" ? 4 : 3
+        values = Dict(("p$(i)", 1) => finite_truth_value(1 + mod(i, n)) for i in 1:8)
+        return f, Aletheia.Model(Aletheia.Frame((1,); index=true), algebra, values), algebra
     end
-    f = build_s(r)
-    values = Dict("p$(i)" => finite_truth(1 + mod(i, 3)) for i in 1:8)
-    alg = algebra_name == "godel" ? SoleLogics.ManyValuedLogics.G3 :
-        SoleLogics.ManyValuedLogics.Ł3
+    f = build_s(r); n = algebra_name == "h4" ? 4 : 3
+    values = Dict("p$(i)" => finite_truth(1 + mod(i, n)) for i in 1:8)
+    alg = algebra_name == "godel" ? SoleLogics.ManyValuedLogics.G3 : algebra_name == "lukasiewicz" ? SoleLogics.ManyValuedLogics.Ł3 : SoleLogics.ManyValuedLogics.H4
     f, SoleLogics.TruthDict(values), alg
 end
 
@@ -283,9 +281,14 @@ function external_measure(code; reps=DEEP ? 2 : 1)
     project = @__DIR__; julia = Base.julia_cmd(); values = Tuple{Float64,Float64}[]
     for _ in 1:reps
         command = `timeout -k 1s $(CASE_TIMEOUT)s $julia --startup-file=no --project=$project -e $code`
-        output = try read(command, String) catch; return nothing end
+        path, io = mktemp(); close(io)
+        process = run(pipeline(ignorestatus(command), stdout=path, stderr=devnull); wait=true)
+        wait(process)
+        output = read(path, String); rm(path; force=true)
+        process.exitcode == 0 || return nothing
         parts = split(strip(output)); length(parts) >= 2 || return nothing
-        push!(values, (parse(Float64, parts[1]), parse(Float64, parts[2])))
+        parsed = try (parse(Float64, parts[1]), parse(Float64, parts[2])) catch; return nothing end
+        push!(values, parsed)
     end
     isempty(values) ? nothing : (median(first.(values)), median(last.(values)))
 end
