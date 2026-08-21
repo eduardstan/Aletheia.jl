@@ -57,3 +57,24 @@ both cold first-check and warm repeated-check medians.  The report is
 `data/al-dataset-protocol/report.md`.  Both scripts' child-process sections use
 GNU `timeout`, temporary files, medians, and allocation counts; no benchmark
 output is piped.
+
+## SoleModels consumer stage 2a
+
+This experiment is the narrow consumer trial: it compares the installed
+`SoleModels.checkantecedent(rule, X)` path with a disposable copy whose
+`checkantecedent` builds an Aletheia model family and evaluates the antecedent
+through `extension`.  The source package and installed checkout are never
+modified.  Set both checkout paths and run from the Aletheia root:
+
+```sh
+SOLEDATA_PATH=/path/to/SoleData \
+SOLEMODELS_PATH=/path/to/SoleModels \
+julia --startup-file=no --project=. benchmark/dataset_consumer.jl
+```
+
+The script creates baseline and routed SoleModels copies under a temporary
+subdirectory of this checkout, runs a seeded mask gate first, then starts one
+warmed child per side under GNU `timeout`.  Child output and timeout handling
+use files, not pipes; the raw sweep is written to
+`data/al-dataset-consumer/run.txt`.  The temporary copies and environments are
+removed on exit.  No SoleData dependency is added to Aletheia itself.

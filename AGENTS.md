@@ -41,3 +41,4 @@ When updating this file, preserve this bar for all agents and keep entries conci
 - Clauses, θ-subsumption, lazy refinement operators, and learning-setting example wrappers live in `src/ilp.jl`; the reference terminology and properties are documented in `docs/src/index.md` with `muggleton1994`. `test/ilp.jl` covers the recursive implication counterexample and quasi-order boundaries.
 
 - Stage-1 SoleData dataset protocol is benchmark-only: `benchmark/dataset_protocol.jl` uses a temporary environment and read-only SoleData; results and the post-rebase decision evidence live in `data/al-dataset-protocol/report.md` and `run.txt`.
+- Stage-2a SoleModels consumer routing remains benchmark-only: `benchmark/dataset_consumer.jl` builds disposable package copies; agreement and noisy end-to-end evidence live in `data/al-dataset-consumer/report.md` and `run.txt`.
