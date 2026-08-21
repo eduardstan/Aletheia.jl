@@ -205,6 +205,9 @@ function relation_successors(::LesserRelation, source, worlds)
     position = findfirst(value -> isequal(value, source), worlds)
     position === nothing ? () : Iterators.take(worlds, position - 1)
 end
+function relation_successors(relation::Point2DRelation, source, worlds)
+    (target for target in worlds if relation_holds(relation, source, target))
+end
 
 # RCC8 of rectangles is determined by the two axis projections. A DC axis
 # separates interiors, an EC axis gives boundary-only contact, and the
@@ -333,13 +336,24 @@ function rectangle_frame(x, y=x; index=true)
     Frame(ws, relation_map; index=index)
 end
 
-"""Build a point frame over a finite linear-order domain."""
-function point_frame(domain; index=true)
-    values = domain isa Integer ? collect(1:Int(domain)) : collect(domain)
-    isempty(values) && throw(ArgumentError("a point domain must be non-empty"))
-    issorted(values) && length(unique(values)) == length(values) ||
-        throw(ArgumentError("point values must be strictly increasing"))
-    ws = tuple(values...)
+"""Build a point frame over a finite linear-order domain (1D) or grid domain (2D)."""
+function point_frame(domain, ydomain=nothing; index=true)
+    if ydomain === nothing
+        values = domain isa Integer ? collect(1:Int(domain)) : collect(domain)
+        isempty(values) && throw(ArgumentError("a point domain must be non-empty"))
+        issorted(values) && length(unique(values)) == length(values) ||
+            throw(ArgumentError("point values must be strictly increasing"))
+        ws = tuple(values...)
+    else
+        xvalues = domain isa Integer ? collect(1:Int(domain)) : collect(domain)
+        yvalues = ydomain isa Integer ? collect(1:Int(ydomain)) : collect(ydomain)
+        (isempty(xvalues) || isempty(yvalues)) && throw(ArgumentError("a point domain must be non-empty"))
+        (issorted(xvalues) && length(unique(xvalues)) == length(xvalues)) ||
+            throw(ArgumentError("point values must be strictly increasing"))
+        (issorted(yvalues) && length(unique(yvalues)) == length(yvalues)) ||
+            throw(ArgumentError("point values must be strictly increasing"))
+        ws = tuple((Point(x, y) for x in xvalues for y in yvalues)...)
+    end
     relation_map = (source, relation) -> begin
         targets = relation_successors(relation, source, ws)
         targets === nothing &&
@@ -364,6 +378,9 @@ function FullDimensionalFrame(channelsize::Tuple, world_type=nothing; index=true
         return interval_frame(channelsize[1]; index=index)
     end
     world_type === nothing && (world_type = Rectangle)
+    if world_type === Point || world_type <: Point
+        return point_frame(channelsize[1], channelsize[2]; index=index)
+    end
     world_type === Rectangle || world_type === Interval2D || world_type <: Rectangle ||
         throw(ArgumentError("two-dimensional worlds must be Rectangle"))
     rectangle_frame(channelsize[1], channelsize[2]; index=index)
@@ -373,4 +390,5 @@ FullDimensionalFrame(n::Integer, m::Integer; kwargs...) = FullDimensionalFrame((
 Full1DFrame(n::Integer; kwargs...) = interval_frame(n; kwargs...)
 Full2DFrame(n::Integer, m::Integer; kwargs...) = rectangle_frame(n, m; kwargs...)
 Full1DPointFrame(n::Integer; kwargs...) = point_frame(n; kwargs...)
-Full2DPointFrame(n::Integer, m::Integer; kwargs...) = throw(ArgumentError("two-dimensional point frames are not part of the dimensional interval API"))
+Full2DPointFrame(n::Integer, m::Integer; kwargs...) = point_frame(n, m; kwargs...)
+
