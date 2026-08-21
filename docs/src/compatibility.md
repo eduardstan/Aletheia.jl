@@ -180,6 +180,17 @@ about native Aletheia algorithms or the many-valued/modal consumers. The
 benchmark runner and consumer checkouts remain scratch-only; no generated
 benchmark data is part of the package.
 
+The allocation profile identified the former adapter path rather than parser
+work: before the change, `Profile.Allocs.@profile` attributed 5,120 bytes to
+`children` and 3,360 bytes to its iterator over ten searches, with repeated
+wrapper construction in `Branch`/`_compat_branch`; after caching the child
+view and formula lists, the same profile attributed zero bytes to `children`
+and 4,240 bytes to iteration, while total sampled bytes fell from 50,480 to
+47,040. The type-stable connective-token fast paths then removed the remaining
+hot dynamic payload dispatch. This is evidence for wrapper materialisation and
+adapter dispatch as the measured cause, not an assumption about Aletheia's
+native DAG core.
+
 ## Evidence
 
 A scratch copy of `SolePostHoc/src/shared_utils.jl` was loaded in a small module

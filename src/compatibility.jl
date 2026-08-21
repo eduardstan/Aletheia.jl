@@ -309,6 +309,7 @@ end
     Aletheia.arity(connective) == 1 || return _compat_branch(connective, (child,))
     pool = child.pool
     _hasconnective(Aletheia.signature(pool), connective) || return _compat_branch(connective, (child,))
+    connective isa Aletheia.Negation && return _compat_negation(pool, child.id)
     _wrap_id(pool, Aletheia._intern!(pool, 0x02, connective, (child.id,)))
 end
 @inline function _compat_branch(connective, left::F, right::G) where {F<:_CompatFormula,G<:_CompatFormula}
