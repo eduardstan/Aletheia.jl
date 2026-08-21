@@ -6,6 +6,8 @@ similarity types, hash-consed immutable formulas, extensible connective traits,
 round-trippable parsing/printing, truth algebras, relational frames, models,
 and atom interpretation; compound-formula evaluation is available through `check` and `extension`.
 
+**[Read the documentation](https://eduardstan.github.io/Aletheia.jl/)**
+
 ## Start here
 
 From a terminal, clone the repository and run the first result:

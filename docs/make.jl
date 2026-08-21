@@ -18,6 +18,7 @@ makedocs(
         "Quick start" => "quickstart.md",
         "Syntax and design" => "design.md",
         "Semantics and evaluation" => "semantics.md",
+        "Finite FLew-algebras" => "algebras.md",
         "Relations and frame classes" => "relations.md",
         "Theory" => "theory.md",
         "Learning from interpretations" => "learning.md",
@@ -26,4 +27,9 @@ makedocs(
         "Migration" => "compatibility.md",
     ],
     plugins = [bibliography],
+)
+
+deploydocs(
+    repo = "github.com/eduardstan/Aletheia.jl.git",
+    devbranch = "main",
 )
