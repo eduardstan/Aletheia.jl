@@ -59,7 +59,11 @@ composition is intentionally left for a later stage.
 `interval_frame(n)` generates all intervals over `n` cells and
 `rectangle_frame(nx, ny)` generates all axis-aligned rectangles. Their worlds
 are immutable values, and both are ordinary [`Frame`](@ref) instances, so the
-existing adjacency cache and evaluator are used unchanged:
+existing adjacency cache and evaluator are used unchanged. Generated frames use
+the optional `relation_successors(relation, source, worlds)` protocol when a
+family can enumerate successors arithmetically; it returns `nothing` by default,
+so an external family only needs `relation_holds` and automatically uses the
+generic filtering fallback:
 
 ```julia
 sig = Signature((Diamond(BEFORE), Box(BEFORE)))

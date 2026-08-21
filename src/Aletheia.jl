@@ -26,7 +26,7 @@ export NEGATION, CONJUNCTION, DISJUNCTION, IMPLICATION
 export NOT, AND, OR, IMPLIES, ¬, ∧, ∨, →
 export TruthAlgebra, BooleanAlgebra, GodelAlgebra, LukasiewiczAlgebra
 export RelationFamily, IntervalRelation, PointRelation, RCCRelation, RectangleRelation
-export relation_holds, inverse, converse, rectangle_relation
+export relation_holds, relation_successors, inverse, converse, rectangle_relation
 export Interval, Rectangle, Interval2D, Point, interval_frame, rectangle_frame, point_frame
 export FullDimensionalFrame, Full1DFrame, Full2DFrame, Full1DPointFrame, Full2DPointFrame
 export BEFORE, MEETS, OVERLAPS, STARTS, DURING, FINISHES, EQUALS

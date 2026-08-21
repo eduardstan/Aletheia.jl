@@ -81,38 +81,99 @@ function _rectangle_worlds(xboundaries, yboundaries)
         for k in eachindex(yboundaries) for l in (k + 1):length(yboundaries))...)
 end
 
+_world_values(worlds) = worlds isa AbstractVector ? worlds : collect(worlds)
+
+function _interval_boundaries(worlds)
+    first_world = first(worlds)
+    values = [first_world.x, first_world.y]
+    for world in Iterators.drop(worlds, 1)
+        push!(values, world.x, world.y)
+    end
+    sort!(unique(values))
+end
+function _interval_world_index(left, right, n)
+    (left - 1) * (2n - left) ÷ 2 + right - left
+end
+function _interval_value(boundaries, worlds, left, right, n)
+    worlds === nothing ? Interval(boundaries[left], boundaries[right]) :
+        worlds[_interval_world_index(left, right, n)]
+end
+function _interval_candidates(boundaries, krange, lfirst, llast, worlds=nothing)
+    isempty(krange) && return ()
+    n = length(boundaries)
+    Iterators.flatten((
+        (_interval_value(boundaries, worlds, k, l, n) for l in lfirst(k):llast(k))
+        for k in krange if lfirst(k) <= llast(k)))
+end
+function _interval_relation_successors(relation, source::Interval, boundaries, worlds=nothing)
+    left = findfirst(value -> isequal(value, source.x), boundaries)
+    right = findfirst(value -> isequal(value, source.y), boundaries)
+    (left === nothing || right === nothing) && return nothing
+    n = length(boundaries)
+    if relation === BEFORE
+        return _interval_candidates(boundaries, (right + 1):(n - 1), k -> k + 1, _ -> n, worlds)
+    elseif relation === MEETS
+        return (_interval_value(boundaries, worlds, right, l, n) for l in (right + 1):n)
+    elseif relation === OVERLAPS
+        return _interval_candidates(boundaries, (left + 1):(right - 1), _ -> right + 1, _ -> n, worlds)
+    elseif relation === STARTS
+        return (_interval_value(boundaries, worlds, left, l, n) for l in (right + 1):n)
+    elseif relation === DURING
+        return _interval_candidates(boundaries, 1:(left - 1), _ -> right + 1, _ -> n, worlds)
+    elseif relation === FINISHES
+        return (_interval_value(boundaries, worlds, k, right, n) for k in 1:(left - 1))
+    elseif relation === EQUALS
+        return (source,)
+    elseif relation === AFTER
+        return _interval_candidates(boundaries, 1:(left - 2), k -> k + 1, _ -> left - 1, worlds)
+    elseif relation === MET_BY
+        return (_interval_value(boundaries, worlds, k, left, n) for k in 1:(left - 1))
+    elseif relation === OVERLAPPED_BY
+        return _interval_candidates(boundaries, 1:(left - 1), k -> left + 1, _ -> right - 1, worlds)
+    elseif relation === STARTED_BY
+        return (_interval_value(boundaries, worlds, left, l, n) for l in (left + 1):(right - 1))
+    elseif relation === CONTAINS
+        return _interval_candidates(boundaries, (left + 1):(right - 2), k -> k + 1, _ -> right - 1, worlds)
+    elseif relation === FINISHED_BY
+        return (_interval_value(boundaries, worlds, k, right, n) for k in (left + 1):(right - 1))
+    end
+    nothing
+end
+function relation_successors(relation::IntervalRelation, source::Interval, worlds)
+    world_values = _world_values(worlds)
+    _interval_relation_successors(relation, source, _interval_boundaries(world_values), world_values)
+end
+
 # Bounded-domain point dispatch. A user-defined relation uses the public
 # relation_holds method directly and is therefore independent of this file.
-function _point_relation_holds(relation::MinimumRelation, source, target, worlds)
-    isequal(target, first(worlds))
-end
-function _point_relation_holds(relation::MaximumRelation, source, target, worlds)
-    isequal(target, last(worlds))
-end
-function _point_relation_holds(::SuccessorRelation, source, target, worlds)
-    position = findfirst(value -> isequal(value, source), worlds)
-    position !== nothing && position < length(worlds) && isequal(worlds[position + 1], target)
-end
-function _point_relation_holds(::PredecessorRelation, source, target, worlds)
-    position = findfirst(value -> isequal(value, source), worlds)
-    position !== nothing && position > 1 && isequal(worlds[position - 1], target)
-end
-function _point_relation_holds(::GreaterRelation, source, target, worlds)
-    source_position = findfirst(value -> isequal(value, source), worlds)
-    target_position = findfirst(value -> isequal(value, target), worlds)
-    source_position !== nothing && target_position !== nothing && target_position > source_position
-end
-function _point_relation_holds(::LesserRelation, source, target, worlds)
-    source_position = findfirst(value -> isequal(value, source), worlds)
-    target_position = findfirst(value -> isequal(value, target), worlds)
-    source_position !== nothing && target_position !== nothing && target_position < source_position
-end
 function _point_relation_holds(relation::PointRelation, source, target, worlds)
     relation_holds(relation, source, target)
 end
 function _dimensional_relation_holds(relation, source, target, worlds)
     relation isa PointRelation ? _point_relation_holds(relation, source, target, worlds) :
         relation_holds(relation, source, target)
+end
+
+# Optional arithmetic successor paths for generated point frames. A family that
+# does not define relation_successors falls through to the generic predicate.
+relation_successors(::IdentityRelation, source, worlds) = (source,)
+relation_successors(::MinimumRelation, source, worlds) = (first(worlds),)
+relation_successors(::MaximumRelation, source, worlds) = (last(worlds),)
+function relation_successors(::SuccessorRelation, source, worlds)
+    position = findfirst(value -> isequal(value, source), worlds)
+    position === nothing || position == length(worlds) ? () : (worlds[position + 1],)
+end
+function relation_successors(::PredecessorRelation, source, worlds)
+    position = findfirst(value -> isequal(value, source), worlds)
+    position === nothing || position == 1 ? () : (worlds[position - 1],)
+end
+function relation_successors(::GreaterRelation, source, worlds)
+    position = findfirst(value -> isequal(value, source), worlds)
+    position === nothing ? () : Iterators.drop(worlds, position)
+end
+function relation_successors(::LesserRelation, source, worlds)
+    position = findfirst(value -> isequal(value, source), worlds)
+    position === nothing ? () : Iterators.take(worlds, position - 1)
 end
 
 # RCC8 of rectangles is determined by the two axis projections. A DC axis
@@ -149,12 +210,77 @@ function relation_holds(::PartiallyOverlappingRelation, a::Rectangle, b::Rectang
         !_rectangle_contains(a, b) && !_rectangle_contains(b, a) && !isequal(a, b)
 end
 
+@inline _interval_disconnected(a::Interval, b::Interval) = a.y < b.x || b.y < a.x
+@inline _interval_touching(a::Interval, b::Interval) = a.y == b.x || b.y == a.x
+@inline _rectangle_contains_axes(ax, ay, bx, by) =
+    ax.x <= bx.x && bx.y <= ax.y && ay.x <= by.x && by.y <= ay.y
+@inline _rectangle_equal_axes(ax, ay, bx, by) = ax.x == bx.x && ax.y == bx.y &&
+    ay.x == by.x && ay.y == by.y
+function _rectangle_rcc_holds(relation::RCCRelation, ax, ay, bx, by)
+    disconnected = _interval_disconnected(ax, bx) || _interval_disconnected(ay, by)
+    equal = _rectangle_equal_axes(ax, ay, bx, by)
+    acontainsb = _rectangle_contains_axes(ax, ay, bx, by)
+    bcontainsa = _rectangle_contains_axes(bx, by, ax, ay)
+    apropersubsetb = bcontainsa && !equal
+    bpropersubseta = acontainsb && !equal
+    externally_connected = !disconnected && (_interval_touching(ax, bx) || _interval_touching(ay, by)) &&
+        !acontainsb && !bcontainsa
+    relation === DC ? disconnected :
+    relation === EC ? externally_connected :
+    relation === RCC_EQ ? equal :
+    relation === TPP ? apropersubsetb &&
+        (ax.x == bx.x || ax.y == bx.y || ay.x == by.x || ay.y == by.y) :
+    relation === TPPi ? bpropersubseta &&
+        (bx.x == ax.x || bx.y == ax.y || by.x == ay.x || by.y == ay.y) :
+    relation === NTPP ? apropersubsetb && ax.x > bx.x && ax.y < bx.y &&
+        ay.x > by.x && ay.y < by.y :
+    relation === NTPPi ? bpropersubseta && bx.x > ax.x && bx.y < ax.y &&
+        by.x > ay.x && by.y < ay.y :
+    relation === PO ? !disconnected && !externally_connected &&
+        !acontainsb && !bcontainsa && !equal : false
+end
+function _rectangle_rcc_successors(relation::RCCRelation, source, xworlds, yworlds)
+    Iterators.flatten(((Rectangle(x, y) for y in yworlds
+        if _rectangle_rcc_holds(relation, source.x, source.y, x, y)) for x in xworlds))
+end
+function relation_successors(relation::RCCRelation, source::Rectangle, worlds)
+    world_values = _world_values(worlds)
+    xvalues = tuple((world.x for world in world_values)...)
+    yvalues = tuple((world.y for world in world_values)...)
+    xb, yb = _interval_boundaries(xvalues), _interval_boundaries(yvalues)
+    _rectangle_rcc_successors(relation, source, collect(_interval_worlds(xb)),
+        collect(_interval_worlds(yb)))
+end
+
+function _rectangle_relation_successors(relation::RectangleRelation, source, xb, yb, xworlds, yworlds)
+    xsuccessors = _interval_relation_successors(relation.x, source.x, xb, xworlds)
+    xsuccessors === nothing && (xsuccessors = relation_successors(relation.x, source.x, xworlds))
+    ysuccessors = _interval_relation_successors(relation.y, source.y, yb, yworlds)
+    ysuccessors === nothing && (ysuccessors = relation_successors(relation.y, source.y, yworlds))
+    (xsuccessors === nothing || ysuccessors === nothing) && return nothing
+    Iterators.flatten(((Rectangle(x, y) for y in ysuccessors) for x in xsuccessors))
+end
+function relation_successors(relation::RectangleRelation, source::Rectangle, worlds)
+    world_values = _world_values(worlds)
+    xvalues = tuple((world.x for world in world_values)...)
+    yvalues = tuple((world.y for world in world_values)...)
+    xb, yb = _interval_boundaries(xvalues), _interval_boundaries(yvalues)
+    _rectangle_relation_successors(relation, source, xb, yb, collect(_interval_worlds(xb)),
+        collect(_interval_worlds(yb)))
+end
+
 """Build a one-dimensional interval frame over `domain`."""
 function interval_frame(domain; index=true)
     boundaries = _boundaries(domain)
     ws = _interval_worlds(boundaries)
-    relation_map = (source, relation) ->
-        (target for target in ws if _dimensional_relation_holds(relation, source, target, ws))
+    world_values = collect(ws)
+    relation_map = (source, relation) -> begin
+        targets = _interval_relation_successors(relation, source, boundaries, world_values)
+        targets === nothing && (targets = relation_successors(relation, source, ws))
+        targets === nothing &&
+            (targets = (target for target in ws if _dimensional_relation_holds(relation, source, target, ws)))
+        targets
+    end
     Frame(ws, relation_map; index=index)
 end
 
@@ -162,8 +288,16 @@ end
 function rectangle_frame(x, y=x; index=true)
     xb, yb = _boundaries(x), _boundaries(y)
     ws = _rectangle_worlds(xb, yb)
-    relation_map = (source, relation) ->
-        (target for target in ws if _dimensional_relation_holds(relation, source, target, ws))
+    xworlds, yworlds = collect(_interval_worlds(xb)), collect(_interval_worlds(yb))
+    relation_map = (source, relation) -> begin
+        targets = relation isa RectangleRelation ?
+            _rectangle_relation_successors(relation, source, xb, yb, xworlds, yworlds) :
+            relation isa RCCRelation ? _rectangle_rcc_successors(relation, source, xworlds, yworlds) : nothing
+        targets === nothing && (targets = relation_successors(relation, source, ws))
+        targets === nothing &&
+            (targets = (target for target in ws if _dimensional_relation_holds(relation, source, target, ws)))
+        targets
+    end
     Frame(ws, relation_map; index=index)
 end
 
@@ -174,8 +308,12 @@ function point_frame(domain; index=true)
     issorted(values) && length(unique(values)) == length(values) ||
         throw(ArgumentError("point values must be strictly increasing"))
     ws = tuple(values...)
-    relation_map = (source, relation) ->
-        (target for target in ws if _dimensional_relation_holds(relation, source, target, ws))
+    relation_map = (source, relation) -> begin
+        targets = relation_successors(relation, source, ws)
+        targets === nothing &&
+            (targets = (target for target in ws if _dimensional_relation_holds(relation, source, target, ws)))
+        targets
+    end
     Frame(ws, relation_map; index=index)
 end
 
