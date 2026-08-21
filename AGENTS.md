@@ -29,3 +29,7 @@ When updating this file, preserve this bar for all agents and keep entries conci
 
 - Theory APIs live in `src/firstorder.jl`, `src/bisimulation.jl`, `src/normalforms.jl`, and `src/prover.jl`; `test/theory.jl` covers their Boolean/classical boundaries. The first-order bridge and normal forms deliberately do not implement a prover or many-valued classical equivalence.
 - The human benchmark's theory row is in `benchmark/run.jl`; its output records whether quotient construction amortizes, rather than assuming contraction wins.
+
+## Migration layer
+
+- `src/compatibility.jl` defines the nested opt-in `Aletheia.SoleLogics` vocabulary; the derived consumer inventory, mappings, deliberate gaps, and scratch-slice evidence live in `docs/src/compatibility.md`.

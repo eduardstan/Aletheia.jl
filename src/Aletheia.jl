@@ -19,6 +19,7 @@ include("firstorder.jl")
 include("normalforms.jl")
 include("bisimulation.jl")
 include("prover.jl")
+include("compatibility.jl")
 
 export Signature, Formula, FormulaPool, Atom, Branch, DAGNode
 export atom, branch, children, nchildren, value, operator, head, pool, id
