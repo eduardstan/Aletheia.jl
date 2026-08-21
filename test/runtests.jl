@@ -232,6 +232,7 @@ end
 
 include("semantics.jl")
 include("evaluation.jl")
+include("relations.jl")
 include("theory.jl")
 @testset "Aletheia" begin
     Aqua.test_all(Aletheia)

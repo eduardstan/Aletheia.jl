@@ -65,6 +65,51 @@ for n in (DEEP ? (8, 16, 24, 32, 64, 128) : (8, 16, 24, 32, 64))
         guarded_pair("Aletheia == chain=$n", "equality_eq", "aletheia", "$n"))
 end
 
+# Modal breadth now has one deterministic interval-temporal case. Both sides
+# go through the process-boundary timeout guard; the incumbent's structural
+# operations are never allowed to hang the benchmark process.
+println("[interval-temporal]")
+interval_n = DEEP ? 12 : 6
+interval_inc = guarded_measure("SoleLogics interval relation", "interval", "incumbent", string(interval_n),
+    () -> begin
+        sf = SoleLogics.FullDimensionalFrame((interval_n,), SoleLogics.Interval{Int})
+        sw = first(SoleLogics.allworlds(sf))
+        collect(SoleLogics.accessibles(sf, sw, SoleLogics.IA_L))
+    end)
+interval_ale = guarded_measure("Aletheia interval relation", "interval", "aletheia", string(interval_n),
+    () -> begin
+        af = Aletheia.interval_frame(interval_n)
+        aw = first(Aletheia.worlds(af))
+        collect(Aletheia.accessible(af, aw, Aletheia.BEFORE))
+    end)
+addrow!("interval-temporal / generated IA-before", interval_inc, interval_ale)
+
+# The single-query footnote above is followed by evaluator-relevant rows.
+# Adjacency rows isolate the one-time graph build; check rows create a fresh
+# model per evaluation so that model-local adjacency construction is included.
+interval_sizes = DEEP ? (8, 16, 32) : (6, 12, 24)
+for n in interval_sizes
+    af, aws, aformula, aval = interval_check_a_setup(n)
+    sf, sws, sformula, sval = interval_check_s_setup(n)
+    adjacency_inc = guarded_measure("SoleLogics full interval adjacency n=$n",
+        "interval_adjacency", "incumbent", string(n),
+        () -> interval_adjacency_s(sf, SoleLogics.IA_L, sws))
+    adjacency_ale = guarded_measure("Aletheia full interval adjacency n=$n",
+        "interval_adjacency", "aletheia", string(n),
+        () -> interval_adjacency_a(af, Aletheia.BEFORE, aws))
+    addrow!("interval-temporal / full adjacency n=$n", adjacency_inc, adjacency_ale)
+    check_inc = guarded_measure("SoleLogics end-to-end interval check n=$n",
+        "interval_check", "incumbent", string(n),
+        () -> SoleLogics.check(sformula, SoleLogics.KripkeStructure(sf, sval), first(sws)))
+    check_ale = guarded_measure("Aletheia end-to-end interval check n=$n",
+        "interval_check", "aletheia", string(n),
+        () -> Aletheia.check(aformula, Aletheia.Model(af, Aletheia.BOOLEAN, aval), first(aws)))
+    addrow!("interval-temporal / end-to-end check n=$n", check_inc, check_ale)
+end
+
+# Remaining semantic extensions are intentionally named, so future benchmark
+# reports do not silently imply coverage that has not landed yet.
+
 # Theory measurement: on a redundant dense frame, compare raw checking with
 # contraction plus checking (including quotient construction); it does not call
 # the incumbent.
@@ -90,9 +135,8 @@ addrow!("theory raw check / contraction + check", raw_theory, contracted_theory)
 # Deliberately empty extension points.  A row is printed rather than silently
 # omitted, so a report cannot imply that later semantic stages were measured.
 for suite in ("propositional checking (stage 2: semantics)",
-              "modal checking / random Kripke structures (stage 2)",
-              "interval-temporal checking / dimensional frames (stage 2)",
-              "many-valued checking (stage 2)")
+              "modal checking / random Kripke structures (later stage)",
+              "many-valued checking (later stage)")
     addrow!(suite, missing, missing)
 end
 
@@ -103,8 +147,9 @@ load_a = raw"""t0=time_ns(); using Aletheia; t1=time_ns(); s=Aletheia.Signature(
 load_s = raw"""t0=time_ns(); using SoleLogics; t1=time_ns(); SoleLogics.syntaxstring(SoleLogics.parseformula("p")); t2=time_ns(); println((t1-t0)/1e6, " ", (t2-t0)/1e6)"""
 la = external_measure(load_a)
 ls = external_measure(load_s)
-addrow!("cold package load", Measurement(ls[1] * 1e6, missing, missing), Measurement(la[1] * 1e6, missing, missing); allocations=false)
-addrow!("cold time-to-first-result", Measurement(ls[2] * 1e6, missing, missing), Measurement(la[2] * 1e6, missing, missing); allocations=false)
+cold_measure(x, i) = x === nothing ? missing : Measurement(x[i] * 1e6, missing, missing)
+addrow!("cold package load", cold_measure(ls, 1), cold_measure(la, 1); allocations=false)
+addrow!("cold time-to-first-result", cold_measure(ls, 2), cold_measure(la, 2); allocations=false)
 
 println()
 print_report()
