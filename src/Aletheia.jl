@@ -16,6 +16,7 @@ include("relations.jl")
 include("dimensional.jl")
 include("frameclasses.jl")
 include("evaluation.jl")
+include("dataset.jl")
 include("firstorder.jl")
 include("ilp.jl")
 include("normalforms.jl")
@@ -67,7 +68,9 @@ export product, tnorm, monoid, monoid_product, monoid_operation, residuum
 export precedeq, precedes, succeedeq, succeedes, maximalmembers, minimalmembers
 export Frame, worlds, relations, world_index, hasworldindex, world_position, accessible
 export check, extension
-export Valuation, Model, frame, algebra, valuation, interpret
+export Valuation, ValuationCallback, atom_values, Model, frame, algebra, valuation, interpret
+export AbstractModelFamily, ModelFamily, instance_count, eachinstance, instance_model
+export instance_frame, uniform_frame, isuniform
 
 export FirstOrderTerm, FirstOrderFormula, FOTerm, FOFormula
 export Variable, Constant, FunctionTerm, CompoundTerm, FOFunction, Predicate, Equality, FONegation, FOConjunction, FODisjunction, FOImplication

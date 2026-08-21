@@ -32,3 +32,28 @@ reported unsupported rather than assigned a ratio. The extension row compares
 Aletheia's BitVector extension with SoleLogics' equivalent all-world check loop,
 which is the same semantic question even though the incumbent has no named
 `extension` method.
+
+## SoleData dataset-protocol stage 1
+
+The real-dataset experiment is deliberately benchmark-only: it creates a
+temporary Julia environment, develops the local Aletheia checkout and the
+read-only SoleData checkout into that environment, and leaves the core
+`Project.toml` unchanged.
+
+```sh
+SOLEDATA_PATH=/path/to/SoleData julia --startup-file=no benchmark/dataset_protocol.jl
+```
+
+The command runs the agreement gate before timing, then writes the fixed-seed
+explicit sweep to `data/al-dataset-protocol/run.txt`.  To measure the real
+consumer path (default full plus one-step memosets), run:
+
+```sh
+SOLEDATA_PATH=/path/to/SoleData julia --startup-file=no benchmark/dataset_protocol_supported.jl
+```
+
+That follow-up writes `data/al-dataset-protocol/run-supported.txt` and reports
+both cold first-check and warm repeated-check medians.  The report is
+`data/al-dataset-protocol/report.md`.  Both scripts' child-process sections use
+GNU `timeout`, temporary files, medians, and allocation counts; no benchmark
+output is piped.

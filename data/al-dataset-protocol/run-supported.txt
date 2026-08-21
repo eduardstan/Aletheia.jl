@@ -1,0 +1,20 @@
+seed=3671728164
+agreement formulas=80 formula-instance-world cases=4860
+agreement=PASS
+cases=15
+case(points) | Supported cold first-check | Supported warm repeated-check | Aletheia batch | Aletheia scalar
+1:4:4:0.5:1 | 0.113 ms; 629 allocs / 30568 bytes | 0.027 ms; 332 allocs / 17672 bytes | 0.004 ms; 67 allocs / 7832 bytes | 0.004 ms; 77 allocs / 6192 bytes
+8:4:4:0.5:1 | 0.500 ms; 8168 allocs / 422736 bytes | 0.199 ms; 2774 allocs / 142464 bytes | 0.028 ms; 664 allocs / 103040 bytes | 0.023 ms; 824 allocs / 76800 bytes
+32:4:4:0.5:1 | 2.988 ms; 42616 allocs / 2104144 bytes | 0.888 ms; 11718 allocs / 598848 bytes | 0.163 ms; 3056 allocs / 571216 bytes | 0.126 ms; 4016 allocs / 413776 bytes
+8:3:4:0.5:1 | 0.528 ms; 4625 allocs / 246528 bytes | 0.157 ms; 1590 allocs / 97920 bytes | 0.017 ms; 520 allocs / 60864 bytes | 0.013 ms; 536 allocs / 35584 bytes
+8:5:4:0.5:1 | 1.781 ms; 13834 allocs / 764576 bytes | 0.726 ms; 4014 allocs / 192384 bytes | 0.046 ms; 856 allocs / 148160 bytes | 0.049 ms; 1336 allocs / 177920 bytes
+8:7:4:0.5:1 | 19.625 ms; 16827 allocs / 823808 bytes | 6.738 ms; 7670 allocs / 329088 bytes | 0.040 ms; 760 allocs / 113920 bytes | 0.058 ms; 1496 allocs / 306048 bytes
+8:6:2:0.5:1 | 15.264 ms; 17012 allocs / 716016 bytes | 5.282 ms; 5934 allocs / 264576 bytes | 0.063 ms; 696 allocs / 175872 bytes | 0.094 ms; 1720 allocs / 342528 bytes
+8:6:4:0.5:1 | 12.154 ms; 14282 allocs / 994480 bytes | 4.774 ms; 5430 allocs / 245760 bytes | 0.022 ms; 600 allocs / 67728 bytes | 0.025 ms; 856 allocs / 109392 bytes
+8:6:6:0.5:1 | 0.086 ms; 52 allocs / 38336 bytes | 0.107 ms; 48 allocs / 38208 bytes | 0.016 ms; 264 allocs / 48192 bytes | 0.019 ms; 520 allocs / 89856 bytes
+8:6:4:0.0:1 | 16.483 ms; 14302 allocs / 595504 bytes | 7.425 ms; 5934 allocs / 264576 bytes | 0.033 ms; 536 allocs / 97232 bytes | 0.046 ms; 1048 allocs / 180560 bytes
+8:6:4:0.5:1 | 16.977 ms; 14282 allocs / 994480 bytes | 5.272 ms; 5430 allocs / 245760 bytes | 0.023 ms; 600 allocs / 67728 bytes | 0.025 ms; 856 allocs / 109392 bytes
+8:6:4:1.0:1 | 19.453 ms; 14578 allocs / 1048368 bytes | 6.229 ms; 5430 allocs / 245760 bytes | 0.024 ms; 616 allocs / 68288 bytes | 0.029 ms; 872 allocs / 109952 bytes
+32:6:4:0.5:1 | 52.575 ms; 50884 allocs / 3322368 bytes | 23.660 ms; 21704 allocs / 981344 bytes | 0.098 ms; 2225 allocs / 264080 bytes | 0.125 ms; 3249 allocs / 430736 bytes
+16:8:6:0.5:1 | 0.030 ms; 101 allocs / 76560 bytes | 0.110 ms; 96 allocs / 76416 bytes | 0.044 ms; 513 allocs / 100112 bytes | 0.075 ms; 1505 allocs / 460176 bytes
+8:8:6:1.0:1 | 0.814 ms; 13761 allocs / 669112 bytes | 0.530 ms; 9270 allocs / 393600 bytes | 0.025 ms; 424 allocs / 65216 bytes | 0.062 ms; 920 allocs / 245248 bytes
