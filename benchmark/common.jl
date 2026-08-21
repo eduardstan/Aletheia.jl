@@ -145,7 +145,11 @@ function guarded_measure(label, kind, side, argument, f)
     flush(stdout)
     status, _ = warmup_case(kind, side, argument)
     status == 124 && return Measurement(missing, missing, missing, ">10s (not sampled)")
-    status != 0 && return Measurement(missing, missing, missing, "unavailable (guarded exit code $status)")
+    if status != 0
+        note = side == "incumbent" ? "guarded failure (exit code $status)" :
+            "unavailable (guarded exit code $status)"
+        return Measurement(missing, missing, missing, note)
+    end
     try
         measure(f)
     catch
@@ -157,8 +161,11 @@ function guarded_pair(label, kind, side, argument)
     flush(stdout)
     status, output = warmup_case(kind, side, argument)
     status == 124 && return Measurement(missing, missing, missing, ">10s first call (second unavailable)")
-    (status != 0 || isempty(strip(output))) &&
-        return Measurement(missing, missing, missing, "unavailable (guarded exit code $status)")
+    if status != 0 || isempty(strip(output))
+        note = status != 0 ? "guarded failure (exit code $status)" :
+            "unavailable (empty guarded output)"
+        return Measurement(missing, missing, missing, note)
+    end
     values = try
         parse.(Float64, split(strip(output)))
     catch

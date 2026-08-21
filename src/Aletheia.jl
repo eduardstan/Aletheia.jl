@@ -15,6 +15,10 @@ include("relations.jl")
 include("dimensional.jl")
 include("frameclasses.jl")
 include("evaluation.jl")
+include("firstorder.jl")
+include("normalforms.jl")
+include("bisimulation.jl")
+include("prover.jl")
 
 export Signature, Formula, FormulaPool, Atom, Branch, DAGNode
 export atom, branch, children, nchildren, value, operator, head, pool, id
@@ -53,5 +57,17 @@ export implication, negation, implies, negate, levels, isfinitechain
 export Frame, worlds, relations, world_index, hasworldindex, world_position, accessible
 export check, extension
 export Valuation, Model, frame, algebra, valuation, interpret
+
+export FirstOrderTerm, FirstOrderFormula, FOTerm, FOFormula
+export Variable, Constant, Predicate, Equality, FONegation, FOConjunction, FODisjunction, FOImplication
+export Exists, Forall, FOVariable, FOConstant, FOAtom, FOPredicate, FOEquality
+export FONot, FOAnd, FOOr, FOImplies, FOExists, FOForall
+export FirstOrderInterpretation, FOInterpretation, FOModel, evaluate, standard_translation, standardtranslate, translate
+export first_order_interpretation, firstorder
+export iscnf, isdnf, to_cnf, to_dnf, cnf, dnf, conjunctive_normal_form, disjunctive_normal_form
+export bisimilar, BisimulationClass, BisimulationContraction, QuotientModel, bisimulation_contraction, contraction_world
+export model, classes, world_map, contract, contraction
+export AbstractProver, ProverResult, PropositionalProver, TruthTableProver, prove, prove_valid
+export issatisfiable, isvalid, entails
 
 end
