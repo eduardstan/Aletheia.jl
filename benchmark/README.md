@@ -108,9 +108,15 @@ iterator and a reused adjacency `seen` buffer) was:
 | full adjacency n=6 (21 worlds) | 1.46 μs | 2.30 μs | 0.63x | 106 / 110 |
 | end-to-end check n=6 | 11.89 μs | 7.95 μs | 1.50x | 247 / 212 |
 | full adjacency n=12 (78 worlds) | 16.34 μs | 28.28 μs | 0.58x | 446 / 457 |
-| end-to-end check n=12 | 70.07 μs | 1.00 ms | 0.07x | 745 / 760 |
+| end-to-end check n=12 | 64.27 μs | 71.08 μs | 0.90x | 747 / 762 |
 | full adjacency n=24 (300 worlds) | 193.81 μs | 342.21 μs | 0.57x | 2047 / 2056 |
 | end-to-end check n=24 | 720.50 μs | 786.28 μs | 0.92x | 2852 / 3057 |
+
+The fixed n=12 end-to-end row was remeasured separately after warming the
+benchmark process: five repeats of 15 samples at a 0.05-second budget. The
+medians shown are 64.27 μs and 71.08 μs (0.90x), with 747/762 allocations;
+the earlier 1.00 ms value was a one-off compilation artefact and is retained
+only in the allocating-hook table.
 
 These are remeasurements after merging the theory stage into the branch. The allocating hook explains the apparent n=24 regression: it raised
 allocations from 764 to 1534 at n=12 and from 4093 to 17002 at n=24. The
