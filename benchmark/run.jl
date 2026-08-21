@@ -138,4 +138,4 @@ cold_measure(x, i) = x === nothing ? Measurement(missing, missing, missing, "una
 addrow!("cold package load", cold_measure(ls, 1), cold_measure(la, 1); allocations=false)
 addrow!("cold time-to-first-result", cold_measure(ls, 2), cold_measure(la, 2); allocations=false)
 
-println(); print_report(); println("benchmark wall clock: ", @sprintf("%.1f s", (time_ns() - RUN_START_NS) / 1e9)); println("benchmark wall clock: ", @sprintf("%.1f s", (time_ns() - RUN_START_NS) / 1e9))
+println(); print_report(); println("benchmark wall clock: ", @sprintf("%.1f s", (time_ns() - RUN_START_NS) / 1e9))
