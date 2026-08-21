@@ -236,19 +236,76 @@ function _evaluate(formula::Formula, model::Model, ::Type{E})::E where E
 end
 
 """
-    extension(φ, model)
+    Extension(values, worlds)
 
-Return the extension of `φ` over the model's worlds, in world-index order (or enumeration order when no index is present).  A
-Boolean model returns a `BitVector`; every other algebra returns a vector whose
-element type is exactly the algebra's carrier type.  The formula DAG is
-walked bottom-up and each reachable subterm is evaluated once.
+The extension of a formula over a model's worlds. Subtypes `AbstractVector`
+and wraps the raw truth vector together with world information to provide
+a rich REPL display showing which worlds satisfy the formula.
 """
-function extension(formula::Formula, model::Model{Bool,A})::BitVector where {A<:BooleanAlgebra}
-    _evaluate(formula, model, BitVector)
+struct Extension{T,V<:AbstractVector{T},W<:Tuple} <: AbstractVector{T}
+    values::V
+    worlds::W
 end
 
-function extension(formula::Formula, model::Model{T})::Vector{T} where T
-    _evaluate(formula, model, Vector{T})
+Base.size(ext::Extension) = size(ext.values)
+Base.getindex(ext::Extension, i::Int) = ext.values[i]
+Base.setindex!(ext::Extension, v, i::Int) = (ext.values[i] = v)
+Base.IndexStyle(::Type{<:Extension}) = IndexLinear()
+
+Base.show(io::IO, ext::Extension) = print(io, "Extension(", ext.values, ")")
+
+function Base.show(io::IO, ::MIME"text/plain", ext::Extension{Bool})
+    n_tot = length(ext.worlds)
+    n_sat = count(ext.values)
+    print(io, "Extension ($n_sat of $n_tot world$(n_tot == 1 ? "" : "s") satisfy)")
+    sat_worlds = [ext.worlds[i] for i in 1:n_tot if ext.values[i]]
+    unsat_worlds = [ext.worlds[i] for i in 1:n_tot if !ext.values[i]]
+
+    if n_tot <= 15
+        sat_str = isempty(sat_worlds) ? "(none)" : join(repr.(sat_worlds), ", ")
+        unsat_str = isempty(unsat_worlds) ? "(none)" : join(repr.(unsat_worlds), ", ")
+        print(io, "\n  Satisfied at: ", sat_str)
+        print(io, "\n  Unsatisfied at: ", unsat_str)
+    else
+        if !isempty(sat_worlds)
+            shown = join(repr.(sat_worlds[1:min(5, length(sat_worlds))]), ", ")
+            elided = length(sat_worlds) > 5 ? ", … ($(length(sat_worlds)-5) elided)" : ""
+            print(io, "\n  Satisfied at: ", shown, elided)
+        else
+            print(io, "\n  Satisfied at: (none)")
+        end
+    end
+end
+
+function Base.show(io::IO, ::MIME"text/plain", ext::Extension{T}) where T
+    n_tot = length(ext.worlds)
+    print(io, "Extension ($n_tot world$(n_tot == 1 ? "" : "s"))")
+    if n_tot <= 15
+        for i in 1:n_tot
+            print(io, "\n  ", repr(ext.worlds[i]), " => ", ext.values[i])
+        end
+    else
+        for i in 1:5
+            print(io, "\n  ", repr(ext.worlds[i]), " => ", ext.values[i])
+        end
+        print(io, "\n  … ($(n_tot - 5) elided)")
+    end
+end
+
+"""
+    extension(φ, model)
+
+Return the extension of `φ` over the model's worlds, in world-index order (or
+enumeration order when no index is present).  A Boolean model returns an
+`Extension` wrapping a `BitVector`; every other algebra returns an `Extension`
+wrapping a vector whose element type is the algebra's carrier type.
+"""
+function extension(formula::Formula, model::Model{Bool,A}) where {A<:BooleanAlgebra}
+    Extension(_evaluate(formula, model, BitVector), frame(model).worlds)
+end
+
+function extension(formula::Formula, model::Model{T}) where T
+    Extension(_evaluate(formula, model, Vector{T}), frame(model).worlds)
 end
 
 """
@@ -269,3 +326,4 @@ function check(formula::Formula, model::Model{T}, world)::T where T
     values = _evaluate(formula, model, Vector{T})
     values[position]
 end
+

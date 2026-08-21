@@ -69,7 +69,7 @@ println(check(formula, model, :a))
 ```
 
 ```text
-Bool[0, 1, 0]
+Extension(Bool[0, 1, 0])
 false
 ```
 

@@ -95,8 +95,29 @@ HornClause(head::Union{Nothing,Predicate,Equality}, body::Union{Predicate,Equali
 Base.length(clause::HornClause) = length(clause.clause)
 Base.iterate(clause::HornClause, state...) = iterate(clause.clause, state...)
 Base.getindex(clause::HornClause, i::Integer) = clause.clause[i]
-Base.show(io::IO, clause::HornClause) = show(io, clause.clause)
-Base.string(clause::HornClause) = string(clause.clause)
+function _horn_clause_string(clause::HornClause)
+    lits = clause.clause.literals
+    pos_idx = findfirst(l -> l.positive, lits)
+    pos_lit = pos_idx !== nothing ? lits[pos_idx] : nothing
+    neg_lits = [l for l in lits if !l.positive]
+
+    head_str = pos_lit !== nothing ? _fo_text(pos_lit.atom) : ""
+    body_str = join([_fo_text(l.atom) for l in neg_lits], ", ")
+
+    if pos_lit !== nothing && !isempty(neg_lits)
+        return "$head_str :- $body_str"
+    elseif pos_lit !== nothing && isempty(neg_lits)
+        return head_str
+    elseif pos_lit === nothing && !isempty(neg_lits)
+        return ":- $body_str"
+    else
+        return "⊥"
+    end
+end
+
+Base.show(io::IO, clause::HornClause) = print(io, _horn_clause_string(clause))
+Base.show(io::IO, ::MIME"text/plain", clause::HornClause) = print(io, _horn_clause_string(clause))
+Base.string(clause::HornClause) = _horn_clause_string(clause)
 Base.:(==)(left::HornClause, right::HornClause) = left.clause == right.clause
 Base.hash(clause::HornClause, h::UInt) = hash(clause.clause, h)
 literals(clause::Clause) = clause.literals
@@ -129,6 +150,24 @@ Base.hash(knowledge::ClauseSet, seed::UInt) = foldl((h, clause) -> xor(h, hash(c
                                                     init=hash(length(knowledge), seed))
 clauses(knowledge::ClauseSet) = knowledge.clauses
 Base.show(io::IO, knowledge::ClauseSet) = print(io, "ClauseSet(", join(string.(knowledge.clauses), ", "), ")")
+
+function Base.show(io::IO, ::MIME"text/plain", knowledge::ClauseSet)
+    nc = length(knowledge.clauses)
+    print(io, "ClauseSet ($nc clause$(nc == 1 ? "" : "s"))")
+    if nc <= 15
+        for c in knowledge.clauses
+            h_c = ishorn(c) ? HornClause(c) : c
+            print(io, "\n  ", string(h_c))
+        end
+    else
+        for c in knowledge.clauses[1:10]
+            h_c = ishorn(c) ? HornClause(c) : c
+            print(io, "\n  ", string(h_c))
+        end
+        print(io, "\n  … ($(nc - 10) elided)")
+    end
+end
+
 Base.string(knowledge::ClauseSet) = sprint(show, knowledge)
 
 """A finite substitution for first-order variables (Muggleton & De Raedt, Definition 5.3 [muggleton1994](@cite))."""
@@ -513,3 +552,34 @@ end
 interpretation_example(other; positive=true) =
     throw(ArgumentError("learning from interpretations expects a modal Model, got $(typeof(other))"))
 model_example(model::Model; positive=true) = interpretation_example(model; positive=positive)
+
+Base.show(io::IO, sub::Substitution) =
+    print(io, "Substitution(", join(["$(p.first) => $(p.second)" for p in sub.bindings], ", "), ")")
+
+function Base.show(io::IO, ::MIME"text/plain", sub::Substitution)
+    if isempty(sub.bindings)
+        print(io, "Substitution: {}")
+    else
+        b_str = join(["$(p.first) ↦ $(p.second)" for p in sub.bindings], ", ")
+        print(io, "Substitution: {$b_str}")
+    end
+end
+
+Base.show(io::IO, ex::EntailmentExample) =
+    print(io, "EntailmentExample(", ex.positive ? "+" : "-", ", ", ex.example, ")")
+
+Base.show(io::IO, ::MIME"text/plain", ex::EntailmentExample) =
+    print(io, "EntailmentExample (", ex.positive ? "+" : "-", "): ", ex.example)
+
+Base.show(io::IO, ex::InterpretationExample) =
+    print(io, "InterpretationExample(", ex.positive ? "+" : "-", ", ", ex.interpretation, ")")
+
+Base.show(io::IO, ::MIME"text/plain", ex::InterpretationExample) =
+    print(io, "InterpretationExample (", ex.positive ? "+" : "-", "): ", ex.interpretation)
+
+Base.show(io::IO, ex::ProofExample) =
+    print(io, "ProofExample(", ex.positive ? "+" : "-", ", ", ex.proof, ")")
+
+Base.show(io::IO, ::MIME"text/plain", ex::ProofExample) =
+    print(io, "ProofExample (", ex.positive ? "+" : "-", "): ", ex.proof)
+
