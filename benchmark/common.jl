@@ -137,8 +137,11 @@ function section_measure(label, cases, side; timeout=CASE_TIMEOUT)
     for line in lines
         length(line) == 3 || continue
         parsed = try parse.(Float64, line) catch; nothing end
-        parsed === nothing ? push!(result, Measurement(missing, missing, missing, "invalid measurement")) :
-            push!(result, Measurement(parsed[1], Int(round(parsed[2])), Int(round(parsed[3])))
+        if parsed === nothing
+            push!(result, Measurement(missing, missing, missing, "invalid measurement"))
+        else
+            push!(result, Measurement(parsed[1], Int(round(parsed[2])), Int(round(parsed[3]))))
+        end
     end
     while length(result) < length(cases)
         push!(result, Measurement(missing, missing, missing, "section unavailable (exit code $(process.exitcode))"))
