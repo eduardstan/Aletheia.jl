@@ -20,6 +20,8 @@ Venema, §§1.2–1.3 (pp. 9–26) [blackburn2001; §§1.2–1.3, pp. 9–26](@c
   and `Box` is not implemented as a syntactic negation/`Diamond` trick.
 - **[Semantics and evaluation](semantics.md)** covers Boolean, Gödel, and Łukasiewicz
   algebras, frames, models, lazy accessibility, `check`, and `extension`.
+- **[Finite FLew-algebras](algebras.md)** covers finite residuated lattices,
+  non-chain examples, derived implication, and integer-indexed evaluation.
 - **[Relations and frame classes](relations.md)** covers relation-family protocols,
   generated dimensional frames, Allen/RCC8 values, and correspondence schemas.
 - **[Theory](theory.md)** covers the standard translation, first-order reference
