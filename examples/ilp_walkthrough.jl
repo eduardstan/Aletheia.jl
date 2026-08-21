@@ -1,0 +1,21 @@
+using Aletheia
+
+X = Variable(:X)
+a = Constant(:a)
+general = HornClause(Predicate(:father, X), Predicate(:parent, X))
+specific = Clause(Predicate(:father, a), Literal(Predicate(:parent, a), false))
+println("general: ", general)
+println("specific: ", specific)
+println("general subsumes specific: ", subsumes(general, specific))
+println("reverse subsumption: ", subsumes(specific, general))
+
+base = Clause(Predicate(:p, X))
+refined = collect(downward_refinements(base; literals=[Predicate(:q, X)]))
+println("downward refinements: ", refined)
+
+base_frame = Frame((:w₁, :w₂), Dict(:R => Dict(:w₁ => [:w₂], :w₂ => [])); index=true)
+model = Model(base_frame, BOOLEAN, Dict("p" => Set([:w₁])))
+example = learning_from_interpretations(model; positive=true)
+println("interpretation example positive: ", example.positive)
+println("accessible(w₁,R): ", collect(accessible(base_frame, :w₁, :R)))
+println("Demonstrated: θ-subsumption, lazy refinement, and a model learning example wrapper.")

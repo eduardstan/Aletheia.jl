@@ -22,6 +22,7 @@ makedocs(
         "Theory" => "theory.md",
         "Learning from interpretations" => "learning.md",
         "Measured results" => "results.md",
+        "Development and validation" => "development.md",
         "Migration" => "compatibility.md",
     ],
     plugins = [bibliography],

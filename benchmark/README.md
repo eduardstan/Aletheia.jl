@@ -17,6 +17,9 @@ The incumbent checkout is expected at the path used by the launch brief. Set
 `SOLELOGICS_PATH` when it is elsewhere:
 
 ```sh
+# fast smoke/preflight path (smallest cases, one sample):
+julia --project=benchmark benchmark/run.jl --smoke
+# default quick measurement:
 julia --project=benchmark benchmark/run.jl
 # optional slower/deeper diagnostic run:
 julia --project=benchmark benchmark/run.jl --deep
@@ -26,15 +29,29 @@ SOLELOGICS_PATH=/path/to/SoleLogics.jl julia --project=benchmark benchmark/run.j
 ```
 
 `run.jl` develops the two local checkouts into the benchmark environment and
-instantiates `BenchmarkTools`. The default **quick** run uses 5 samples and a
-0.01-second per-case budget, with bounded formula sizes, and is intended to
-finish in about five minutes including cold package processes. `--deep` raises
-the per-case budget to 15 samples/0.05 seconds and expands the size range for
-occasional diagnostics; it is not the default reproducibility command. The generated benchmark `Manifest.toml` is local
-machine state and is not committed. Every benchmark run prints Julia, CPU,
-thread count, sample budget, and the incumbent checkout. `BenchmarkTools` reports
-median time, allocations, and bytes; the table reports allocation counts and the
-ratio `SoleLogics/Aletheia` (larger than 1 means Aletheia is faster).
+instantiates `BenchmarkTools`. The **smoke** path (`--smoke`) uses one sample,
+a 0.001-second per-case budget, and the smallest representative sizes. It uses
+the same measurement columns and report format as the normal run, and is
+meant to verify setup and produce a quick table rather than publish timings.
+Smoke retains construction, parsing/printing, round-trip, and equality rows;
+interval-temporal, theory, and cold-subprocess rows stay visible as
+`smoke skipped`. Tiny syntax/equality calls run in the loaded process instead
+of paying the normal fresh-process timeout guard for every case. A successful
+smoke run prints `benchmark smoke: PASS` after the table. On the launch machine
+the first smoke run took 1m13s including environment setup; the next run took
+45s, with timings varying substantially with Julia precompile state. The default
+**quick** run uses 5 samples and a 0.01-second per-case budget, with bounded
+formula sizes. `--deep` raises the per-case budget to 15 samples/0.05 seconds and expands the size range for
+occasional diagnostics; it is not the default reproducibility command. Package
+setup and first-call Julia compilation can still dominate wall-clock time,
+especially on a cold cache; normal/deep runs also start a guarded helper process
+per case. Progress lines show setup, each suite, each guarded case, and elapsed times; the final table is
+printed after all rows complete. The generated benchmark `Manifest.toml` is
+local machine state and is not committed. Every benchmark run prints Julia, CPU,
+thread count, sample budget, and the incumbent checkout. `BenchmarkTools`
+reports median time, allocations, and bytes; the table reports allocation counts
+and the ratio `SoleLogics/Aletheia` (larger than 1 means Aletheia is faster).
+
 
 The differential run uses the fixed seed `0xA1E7_2024`, prints it, generates 64
 random formulas over seven atom names, and tests canonical structure, parser and
@@ -43,9 +60,10 @@ representation differences (pool-local integer equality and DAG subterms versus
 tree occurrence lists) are documented in `differential.jl`; no unexplained
 exception is suppressed.
 
-Cold load and time-to-first-result rows use fresh Julia subprocesses, while
-ordinary rows use `BenchmarkTools.@benchmark`. These are separate measurements
-and should not be compared as if they were the same kind of trial.
+In normal/deep runs, cold load and time-to-first-result rows use fresh Julia
+subprocesses, while ordinary rows use `BenchmarkTools.@benchmark`. Smoke leaves
+those cold rows explicitly skipped. These are separate measurements and should
+not be compared as if they were the same kind of trial.
 
 ### Equality note
 

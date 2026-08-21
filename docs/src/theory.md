@@ -42,6 +42,23 @@ The adapter needs explicit atom and relation names when a model uses callable
 valuation/frame data. It accepts Boolean models because this translation is a
 classical reference bridge; it is not a many-valued first-order semantics.
 
+The atom and relation namespaces must agree between the two calls. For example,
+if a translation uses `atom_predicate = p -> Symbol("atom_", p)` and
+`relation_predicate = r -> Symbol("edge_", r)`, pass the same functions to
+`first_order_interpretation`; otherwise `evaluate` will report a missing
+predicate even though the modal model is valid. Dictionary-backed valuations
+and named frame relations are inferred, but callable valuations require
+`atoms=[...]` and callable accessibility requires `relations=[...]`. An atom
+handle may be supplied in `atoms` when the valuation is keyed by `Atom`; a
+string or other atom value is also accepted. First-order assignments are
+looked up by `Symbol` (for example `Dict(:x => world)`), and each assigned
+world must belong to the interpretation domain.
+
+The translation only has clauses for the built-in Boolean connectives and
+`Diamond`/`Box`; a custom connective raises `ArgumentError`. Likewise,
+`first_order_interpretation` does not translate many-valued models: use the
+native evaluator for Gödel or Łukasiewicz models instead.
+
 ## Bisimulation and contraction
 
 [`bisimilar`](@ref) implements the finite labelled back-and-forth game: atomic
@@ -61,14 +78,65 @@ quotient construction. The quotient is a reusable object, not an automatic
 optimization: the [results](results.md) chapter reports a workload where one check
 does not amortize its construction.
 
+Here is a complete finite example: the one-world and two-world roots are
+bisimilar while unlabelled, and `◇p` becomes a separating formula after `t` is
+labelled. The same model can then be contracted; checks on original worlds are
+forwarded through their quotient classes.
+
+```@example theory_bisimulation
+using Aletheia
+
+signature = Signature((¬, ∧, ∨, →, Diamond(:R), Box(:R)))
+pool = FormulaPool(signature)
+p = atom(pool, "p")
+separator = branch(pool, Diamond(:R), p)
+
+one = Frame((:r,), Dict(:R => Dict(:r => [:r])); index=true)
+two = Frame((:s, :t), Dict(:R => Dict(:s => [:t], :t => [:t])); index=true)
+m₁ = Model(one, BOOLEAN, Dict("p" => Set{Symbol}()))
+m₂ = Model(two, BOOLEAN, Dict("p" => Set{Symbol}()))
+m₂_bad = Model(two, BOOLEAN, Dict("p" => Set([:t])))
+println("bisimilar before relabelling: ", bisimilar(m₁, :r, m₂, :s))
+println("separator values after relabelling: ",
+    check(separator, m₁, :r), "/", check(separator, m₂_bad, :s))
+
+base = Frame((1, 2, 3), Dict(:R => Dict(1 => [1], 2 => [2], 3 => [3])); index=true)
+model = Model(base, BOOLEAN, Dict("p" => Set([3])))
+quotient = bisimulation_contraction(model)
+formula = branch(pool, Diamond(:R), p)
+original = [check(formula, model, w) for w in worlds(base)]
+reduced = [check(formula, quotient, w) for w in worlds(base)]
+println("contraction world count: ", length(worlds(base)), " -> ",
+    length(worlds(frame(quotient))))
+println("values preserved: ", original == reduced)
+```
+
+```text
+bisimilar before relabelling: true
+separator values after relabelling: false/true
+contraction world count: 3 -> 2
+values preserved: true
+```
+
+`atoms` and `relations` are semantic vocabularies, not formula-pool metadata.
+They are inferred from dictionary-backed models and frames, but must be passed
+explicitly for callable valuation or accessibility data. `contraction_world(q,
+w)` maps an original world to its `BisimulationClass`; `check` accepts either an
+original world or a class. `extension(formula, q)` deliberately preserves the
+underlying model's world order and length, so use `check` on quotient classes
+(or inspect `classes(q)`) when a quotient-indexed vector is needed.
+
 ## Classical normal forms
 
 `to_cnf` and `to_dnf` reuse the original pool. They normalize the classical
 Boolean connectives and treat modal/custom subformulas as propositional
 letters. The predicates `iscnf` and `isdnf` are shape checks; the conversions
-are not advertised as Gödel or Łukasiewicz equivalences. For classical CNF/DNF
-and clausal form, see Goranko, §2.5.1 (pp. 77–80)
-[goranko2016; §2.5.1, pp. 77–80](@cite).
+are not advertised as Gödel or Łukasiewicz equivalences. A formula's signature
+must contain `¬`, `∧`, and `∨` even when the input happens not to use all three;
+otherwise conversion raises `ArgumentError`. Since modal and custom branches
+are opaque literals, negating one leaves it as a signed literal rather than
+applying a modal duality. For classical CNF/DNF and clausal form, see Goranko,
+§2.5.1 (pp. 77–80) [goranko2016; §2.5.1, pp. 77–80](@cite).
 
 ## Prover boundary
 
@@ -95,6 +163,16 @@ println(prove_valid(tautology, PropositionalProver()).status)
 true false
 valid
 ```
+
+`prove` asks for satisfiability; use `prove_valid` for validity. The shipped
+`PropositionalProver` returns statuses such as `:sat`, `:unsat`, `:valid`, and
+`:invalid`; modal or custom branches return `ProverResult(:unknown)` rather
+than being treated as false. Consequently, inspect `result.status` when
+unknown and false must be distinguished—`Bool(result)` is only a convenience
+for a known true answer. The convenience forms use
+`issatisfiable(formula)`/`isvalid(formula)` with a fresh propositional prover;
+applications with a modal backend should pass their own `AbstractProver`
+explicitly.
 
 ```@docs
 standard_translation

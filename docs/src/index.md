@@ -31,6 +31,8 @@ Venema, §§1.2–1.3 (pp. 9–26) [blackburn2001; §§1.2–1.3, pp. 9–26](@c
 - **[Measured results](results.md)** publishes the comparison protocol, wins, and
   losses. It is a measurement report, not a claim that every workload is
   faster.
+- **[Development and validation](development.md)** gives copy-paste test, docs,
+  benchmark, and differential commands, pass markers, and measured timings.
 - **[Migration from SoleLogics](compatibility.md)** is the consumer-derived mapping and gap
   inventory. It is the one migration page; the other chapters do not duplicate
   it.
@@ -40,9 +42,9 @@ Venema, §§1.2–1.3 (pp. 9–26) [blackburn2001; §§1.2–1.3, pp. 9–26](@c
 Aletheia supplies syntax, semantic structures, finite evaluation, a small
 first-order target syntax/evaluator, theory utilities, and ILP foundations. It
 does **not** ship a modal theorem prover, a first-order prover, a learner, RCC5
-composition, 2-D point relations, or the incumbent's many-valued tableau
-engines. The [theory](theory.md) and [learning](learning.md) chapters call these boundaries
-out where they matter.
+composition, or the incumbent's many-valued tableau engines. The
+[theory](theory.md) and [learning](learning.md) chapters call these boundaries out
+where they matter.
 
 The design and measurements were developed in stages. The accompanying
 benchmark is human-run, and its differential suite is kept outside package
