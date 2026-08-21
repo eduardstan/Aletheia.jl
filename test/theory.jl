@@ -119,6 +119,30 @@ end
         @test check(branch(pool, Diamond(:R), p), redundant_model, world) ==
             check(branch(pool, Diamond(:R), p), quotient, world)
     end
+
+    # Correctness gate for the reusable quotient: randomized labelled frames
+    # and modal DAGs compare every original world with its quotient class.
+    gate_rng = MersenneTwister(0xB15_2024)
+    gate_signature = Signature((¬, ∧, ∨, Diamond(:R), Box(:R)))
+    for trial in 1:128
+        n = rand(gate_rng, 2:8)
+        gate_worlds = Tuple(1:n)
+        gate_edges = Dict(w => [target for target in gate_worlds if rand(gate_rng, Bool)] for w in gate_worlds)
+        gate_frame = Frame(gate_worlds, Dict(:R => gate_edges); index=true)
+        gate_valuation = Dict(name => Set(w for w in gate_worlds if rand(gate_rng, Bool)) for name in ("p", "q"))
+        gate_model = Model(gate_frame, BOOLEAN, gate_valuation)
+        gate_pool = FormulaPool(gate_signature)
+        gp, gq = atom(gate_pool, "p"), atom(gate_pool, "q")
+        gate_quotient = bisimulation_contraction(gate_model; atoms=["p", "q"], relations=[:R])
+        gate_qmodel = model(gate_quotient)
+        for _ in 1:16
+            gate_formula = theory_random_formula(gate_pool, gp, gq, gate_rng, rand(gate_rng, 1:5))
+            for world in gate_worlds
+                @test check(gate_formula, gate_model, world) ==
+                    check(gate_formula, gate_qmodel, contraction_world(gate_quotient, world))
+            end
+        end
+    end
 end
 
 @testset "normal forms" begin

@@ -8,18 +8,17 @@ Pkg.instantiate()
 include(joinpath(@__DIR__, "common.jl"))
 using Test
 
-const SEED = 0xA1E7_2024
 println("differential seed: ", SEED)
 rng = MersenneTwister(SEED)
 
-function random_recipe(rng, depth, nextatom=Ref(0))
+function syntax_random_recipe(rng, depth, nextatom=Ref(0))
     if depth == 0 || rand(rng) < 0.22
         nextatom[] += 1
         return atomrecipe("p$(1 + mod(nextatom[], 7))")
     end
     op = rand(rng, (:not, :and, :or, :implies))
-    op === :not ? recipe(op, random_recipe(rng, depth - 1, nextatom)) :
-        recipe(op, random_recipe(rng, depth - 1, nextatom), random_recipe(rng, depth - 1, nextatom))
+    op === :not ? recipe(op, syntax_random_recipe(rng, depth - 1, nextatom)) :
+        recipe(op, syntax_random_recipe(rng, depth - 1, nextatom), syntax_random_recipe(rng, depth - 1, nextatom))
 end
 
 function parse_both(text)
@@ -39,7 +38,7 @@ const FORMULA_COUNT = 64
 @testset "Aletheia/SoleLogics differential (seed=$SEED)" begin
     @test !isempty(DOCUMENTED_EXCEPTIONS)
     for i in 1:FORMULA_COUNT
-        r = random_recipe(rng, rand(rng, 1:5))
+        r = syntax_random_recipe(rng, rand(rng, 1:5))
         a = build_a(r, pool_a())
         s = build_s(r)
         text = Aletheia.syntaxstring(a)
@@ -83,3 +82,25 @@ const FORMULA_COUNT = 64
     end
 end
 println("differential: PASS ($FORMULA_COUNT formulas; seed $SEED)")
+
+
+@testset "semantic evaluation (seed=$SEED)" begin
+    modal_rng = MersenneTwister(SEED + 1)
+    for trial in 1:64
+        n = rand(modal_rng, 2:8)
+        depth = rand(modal_rng, 1:5)
+        edges = edge_data(n, rand(modal_rng), SEED + trial)
+        sets = Dict("p$(i)" => Set(w for w in 1:n if rand(modal_rng, Bool)) for i in 1:6)
+        am = a_boolean_model(n, edges; sets=sets)
+        sm = s_boolean_model(n, edges; sets=sets)
+        recipe = random_recipe(modal_rng, depth; modal=true)
+        pool = modal_pool_a(); af = build_a(recipe, pool)
+        sf = build_s(recipe)
+        @test all(Aletheia.check(af, am, w) ==
+            SoleLogics.check(sf, sm, SoleLogics.World(w); perform_normalization=false)
+            for w in 1:n)
+        @test collect(Aletheia.extension(af, am)) ==
+            BitVector([SoleLogics.check(sf, sm, SoleLogics.World(w); perform_normalization=false) for w in 1:n])
+    end
+end
+println("semantic differential: PASS (64 seeded random modal models)")
