@@ -49,5 +49,3 @@ credited by the counter.
 
 - **31-32** — The abstract prover boundary's default methods are exercised by
   proof-search edge tests; exceptional fallback lines are not credited.
-
-
