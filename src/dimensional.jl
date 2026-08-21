@@ -221,14 +221,32 @@ function _interval_relation_successors(relation, source::Interval, boundaries, w
     nothing
 end
 
+function _canonical_interval_values(values, boundaries)
+    canonical = _interval_worlds(boundaries)
+    length(values) == length(canonical) && all(isequal.(values, canonical))
+end
 function relation_successors(::BeforeRelation, source::Interval, worlds)
-    (target for target in worlds if target.x > source.y)
+    values = _world_values(worlds)
+    boundaries = _interval_boundaries(values)
+    _canonical_interval_values(values, boundaries) ?
+        _interval_before_successors(source, boundaries, values) :
+        (target for target in worlds if relation_holds(BEFORE, source, target))
 end
 function relation_successors(relation::IntervalRelation, source::Interval, worlds)
-    (target for target in worlds if relation_holds(relation, source, target))
+    values = _world_values(worlds)
+    boundaries = _interval_boundaries(values)
+    _canonical_interval_values(values, boundaries) ||
+        return (target for target in worlds if relation_holds(relation, source, target))
+    targets = _interval_relation_successors(relation, source, boundaries, values)
+    targets === nothing ? (target for target in worlds if relation_holds(relation, source, target)) : targets
 end
 function relation_successors(relation::RCCRelation, source::Interval, worlds)
-    (target for target in worlds if relation_holds(relation, source, target))
+    values = _world_values(worlds)
+    boundaries = _interval_boundaries(values)
+    _canonical_interval_values(values, boundaries) ||
+        return (target for target in worlds if relation_holds(relation, source, target))
+    targets = _interval_relation_successors(relation, source, boundaries, values)
+    targets === nothing ? (target for target in worlds if relation_holds(relation, source, target)) : targets
 end
 
 # Bounded-domain point dispatch. A user-defined relation uses the public
