@@ -175,7 +175,15 @@ The baseline columns are the report's Aletheia/native setup and search
 measurements; the current columns use the same agreement gate, warmed child
 processes, and median BenchmarkTools samples. Allocation counts are shown
 separately because hash-consed pool construction changes bytes as well as
-count. The search row is a measured compatibility-shim result, not a claim
+count. The measured paired search median is 1.12× rather than the requested ≤1.0×
+bar. The remaining loss is concentrated in large branching cells: those cells
+still pay Aletheia pool interning and compatibility-cache misses while the
+native tree constructor only creates a short-lived node. The allocation
+profile shows that this is no longer repeated child-wrapper materialisation;
+the residual is construction/cache dispatch overhead, so the result is
+reported explicitly rather than presented as parity.
+
+The search row is a measured compatibility-shim result, not a claim
 about native Aletheia algorithms or the many-valued/modal consumers. The
 benchmark runner and consumer checkouts remain scratch-only; no generated
 benchmark data is part of the package.
