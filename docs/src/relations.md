@@ -63,9 +63,31 @@ true
 ```
 
 Allen and RCC8 are relation-family implementations, not claims that the five
-references define those particular application fragments. RCC5 composition,
-and 2-D point relations, are intentionally left for later work rather than
-exposing an incomplete API.
+references define those particular application fragments. RCC5 composition is
+intentionally left for later work rather than exposing an incomplete API.
+
+## Compass logic 2D point relations
+
+Aletheia provides the eight cardinal 2D point relations from Compass logic:
+`CL_N`, `CL_S`, `CL_E`, `CL_W`, `CL_NE`, `CL_NW`, `CL_SE`, and `CL_SW` in `POINT2D_RELATIONS`.
+`point_frame(nx, ny)` creates a 2D grid frame whose worlds are `Point(x, y)`.
+Each relation is transitive and has a converse (e.g., `converse(CL_N) === CL_S` and `converse(CL_NE) === CL_SW`).
+
+```@example relations
+using Aletheia
+
+frame2d = point_frame(3, 3)
+w = Point(2, 2)
+println(collect(accessible(frame2d, w, CL_N)))
+println(collect(accessible(frame2d, w, CL_NE)))
+println(converse(CL_NE) === CL_SW)
+```
+
+```text
+Point[(2, 3)]
+Point[(3, 3)]
+true
+```
 
 ## Frame classes and correspondence
 
@@ -96,6 +118,7 @@ requires the connectives it uses to be present in the formula signature.
 relation_holds
 relation_successors
 inverse
+Point2DRelation
 Interval
 Rectangle
 interval_frame
@@ -105,3 +128,4 @@ FrameClass
 satisfies
 validates
 ```
+

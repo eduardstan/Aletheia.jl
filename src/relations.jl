@@ -9,6 +9,8 @@ abstract type IntervalRelation <: RelationFamily end
 abstract type PointRelation <: RelationFamily end
 """Region Connection Calculus relations."""
 abstract type RCCRelation <: RelationFamily end
+"""Compass logic 2D point relations."""
+abstract type Point2DRelation <: RelationFamily end
 
 """
     relation_holds(relation, source, target)
@@ -292,3 +294,66 @@ inverse(::TangentialProperPartInverseRelation) = TPP
 inverse(::NonTangentialProperPartRelation) = NTPPi
 inverse(::NonTangentialProperPartInverseRelation) = NTPP
 inverse(::RCCEqualsRelation) = RCC_EQ
+
+# ---------------------------------------------------------------------------
+# Compass logic 2D point relations
+# ---------------------------------------------------------------------------
+struct ClosestNorthRelation <: Point2DRelation end
+struct ClosestSouthRelation <: Point2DRelation end
+struct ClosestEastRelation <: Point2DRelation end
+struct ClosestWestRelation <: Point2DRelation end
+struct ClosestNorthEastRelation <: Point2DRelation end
+struct ClosestNorthWestRelation <: Point2DRelation end
+struct ClosestSouthEastRelation <: Point2DRelation end
+struct ClosestSouthWestRelation <: Point2DRelation end
+
+const CL_N  = ClosestNorthRelation()
+const CL_S  = ClosestSouthRelation()
+const CL_E  = ClosestEastRelation()
+const CL_W  = ClosestWestRelation()
+const CL_NE = ClosestNorthEastRelation()
+const CL_NW = ClosestNorthWestRelation()
+const CL_SE = ClosestSouthEastRelation()
+const CL_SW = ClosestSouthWestRelation()
+
+const POINT2D_RELATIONS = (CL_N, CL_S, CL_E, CL_W, CL_NE, CL_NW, CL_SE, CL_SW)
+const Point2DRelations = POINT2D_RELATIONS
+
+_relation_name(::ClosestNorthRelation) = "N"
+_relation_name(::ClosestSouthRelation) = "S"
+_relation_name(::ClosestEastRelation) = "E"
+_relation_name(::ClosestWestRelation) = "W"
+_relation_name(::ClosestNorthEastRelation) = "NE"
+_relation_name(::ClosestNorthWestRelation) = "NW"
+_relation_name(::ClosestSouthEastRelation) = "SE"
+_relation_name(::ClosestSouthWestRelation) = "SW"
+
+Base.show(io::IO, relation::Point2DRelation) = print(io, _relation_name(relation))
+istransitive(::Point2DRelation) = true
+
+inverse(::ClosestNorthRelation) = CL_S
+inverse(::ClosestSouthRelation) = CL_N
+inverse(::ClosestEastRelation) = CL_W
+inverse(::ClosestWestRelation) = CL_E
+inverse(::ClosestNorthEastRelation) = CL_SW
+inverse(::ClosestSouthWestRelation) = CL_NE
+inverse(::ClosestNorthWestRelation) = CL_SE
+inverse(::ClosestSouthEastRelation) = CL_NW
+
+@inline _point_coords(p::Tuple) = p
+@inline _point_coords(p) = hasproperty(p, :coordinates) ? getproperty(p, :coordinates) : p
+
+@inline _px(p) = _point_coords(p)[1]
+@inline _py(p) = _point_coords(p)[2]
+
+relation_holds(::ClosestNorthRelation, a, b) = _px(a) == _px(b) && _py(b) > _py(a)
+relation_holds(::ClosestSouthRelation, a, b) = _px(a) == _px(b) && _py(b) < _py(a)
+relation_holds(::ClosestEastRelation, a, b) = _px(b) > _px(a) && _py(a) == _py(b)
+relation_holds(::ClosestWestRelation, a, b) = _px(b) < _px(a) && _py(a) == _py(b)
+relation_holds(::ClosestNorthEastRelation, a, b) = _px(b) > _px(a) && _py(b) > _py(a)
+relation_holds(::ClosestNorthWestRelation, a, b) = _px(b) < _px(a) && _py(b) > _py(a)
+relation_holds(::ClosestSouthEastRelation, a, b) = _px(b) > _px(a) && _py(b) < _py(a)
+relation_holds(::ClosestSouthWestRelation, a, b) = _px(b) < _px(a) && _py(b) < _py(a)
+
+export Point2DRelation, CL_N, CL_S, CL_E, CL_W, CL_NE, CL_NW, CL_SE, CL_SW, POINT2D_RELATIONS, Point2DRelations
+
