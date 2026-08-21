@@ -6,8 +6,7 @@ is also kept here, rather than in Aletheia's package tests, so Aletheia never
 depends on SoleLogics.
 
 The harness measures the syntax layer (construction, parsing, printing,
-round-trips, and equality) plus a guarded generated interval-temporal relation
-case. The interval row compares Aletheia's generated Allen-before frame access
+round-trips, and equality) plus guarded generated interval-temporal and theory-contraction cases. The interval row compares Aletheia's generated Allen-before frame access
 with SoleLogics' IA-L access; every incumbent call runs in a fresh process with
 a timeout. Propositional random-frame, general modal, and many-valued rows
 remain explicitly empty until their later benchmark stages.
@@ -113,3 +112,12 @@ The hook is optional: generated interval, rectangle, and point frames provide
 arithmetic successor paths for their built-in relation families, while an
 external family that only defines `relation_holds` receives `nothing` and uses
 the generic predicate filter. The external-family tests cover both paths.
+
+### Theory contraction
+
+The theory row is intentionally a measurement, not a promise. In the recorded
+quick run (600 dense, identically labelled worlds), raw checking was 0.64 ms
+and contraction plus checking was 16.97 ms: contraction did **not** win once
+quotient construction was included. That negative result is published rather
+than hidden; a downstream workload may amortize the quotient across many
+checks.

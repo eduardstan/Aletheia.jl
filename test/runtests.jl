@@ -1,4 +1,5 @@
 using Test
+using Random
 using Aqua
 using JET
 using Aletheia
@@ -232,6 +233,7 @@ end
 include("semantics.jl")
 include("evaluation.jl")
 include("relations.jl")
+include("theory.jl")
 @testset "Aletheia" begin
     Aqua.test_all(Aletheia)
     if pkgversion(JET) < v"0.11"
