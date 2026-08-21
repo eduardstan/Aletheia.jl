@@ -105,6 +105,7 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
     @test @inferred(check(conjunction, vector_model, :only)) == BitVector([false, false])
     @test @inferred(extension(conjunction, vector_model)) isa Vector{BitVector}
     @test extension(conjunction, vector_model) == [BitVector([false, false])]
+    @test extension(conjunction, vector_model) == [BitVector([false, false])]
     @test extension(branch(pool, Box(:G), p), vector_model) == [trues(2)]
 
     duplicate_frame = Frame((:a, :b), Dict(:G => [(:a, :b), (:a, :b)]); index=true)
