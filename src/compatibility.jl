@@ -293,10 +293,10 @@ parseformula(::Type{<:Aletheia.Formula}, expr::AbstractString, additional_operat
 # Core evaluation/model names retain their Aletheia meaning. In particular,
 # check now consumes a Model rather than Sole's InterpretationSet.  Formula
 # wrappers are unwrapped at this boundary.
-check(formula::Aletheia.Formula, args...; kwargs...) =
-    Aletheia.check(_unwrap(formula), args...; kwargs...)
-interpret(formula::Aletheia.Formula, args...; kwargs...) =
-    Aletheia.interpret(_unwrap(formula), args...; kwargs...)
+check(formula::Aletheia.Formula, args...) =
+    Aletheia.check(_unwrap(formula), args...)
+interpret(formula::Aletheia.Formula, args...) =
+    Aletheia.interpret(_unwrap(formula), args...)
 frame = Aletheia.frame
 algebra = Aletheia.algebra
 domain = Aletheia.domain
@@ -380,12 +380,16 @@ function worldtype(::Aletheia.Frame)
 end
 name(connective) = Symbol(Aletheia.notation(connective))
 
-# Compass relations remain explicit gaps: Aletheia does not yet implement
-# the Compass family.  The other names below are incumbent aliases, not gaps;
-# preserve their definitions rather than guessing from their spelling.
-for name in (:CL_N, :CL_S, :CL_E, :CL_W)
-    @eval const $(name) = _unsupported_name($(QuoteNode(name)))
-end
+# These names preserve the incumbent aliases to Aletheia's relation values;
+# use the definitions from SoleLogics rather than guessing from their spelling.
+const CL_N = Aletheia.CL_N
+const CL_S = Aletheia.CL_S
+const CL_E = Aletheia.CL_E
+const CL_W = Aletheia.CL_W
+const CL_NE = Aletheia.CL_NE
+const CL_NW = Aletheia.CL_NW
+const CL_SE = Aletheia.CL_SE
+const CL_SW = Aletheia.CL_SW
 const HS_A = Aletheia.IA_A
 const HS_L = Aletheia.IA_L
 const HS_B = Aletheia.IA_B
@@ -463,7 +467,7 @@ export LeftmostDisjunctiveForm, DNF, CNF, Literal, AbstractInterpretationSet, is
 export IARelations, RCC5Relations, alphabet, feature, condition, threshold, name, sample
 export TruthDict, KripkeStructure
 export ManyValuedLogics
-for name in (:CL_N, :CL_S, :CL_E, :CL_W,
+for name in (:CL_N, :CL_S, :CL_E, :CL_W, :CL_NE, :CL_NW, :CL_SE, :CL_SW,
     :LRCC8_Rec_DC, :LRCC8_Rec_EC, :LRCC8_Rec_PO, :LRCC8_Rec_TPP,
     :LRCC8_Rec_TPPi, :LRCC8_Rec_NTPP, :LRCC8_Rec_NTPPi,
     :HS_A, :HS_L, :HS_B, :HS_E, :HS_D, :HS_O,

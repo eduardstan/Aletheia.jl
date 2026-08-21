@@ -133,8 +133,8 @@ end
 
 module DistinctUnsupportedClient
 using Aletheia.SoleLogics
-marker_method(::typeof(CL_N)) = :north
-marker_method(::typeof(CL_S)) = :south
+marker_method(::typeof(RCC5Relations)) = :rcc5
+marker_method(::typeof(AbstractInterpretationSet)) = :interpretation
 end
 
 @testset "consumer-facing Atom and relation aliases" begin
@@ -142,14 +142,22 @@ end
     atom_value = CompatibilityClient.Atom(:r)
     @test atom_value isa CompatibilityClient.Atom
     @test CompatibilityClient.value(atom_value) == :r
-    @test typeof(CompatibilityClient.CL_N) != typeof(CompatibilityClient.CL_S)
-    @test DistinctUnsupportedClient.marker_method(CompatibilityClient.CL_N) == :north
-    @test DistinctUnsupportedClient.marker_method(CompatibilityClient.CL_S) == :south
-    for marker in (CompatibilityClient.CL_N, CompatibilityClient.CL_S,
-            CompatibilityClient.CL_E, CompatibilityClient.CL_W)
-        @test_throws ArgumentError marker()
+    @test typeof(CompatibilityClient.RCC5Relations) !=
+        typeof(CompatibilityClient.AbstractInterpretationSet)
+    @test DistinctUnsupportedClient.marker_method(CompatibilityClient.RCC5Relations) == :rcc5
+    @test DistinctUnsupportedClient.marker_method(CompatibilityClient.AbstractInterpretationSet) == :interpretation
+    for (marker, name) in ((CompatibilityClient.RCC5Relations, :RCC5Relations),
+            (CompatibilityClient.AbstractInterpretationSet, :AbstractInterpretationSet))
+        error = try
+            marker()
+        catch caught
+            caught
+        end
+        @test error isa ArgumentError
+        @test occursin(string(name), sprint(showerror, error))
     end
 
+    # SoleLogics defines HS_* as the corresponding IA_* aliases.
     @test (CompatibilityClient.HS_A, CompatibilityClient.HS_L,
         CompatibilityClient.HS_B, CompatibilityClient.HS_E, CompatibilityClient.HS_D,
         CompatibilityClient.HS_O, CompatibilityClient.HS_Ai, CompatibilityClient.HS_Li,
@@ -158,12 +166,24 @@ end
         (Aletheia.IA_A, Aletheia.IA_L, Aletheia.IA_B, Aletheia.IA_E, Aletheia.IA_D,
         Aletheia.IA_O, Aletheia.IA_Ai, Aletheia.IA_Li, Aletheia.IA_Bi, Aletheia.IA_Ei,
         Aletheia.IA_Di, Aletheia.IA_Oi)
+
+    # SoleLogics defines LRCC8_Rec_* as these Topo_* aliases.
     @test (CompatibilityClient.LRCC8_Rec_DC, CompatibilityClient.LRCC8_Rec_EC,
         CompatibilityClient.LRCC8_Rec_PO, CompatibilityClient.LRCC8_Rec_TPP,
         CompatibilityClient.LRCC8_Rec_TPPi, CompatibilityClient.LRCC8_Rec_NTPP,
         CompatibilityClient.LRCC8_Rec_NTPPi) ===
         (Aletheia.Topo_DC, Aletheia.Topo_EC, Aletheia.Topo_PO, Aletheia.Topo_TPP,
         Aletheia.Topo_TPPi, Aletheia.Topo_NTPP, Aletheia.Topo_NTPPi)
+
+    # SoleLogics defines LTLFP_F = GreaterRel and LTLFP_P = LesserRel.
     @test CompatibilityClient.LTLFP_F === Aletheia.GREATER
     @test CompatibilityClient.LTLFP_P === Aletheia.LESSER
+
+    # Compass names now follow Aletheia's landed 2D point relation constants.
+    @test (CompatibilityClient.CL_N, CompatibilityClient.CL_S,
+        CompatibilityClient.CL_E, CompatibilityClient.CL_W,
+        CompatibilityClient.CL_NE, CompatibilityClient.CL_NW,
+        CompatibilityClient.CL_SE, CompatibilityClient.CL_SW) ===
+        (Aletheia.CL_N, Aletheia.CL_S, Aletheia.CL_E, Aletheia.CL_W,
+        Aletheia.CL_NE, Aletheia.CL_NW, Aletheia.CL_SE, Aletheia.CL_SW)
 end

@@ -46,7 +46,7 @@ Orca path.
 Root imports and qualified references used by source, tests, and experiments
 are: `Atom`, `BooleanTruth`, `Formula`, `children` (often aliased as
 `subformulas`), `¬`, `∨`, `∧`, `→`, `⊥`, `height`, `isbot`, `istop`, `CL_N`,
-`CL_S`, `CL_E`, `CL_W`, `HS_A`, `HS_L`, `HS_B`, `HS_E`, `HS_D`, `HS_O`,
+`CL_S`, `CL_E`, `CL_W`, `CL_NE`, `CL_NW`, `CL_SE`, `CL_SW`, `HS_A`, `HS_L`, `HS_B`, `HS_E`, `HS_D`, `HS_O`,
 `HS_Ai`, `HS_Li`, `HS_Bi`, `HS_Ei`, `HS_Di`, `HS_Oi`, `LRCC8_Rec_DC`,
 `LRCC8_Rec_EC`, `LRCC8_Rec_PO`, `LRCC8_Rec_TPP`, `LRCC8_Rec_TPPi`,
 `LRCC8_Rec_NTPP`, `LRCC8_Rec_NTPPi`, `LTLFP_F`, `LTLFP_P`, `Truth`,
@@ -73,6 +73,7 @@ The nested `ManyValuedLogics` imports are `FiniteFLewAlgebra`, `FiniteTruth`,
 | `dual`, `hasdual`, `arity`, `relation` | Direct for Aletheia connective values (`¬`, `∧`, `∨`, `→`, `Diamond`, `Box`). |
 | `∧`, `∨`, `¬`, `→`, `NamedConnective`, `Operator` | Aletheia values remain the underlying operators; compatibility connective wrappers provide `NamedConnective{:symbol}` dispatch for migrated consumers. |
 | `Interval`, `Interval2D`, `Point`, `Point1D`, `Point2D`, `FullDimensionalFrame`, `IA_*`, `IARelations` | Data-level aliases to Aletheia's dimensional and Allen APIs. `IARelations` keeps Sole's 12-value order and excludes `EQUALS`. |
+| `CL_*` | Direct aliases of Aletheia's Compass 2D point relations (`CL_N`, `CL_S`, `CL_E`, `CL_W`, `CL_NE`, `CL_NW`, `CL_SE`, `CL_SW`). |
 | `diamond`, `box`, `TruthDict`, `KripkeStructure`, `allworlds`, `accessibles` | Small adapters to `Diamond`/`Box`, `Valuation`/Boolean `Model`, and lazy frame access (the latter is collected). |
 | `HS_*` | Direct aliases of Aletheia's `IA_*` Allen interval relations, including inverses. |
 | `LRCC8_Rec_*` | Direct aliases of Aletheia's `Topo_*` RCC8 relations; the incumbent orientation is retained (notably `Topo_TPP = TPPi`). |
@@ -110,9 +111,9 @@ remain the core API.
   and `normalize` are SoleData/SoleModels concepts. They raise clear errors;
   they are not approximated by syntax payload inspection.
 * `RCC5Relations` is intentionally absent from Aletheia's selected RCC8
-  fragment. The `RCC5Relations` binding is an error-producing marker. The
-  `CL_*` names remain explicit semantic gaps because Compass relations are not
-  implemented. Every unsupported marker has its own singleton dispatch type,
+  fragment and is an error-producing marker. It and the many-valued tableau
+  order helpers remain explicit semantic gaps. Compass `CL_*` names now map directly to Aletheia's 2D point
+  relations. Every unsupported marker has its own singleton dispatch type,
   so one consumer method per name does not overwrite another; invoking a
   marker still raises the explicit symbol-specific error. The many-valued
   tableau order helpers similarly remain explicit gaps.
@@ -139,6 +140,11 @@ p∧¬p => false
 (p→q)∧p∧¬q => false
 (p∨q)∧(¬p∨q) => true
 ```
+
+The compatibility `check` and `interpret` forwarders deliberately accept only
+positional arguments: Aletheia's core methods have no keyword-argument surface,
+so advertising `kwargs...` would create calls that can never resolve (and fails
+JET on Julia 1.10/1.11).
 
 This validates the propositional tableau boundary only. Many-valued tableaux
 remain blocked by the deliberately absent finite FLew-algebra and tableau
