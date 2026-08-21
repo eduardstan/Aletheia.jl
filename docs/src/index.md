@@ -220,6 +220,10 @@ payloads are rejected rather than silently reinterpreted.  The many-valued
 finite algebra and a tableau type, so they belong in that downstream adapter,
 not in this package.
 
+## Compatibility migration
+
+The opt-in [`Aletheia.SoleLogics`](@ref) vocabulary and its consumer-derived mapping/gaps are documented on the [migration page](compatibility.md).
+
 ## Module
 
 ```@docs
