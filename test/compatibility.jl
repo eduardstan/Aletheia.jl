@@ -25,7 +25,7 @@ end
     @test conjunction isa Aletheia.Formula
     @test CompatibilityClient.token(conjunction).native === Aletheia.:∧
     @test CompatibilityClient.children(conjunction) == (p, q)
-    # Children are a tuple-shaped lazy view and reuse canonical pool handles.
+    # Children are a tuple-shaped cached view and reuse canonical pool handles.
     @test CompatibilityClient.children(conjunction) isa Aletheia.SoleLogics._CompatChildren
     @test CompatibilityClient.children(conjunction)[1] === p
     childaccess(x) = CompatibilityClient.children(x)

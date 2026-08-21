@@ -87,8 +87,8 @@ collatetruth(args...) = _unsupported(:collatetruth,
 # Compatibility formulas wrap ordinary Aletheia DAG handles.  Keeping the
 # wrapper type here (rather than extending Aletheia.Atom's constructor) makes
 # the migration constructor local while allowing `Atom` in `isa` and dispatch.
-# A tuple-shaped lazy view keeps the legacy indexing/destructuring surface while
-# deferring child wrapper construction until a consumer actually reads a child.
+# A tuple-shaped cached view keeps the legacy indexing/destructuring surface
+# while reusing canonical child wrappers for every traversal.
 struct _CompatChildren{N,P<:Aletheia.FormulaPool}
     pool::P
     ids::NTuple{N,Int}
@@ -303,6 +303,19 @@ end
     finally
         unlock(_NEGATION_CACHE_LOCK)
     end
+end
+
+@inline function _compat_branch(connective, child::F) where {F<:_CompatFormula}
+    pool = child.pool
+    _hasconnective(Aletheia.signature(pool), connective) || return _compat_branch(connective, (child,))
+    _wrap_id(pool, Aletheia._intern!(pool, 0x02, connective, (child.id,)))
+end
+@inline function _compat_branch(connective, left::F, right::G) where {F<:_CompatFormula,G<:_CompatFormula}
+    pool = left.pool
+    if right.pool === pool && _hasconnective(Aletheia.signature(pool), connective)
+        return _wrap_id(pool, Aletheia._intern!(pool, 0x02, connective, (left.id, right.id)))
+    end
+    _compat_branch(connective, (left, right))
 end
 
 function _compat_branch(connective, children::Tuple)
