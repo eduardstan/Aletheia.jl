@@ -78,7 +78,9 @@ end
     @test IA7Relations == (IA_AorO, IA_L, IA_DorBorE, IA_AiorOi, IA_Li, IA_DiorBiorEi)
     @test IA3Relations == (IA_I, IA_L, IA_Li)
     @test IA72IARelations(IA_AorO) == (IA_A, IA_O)
+    @test IA72IARelations(IA_AiorOi) == (IA_Ai, IA_Oi)
     @test IA72IARelations(IA_DorBorE) == (IA_D, IA_B, IA_E)
+    @test IA72IARelations(IA_DiorBiorEi) == (IA_Di, IA_Bi, IA_Ei)
     @test IA32IARelations(IA_I) == (IA_A, IA_O, IA_D, IA_B, IA_E,
         IA_Ai, IA_Oi, IA_Di, IA_Bi, IA_Ei)
     @test collect(accessible(interval_frame(5), I(2, 4), IA_B)) == [I(2, 3)]
@@ -125,7 +127,15 @@ end
     @test length(RCC8_BASICS) == 7
     @test Topo_TPP === TPPi && Topo_NTPP === NTPPi
     @test RCC5Relations == (Topo_DR, PO, Topo_PP, Topo_PPi)
+    for r in (IA_AorO, IA_DorBorE, IA_AiorOi, IA_DiorBiorEi, IA_I,
+            Topo_DR, Topo_PP, Topo_PPi)
+        @test sprint(show, r) isa String
+    end
+    @test inverse(IA_AorO) === IA_AiorOi && inverse(IA_DorBorE) === IA_DiorBiorEi
+    @test inverse(IA_AiorOi) === IA_AorO && inverse(IA_DiorBiorEi) === IA_DorBorE
+    @test inverse(IA_I) === IA_I
     @test inverse(Topo_DR) === Topo_DR && inverse(Topo_PP) === Topo_PPi
+    @test inverse(Topo_PPi) === Topo_PP
     @test relation_holds(Topo_DR, I(1, 2), I(2, 3))
     @test relation_holds(Topo_PP, I(1, 2), I(1, 4))
     @test relation_holds(Topo_PPi, I(1, 4), I(1, 2))

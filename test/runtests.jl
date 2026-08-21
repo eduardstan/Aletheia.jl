@@ -245,6 +245,10 @@ include("theory.jl")
 include("compatibility.jl")
 include("ilp.jl")
 include("examples.jl")
+if Base.JLOptions().code_coverage != 0
+    coverage_probe = Module(:AletheiaCoverageProbe)
+    Base.include(coverage_probe, joinpath(pkgdir(Aletheia), "src", "Aletheia.jl"))
+end
 @testset "Aletheia" begin
     Aqua.test_all(Aletheia)
     if pkgversion(JET) < v"0.11"
