@@ -45,7 +45,15 @@ SOLEDATA_PATH=/path/to/SoleData julia --startup-file=no benchmark/dataset_protoc
 ```
 
 The command runs the agreement gate before timing, then writes the fixed-seed
-sweep to `data/al-dataset-protocol/run.txt`.  The report is
-`data/al-dataset-protocol/report.md`.  Its child-process sections use GNU
-`timeout`, temporary files, medians, and allocation counts; no benchmark
+explicit sweep to `data/al-dataset-protocol/run.txt`.  To measure the real
+consumer path (default full plus one-step memosets), run:
+
+```sh
+SOLEDATA_PATH=/path/to/SoleData julia --startup-file=no benchmark/dataset_protocol_supported.jl
+```
+
+That follow-up writes `data/al-dataset-protocol/run-supported.txt` and reports
+both cold first-check and warm repeated-check medians.  The report is
+`data/al-dataset-protocol/report.md`.  Both scripts' child-process sections use
+GNU `timeout`, temporary files, medians, and allocation counts; no benchmark
 output is piped.

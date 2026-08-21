@@ -6,17 +6,20 @@ struct SoleDataFamily <: Aletheia.AbstractModelFamily
     vectorized::Bool
 end
 
-function _aletheia_frame(source_frame)
+function _aletheia_frame(source_frame, relation=nothing)
     source_worlds = collect(SoleLogics.allworlds(source_frame))
+    source_accessibles(world) = isnothing(relation) ?
+        SoleLogics.accessibles(source_frame, world) :
+        SoleLogics.accessibles(source_frame, world, relation)
     adjacency = Dict(
-        world => Tuple(SoleLogics.accessibles(source_frame, world)) for world in source_worlds
+        world => Tuple(source_accessibles(world)) for world in source_worlds
     )
     Aletheia.Frame(source_worlds, Dict(:R => adjacency); index=true)
 end
 
-function _aletheia_model(dataset, i_instance, vectorized)
+function _aletheia_model(dataset, i_instance, vectorized, relation=nothing)
     source_frame = SoleLogics.frame(dataset, i_instance)
-    frame = _aletheia_frame(source_frame)
+    frame = _aletheia_frame(source_frame, relation)
     scalar = (condition, world) ->
         SoleData.checkcondition(condition, dataset, i_instance, world)
     batch = vectorized ?
@@ -28,9 +31,9 @@ function _aletheia_model(dataset, i_instance, vectorized)
     Aletheia.Model(frame, Aletheia.BOOLEAN, valuation)
 end
 
-function SoleDataFamily(dataset; vectorized=true)
+function SoleDataFamily(dataset; vectorized=true, relation=nothing)
     models = Any[
-        _aletheia_model(dataset, i_instance, vectorized)
+        _aletheia_model(dataset, i_instance, vectorized, relation)
         for i_instance in 1:SoleData.ninstances(dataset)
     ]
     SoleDataFamily(dataset, models, vectorized)

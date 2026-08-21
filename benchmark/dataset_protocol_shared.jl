@@ -5,6 +5,7 @@ using Aletheia
 using SoleData
 using SoleLogics
 using Graphs
+using DataFrames
 
 include(joinpath(@__DIR__, "dataset_protocol_adapter.jl"))
 
@@ -44,8 +45,10 @@ function make_dataset(ninstances, nworlds; uniform=false)
     SoleData.ExplicitModalLogiset(rows)
 end
 
-function make_conditions(rng)
-    features = SoleData.Feature.("f" .* string.(1:6))
+function make_conditions(rng; supported=false)
+    features = supported ?
+        SoleData.VariableValue.(1:2) :
+        SoleData.Feature.("f" .* string.(1:6))
     operators = (>, <, >=, <=)
     [
         SoleData.ScalarCondition(
@@ -54,6 +57,37 @@ function make_conditions(rng)
             rand(rng),
         ) for i in 1:12
     ]
+end
+
+function make_supported_dataset(ninstances, npoints)
+    rng = MersenneTwister(DATASET_SEED + ninstances * 1009 + npoints * 9176)
+    dataset = DataFrame(
+        v1=[rand(rng, npoints) for _ in 1:ninstances],
+        v2=[rand(rng, npoints) for _ in 1:ninstances],
+    )
+    features = SoleData.VariableValue.(1:2)
+    metaconditions = [SoleData.ScalarMetaCondition(feature, >) for feature in features]
+    relations = SoleData.readrelations(:IA3, dataset)
+    SoleData.scalarlogiset(
+        dataset,
+        features;
+        conditions=metaconditions,
+        relations=relations,
+        print_progress=false,
+        onestep_precompute_globmemoset=true,
+        onestep_precompute_relmemoset=false,
+    )
+end
+
+function supported_memo(dataset)
+    support = SoleData.supports(dataset)[1]
+    SoleData.SupportedLogiset(
+        SoleData.base(dataset);
+        conditions=support.metaconditions,
+        relations=support.relations,
+        onestep_precompute_globmemoset=true,
+        onestep_precompute_relmemoset=false,
+    )
 end
 
 function random_recipe(rng, depth, modal_probability, conditions)
@@ -82,19 +116,23 @@ function build_a(recipe, pool)
     Aletheia.branch(pool, AOPS[recipe.op], (build_a(child, pool) for child in recipe.children)...)
 end
 
-function build_s(recipe)
+function build_s(recipe; supported=false)
     recipe.op === :atom && return SoleLogics.Atom(recipe.condition)
-    SoleLogics.SyntaxBranch(SOPS[recipe.op], (build_s(child) for child in recipe.children)...)
+    operators = supported ? merge(SOPS, Dict(
+        :diamond => SoleLogics.DiamondRelationalConnective(SoleLogics.IA_L),
+        :box => SoleLogics.BoxRelationalConnective(SoleLogics.IA_L))) : SOPS
+    SoleLogics.SyntaxBranch(operators[recipe.op],
+        (build_s(child; supported=supported) for child in recipe.children)...)
 end
 
-function make_pair(depth, modal_probability, seed)
+function make_pair(depth, modal_probability, seed; supported=false)
     rng = MersenneTwister(seed)
-    conditions = make_conditions(rng)
+    conditions = make_conditions(rng; supported=supported)
     recipe = random_recipe(rng, depth, modal_probability, conditions)
     pool = Aletheia.FormulaPool(Aletheia.Signature((Aletheia.NEGATION,
         Aletheia.CONJUNCTION, Aletheia.DISJUNCTION, Aletheia.IMPLICATION,
         Aletheia.Diamond(:R), Aletheia.Box(:R))))
-    build_a(recipe, pool), build_s(recipe)
+    build_a(recipe, pool), build_s(recipe; supported=supported)
 end
 
 function parse_case(argument)
