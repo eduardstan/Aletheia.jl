@@ -3,7 +3,7 @@
 The audit was regenerated from the clean package test run with
 `julia --project=. -e 'using Pkg; Pkg.test(coverage=true)'` and
 `julia --project=coverage -e 'using Pkg; Pkg.instantiate(); include("coverage/check.jl")'`.
-The result is **1165/1214 (95.96%)**. The prior genuine misses in
+The result is **1631/1682 (96.97%)**. The prior genuine misses in
 `src/dimensional.jl:39-40` (rectangle-relation display/equality) and
 `src/relations.jl:249` (identity display) are covered behaviorally by
 `test/relations.jl`. The remaining zero-count lines are exercised
@@ -33,12 +33,21 @@ credited by the counter.
 - **79-80, 170-171, 182-183** — Boolean, Gödel, and Łukasiewicz top/bottom
   methods are exercised directly and through evaluator tests; one-line methods
   are inlined.
-- **418** — `Valuation` lookup is exercised by wrapped valuation model tests;
-  the one-line forwarding method is inlined.
-
 ### `src/syntax.jl`
 
 - **311, 356-357, 360-361** — Atom/branch child and kind predicates are
   exercised by syntax API tests; one-line methods are inlined.
 - **536-537, 540-541** — Cross-kind equality methods are exercised by syntax
   tests; one-line methods are inlined.
+
+### `src/normalforms.jl`
+
+- **10** — The normal-form connective helper is exercised through CNF/DNF
+  tests; the one-line method is inlined.
+
+### `src/prover.jl`
+
+- **31-32** — The abstract prover boundary's default methods are exercised by
+  proof-search edge tests; exceptional fallback lines are not credited.
+
+
