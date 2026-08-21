@@ -347,11 +347,6 @@ const H4 = _named_flew(
     [1 2 3 4; 2 2 2 2; 3 2 3 2; 4 2 2 4],
     [1 2 3 4; 2 2 2 2; 3 2 3 2; 4 2 2 4], 4)
 
-const G6_TABLE_JOIN = [1 1 1 1 1 1; 1 2 3 4 5 6; 1 3 3 4 5 6; 1 4 4 4 5 6; 1 5 5 5 5 6; 1 6 6 6 6 6]
-const G6_TABLE_MEET = [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 3 3 3; 4 2 3 4 4 4; 5 2 3 4 5 5; 6 2 3 4 5 6]
-# G6 is defined above from the generator; these constants are retained as
-# readable table witnesses for users and differential tests.
-
 const H6 = _named_flew(
     [1 1 1 1 1 1; 1 2 3 4 5 6; 1 3 3 6 5 6; 1 4 6 4 1 6; 1 5 5 1 5 1; 1 6 6 6 1 6],
     [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 2 3 3; 4 2 2 4 2 4; 5 2 3 2 5 3; 6 2 3 4 3 6],
