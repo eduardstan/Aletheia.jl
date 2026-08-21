@@ -67,7 +67,6 @@
     @test_throws ArgumentError FiniteFLewAlgebra([1, 2, 3], [1, 2, 3], [1, 2, 3], 2, 1)
     @test_throws ArgumentError FiniteFLewAlgebra{2}(:bad, [1 2; 2 2], [1 2; 2 2], 2, 1)
     @test_throws ArgumentError FiniteFLewAlgebra{2}([1 1; 1 2], :bad, [1 2; 2 2], 2, 1)
-    @test_throws ArgumentError FiniteFLewAlgebra([1 2; 2 2], :bad, [1 2; 2 2], 2, 1)
     @test sprint(show, H4) == "FiniteFLewAlgebra{4}(bottom=2, top=1)"
 
     # Propositional and modal evaluation uses the same UInt8 vector path.

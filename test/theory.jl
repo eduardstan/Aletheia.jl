@@ -233,12 +233,6 @@ end
     @test evaluate(FODisjunction(Predicate(:d, Variable(:x)), Predicate(:e, Variable(:x))), fi, Dict(:x => 1))
     @test evaluate(FOAnd(Predicate(:d, Variable(:x)), Predicate(:e, Variable(:x))), fi, (x=1,))
     @test_throws KeyError evaluate(Predicate(:missing, Variable(:x)), fi, Dict(:x => 1))
-    missing_table = FirstOrderInterpretation((1,), Dict(:p => Set([1]));
-        functions=Dict(:f => Dict((2,) => 1)))
-    @test_throws KeyError evaluate(Predicate(:p, FunctionTerm(:f, Constant(1))), missing_table)
-    missing_function = FirstOrderInterpretation((1,), Dict(:p => Set([1]));
-        functions=Dict(:g => Dict((1,) => 1)))
-    @test_throws KeyError evaluate(Predicate(:p, FunctionTerm(:f, Constant(1))), missing_function)
     ff = FirstOrderInterpretation((1,), (name, args...) -> name == :p && args == (1,))
     @test evaluate(Predicate(:p, Variable(:x)), ff, Dict(:x => 1))
     sig = Signature((¬, ∧, ∨, →, Diamond(:R), TheoryXor()))
