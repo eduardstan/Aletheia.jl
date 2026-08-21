@@ -55,6 +55,11 @@ struct TestUnspecified end
     @test parse(pool, string(quoted)) == quoted
 
     modal = parse(pool, "⟨G⟩p → [G]q")
+    @test branch(pool, diamond, p) == children(modal)[1]
+    @test branch(pool, box, q) == children(modal)[2]
+    @test Aletheia._intern!(pool, 0x01, "p", ()) == id(p)
+    @test string(branch(pool, diamond, p)) == "⟨G⟩p"
+    @test string(branch(pool, box, q)) == "[G]q"
     @test string(modal) == "⟨G⟩p → [G]q"
     @test parse(pool, string(modal)) == modal
     @test string(parse(pool, "¬1→0"; atom_parser=x -> Base.parse(Float64, x))) == "¬1.0 → 0.0"
