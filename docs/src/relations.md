@@ -11,8 +11,10 @@ A relation is data carried by `Diamond` or `Box`. The minimal extension protocol
 is [`relation_holds`](@ref); the optional [`relation_successors`](@ref) hook
 can enumerate successors without scanning all worlds. If the hook returns
 `nothing` (the default), generated frames use the generic predicate filter.
-Thus an external relation family needs a value and one method, not a new
-frame×relation implementation.
+Bounded relations may additionally implement the four-argument
+`relation_holds(relation, source, target, worlds)` form. Thus an external
+relation family needs a value and one method, not a new frame×relation
+implementation.
 
 ```@example relations
 using Aletheia
@@ -33,7 +35,10 @@ println(collect(accessible(frame, 2, SameParity())))
 
 `inverse` and `converse` provide the relation-level converse. The protocol's
 orientation is `(source, target)`: `relation_holds(r, source, target)` means
-that `target` is accessible from `source` by `r`.
+that `target` is accessible from `source` by `r`. Point relations whose meaning
+is bounded by a finite domain use `relation_holds(r, source, target, worlds)`;
+this keeps `MINIMUM`, `MAXIMUM`, and positional `SUCCESSOR`/`PREDECESSOR`
+consistent on sparse point domains.
 
 ## Allen intervals and RCC8 rectangles
 

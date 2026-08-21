@@ -29,7 +29,11 @@ end
 
 `meet`, `join`, `implication`, and `negation` are methods on the algebra, not
 methods on formulas. This keeps the semantic carrier visible to Julia's type
-inference and lets the same model/evaluation API support custom carriers.
+inference and lets the same model/evaluation API support custom carriers. Atom
+values for finite chains are validated at `interpret`, so lazy valuations and
+compound formulas follow the same boundary. A value within `8eps(Float64)` of a
+finite-chain level is accepted and canonicalized to that level; off-chain values
+are rejected.
 
 ## Frames, valuations, models
 
