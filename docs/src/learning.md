@@ -49,8 +49,11 @@ true
 ```
 
 `learning_from_interpretations(model)` is the concise constructor for the same
-wrapper. `first_order_interpretation` is a separate adapter for users who want
-a first-order presentation; it does not turn the model into a learner.
+wrapper and, like `interpretation_example`, expects a modal [`Model`](@ref).
+`first_order_interpretation` is a separate adapter for users who want a
+first-order presentation; it does not turn the model into a learner. A caller
+who owns a different interpretation type can construct [`InterpretationExample`](@ref)
+directly.
 
 ## Clauses and θ-subsumption
 
@@ -105,8 +108,11 @@ Base.SizeUnknown()
 Any[p(X) ∨ q(X)]
 ```
 
-The implementation is therefore a foundation for a learner, not a learner,
-prover, or least-Herbrand-model evaluator.
+Horn-clause refinements preserve the `HornClause` type and reject an added
+positive literal when it would create a second head. `max_literals` bounds every
+emitted candidate, including substitution-only candidates; it must be `nothing`
+or a non-negative integer. The implementation is therefore a foundation for a
+learner, not a learner, prover, or least-Herbrand-model evaluator.
 
 ```@docs
 Literal

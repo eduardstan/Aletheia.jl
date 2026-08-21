@@ -147,6 +147,17 @@ end
 
     gmodel = Model(f, Dict("p" => Dict(:w1 => 0.5, :w2 => 1.0)); algebra=GodelAlgebra())
     @test interpret(p, gmodel, :w1) === 0.5
+    finite_godel = Model(f, GodelAlgebra(3), Dict("p" => Dict(:w1 => 0.5, :w2 => 1.0)))
+    @test interpret(p, finite_godel, :w1) === 0.5
+    @test check(p, finite_godel, :w1) === 0.5
+    @test interpret(p, Model(f, GodelAlgebra(3), Dict("p" => Dict(:w1 => nextfloat(0.5)))), :w1) === 0.5
+    off_grid_godel = Model(f, GodelAlgebra(3), Dict("p" => Dict(:w1 => 0.25)))
+    @test_throws ArgumentError interpret(p, off_grid_godel, :w1)
+    @test_throws ArgumentError check(p, off_grid_godel, :w1)
+    @test_throws ArgumentError extension(p, off_grid_godel)
+    finite_lukasiewicz = Model(f, LukasiewiczAlgebra(4), Dict("p" => Dict(:w1 => 1 / 3)))
+    @test interpret(p, finite_lukasiewicz, :w1) === 1 / 3
+    @test_throws ArgumentError interpret(p, Model(f, LukasiewiczAlgebra(4), Dict("p" => Dict(:w1 => 0.2))), :w1)
     @test interpret(p, Model(f, Dict(("p", :w1) => 0.75), GodelAlgebra()), :w1) === 0.75
     @test interpret(p, Model(f, Dict((:w1, "p") => 0.25), GodelAlgebra()), :w1) === 0.25
     @test interpret(p, Model(f, Dict(:w1 => Dict("p" => 0.4)), GodelAlgebra()), :w1) === 0.4

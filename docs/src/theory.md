@@ -75,7 +75,9 @@ and clausal form, see Goranko, §2.5.1 (pp. 77–80)
 [`AbstractProver`](@ref) defines the interface. `PropositionalProver` is an
 exhaustive truth-table fallback for Boolean propositional formulas; modal or
 custom branches return `nothing`/`:unknown`. It is deliberately not a modal
-or first-order prover. A downstream backend can implement `prove`,
+or first-order prover. The optional `atoms` override must contain every atom
+payload in the formula (and may include extras); an incomplete or duplicate
+override is rejected with `ArgumentError`. A downstream backend can implement `prove`,
 `prove_valid`, and entailment without changing syntax or semantics.
 
 ```@example theory

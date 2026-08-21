@@ -28,6 +28,19 @@ function _propositional_atoms(formula::Formula)
     end
     atoms
 end
+function _propositional_atom_names(required_formulas; atoms=nothing)
+    required = required_formulas isa Formula ? _propositional_atoms(required_formulas) :
+        unique(vcat((_propositional_atoms(formula) for formula in required_formulas)...))
+    atoms === nothing && return required
+    # Accept same-pool Atom handles as a convenience, but use their payloads
+    # as the valuation keys just like formula discovery does.
+    names = [entry isa Atom ? value(entry) : entry for entry in atoms]
+    length(unique(names)) == length(names) ||
+        throw(ArgumentError("atoms override must not contain duplicates"))
+    missing = [name for name in required if !(name in names)]
+    isempty(missing) || throw(ArgumentError("atoms override is missing formula atoms: $(join(string.(missing), ", "))"))
+    names
+end
 function _propositional_formula(formula::Atom)
     true
 end
@@ -47,7 +60,7 @@ end
 function _truth_table(formula; atoms=nothing)
     _propositional_formula(formula) || return ProverResult(:unknown; answer=nothing,
         details="the trivial backend handles only Boolean propositional connectives")
-    names = atoms === nothing ? _propositional_atoms(formula) : collect(atoms)
+    names = _propositional_atom_names(formula; atoms=atoms)
     for values in _assignments(length(names))
         model = _table_model(formula, names, values)
         truth = check(formula, model, :only)
@@ -65,7 +78,7 @@ function _prove_satisfiability(prover::PropositionalProver, formula::Formula; at
 end
 function _prove_validity(prover::PropositionalProver, formula::Formula; atoms=nothing)
     _propositional_formula(formula) || return ProverResult(:unknown; details="unsupported formula")
-    names = atoms === nothing ? _propositional_atoms(formula) : collect(atoms)
+    names = _propositional_atom_names(formula; atoms=atoms)
     for values in _assignments(length(names))
         model = _table_model(formula, names, values)
         !check(formula, model, :only) && return ProverResult(:invalid; answer=false,
@@ -76,8 +89,7 @@ end
 function _prove_entailment(prover::PropositionalProver, premises, conclusion; atoms=nothing)
     all(_propositional_formula, premises) && _propositional_formula(conclusion) ||
         return ProverResult(:unknown; details="unsupported formula")
-    names = atoms === nothing ? unique(vcat((_propositional_atoms(p) for p in premises)...,
-                                            _propositional_atoms(conclusion))) : collect(atoms)
+    names = _propositional_atom_names((premises..., conclusion); atoms=atoms)
     for values in _assignments(length(names))
         model = _table_model(conclusion, names, values)
         all(check(premise, model, :only) for premise in premises) || continue
