@@ -11,6 +11,7 @@ module Aletheia
 include("syntax.jl")
 include("parse.jl")
 include("semantics.jl")
+include("algebras.jl")
 include("relations.jl")
 include("dimensional.jl")
 include("frameclasses.jl")
@@ -31,6 +32,8 @@ export Negation, Conjunction, Disjunction, Implication, Diamond, Box
 export NEGATION, CONJUNCTION, DISJUNCTION, IMPLICATION
 export NOT, AND, OR, IMPLIES, ¬, ∧, ∨, →
 export TruthAlgebra, BooleanAlgebra, GodelAlgebra, LukasiewiczAlgebra
+export FiniteTruth, FiniteFLewAlgebra, BooleanFLewAlgebra
+export G3, G4, G5, G6, Ł3, Ł4, L3, L4, H4, H6, H6_1, H6_2, H6_3, H9
 export RelationFamily, IntervalRelation, PointRelation, RCCRelation, RectangleRelation
 export relation_holds, relation_successors, inverse, converse, rectangle_relation
 export Interval, Rectangle, Interval2D, Point, interval_frame, rectangle_frame, point_frame
@@ -56,6 +59,9 @@ export GodelChain, LukasiewiczChain, GödelAlgebra, ŁukasiewiczAlgebra
 export BOOLEAN, truth_type, truthtype, carrier, top, bottom, bot, meet, join
 export domain
 export implication, negation, implies, negate, levels, isfinitechain
+export lattice_meet, latticemeet, latticejoin, lattice_join, lmeet, join_table, lattice_meet_table, monoid_table, implication_table
+export product, tnorm, monoid, monoid_product, monoid_operation, residuum
+export precedeq, precedes, succeedeq, succeedes, maximalmembers, minimalmembers
 export Frame, worlds, relations, world_index, hasworldindex, world_position, accessible
 export check, extension
 export Valuation, Model, frame, algebra, valuation, interpret
