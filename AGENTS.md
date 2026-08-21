@@ -39,4 +39,4 @@ When updating this file, preserve this bar for all agents and keep entries conci
 ## ILP foundations
 
 - Clauses, θ-subsumption, lazy refinement operators, and learning-setting example wrappers live in `src/ilp.jl`; the reference terminology and properties are documented in `docs/src/index.md` with `muggleton1994`. `test/ilp.jl` covers the recursive implication counterexample and quasi-order boundaries.
-working: Done: dimensional successor optimization, IA3/IA7/RCC5 support, compatibility aliases, exhaustive tests, benchmark sweep, profiler evidence, docs updates, and 95.34% coverage validation; remaining: run the docs build and differential checks, then open the direct PR.
+working: Done: dimensional successor optimization, IA3/IA7/RCC5 support, compatibility aliases, exhaustive tests, benchmark sweep, profiler evidence, docs, 95.34% coverage, docs build, differential checks, and direct PR #20; remaining: monitor CI/review at https://github.com/eduardstan/Aletheia.jl/pull/20.
