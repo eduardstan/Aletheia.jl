@@ -56,6 +56,26 @@ same representation.
 | random modal, 24 worlds / .50 / depth 4 | 20.19 μs | 7.03 μs | 2.87× | 406 / 20.781 KiB ; 106 / 14.516 KiB |
 | interval adjacency, n=6 | 0.94 μs | 0.84 μs | 1.12× | 103 / 4.141 KiB ; 100 / 3.656 KiB |
 | Allen BEFORE check, n=6 | 14.14 μs | 6.70 μs | 2.11× | 230 / 32.234 KiB ; 176 / 22.109 KiB |
+| finite chain G3 check, depth 2 | 2.32 μs | 1.70 μs | 1.36× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
+| finite chain Ł3 check, depth 2 | 2.23 μs | 2.08 μs | 1.08× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
+| non-chain H4 check, depth 2 | 2.47 μs | 2.07 μs | 1.19× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
+| learning from interpretations, 8 models / 4 hypotheses | 235.70 μs | 71.03 μs | 3.32× | 6,354 / 226.531 KiB ; 1,928 / 115.469 KiB |
+
+The extension comparison is explicitly an equivalent all-world check loop on
+SoleLogics because it has no `extension` API; it is not labelled as an
+unsupported incumbent win. Modal rows use the fixed seed above and disable
+normalization to isolate evaluation. The ILP row constructs
+`learning_from_interpretations` examples and scores hypotheses over all
+interpretations through the check/eval loop. H4 is the landed finite
+non-chain FLew algebra, not a fabricated placeholder.
+
+The largest evaluation ratios are attributable to allocation shape: the
+incumbent all-world extension loop allocates a fresh structural evaluation per
+world (12,604 and 78,436 allocations), while Aletheia evaluates the formula DAG
+once into a BitVector (143 and 339). The random modal ratios shrink with larger
+world counts because both sides then pay relation traversal; this is measured
+allocation/time behavior, not an assumed cause.
+
 ### Dimensional traversal profile and size sweep
 
 The pre-fix Julia `Profile` trace sampled the `relation_successors` generator
@@ -80,26 +100,6 @@ in the hot call. The same run measured the consumer subsets at n=6: IA3
 (2,484 vs 407), and RCC5 71.00 μs vs 38.22 μs (4,104 vs 999), SoleLogics vs
 Aletheia. All generated edges are checked against their predicates in
 `test/relations.jl`.
-
-| finite chain G3 check, depth 2 | 2.32 μs | 1.70 μs | 1.36× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
-| finite chain Ł3 check, depth 2 | 2.23 μs | 2.08 μs | 1.08× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
-| non-chain H4 check, depth 2 | 2.47 μs | 2.07 μs | 1.19× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
-| learning from interpretations, 8 models / 4 hypotheses | 235.70 μs | 71.03 μs | 3.32× | 6,354 / 226.531 KiB ; 1,928 / 115.469 KiB |
-
-The extension comparison is explicitly an equivalent all-world check loop on
-SoleLogics because it has no `extension` API; it is not labelled as an
-unsupported incumbent win. Modal rows use the fixed seed above and disable
-normalization to isolate evaluation. The ILP row constructs
-`learning_from_interpretations` examples and scores hypotheses over all
-interpretations through the check/eval loop. H4 is the landed finite
-non-chain FLew algebra, not a fabricated placeholder.
-
-The largest evaluation ratios are attributable to allocation shape: the
-incumbent all-world extension loop allocates a fresh structural evaluation per
-world (12,604 and 78,436 allocations), while Aletheia evaluates the formula DAG
-once into a BitVector (143 and 339). The random modal ratios shrink with larger
-world counts because both sides then pay relation traversal; this is measured
-allocation/time behavior, not an assumed cause.
 
 ## Bisimulation contraction amortisation
 
