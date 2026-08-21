@@ -30,6 +30,18 @@ function allen_definition(relation, source::Interval, target::Interval)
 end
 
 @testset "relation families and dimensional frames" begin
+    # Exercise generic protocol errors and all relation display names; these
+    # methods are part of the relation-family surface.
+    struct BareRelation end
+    @test relation_holds(IDENTITY, 1, 1)
+    @test_throws MethodError relation_holds(BareRelation(), 1, 2)
+    @test_throws MethodError inverse(BareRelation())
+    @test IA72IARelations(IA_AiorOi) == (IA_Ai, IA_Oi)
+    @test IA72IARelations(IA_DiorBiorEi) == (IA_Di, IA_Bi, IA_Ei)
+    named_relations = (ALLEN_RELATIONS..., IA_AorO, IA_DorBorE, IA_AiorOi,
+        IA_DiorBiorEi, IA_I, IDENTITY, POINT_RELATIONS..., RCC8_RELATIONS...,
+        RCC5Relations..., POINT2D_RELATIONS...)
+    @test all(Aletheia._relation_name(r) isa String for r in named_relations)
     I = Interval
     a, b = I(1, 3), I(3, 5)
     overlap_a, overlap_b = I(1, 4), I(2, 5)
@@ -126,6 +138,10 @@ end
     @test Topo_TPP === TPPi && Topo_NTPP === NTPPi
     @test RCC5Relations == (Topo_DR, PO, Topo_PP, Topo_PPi)
     @test inverse(Topo_DR) === Topo_DR && inverse(Topo_PP) === Topo_PPi
+    @test all(inverse(inverse(r)) === r for r in (IA_AorO, IA_DorBorE, IA_AiorOi, IA_DiorBiorEi, IA_I,
+        Topo_DR, Topo_PP, Topo_PPi))
+    @test all(sprint(show, r) isa String for r in (IA_AorO, IA_DorBorE, IA_AiorOi, IA_DiorBiorEi,
+        IA_I, Topo_DR, Topo_PP, Topo_PPi))
     @test relation_holds(Topo_DR, I(1, 2), I(2, 3))
     @test relation_holds(Topo_PP, I(1, 2), I(1, 4))
     @test relation_holds(Topo_PPi, I(1, 4), I(1, 2))
@@ -161,6 +177,11 @@ end
     @test all(Set(relation_successors(r, source, rectangles)) ==
         Set(target for target in rectangles if relation_holds(r, source, target))
         for r in RCC5Relations for source in rectangles)
+    rectangle_frame_value = rectangle_frame(2)
+    rectangle_frame_worlds = collect(worlds(rectangle_frame_value))
+    @test all(Set(accessible(rectangle_frame_value, source, r)) ==
+        Set(target for target in rectangle_frame_worlds if relation_holds(r, source, target))
+        for r in (RCC8_RELATIONS..., RCC5Relations...) for source in rectangle_frame_worlds)
     rr = rectangle_relation(MEETS, MEETS)
     @test inverse(rr) == rectangle_relation(MET_BY, MET_BY)
     @test isequal(rr, rectangle_relation(MEETS, MEETS))
