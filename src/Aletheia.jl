@@ -16,6 +16,7 @@ include("dimensional.jl")
 include("frameclasses.jl")
 include("evaluation.jl")
 include("firstorder.jl")
+include("ilp.jl")
 include("normalforms.jl")
 include("bisimulation.jl")
 include("prover.jl")
@@ -60,11 +61,16 @@ export check, extension
 export Valuation, Model, frame, algebra, valuation, interpret
 
 export FirstOrderTerm, FirstOrderFormula, FOTerm, FOFormula
-export Variable, Constant, Predicate, Equality, FONegation, FOConjunction, FODisjunction, FOImplication
+export Variable, Constant, FunctionTerm, CompoundTerm, FOFunction, Predicate, Equality, FONegation, FOConjunction, FODisjunction, FOImplication
 export Exists, Forall, FOVariable, FOConstant, FOAtom, FOPredicate, FOEquality
 export FONot, FOAnd, FOOr, FOImplies, FOExists, FOForall
 export FirstOrderInterpretation, FOInterpretation, FOModel, evaluate, standard_translation, standardtranslate, translate
 export first_order_interpretation, firstorder
+export Literal, literal, positive_literal, negative_literal, atoms, literals, clauses, Clause, HornClause, ClauseSet, BackgroundKnowledge
+export Substitution, substitute, subsumes, theta_subsumes, more_general, more_specific, equivalent_under_subsumption, ishorn
+export downward_refinements, upward_refinements, downward_refinement, upward_refinement, specializations, generalizations
+export ILPExample, EntailmentExample, InterpretationExample, ProofExample
+export learning_from_entailment, learning_from_interpretations, learning_from_proofs, interpretation_example, model_example
 export iscnf, isdnf, to_cnf, to_dnf, cnf, dnf, conjunctive_normal_form, disjunctive_normal_form
 export bisimilar, BisimulationClass, BisimulationContraction, QuotientModel, bisimulation_contraction, contraction_world
 export model, classes, world_map, contract, contraction

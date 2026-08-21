@@ -33,3 +33,7 @@ When updating this file, preserve this bar for all agents and keep entries conci
 ## Migration layer
 
 - `src/compatibility.jl` defines the nested opt-in `Aletheia.SoleLogics` vocabulary; the derived consumer inventory, mappings, deliberate gaps, and scratch-slice evidence live in `docs/src/compatibility.md`.
+
+## ILP foundations
+
+- Clauses, θ-subsumption, lazy refinement operators, and learning-setting example wrappers live in `src/ilp.jl`; the reference terminology and properties are documented in `docs/src/index.md` with `muggleton1994`. `test/ilp.jl` covers the recursive implication counterexample and quasi-order boundaries.
