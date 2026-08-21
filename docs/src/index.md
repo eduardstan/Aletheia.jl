@@ -123,6 +123,66 @@ countermodel or certificate in [`ProverResult`](@ref)).  The shipped
 `nothing` for modal or custom connectives.  A concrete adapter can therefore
 implement `prove`, `prove_valid`, and entailment without changing Aletheia.
 
+
+## Inductive logic programming foundations
+
+The ILP layer is syntax-only foundations, not a learner.  It extends the
+existing first-order terms with [`FunctionTerm`](@ref), then represents a
+signed atomic formula as a [`Literal`](@ref).  A [`Clause`](@ref) is an
+immutable canonical tuple with set semantics: it is read as a disjunction of
+literals, and [`HornClause`](@ref) checks that at most one literal is positive.
+[`ClauseSet`](@ref) is the compact representation of background knowledge.
+This is the clause vocabulary of Muggleton and De Raedt, §5.2
+[muggleton1994](@cite); substitutions intentionally cover terms, atoms, and
+clauses rather than pretending to be a capture-avoiding substitution for every
+quantified formula in the small first-order core.
+
+[`subsumes`](@ref) implements Plotkin's θ-subsumption: `c₁` θ-subsumes `c₂`
+when one substitution makes every literal of `c₁` a member of `c₂`
+(Muggleton and De Raedt, Definition 5.3, p. 643 [muggleton1994](@cite)).  The
+search is direct backtracking and therefore has the expected NP-complete worst
+case.  It induces the generality **quasi-order**, not a partial order:
+different clauses can subsume one another after variables are identified.
+`equivalent_under_subsumption` tests this mutual-subsumption relation.  This
+is not logical implication.  The survey's recursive example
+`p(f(X)) :- p(X)` and `p(f(f(Y))) :- p(Y)` is an implication without
+θ-subsumption (pp. 643, 648 [muggleton1994](@cite)); Aletheia deliberately exposes
+no implication test here.
+
+[`downward_refinements`](@ref) and [`upward_refinements`](@ref) return lazy
+iterators.  Downward refinement applies supplied substitutions and adds one
+literal from the supplied language bias; upward refinement deletes a literal
+or abstracts a term.  Both are sound and proper for θ-subsumption.  With a finite supplied vocabulary and finite substitution/term bound they are
+locally finite; neither claims local or global completeness or optimality.  In particular, upward generalization is
+incomplete for unrestricted clausal logic, where the survey notes infinite
+chains (Muggleton and De Raedt, Definition 5.4 and §5.2.2, pp. 644–645
+[muggleton1994](@cite)).  A `literals` or non-collection `predicates` vocabulary may itself be an
+unbounded iterator: refinement candidates are not materialized.
+
+The survey names three settings exactly as **learning from entailment**,
+**learning from interpretations**, and **learning from proofs**.  Their
+examples are respectively queries/formulas whose entailment is observed,
+interpretations, and proof objects; the constructors
+[`learning_from_entailment`](@ref), [`learning_from_interpretations`](@ref),
+and [`learning_from_proofs`](@ref) make those labels explicit (Muggleton and
+De Raedt, §§3–5 [muggleton1994](@cite)).  A Kripke [`Model`](@ref) in this
+package is an interpretation: [`interpretation_example`](@ref) presents it
+directly as an example in the second setting.  Thus Sole's existing modal
+decision trees and decision lists are, informally, learning from
+interpretations over modal models (Muggleton and De Raedt, §3
+[muggleton1994](@cite)):
+
+```julia
+frame = Frame((:w₁, :w₂), Dict(:R => Dict(:w₁ => [:w₂], :w₂ => [])))
+model = Model(frame, BOOLEAN, Dict("p" => Set([:w₁])))
+example = interpretation_example(model; positive=true)
+example.interpretation === model  # true
+```
+
+The separate [`first_order_interpretation`](@ref) adapter remains available
+for Boolean modal models when a first-order predicate presentation is wanted;
+it is not a learner or a theorem prover.
+
 ### SoleReasoners adapter sketch
 
 `SoleReasoners.jl` is deliberately not a dependency of Aletheia and its
