@@ -31,6 +31,8 @@ Venema, §§1.2–1.3 (pp. 9–26) [blackburn2001; §§1.2–1.3, pp. 9–26](@c
 - **[Measured results](results.md)** publishes the comparison protocol, wins, and
   losses. It is a measurement report, not a claim that every workload is
   faster.
+- **[Development and validation](development.md)** gives copy-paste test, docs,
+  benchmark, and differential commands, pass markers, and measured timings.
 - **[Migration from SoleLogics](compatibility.md)** is the consumer-derived mapping and gap
   inventory. It is the one migration page; the other chapters do not duplicate
   it.

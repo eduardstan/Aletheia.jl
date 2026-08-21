@@ -6,10 +6,14 @@ using Aletheia
 using SoleLogics
 
 const DEEP = "--deep" in ARGS
+const SMOKE = "--smoke" in ARGS
+(DEEP && SMOKE) && error("choose only one benchmark mode: --smoke or --deep")
 # Quick mode is intentionally bounded for a human-run default.  --deep is an
 # opt-in diagnostic mode, never used by the README's reproducibility command.
-const BENCH_SECONDS = DEEP ? 0.05 : 0.01
-const BENCH_SAMPLES = DEEP ? 15 : 5
+# --smoke keeps the same measurement/reporting machinery but exercises only the
+# smallest representative cases for a fast setup check.
+const BENCH_SECONDS = DEEP ? 0.05 : SMOKE ? 0.001 : 0.01
+const BENCH_SAMPLES = DEEP ? 15 : SMOKE ? 1 : 5
 const SIGNATURE = Aletheia.Signature((Aletheia.NEGATION, Aletheia.CONJUNCTION,
     Aletheia.DISJUNCTION, Aletheia.IMPLICATION))
 const AOPS = Dict(:not => Aletheia.NEGATION, :and => Aletheia.CONJUNCTION,
@@ -124,9 +128,10 @@ function measure(f; seconds=BENCH_SECONDS, samples=BENCH_SAMPLES)
     Measurement(Float64(m.time), Int(m.allocs), Int(m.memory))
 end
 
-# BenchmarkTools cannot preempt one evaluation.  A fresh helper process is the
-# wall-clock guard: a pathological incumbent call is killed at ten seconds and
-# the case is retained as an explicit unmeasured result.
+# BenchmarkTools cannot preempt one evaluation.  Normal/deep paths use a fresh
+# helper process as the wall-clock guard: a pathological incumbent call is killed
+# at ten seconds and the case is retained as an explicit unmeasured result.
+# Smoke intentionally omits this per-case process boundary for tiny safe cases.
 function warmup_case(kind, side, argument)
     project = @__DIR__
     julia = Base.julia_cmd()
@@ -140,41 +145,92 @@ function warmup_case(kind, side, argument)
     rm(path; force=true)
     (process.exitcode, output)
 end
-function guarded_measure(label, kind, side, argument, f)
+function case_start(label)
     println("[case] ", label)
     flush(stdout)
-    status, _ = warmup_case(kind, side, argument)
-    status == 124 && return Measurement(missing, missing, missing, ">10s (not sampled)")
-    if status != 0
+    time_ns()
+end
+function case_finish(label, started)
+    elapsed = (time_ns() - started) / 1e9
+    println("[case done] ", label, " (", @sprintf("%.2fs", elapsed), ")")
+    flush(stdout)
+end
+function guarded_measure(label, kind, side, argument, f)
+    started = case_start(label)
+    if SMOKE && startswith(kind, "interval")
+        result = Measurement(missing, missing, missing, "smoke skipped (interval-temporal suite)")
+        case_finish(label, started)
+        return result
+    end
+    # Smoke cases are deliberately tiny and run in this already-loaded process;
+    # the normal/deep process guard remains in force for pathological cases.
+    status, _ = SMOKE ? (0, "") : warmup_case(kind, side, argument)
+    result = if status == 124
+        Measurement(missing, missing, missing, ">10s (not sampled)")
+    elseif status != 0
         note = side == "incumbent" ? "guarded failure (exit code $status)" :
             "unavailable (guarded exit code $status)"
-        return Measurement(missing, missing, missing, note)
+        Measurement(missing, missing, missing, note)
+    else
+        try
+            measure(f)
+        catch
+            Measurement(missing, missing, missing, "unavailable (measurement failed)")
+        end
     end
-    try
-        measure(f)
-    catch
-        Measurement(missing, missing, missing, "unavailable (measurement failed)")
+    case_finish(label, started)
+    result
+end
+function smoke_pair(kind, side, argument)
+    kind == "equality_eq" || error("smoke pair does not support $kind")
+    n = parse(Int, argument)
+    r = chain(n)
+    if side == "incumbent"
+        left = build_s(r); right = build_s(r)
+    else
+        pool = pool_a(); left = build_a(r, pool); right = build_a(r, pool)
     end
+    start = time_ns()
+    first_result = left == right
+    middle = time_ns()
+    second_result = left == right
+    finish = time_ns()
+    # Keep the calls live while retaining the pair's first/second timing note.
+    first_result == second_result || error("smoke equality pair was not stable")
+    ((middle - start) / 1_000_000, (finish - middle) / 1_000_000)
 end
 function guarded_pair(label, kind, side, argument)
-    println("[case] ", label)
-    flush(stdout)
+    started = case_start(label)
+    if SMOKE
+        first_ms, second_ms = smoke_pair(kind, side, argument)
+        note = @sprintf("first %.3f ms; second %.3f ms; not sampled", first_ms, second_ms)
+        result = Measurement(second_ms * 1_000_000, missing, missing, note)
+        case_finish(label, started)
+        return result
+    end
     status, output = warmup_case(kind, side, argument)
-    status == 124 && return Measurement(missing, missing, missing, ">10s first call (second unavailable)")
-    if status != 0 || isempty(strip(output))
+    result = if status == 124
+        Measurement(missing, missing, missing, ">10s first call (second unavailable)")
+    elseif status != 0 || isempty(strip(output))
         note = status != 0 ? "guarded failure (exit code $status)" :
             "unavailable (empty guarded output)"
-        return Measurement(missing, missing, missing, note)
+        Measurement(missing, missing, missing, note)
+    else
+        values = try
+            parse.(Float64, split(strip(output)))
+        catch
+            nothing
+        end
+        if values === nothing || length(values) != 2
+            Measurement(missing, missing, missing, "unavailable (invalid guarded output)")
+        else
+            first_ms, second_ms = values
+            note = @sprintf("first %.3f ms; second %.3f ms; not sampled", first_ms, second_ms)
+            Measurement(second_ms * 1_000_000, missing, missing, note)
+        end
     end
-    values = try
-        parse.(Float64, split(strip(output)))
-    catch
-        return Measurement(missing, missing, missing, "unavailable (invalid guarded output)")
-    end
-    length(values) == 2 || return Measurement(missing, missing, missing, "unavailable (invalid guarded output)")
-    first_ms, second_ms = values
-    note = @sprintf("first %.3f ms; second %.3f ms; not sampled", first_ms, second_ms)
-    Measurement(second_ms * 1_000_000, missing, missing, note)
+    case_finish(label, started)
+    result
 end
 function external_measure(code; reps=DEEP ? 2 : 1)
     project = @__DIR__
