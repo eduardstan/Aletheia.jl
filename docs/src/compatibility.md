@@ -151,6 +151,35 @@ finite FLew algebras, but many-valued tableaux remain blocked by the missing
 SoleReasoners tableau truth-carrier and order-helper compatibility surface; that
 is the next independent blocker, not a silent semantic fallback.
 
+## Allocation and agreement measurements
+
+The compatibility path now keeps wrappers as immutable `(pool, id)` handles. A
+pool-local wrapper cache makes repeated handles canonical, same-pool branch
+construction interns child IDs directly, negation construction reuses its
+interned branch IDs, and branch child views are materialized once. The generic
+pool merge remains the fallback for mixed pools and modal connectives. These
+fast paths do not alter the parser or the opt-in namespace boundary.
+
+The report's agreement-first method was rerun with one shared rendered-text
+file, before any timing: all **72/72** native/Aletheia decisions agreed (36
+satisfiable and 36 unsatisfiable). On one warmed Julia 1.12.7 run of that same
+72-case grid, the paired medians were:
+
+| phase | before report | current Aletheia/native | native/Aletheia allocations (median) |
+| --- | ---: | ---: | ---: |
+| parsing | 0.185× | 0.103× | 460 / 98 |
+| construction | 62.30× | 1.24× | 94 / 86 |
+| search | 2.38× | 1.12× | 144 / 130 |
+
+The baseline columns are the report's Aletheia/native setup and search
+measurements; the current columns use the same agreement gate, warmed child
+processes, and median BenchmarkTools samples. Allocation counts are shown
+separately because hash-consed pool construction changes bytes as well as
+count. The search row is a measured compatibility-shim result, not a claim
+about native Aletheia algorithms or the many-valued/modal consumers. The
+benchmark runner and consumer checkouts remain scratch-only; no generated
+benchmark data is part of the package.
+
 ## Evidence
 
 A scratch copy of `SolePostHoc/src/shared_utils.jl` was loaded in a small module

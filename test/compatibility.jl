@@ -25,6 +25,25 @@ end
     @test conjunction isa Aletheia.Formula
     @test CompatibilityClient.token(conjunction).native === Aletheia.:∧
     @test CompatibilityClient.children(conjunction) == (p, q)
+    # Children are a tuple-shaped lazy view and reuse canonical pool handles.
+    @test CompatibilityClient.children(conjunction) isa Aletheia.SoleLogics._CompatChildren
+    @test CompatibilityClient.children(conjunction)[1] === p
+    childaccess(x) = CompatibilityClient.children(x)
+    tokenaccess(x) = CompatibilityClient.token(x)
+    valueaccess(x) = CompatibilityClient.value(x)
+    childaccess(conjunction); tokenaccess(conjunction); valueaccess(p)
+    @test @allocated(childaccess(conjunction)) == 0
+    @test @allocated(tokenaccess(conjunction)) == 0
+    @test @allocated(valueaccess(p)) == 0
+    @test CompatibilityClient.SyntaxBranch(∧, p, q) === conjunction
+    other_pool = Aletheia.FormulaPool(Aletheia.Signature((Aletheia.:¬,
+        Aletheia.:∧, Aletheia.:∨, Aletheia.:→)))
+    other_q = Aletheia.SoleLogics.atom(other_pool, "q")
+    cross_pool = CompatibilityClient.SyntaxBranch(∧, p, other_q)
+    @test cross_pool isa Aletheia.Formula
+    @test CompatibilityClient.syntaxstring(cross_pool) == "p ∧ q"
+    @test cross_pool !== conjunction
+    @test_throws ArgumentError CompatibilityClient.SyntaxBranch(∧, p)
     @test CompatibilityClient.value(p) == "p"
     @test CompatibilityClient.tree(conjunction) === conjunction
     @test CompatibilityClient.nchildren(p) == 0
