@@ -72,14 +72,15 @@ finding.
 ### Interval-temporal amortization
 
 The original `generated IA-before` row is a single lazy accessibility query
-(and remains an honest footnote): in the latest quick run it measured 354 ns
-for SoleLogics versus 6.91 μs for Aletheia (0.05x ratio). To measure the
-operative evaluator cost, the new full-adjacency rows build the same row/column
-shape used by Aletheia's evaluator, and each end-to-end check creates a fresh
-model so its one-time model-local adjacency build is included:
+and remains an honest footnote. The operative evaluator measurements build the
+full row/column adjacency shape and create a fresh model for each end-to-end
+check, so one-time model-local adjacency construction is included.
+
+The **before** run (before `relation_successors`) was:
 
 | row | SoleLogics | Aletheia | ratio (S/A) | allocations |
 | --- | ---: | ---: | ---: | ---: |
+| generated IA-before | 354 ns | 6.91 μs | 0.05x | 6 / 95 |
 | full adjacency n=6 (21 worlds) | 1.78 μs | 3.03 μs | 0.59x | 106 / 157 |
 | end-to-end check n=6 | 16.77 μs | 9.28 μs | 1.81x | 247 / 259 |
 | full adjacency n=12 (78 worlds) | 36.83 μs | 352.94 μs | 0.10x | 446 / 764 |
@@ -87,14 +88,28 @@ model so its one-time model-local adjacency build is included:
 | full adjacency n=24 (300 worlds) | 216.38 μs | 493.12 μs | 0.44x | 2047 / 4093 |
 | end-to-end check n=24 | 759.09 μs | 1.03 ms | 0.74x | 2852 / 5171 |
 
-The one-time adjacency build does not reverse the result at realistic sizes:
-Aletheia wins the tiny n=6 end-to-end case, then is 1.19x slower at n=12
-and 1.36x slower at n=24. The smallest composable follow-up is an optional
-family hook such as `relation_successors(relation, source, worlds)`, returning
-`nothing` by default. Generated frames would use those successors when a
-family provides them and retain the generic `filter(relation_holds, worlds)`
-path otherwise. This is optional rather than required because
-`relation_holds` is the correctness protocol for arbitrary external families;
-only families with a domain-specific arithmetic shortcut (for example Allen
-`BEFORE`) need to know how to enumerate successors efficiently, and this
-keeps frame×family multiplication out of the core.
+The **after** run (same quick suite, after the hook and arithmetic generated
+frame paths) was:
+
+| row | SoleLogics | Aletheia | ratio (S/A) | allocations |
+| --- | ---: | ---: | ---: | ---: |
+| generated IA-before | 311 ns | 6.10 μs | 0.05x | 6 / 98 |
+| full adjacency n=6 (21 worlds) | 1.65 μs | 3.57 μs | 0.46x | 106 / 202 |
+| end-to-end check n=6 | 12.28 μs | 9.08 μs | 1.35x | 247 / 304 |
+| full adjacency n=12 (78 worlds) | 16.46 μs | 43.99 μs | 0.37x | 446 / 1534 |
+| end-to-end check n=12 | 567.28 μs | 85.33 μs | 6.65x | 745 / 1806 |
+| full adjacency n=24 (300 worlds) | 186.98 μs | 693.63 μs | 0.27x | 2047 / 16996 |
+| end-to-end check n=24 | 648.86 μs | 1.38 ms | 0.47x | 2852 / 17935 |
+
+The hook materially improves Aletheia's adjacency construction at n=12
+(353 μs → 44.0 μs). The n=24 row is variable on this shared runner (493 μs
+before versus 694 μs after in this run), so the hook does **not** close the gap
+reliably: Aletheia is still slower on the n=12 and n=24 adjacency rows in
+this after run, and remains 2.13x slower end-to-end at n=24. The n=12
+end-to-end incumbent measurement is an obvious noisy outlier, so it is not
+used to claim a general win. The single-query row is still about 20x slower.
+
+The hook is optional: generated interval, rectangle, and point frames provide
+arithmetic successor paths for their built-in relation families, while an
+external family that only defines `relation_holds` receives `nothing` and uses
+the generic predicate filter. The external-family tests cover both paths.

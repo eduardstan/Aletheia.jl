@@ -21,6 +21,16 @@ function relation_holds(relation, source, target)
     throw(MethodError(relation_holds, (relation, source, target)))
 end
 
+"""
+    relation_successors(relation, source, worlds)
+
+Optionally return the worlds related to `source` by `relation` without scanning
+all of `worlds`. Generated dimensional frames use this hook when a family
+provides it and otherwise fall back to filtering with [`relation_holds`](@ref).
+External relation families need no method here.
+"""
+relation_successors(relation, source, worlds) = nothing
+
 """Return the converse (inverse) of a relation value."""
 function inverse(relation)
     throw(MethodError(inverse, (relation,)))

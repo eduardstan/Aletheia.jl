@@ -2,6 +2,14 @@ struct ExternalFamilyRelation end
 Base.show(io::IO, ::ExternalFamilyRelation) = print(io, "external")
 Aletheia.relation_holds(::ExternalFamilyRelation, source::Int, target::Int) = iseven(source + target)
 
+struct HookedPointRelation end
+const hooked_point_calls = Ref(0)
+Aletheia.relation_holds(::HookedPointRelation, source::Int, target::Int) = source == target
+function Aletheia.relation_successors(::HookedPointRelation, source::Int, worlds)
+    hooked_point_calls[] += 1
+    (source,)
+end
+
 # Independent endpoint oracle: this intentionally does not call relation_holds or inverse.
 function allen_definition(relation, source::Interval, target::Interval)
     sx, sy, tx, ty = source.x, source.y, target.x, target.y
@@ -68,10 +76,15 @@ end
     @test IA_D === CONTAINS && IA_Di === DURING
     @test collect(accessible(interval_frame(5), I(2, 4), IA_B)) == [I(2, 3)]
     interval_worlds = worlds(interval_frame(3))
+    @test collect(relation_successors(BEFORE, I(1, 2), interval_worlds)) ==
+        collect(accessible(interval_frame(3), I(1, 2), BEFORE))
     @test all(sum(relation_holds(r, source, target) for r in ALLEN_RELATIONS) == 1
         for source in interval_worlds for target in interval_worlds)
     @test all(relation_holds(r, source, target) == allen_definition(r, source, target)
         for r in ALLEN_RELATIONS for source in interval_worlds for target in interval_worlds)
+    @test all(collect(relation_successors(r, source, interval_worlds)) ==
+        [target for target in interval_worlds if relation_holds(r, source, target)]
+        for r in ALLEN_RELATIONS for source in interval_worlds)
 
     @test relation_holds(DC, I(1, 2), I(3, 4))
     @test relation_holds(EC, I(1, 2), I(2, 3))
@@ -100,11 +113,15 @@ end
     @test relation_holds(NTPPi, Rectangle((1, 4), (1, 4)), Rectangle((2, 3), (2, 3)))
     @test all(sum(relation_holds(r, source, target) for r in RCC8_RELATIONS) == 1
         for source in rectangles for target in rectangles)
+    @test all(collect(relation_successors(r, source, rectangles)) ==
+        [target for target in rectangles if relation_holds(r, source, target)]
+        for r in RCC8_RELATIONS for source in rectangles)
     rr = rectangle_relation(MEETS, MEETS)
     @test inverse(rr) == rectangle_relation(MET_BY, MET_BY)
     @test isequal(rr, rectangle_relation(MEETS, MEETS))
     @test sprint(show, rr) == "rectangle-relation"
     @test relation_holds(rr, Rectangle((1, 2), (2, 3)), Rectangle((2, 3), (3, 4)))
+    @test relation_successors(rr, Rectangle((1, 2), (1, 2)), rectangles) !== nothing
 
     struct CustomPointRelation <: Aletheia.PointRelation end
     Aletheia.relation_holds(::CustomPointRelation, source::Int, target::Int) = source == target
@@ -158,8 +175,13 @@ end
     @test_throws ArgumentError rectangle_frame([1, 1], [1, 2])
 
     @test collect(accessible(points, 10, CustomPointRelation())) == [10]
+    hooked_point_calls[] = 0
+    hooked_frame = point_frame(1:4)
+    @test collect(accessible(hooked_frame, 2, HookedPointRelation())) == [2]
+    @test hooked_point_calls[] > 0
 
     external_frame = point_frame(1:4)
+    @test relation_successors(ExternalFamilyRelation(), 1, worlds(external_frame)) === nothing
     @test collect(accessible(external_frame, 1, ExternalFamilyRelation())) == [1, 3]
     @test collect(accessible(external_frame, 2, ExternalFamilyRelation())) == [2, 4]
     external_pool = FormulaPool(Signature((Diamond(ExternalFamilyRelation()),)))
