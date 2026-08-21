@@ -306,11 +306,13 @@ end
 end
 
 @inline function _compat_branch(connective, child::F) where {F<:_CompatFormula}
+    Aletheia.arity(connective) == 1 || return _compat_branch(connective, (child,))
     pool = child.pool
     _hasconnective(Aletheia.signature(pool), connective) || return _compat_branch(connective, (child,))
     _wrap_id(pool, Aletheia._intern!(pool, 0x02, connective, (child.id,)))
 end
 @inline function _compat_branch(connective, left::F, right::G) where {F<:_CompatFormula,G<:_CompatFormula}
+    Aletheia.arity(connective) == 2 || return _compat_branch(connective, (left, right))
     pool = left.pool
     if right.pool === pool && _hasconnective(Aletheia.signature(pool), connective)
         return _wrap_id(pool, Aletheia._intern!(pool, 0x02, connective, (left.id, right.id)))
@@ -337,6 +339,12 @@ function Branch(connective::_LegacyConnective, children::Tuple)
         "the requested connective is not implemented by Aletheia")
     _compat_branch(connective, children)
 end
+Branch(connective::_LegacyConnective, children::Tuple{F}) where {F<:_CompatFormula} =
+    Aletheia.arity(connective) == 1 ? _compat_branch(connective, children[1]) :
+        _compat_branch(connective, children)
+Branch(connective::_LegacyConnective, children::Tuple{F,G}) where {F<:_CompatFormula,G<:_CompatFormula} =
+    Aletheia.arity(connective) == 2 ? _compat_branch(connective, children[1], children[2]) :
+        _compat_branch(connective, children)
 Branch(connective::_LegacyConnective, children...) = Branch(connective, children)
 Branch(connective::Aletheia.Diamond, children...) = _compat_branch(connective, children)
 Branch(connective::Aletheia.Box, children...) = _compat_branch(connective, children)
