@@ -3,7 +3,7 @@
 The audit was regenerated from the clean package test run with
 `julia --project=. -e 'using Pkg; Pkg.test(coverage=true)'` and
 `julia --project=coverage -e 'using Pkg; Pkg.instantiate(); include("coverage/check.jl")'`.
-The result is **1631/1682 (96.97%)**. The prior genuine misses in
+The result is **1649/1701 (96.94%)**. The prior genuine misses in
 `src/dimensional.jl:39-40` (rectangle-relation display/equality) and
 `src/relations.jl:249` (identity display) are covered behaviorally by
 `test/relations.jl`. The remaining zero-count lines are exercised
@@ -39,6 +39,12 @@ credited by the counter.
   exercised by syntax API tests; one-line methods are inlined.
 - **536-537, 540-541** — Cross-kind equality methods are exercised by syntax
   tests; one-line methods are inlined.
+
+### `src/dimensional.jl`
+
+- **140** — The arithmetic `BEFORE` successor generator is exercised by the
+  interval successor and adjacency tests; the one-line generator method is
+  not credited by the line counter.
 
 ### `src/normalforms.jl`
 

@@ -49,11 +49,12 @@ function _relation_adjacency(frame::Frame, relation_name, positions)
     world_count = length(frame)
     rows = Vector{Vector{Int}}(undef, world_count)
     columns = [falses(world_count) for _ in 1:world_count]
+    seen = Set{Int}()
     for source in worlds(frame)
         source_position = get(positions, source, 0)
         1 <= source_position <= world_count || throw(KeyError(source))
         targets = Int[]
-        seen = Set{Int}()
+        empty!(seen)
         for target in accessible(frame, source, relation_name)
             target_position = get(positions, target, 0)
             1 <= target_position <= world_count || throw(KeyError(target))
