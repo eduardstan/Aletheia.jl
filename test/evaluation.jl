@@ -29,8 +29,7 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
     @test @inferred(check(p, propositional, :only)) === true
     @test @inferred(check(conjunction, propositional, :only)) === false
     @test @inferred(extension(p, propositional)) == BitVector([true])
-    @test extension(p, propositional) isa Extension
-    @test extension(p, propositional).values isa BitVector
+    @test extension(p, propositional) isa BitVector
     @test extension(notp, propositional) == BitVector([false])
     @test extension(disjunction, propositional) == BitVector([true])
     @test extension(implication_formula, propositional) == BitVector([false])
@@ -66,7 +65,7 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
         "q" => Dict(:w1 => 0.4, :w2 => 0.8, :w3 => 0.1)))
     gdiamond = extension(diamond, godel)
     gbox = extension(box, godel)
-    @test gdiamond isa Extension && gdiamond.values isa Vector{Float64} && gdiamond == [0.7, 0.2, 0.0]
+    @test gdiamond isa Vector{Float64} && gdiamond == [0.7, 0.2, 0.0]
     @test gbox == [0.2, 0.2, 1.0]
     @test check(branch(pool, ∧, p, q), godel, :w1) === 0.4
     @test check(branch(pool, ∨, p, q), godel, :w1) === 0.9
@@ -99,12 +98,12 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
     @test check(implication_formula, symbolic, :only) === :implication
     @test check(branch(pool, Diamond(:G), p), symbolic, :only) === :bottom
     @test check(branch(pool, Box(:G), p), symbolic, :only) === :top
-    @test extension(p, symbolic) isa Extension && extension(p, symbolic).values isa Vector{Symbol}
+    @test extension(p, symbolic) isa Vector{Symbol}
 
     vector_model = Model(one, VectorAlgebra(), (value, world) ->
         value == "p" ? BitVector([true, false]) : BitVector([false, true]))
     @test @inferred(check(conjunction, vector_model, :only)) == BitVector([false, false])
-    @test @inferred(extension(conjunction, vector_model)) isa Extension
+    @test @inferred(extension(conjunction, vector_model)) isa Vector{BitVector}
     @test extension(conjunction, vector_model) == [BitVector([false, false])]
     @test extension(conjunction, vector_model) == [BitVector([false, false])]
     @test extension(branch(pool, Box(:G), p), vector_model) == [trues(2)]

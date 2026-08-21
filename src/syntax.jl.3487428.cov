@@ -1,0 +1,663 @@
+        - # Syntax is deliberately independent of interpretation and truth values.
+        - 
+        - """
+        -     arity(connective)
+        - 
+        - Return the finite arity of a connective.  This is a trait: packages defining a
+        - connective only need to add a method for their own value or type.
+        - """
+       19 function arity(connective)
+   172403     if connective isa Negation
+        -         1
+      252     elseif connective isa Conjunction || connective isa Disjunction || connective isa Implication
+        -         2
+       90     elseif connective isa Diamond || connective isa Box
+        -         1
+        -     else
+        1         throw(MethodError(arity, (connective,)))
+        -     end
+        - end
+        - 
+        - """
+        -     dual(connective)
+        - 
+        - Return the syntactic dual of `connective`, or throw when no dual is declared.
+        - Duality is only a connective property; this layer does not interpret formulas.
+        - """
+        7 function dual(connective)
+        7     if connective isa Negation
+        1         NEGATION
+        6     elseif connective isa Conjunction
+        2         DISJUNCTION
+        4     elseif connective isa Disjunction
+        1         CONJUNCTION
+        3     elseif connective isa Diamond
+        1         Box(connective.relation)
+        2     elseif connective isa Box
+        1         Diamond(connective.relation)
+        -     else
+        1         throw(ArgumentError("no dual is declared for $(typeof(connective))"))
+        -     end
+        - end
+        - 
+        - """
+        -     hasdual(connective)
+        - 
+        - Return whether a connective has a syntactic dual.
+        - """
+        7 function hasdual(connective)
+        7     connective isa Negation || connective isa Conjunction || connective isa Disjunction ||
+        -         connective isa Diamond || connective isa Box
+        - end
+        - 
+        - """
+        -     precedence(connective)
+        - 
+        - Return the binding precedence used by the printer and parser.  Larger values
+        - bind more tightly.  Custom connectives should define this trait when they are
+        - printed in infix or prefix notation.
+        - """
+       18 function precedence(connective)
+       68     if connective isa Negation
+        -         80
+       57     elseif connective isa Diamond || connective isa Box
+        -         90
+       41     elseif connective isa Conjunction
+        -         30
+       34     elseif connective isa Disjunction
+        -         20
+       26     elseif connective isa Implication
+        -         10
+        -     else
+        -         0
+        -     end
+        - end
+        - 
+        - """
+        -     associativity(connective)
+        - 
+        - Return `:left`, `:right`, or `:none` for a connective.  The default is
+        - `:none`, which makes equal-precedence children parenthesized conservatively.
+        - """
+       16 function associativity(connective)
+       34     if connective isa Negation || connective isa Diamond || connective isa Box
+        -         :right
+       20     elseif connective isa Conjunction || connective isa Disjunction
+        -         :left
+       12     elseif connective isa Implication
+        -         :right
+        -     else
+        -         :none
+        -     end
+        - end
+        - 
+        - """
+        -     commutative(connective)
+        - 
+        - Return whether a connective is commutative.  Commutativity is recorded as a
+        - trait for later normalization stages; it never changes syntax or equality.
+        - """
+        6 function commutative(connective)
+        8     connective isa Conjunction || connective isa Disjunction
+        - end
+        - 
+        - """
+        -     modality(connective)
+        - 
+        - Return whether a connective is a modality.  This is a syntactic trait and has
+        - no semantic consequence in the syntax layer.
+        - """
+        6 function modality(connective)
+        9     connective isa Diamond || connective isa Box
+        - end
+        - 
+        - """
+        -     notation(connective)
+        - 
+        - Return the text used for a connective in formulas.  Defining this trait is the
+        - only printing hook needed by a user-defined connective.
+        - """
+       41 function notation(connective)
+    86555     if connective isa Negation
+        -         "¬"
+      393     elseif connective isa Conjunction
+        -         "∧"
+      272     elseif connective isa Disjunction
+        -         "∨"
+      203     elseif connective isa Implication
+        -         "→"
+      122     elseif connective isa Diamond
+       67         "⟨$(connective.relation)⟩"
+       55     elseif connective isa Box
+       54         "[$(connective.relation)]"
+        -     else
+        1         string(connective)
+        -     end
+        - end
+        - 
+        - """Alias for [`commutative`](@ref), retained as a readable predicate."""
+        2 iscommutative(connective) = commutative(connective)
+        - 
+        - """Alias for [`modality`](@ref)."""
+        3 ismodality(connective) = modality(connective)
+        - 
+        - """
+        -     Signature(connectives)
+        - 
+        - A Blackburn–de Rijke–Venema similarity type: a finite tuple of connective
+        - values together with the arity of each value.  Arity is read from the
+        - [`arity`](@ref) trait, so extending a signature never requires changing
+        - Aletheia's source.  `Signature(connectives, arities)` is also accepted when
+        - an explicit declaration is useful, and is checked against the trait.
+        - """
+        - struct Signature{C<:Tuple,A<:Tuple}
+        -     connectives::C
+        -     arities::A
+    86091     function Signature(cs::C, as::A) where {C<:Tuple,A<:Tuple}
+    86091         length(cs) == length(as) || throw(ArgumentError("connectives and arities must have equal lengths"))
+    86090         isempty(cs) && throw(ArgumentError("a signature must contain a connective"))
+    86090         checked = ntuple(i -> begin
+    86190             n = as[i]
+    86190             n isa Integer && n >= 0 || throw(ArgumentError("arity must be a non-negative integer"))
+    86190             Int(n)
+        -         end, length(as))
+   172278         trait_arities = ntuple(i -> arity(cs[i]), length(cs))
+    86091         trait_arities == checked || throw(ArgumentError("declared arities disagree with arity traits"))
+    86089         texts = map(notation, cs)
+   172279         all(text -> text isa AbstractString && !isempty(text), texts) ||
+        -             throw(ArgumentError("connective notation must be non-empty text"))
+   344937         all(text -> all(c -> !isspace(c) && c != '(' && c != ')' && c != ',' && c != '"', text), texts) ||
+        -             throw(ArgumentError("connective notation cannot contain whitespace or delimiters"))
+    86087         length(unique(texts)) == length(cs) ||
+        -             throw(ArgumentError("connective notation must be unique within a signature"))
+    86085         new{C,typeof(checked)}(cs, checked)
+        -     end
+        - end
+        - 
+        1 function Signature(cs::AbstractVector)
+        1     Signature(tuple(cs...))
+        - end
+        - 
+        1 function Signature(cs::AbstractVector, as::AbstractVector)
+        1     Signature(tuple(cs...), tuple(as...))
+        - end
+        - 
+       40 function Signature(cs::Tuple)
+    86089     isempty(cs) && throw(ArgumentError("a signature must contain a connective"))
+    86088     as = ntuple(i -> begin
+    86187         n = arity(cs[i])
+    86187         n isa Integer && n >= 0 || throw(ArgumentError("arity must be a non-negative integer"))
+    86187         Int(n)
+        -     end, length(cs))
+    86088     Signature(cs, as)
+        - end
+        - 
+        - """Return the connectives in a [`Signature`](@ref), in declaration order."""
+       18 connectives(signature::Signature) = signature.connectives
+        - 
+        - """Return the arity declared for `connective` in `signature`."""
+       40 function arity(signature::Signature, connective)
+    11102     for i in eachindex(signature.connectives)
+    55508         isequal(signature.connectives[i], connective) && return signature.arities[i]
+    44412     end
+        2     throw(ArgumentError("connective $(repr(connective)) is not in the signature"))
+        - end
+        - 
+        - """Return whether `connective` belongs to `signature`."""
+        2 function hasconnective(signature::Signature, connective)
+      725     any(c -> isequal(c, connective), signature.connectives)
+        - end
+        - 
+        - # Internal pool records use ids in their key; no formula tree is ever used as a
+        - # dictionary key.  This is the important difference from structural tree hashing.
+        - struct _PoolNode
+    93979     kind::UInt8
+        -     payload::Any
+        -     children::Tuple{Vararg{Int}}
+        - end
+        - 
+        - """
+        -     FormulaPool(signature)
+        - 
+        - Create an explicit, thread-safe hash-consing pool for formulas over `signature`.
+        - Pools are explicit rather than global: formulas from different pools cannot be
+        - mistaken for one another, while a pool may safely be shared by threads.
+        - """
+        - mutable struct FormulaPool{S<:Signature}
+    86213     signature::S
+        -     index::Dict{Any,Int}
+        -     nodes::Vector{_PoolNode}
+        -     lock::ReentrantLock
+        - end
+        - 
+      157 function FormulaPool(signature::Signature)
+    86213     FormulaPool(signature, Dict{Any,Int}(), _PoolNode[], ReentrantLock())
+        - end
+        - 
+        - """Return the signature associated with a formula pool."""
+      252 signature(pool::FormulaPool) = pool.signature
+        - 
+        - """
+        -     Formula
+        - 
+        - The common syntax-only interface implemented by [`Atom`](@ref) and
+        - [`Branch`](@ref).  Formula subtypes are concrete immutable values; this marker
+        - contains no truth values, semantic state, or evaluator hooks.
+        - """
+        - abstract type Formula end
+        - 
+        - """
+        -     Atom(pool, value)
+        - 
+        - Intern `value` as an atom in `pool`.  Atoms are immutable concrete formulas;
+        - their integer id is stable for the lifetime of the pool.
+        - """
+        - struct Atom{V,P<:FormulaPool} <: Formula
+   117432     pool::P
+        -     id::Int
+        -     value::V
+        - end
+        - 
+        - """
+        -     Branch(pool, connective, children...)
+        - 
+        - Intern a connective application in `pool`.  The number of children must equal
+        - the connective's declared arity.  A branch stores only pool-local child ids;
+        - [`children`](@ref) reconstructs immutable handles when they are requested.
+        - Children must have been made by the same pool, which keeps ids local and makes
+        - equality an integer comparison.
+        - """
+        - struct Branch{C,N,P<:FormulaPool} <: Formula
+    11444     pool::P
+        -     id::Int
+        -     connective::C
+        -     children::NTuple{N,Int}
+        - end
+        - 
+        - """Return the signature of an atom."""
+        2 signature(formula::Atom) = signature(formula.pool)
+        - 
+        - """Return the signature of a branch."""
+      178 signature(formula::Branch) = signature(formula.pool)
+        - 
+     6811 @inline _formula_pool(atom::Atom) = atom.pool
+    79625 @inline _formula_pool(branch::Branch) = branch.pool
+     6724 @inline _formula_id(atom::Atom) = atom.id
+    28900 @inline _formula_id(branch::Branch) = branch.id
+        - 
+        - """Return the pool owning a formula."""
+       52 pool(formula::Atom) = _formula_pool(formula)
+    30708 pool(formula::Branch) = _formula_pool(formula)
+        - 
+        - """Return the hash-consed integer id of a formula."""
+        6 id(formula::Atom) = _formula_id(formula)
+        5 id(formula::Branch) = _formula_id(formula)
+        - 
+        - """Return the atom's payload."""
+   253020 value(atom::Atom) = atom.value
+        - 
+        - """Return the connective at a branch."""
+      544 operator(branch::Branch) = branch.connective
+        - 
+        - """Alias for [`operator`](@ref), useful when treating a branch as an application."""
+        1 head(branch::Branch) = operator(branch)
+        - 
+        - """
+        -     nchildren(formula)
+        - 
+        - Return the number of immediate children of a formula.  This name keeps the
+        - formula accessor distinct from the `arity` trait for connective values.
+        - """
+        - nchildren(::Atom) = 0
+        4 nchildren(branch::Branch) = length(branch.children)
+        - 
+        - """Return the number of immediate children; retained as an alias for `nchildren`."""
+        1 arity(formula::Atom) = nchildren(formula)
+        2 arity(formula::Branch) = nchildren(formula)
+        - 
+      382 function _branch_from_ids(pool::FormulaPool, id::Int, connective, ids, ::Val{N}) where N
+    22884     typed_ids = ntuple(i -> ids[i], N)
+    11444     Branch(pool, id, connective, typed_ids)
+        - end
+        - 
+      737 function _formula_unlocked(pool::FormulaPool, id::Int)
+      737     node = pool.nodes[id]
+      737     if node.kind == 0x01
+      355         Atom(pool, id, node.payload)
+        -     else
+      382         _branch_from_ids(pool, id, node.payload, node.children, Val(length(node.children)))
+        -     end
+        - end
+        - 
+        3 function _formula(pool::FormulaPool, id::Int)
+        3     lock(pool.lock)
+        3     try
+        4         1 <= id <= length(pool.nodes) || throw(BoundsError(pool.nodes, id))
+        2         _formula_unlocked(pool, id)
+        -     finally
+        3         unlock(pool.lock)
+        -     end
+        - end
+        - 
+        - """Return a formula's immediate children, rebuilding pool handles as needed."""
+        1 children(::Atom) = ()
+        - 
+      488 function children(branch::Branch{C,N,P}) where {C,N,P}
+      488     pool = branch.pool
+      488     lock(pool.lock)
+      488     try
+      975         ntuple(i -> _formula_unlocked(pool, branch.children[i]), N)
+        -     finally
+      488         unlock(pool.lock)
+        -     end
+        - end
+        - 
+        - """Return whether a formula is an atom."""
+        - isatom(::Atom) = true
+        - isatom(::Branch) = false
+        - 
+        - """Return whether a formula is a connective branch."""
+        - isbranch(::Atom) = false
+        - isbranch(::Branch) = true
+        - 
+    97500 function _intern!(pool::FormulaPool, kind::UInt8, payload, childids::Tuple{Vararg{Int}})
+   108564     key = kind == 0x01 ? (:atom, payload) : (:branch, payload, childids)
+    97500     lock(pool.lock)
+    97500     try
+    97559         existing = get(pool.index, key, 0)
+    97500         existing != 0 && return existing
+    93979         new_id = length(pool.nodes) + 1
+    93979         push!(pool.nodes, _PoolNode(kind, payload, childids))
+   101585         pool.index[key] = new_id
+    93979         return new_id
+        -     finally
+    97500         unlock(pool.lock)
+        -     end
+        - end
+        - 
+        - """Intern an atom, returning the canonical atom value for this pool and payload."""
+      335 function atom(pool::FormulaPool, value)
+    86432     atom_id = _intern!(pool, 0x01, value, ())
+    86432     Atom(pool, atom_id, value)
+        - end
+        - 
+        - # This method makes the type constructor spelling useful without exposing an
+        - # unsafe constructor that can fabricate a formula id.
+        1 Atom(pool::FormulaPool, value) = atom(pool, value)
+        - 
+        - function _branch_children(pool::FormulaPool, childtuple::Tuple)
+    11062     ids = ntuple(i -> begin
+    15546         child = childtuple[i]
+    15546         (child isa Atom || child isa Branch) || throw(ArgumentError("branch children must be formulas"))
+    15546         _formula_pool(child) === pool || throw(ArgumentError("all children must belong to the same FormulaPool"))
+    15546         _formula_id(child)
+        -     end, length(childtuple))
+    11062     ids
+        - end
+        - 
+        - """Intern a branch from a tuple of immediate children."""
+     8857 function branch(pool::FormulaPool, connective, childtuple::Tuple)
+    11063     arity(pool.signature, connective) == length(childtuple) ||
+        -         throw(ArgumentError("$(repr(connective)) expects $(arity(pool.signature, connective)) children, got $(length(childtuple))"))
+    11062     ids = _branch_children(pool, childtuple)
+    11062     branch_id = _intern!(pool, 0x02, connective, ids)
+    11062     _branch_from_ids(pool, branch_id, connective, ids, Val(length(ids)))
+        - end
+        - 
+        - """Intern a branch from vararg immediate children."""
+    11043 branch(pool::FormulaPool, connective, children...) = branch(pool, connective, children)
+        - 
+        - # See the Atom constructor note above.
+        1 Branch(pool::FormulaPool, connective, children::Tuple) = branch(pool, connective, children)
+        1 Branch(pool::FormulaPool, connective, children...) = branch(pool, connective, children)
+        - 
+        - """Return the number of distinct terms currently interned in `pool`."""
+        2 function nsubterms(pool::FormulaPool)
+        2     lock(pool.lock)
+        2     try
+        2         length(pool.nodes)
+        -     finally
+        2         unlock(pool.lock)
+        -     end
+        - end
+        - 
+        - """Return all pool ids in dependency order (children always precede parents)."""
+        2 function subterms(pool::FormulaPool)
+        2     lock(pool.lock)
+        2     try
+       32         collect(1:length(pool.nodes))
+        -     finally
+        2         unlock(pool.lock)
+        -     end
+        - end
+        - 
+   156699 function _reachable!(pool::FormulaPool, current::Int, seen::Set{Int})
+   293331     current in seen && return
+   128013     push!(seen, current)
+   128013     node = pool.nodes[current]
+   158690     for child in node.children
+   136632         _reachable!(pool, child, seen)
+   233968     end
+   128013     nothing
+        - end
+        - 
+        - """Return the distinct ids in a formula's subterm DAG, dependency first."""
+        1 function subterms(formula::Atom)
+       43     _subterms(formula)
+        - end
+        1 function subterms(formula::Branch)
+    20024     _subterms(formula)
+        - end
+        - 
+    20067 function _subterms(formula)
+    20067     p = _formula_pool(formula)
+    20067     seen = Set{Int}()
+    20067     lock(p.lock)
+    20067     try
+    20067         _reachable!(p, _formula_id(formula), seen)
+        -     finally
+    20067         unlock(p.lock)
+        -     end
+    20067     result = collect(seen)
+    23408     sort!(result)
+    20067     result
+        - end
+        - 
+        - """Return the number of distinct subterms reachable from `formula`."""
+        1 nsubterms(formula::Atom) = length(subterms(formula))
+        1 nsubterms(formula::Branch) = length(subterms(formula))
+        - 
+        - """
+        -     DAGNode
+        - 
+        - A compact read-only view of one hash-consed DAG node.  `kind` is `:atom` or
+        - `:branch`; `payload` is respectively the atom value or connective, and
+        - `children` contains ids in the same pool.
+        - """
+        - struct DAGNode
+   128010     id::Int
+        -     kind::Symbol
+        -     payload::Any
+        -     children::Tuple{Vararg{Int}}
+        - end
+        - 
+        - function _dag_node(pool::FormulaPool, i::Int)
+   128010     node = pool.nodes[i]
+   128010     if node.kind == 0x01
+    30674         DAGNode(i, :atom, node.payload, ())
+        -     else
+    97336         DAGNode(i, :branch, node.payload, node.children)
+        -     end
+        - end
+        - 
+        - """Return the complete pool DAG in dependency order."""
+        1 function dag(pool::FormulaPool)
+        1     lock(pool.lock)
+        1     try
+        2         [_dag_node(pool, i) for i in eachindex(pool.nodes)]
+        -     finally
+        1         unlock(pool.lock)
+        -     end
+        - end
+        - 
+        - """Return the subterm DAG reachable from `formula`, in dependency order."""
+        1 function dag(formula::Atom)
+       41     _dag_formula(formula)
+        - end
+        2 function dag(formula::Branch)
+    20022     _dag_formula(formula)
+        - end
+        - 
+    20063 function _dag_formula(formula)
+    20063     p = _formula_pool(formula)
+    20063     ids = subterms(formula)
+    20063     lock(p.lock)
+    20063     try
+    40126         [_dag_node(p, i) for i in ids]
+        -     finally
+    20063         unlock(p.lock)
+        -     end
+        - end
+        - 
+        - """Return the DAG node for an id in `pool`."""
+        2 function dag(pool::FormulaPool, i::Integer)
+        2     lock(pool.lock)
+        2     try
+        3         1 <= i <= length(pool.nodes) || throw(BoundsError(pool.nodes, i))
+        2         _dag_node(pool, Int(i))
+        -     finally
+        2         unlock(pool.lock)
+        -     end
+        - end
+        - 
+        - # Equality is deliberately not recursive: ids are canonical within one pool.
+        1 Base.isequal(a::Atom, b::Atom) = a.pool === b.pool && a.id == b.id
+        1 Base.isequal(a::Branch, b::Branch) = a.pool === b.pool && a.id == b.id
+        - Base.isequal(::Atom, ::Branch) = false
+        - Base.isequal(::Branch, ::Atom) = false
+       10 Base.:(==)(a::Atom, b::Atom) = a.pool === b.pool && a.id == b.id
+       12 Base.:(==)(a::Branch, b::Branch) = a.pool === b.pool && a.id == b.id
+        - Base.:(==)(::Atom, ::Branch) = false
+        - Base.:(==)(::Branch, ::Atom) = false
+   513634 Base.hash(a::Atom, h::UInt) = hash(objectid(a.pool), hash(a.id, h))
+        1 Base.hash(a::Branch, h::UInt) = hash(objectid(a.pool), hash(a.id, h))
+        - 
+        - # Built-in syntax-only connectives.  Their values are ordinary structs; the
+        - # modal values carry their relation as data rather than encoding it in a type.
+        - struct Negation end
+        - struct Conjunction end
+        - struct Disjunction end
+        - struct Implication end
+        - """
+        -     Diamond(relation)
+        - 
+        - A unary modal connective carrying `relation` as a value.  The relation is a
+        - field, not a type parameter encoded in a singleton, so parametric relations
+        - remain ordinary syntax values.
+        - """
+        - struct Diamond{R}
+     2190     relation::R
+        - end
+        - 
+        - """
+        -     Box(relation)
+        - 
+        - The syntactic dual modal connective for [`Diamond`](@ref), carrying its
+        - relation as a value.
+        - """
+        - struct Box{R}
+     2235     relation::R
+        - end
+        - 
+        - const NEGATION = Negation()
+        - const CONJUNCTION = Conjunction()
+        - const DISJUNCTION = Disjunction()
+        - const IMPLICATION = Implication()
+        - const NOT = NEGATION
+        - const AND = CONJUNCTION
+        - const OR = DISJUNCTION
+        - const IMPLIES = IMPLICATION
+        - const ¬ = NEGATION
+        - const ∧ = CONJUNCTION
+        - const ∨ = DISJUNCTION
+        - const → = IMPLICATION
+        - 
+        - """Return the modal relation carried by a [`Diamond`](@ref) or [`Box`](@ref)."""
+    38131 relation(modal::Diamond) = modal.relation
+    39324 relation(modal::Box) = modal.relation
+        - 
+       32 function _atom_text(value, pool::FormulaPool)
+       32     text = string(value)
+       32     spellings = notation.(pool.signature.connectives)
+      141     safe = !isempty(text) && all(c -> !isspace(c) && c != '(' && c != ')' && c != ',' && c != '"', text) &&
+      184         all(spelling -> !occursin(spelling, text), spellings)
+       32     safe && return text
+        1     escaped = replace(replace(text, "\\" => "\\\\"), "\"" => "\\\"")
+        1     "\"$(escaped)\""
+        - end
+        - 
+        - function _needs_parentheses(parent, child, position::Symbol)
+       12     child isa Branch || return false
+       12     cp = precedence(child.connective)
+       12     pp = precedence(parent)
+       12     cp < pp && return true
+       10     cp > pp && return false
+        2     assoc = associativity(parent)
+        2     assoc == :none && return true
+        2     assoc == :left && position == :right && return true
+        2     assoc == :right && position == :left && return true
+        -     false
+        - end
+        - 
+       24 function _print_formula(formula::Atom, parent, position::Symbol)
+       32     _atom_text(formula.value, formula.pool)
+        - end
+        - 
+       24 function _print_formula(formula::Branch, parent, position::Symbol)
+       25     c = formula.connective
+       25     formula_children = children(formula)
+       25     n = length(formula_children)
+       25     token = notation(c)
+       25     result = if n == 0
+        1         token
+       24     elseif n == 1
+        8         child = formula_children[1]
+        8         text = _print_formula(child, c, :only)
+       16         token * text
+       16     elseif n == 2
+       14         left, right = formula_children
+       14         lt = _print_formula(left, c, :left)
+       14         rt = _print_formula(right, c, :right)
+       14         "$(lt) $(token) $(rt)"
+        -     else
+        4         "$(token)(" * join((_print_formula(ch, nothing, :only) for ch in formula_children), ", ") * ")"
+        -     end
+       25     if parent !== nothing && _needs_parentheses(parent, formula, position)
+        3         "(" * result * ")"
+        -     else
+       22         result
+        -     end
+        - end
+        - 
+        - """
+        -     syntaxstring(formula)
+        - 
+        - Return the canonical parseable text for an atom or branch.  Parentheses are
+        - introduced only when precedence and associativity require them, so modal
+        - examples such as `⟨G⟩p → [G]q` stay readable.
+        - """
+        2 syntaxstring(formula::Atom) = _print_formula(formula, nothing, :root)
+       13 syntaxstring(formula::Branch) = _print_formula(formula, nothing, :root)
+        - 
+        1 Base.show(io::IO, formula::Atom) = print(io, syntaxstring(formula))
+        2 Base.show(io::IO, formula::Branch) = print(io, syntaxstring(formula))
+        1 Base.string(formula::Atom) = syntaxstring(formula)
+       10 Base.string(formula::Branch) = syntaxstring(formula)
+        - 
+        - """Return a compact text representation of a connective."""
+        1 Base.show(io::IO, connective::Negation) = print(io, notation(connective))
+        2 Base.show(io::IO, connective::Conjunction) = print(io, notation(connective))
+        1 Base.show(io::IO, connective::Disjunction) = print(io, notation(connective))
+        2 Base.show(io::IO, connective::Implication) = print(io, notation(connective))
+        3 Base.show(io::IO, connective::Diamond) = print(io, notation(connective))
+        1 Base.show(io::IO, connective::Box) = print(io, notation(connective))

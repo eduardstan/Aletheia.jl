@@ -237,20 +237,30 @@ end
 
 """
     Extension(values, worlds)
+    Extension(values, model)
 
-The extension of a formula over a model's worlds. Subtypes `AbstractVector`
-and wraps the raw truth vector together with world information to provide
+A display view wrapping an extension result vector and world tuple to provide
 a rich REPL display showing which worlds satisfy the formula.
 """
-struct Extension{T,V<:AbstractVector{T},W<:Tuple} <: AbstractVector{T}
+struct Extension{T,V<:AbstractVector{T},W<:Tuple}
     values::V
     worlds::W
+
+    function Extension(values::V, worlds::W) where {T, V<:AbstractVector{T}, W<:Tuple}
+        new{T, V, W}(values, worlds)
+    end
 end
 
-Base.size(ext::Extension) = size(ext.values)
-Base.getindex(ext::Extension, i::Int) = ext.values[i]
-Base.setindex!(ext::Extension, v, i::Int) = (ext.values[i] = v)
-Base.IndexStyle(::Type{<:Extension}) = IndexLinear()
+Extension(values::AbstractVector, worlds) = Extension(values, Tuple(worlds))
+Extension(values::AbstractVector, model::Model) = Extension(values, frame(model).worlds)
+
+"""
+    describe(extension_result, model)
+
+Return an [`Extension`](@ref) view of `extension_result` over `model` for rich REPL printing.
+"""
+describe(ext::AbstractVector, model::Model) = Extension(ext, model)
+describe(io::IO, ext::AbstractVector, model::Model) = show(io, MIME("text/plain"), Extension(ext, model))
 
 Base.show(io::IO, ext::Extension) = print(io, "Extension(", ext.values, ")")
 
@@ -296,16 +306,17 @@ end
     extension(φ, model)
 
 Return the extension of `φ` over the model's worlds, in world-index order (or
-enumeration order when no index is present).  A Boolean model returns an
-`Extension` wrapping a `BitVector`; every other algebra returns an `Extension`
-wrapping a vector whose element type is the algebra's carrier type.
+enumeration order when no index is supplied). A Boolean model returns a `BitVector`;
+every other algebra returns a vector whose element type is the algebra's carrier type.
+To construct a rich display view of the extension, pass the result and model to
+[`Extension`](@ref) or [`describe`](@ref).
 """
 function extension(formula::Formula, model::Model{Bool,A}) where {A<:BooleanAlgebra}
-    Extension(_evaluate(formula, model, BitVector), frame(model).worlds)
+    _evaluate(formula, model, BitVector)
 end
 
 function extension(formula::Formula, model::Model{T}) where T
-    Extension(_evaluate(formula, model, Vector{T}), frame(model).worlds)
+    _evaluate(formula, model, Vector{T})
 end
 
 """

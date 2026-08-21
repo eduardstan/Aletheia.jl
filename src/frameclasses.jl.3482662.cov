@@ -1,0 +1,135 @@
+        - # Frame-condition traits and named normal modal systems.
+        - 
+        - """A named class of finite relational frames."""
+        - struct FrameClass
+        -     name::Symbol
+        -     conditions::Tuple{Vararg{Symbol}}
+        - end
+        - 
+        - const K = FrameClass(:K, ())
+        - const T = FrameClass(:T, (:reflexive,))
+        - const S4 = FrameClass(:S4, (:reflexive, :transitive))
+        - const S5 = FrameClass(:S5, (:reflexive, :transitive, :symmetric))
+        - const REFLEXIVE = FrameClass(:reflexive, (:reflexive,))
+        - const TRANSITIVE = FrameClass(:transitive, (:transitive,))
+        - const SYMMETRIC = FrameClass(:symmetric, (:symmetric,))
+        - const SERIAL = FrameClass(:serial, (:serial,))
+        - const REFLEXIVITY = REFLEXIVE
+        - const TRANSITIVITY = TRANSITIVE
+        - const SYMMETRY = SYMMETRIC
+        - const SERIALITY = SERIAL
+        - 
+        2 Base.show(io::IO, class::FrameClass) = print(io, class.name)
+        - 
+        - function _class_targets(frame::Frame, relation)
+       40     relation !== nothing && return (relation,)
+        2     stored = relations(frame)
+        2     stored isa AbstractDict || return ()
+        2     Tuple(keys(stored))
+        - end
+        - 
+        - """Check reflexivity of a named accessibility relation on a finite frame."""
+        8 function isreflexive(frame::Frame, relation=nothing)
+       15     targets = _class_targets(frame, relation)
+       79     !isempty(targets) && all(all(w -> any(v -> isequal(v, w), accessible(frame, w, r)), worlds(frame)) for r in targets)
+        - end
+        - """Check transitivity of a named accessibility relation on a finite frame."""
+       13 function istransitive(frame::Frame, relation=nothing)
+       16     targets = _class_targets(frame, relation)
+       15     !isempty(targets) && all(begin
+      369         all(w -> all(v -> all(u -> any(x -> isequal(x, u), accessible(frame, w, r)),
+        -                                       accessible(frame, v, r)), accessible(frame, w, r)), worlds(frame))
+        -     end for r in targets)
+        - end
+        - """Check symmetry of a named accessibility relation on a finite frame."""
+        3 function issymmetric(frame::Frame, relation=nothing)
+        5     targets = _class_targets(frame, relation)
+        5     !isempty(targets) && all(all(begin
+       45         all(v -> any(x -> isequal(x, w), accessible(frame, v, r)), accessible(frame, w, r))
+        -     end for w in worlds(frame)) for r in targets)
+        - end
+        - """Check seriality of a named accessibility relation on a finite frame."""
+        3 function isserial(frame::Frame, relation=nothing)
+        6     targets = _class_targets(frame, relation)
+        6     !isempty(targets) && all(all(!isempty(collect(accessible(frame, w, r))) for w in worlds(frame)) for r in targets)
+        - end
+        - 
+        - # Natural-language aliases.
+        1 reflexive(frame, relation=nothing) = isreflexive(frame, relation)
+        1 transitive(frame, relation=nothing) = istransitive(frame, relation)
+        1 symmetric(frame, relation=nothing) = issymmetric(frame, relation)
+        1 serial(frame, relation=nothing) = isserial(frame, relation)
+        - 
+        - """Return whether `frame` satisfies a named class for `relation`."""
+        9 function satisfies(frame::Frame, class::FrameClass, relation=nothing)
+       11     class.name === :K && return true
+       21     all(condition -> condition === :reflexive ? isreflexive(frame, relation) :
+        -         condition === :transitive ? istransitive(frame, relation) :
+        -         condition === :symmetric ? issymmetric(frame, relation) :
+        -         condition === :serial ? isserial(frame, relation) : false, class.conditions)
+        - end
+        1 checkclass(frame::Frame, class::FrameClass, relation=nothing) = satisfies(frame, class, relation)
+        1 validclass(frame::Frame, class::FrameClass, relation=nothing) = satisfies(frame, class, relation)
+        - 
+        - # The standard correspondence axioms (Blackburn–de Rijke–Venema, Ch. 3;
+        - # Schwarz, Logic 2). `axioms` returns the individual schemas so callers can
+        - # inspect or test each condition; `axiom` conjoins them when ∧ is available.
+        2 function _require_connective(pool::FormulaPool, connective)
+       54     hasconnective(signature(pool), connective) ||
+        -         throw(ArgumentError("the pool signature must contain $(repr(connective)) to construct a frame axiom"))
+       52     connective
+        - end
+        - function _axiom_atom(pool::FormulaPool, atom_value)
+       27     atom(pool, atom_value)
+        - end
+       21 function _primitive_axioms(pool::FormulaPool, condition::Symbol, relation, atom_value)
+       21     p = _axiom_atom(pool, atom_value)
+       21     box = Box(relation); diamond = Diamond(relation)
+       21     if condition === :reflexive
+        8         _require_connective(pool, box); _require_connective(pool, IMPLICATION)
+        7         (branch(pool, IMPLICATION, branch(pool, box, p), p),)
+       13     elseif condition === :transitive
+        5         _require_connective(pool, box); _require_connective(pool, IMPLICATION)
+        5         (branch(pool, IMPLICATION, branch(pool, box, p), branch(pool, box, branch(pool, box, p))),)
+        8     elseif condition === :symmetric
+        4         _require_connective(pool, box); _require_connective(pool, diamond); _require_connective(pool, IMPLICATION)
+        3         (branch(pool, IMPLICATION, p, branch(pool, box, branch(pool, diamond, p))),)
+        4     elseif condition === :serial
+        3         _require_connective(pool, box); _require_connective(pool, diamond); _require_connective(pool, IMPLICATION)
+        3         (branch(pool, IMPLICATION, branch(pool, box, p), branch(pool, diamond, p)),)
+        -     else
+        1         throw(ArgumentError("unknown frame condition $condition"))
+        -     end
+        - end
+       16 function axioms(pool::FormulaPool, class::FrameClass; relation=:R, atom_value="p")
+       16     if class.name === :K
+        3         p = _axiom_atom(pool, atom_value)
+        3         q = _axiom_atom(pool, "q")
+        3         box = Box(relation)
+        3         _require_connective(pool, box); _require_connective(pool, IMPLICATION)
+        3         implication = branch(pool, IMPLICATION, p, q)
+        3         return (branch(pool, IMPLICATION, branch(pool, box, implication),
+        -             branch(pool, IMPLICATION, branch(pool, box, p), branch(pool, box, q))),)
+        -     end
+       13     result = Formula[]
+       13     for condition in class.conditions
+       21         append!(result, _primitive_axioms(pool, condition, relation, atom_value))
+       28     end
+       10     Tuple(result)
+        - end
+       20 function axiom(pool::FormulaPool, class::FrameClass; relation=:R, atom_value="p")
+       10     forms = axioms(pool, class; relation=relation, atom_value=atom_value)
+        8     length(forms) == 1 && return forms[1]
+        2     _require_connective(pool, CONJUNCTION)
+        2     result = forms[1]
+        2     for form in forms[2:end]
+        3         result = branch(pool, CONJUNCTION, result, form)
+        5     end
+        2     result
+        - end
+        - 
+        - """Check a class axiom in a particular model at every world."""
+       10 function validates(model::Model, formula::Formula)
+       11     all(check(formula, model, world) == top(algebra(model)) for world in worlds(frame(model)))
+        - end
+        1 validates(formula::Formula, model::Model) = validates(model, formula)

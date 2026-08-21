@@ -66,7 +66,7 @@ export lattice_meet, latticemeet, latticejoin, lattice_join, lmeet, join_table, 
 export product, tnorm, monoid, monoid_product, monoid_operation, residuum
 export precedeq, precedes, succeedeq, succeedes, maximalmembers, minimalmembers
 export Frame, worlds, relations, world_index, hasworldindex, world_position, accessible
-export check, extension, Extension
+export check, extension, Extension, describe
 export Valuation, Model, frame, algebra, valuation, interpret
 
 export FirstOrderTerm, FirstOrderFormula, FOTerm, FOFormula

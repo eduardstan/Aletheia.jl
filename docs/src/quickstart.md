@@ -83,7 +83,7 @@ println(extension(formula, model))
 [:w₂]
 true
 true
-Extension(Bool[1, 1])
+Bool[1, 1]
 ```
 
 `interpret` is intentionally an atom-only operation. Compound formulas go

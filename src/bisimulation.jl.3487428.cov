@@ -1,0 +1,215 @@
+        - # Bisimulation and finite bisimulation contraction, following BDV §2.2.
+        - 
+        - function _model_relation_names(frame::Frame)
+       39     frame.relations isa AbstractDict ? collect(keys(frame.relations)) : Any[]
+        - end
+        - function _opaque_valuation(model::Model)
+        1     data = valuation(model)
+        1     data isa Function || (data isa Valuation && data.data isa Function)
+        - end
+       36 function _valuation_atoms(model::Model)
+       38     data = valuation(model)
+       38     data isa Valuation && (data = data.data)
+       38     data isa AbstractDict || return Any[]
+       36     result = Any[]
+       72     for key in keys(data)
+       71         if key isa Tuple && length(key) == 2
+        6             first_world = any(world -> isequal(world, key[1]), worlds(frame(model)))
+        5             second_world = any(world -> isequal(world, key[2]), worlds(frame(model)))
+        3             candidate = first_world ? key[2] : second_world ? key[1] : nothing
+        4             candidate === nothing || push!(result, candidate)
+      363         elseif any(world -> isequal(world, key), worlds(frame(model)))
+        1             nested = data[key]
+        1             nested isa AbstractDict && append!(result, keys(nested))
+        -         else
+       68             push!(result, key)
+        -         end
+      142     end
+       36     unique(result)
+        - end
+        - 
+        - function _label_compatible(m1, w1, m2, w2, atoms)
+       16     all(isequal(_atom_truth(m1, a, w1), _atom_truth(m2, a, w2)) for a in atoms)
+        - end
+     2662 function _targets_tuple(model, world, name)
+     2662     Tuple(accessible(frame(model), world, name))
+        - end
+        - 
+        - """
+        -     bisimilar(m₁, w₁, m₂, w₂; atoms, relations)
+        - 
+        - Decide the standard labelled bisimulation game for finite models.  The
+        - implementation starts with all label-compatible world pairs and repeatedly
+        - refines that partition using the forth and back conditions for every named
+        - relation.  With nᵢ = |Wᵢ|, r named relations, and dᵢ maximum out-degree, one
+        - refinement pass is O(n₁n₂r d₁d₂) time and O(n₁n₂) space; because this
+        - straightforward implementation can make at most n₁n₂ passes, its worst-case time is
+        - O((n₁n₂)²r d₁d₂).  Definitions and invariance are those of BDV §2.2
+        - [blackburn2001](@cite).
+        - When omitted, `atoms` and `relations` are inferred from dictionary-backed
+        - models and frames; pass them explicitly for callable valuations/relations.
+        - """
+       10 function bisimilar(m1::Model, w1, m2::Model, w2; atoms=nothing, relations=nothing)
+        5     _check_world(frame(m1), w1); _check_world(frame(m2), w2)
+        9     names = atoms === nothing ? unique(vcat(_valuation_atoms(m1), _valuation_atoms(m2))) : collect(atoms)
+        8     rels = relations === nothing ? unique(vcat(_model_relation_names(frame(m1)), _model_relation_names(frame(m2)))) : collect(relations)
+        5     atoms === nothing && (_opaque_valuation(m1) || _opaque_valuation(m2)) &&
+        -         throw(ArgumentError("callable valuations require an explicit atoms keyword"))
+        4     relations === nothing && (frame(m1).relations isa Function || frame(m2).relations isa Function) &&
+        -         throw(ArgumentError("callable accessibility requires an explicit relations keyword"))
+        4     pairs = Set{Tuple{Any,Any}}()
+        4     for left in worlds(frame(m1)), right in worlds(frame(m2))
+       16         _label_compatible(m1, left, m2, right, names) && push!(pairs, (left, right))
+       20     end
+        4     changed = true
+        9     while changed
+        5         changed = false
+        5         for pair in collect(pairs)
+        8             left, right = pair
+       14             survives = all(any((target, candidate) in pairs for candidate in _targets_tuple(m2, right, rel))
+        -                            for rel in rels for target in _targets_tuple(m1, left, rel)) &&
+        -                 all(any((candidate, target) in pairs for candidate in _targets_tuple(m1, left, rel))
+        -                     for rel in rels for target in _targets_tuple(m2, right, rel))
+        8             if !survives
+        2                 delete!(pairs, pair)
+        2                 changed = true
+        -             end
+        8         end
+        5     end
+        4     (w1, w2) in pairs
+        - end
+        1 bisimilar(m1::Model, w1, m2::Model, w2, atoms) = bisimilar(m1, w1, m2, w2; atoms=atoms)
+        - 
+        - """An equivalence class of worlds in a bisimulation quotient."""
+        - struct BisimulationClass
+      600     members::Tuple
+        - end
+        1 Base.show(io::IO, class::BisimulationClass) = print(io, "Class(", join(repr.(class.members), ", "), ")")
+        - 
+        - struct BisimulationContraction{M,Q,W}
+      132     model::M
+        -     classes::Q
+        -     world_map::W
+        - end
+        - const QuotientModel = BisimulationContraction
+        - 
+        - Base.show(io::IO, contraction::BisimulationContraction) =
+        -     print(io, "BisimulationContraction(", length(contraction.world_map), " → ", length(contraction.classes), " worlds)")
+        - 
+        - function Base.show(io::IO, ::MIME"text/plain", contraction::BisimulationContraction)
+        -     n_orig = length(contraction.world_map)
+        -     n_classes = length(contraction.classes)
+        -     ratio = n_orig == 0 ? 0.0 : (1.0 - n_classes / n_orig)
+        -     pct = round(Int, ratio * 100)
+        -     print(io, "BisimulationContraction ($n_orig → $n_classes worlds, $pct% collapse ratio)")
+        - 
+        -     if n_classes <= 10
+        -         print(io, "\n  Classes ($n_classes):")
+        -         for (i, class) in enumerate(contraction.classes)
+        -             members_str = join(repr.(class.members), ", ")
+        -             print(io, "\n    Class $i: $members_str")
+        -         end
+        -     else
+        -         print(io, "\n  Classes ($n_classes):")
+        -         for (i, class) in enumerate(contraction.classes[1:5])
+        -             members_str = join(repr.(class.members), ", ")
+        -             print(io, "\n    Class $i: $members_str")
+        -         end
+        -         print(io, "\n    … ($(n_classes - 5) elided)")
+        -     end
+        - end
+        - 
+      129 model(contraction::BisimulationContraction) = contraction.model
+        6 classes(contraction::BisimulationContraction) = contraction.classes
+        1 world_map(contraction::BisimulationContraction) = contraction.world_map
+     9858 function contraction_world(contraction::BisimulationContraction, world)
+     9865     world isa BisimulationClass && return world
+     9864     haskey(contraction.world_map, world) ? contraction.world_map[world] : throw(KeyError(world))
+        - end
+        2 frame(contraction::BisimulationContraction) = frame(contraction.model)
+        1 algebra(contraction::BisimulationContraction) = algebra(contraction.model)
+        1 valuation(contraction::BisimulationContraction) = valuation(contraction.model)
+        1 accessible(contraction::BisimulationContraction, world, relation_name) = accessible(frame(contraction), world, relation_name)
+        7 check(formula::Formula, contraction::BisimulationContraction, world) =
+        -     check(formula, contraction.model, contraction_world(contraction, world))
+        1 extension(formula::Formula, contraction::BisimulationContraction) = extension(formula, contraction.model)
+        - 
+      132 function _classes_for_model(model::Model, atoms, relations)
+      262     worlds_list = collect(worlds(frame(model)))
+      132     blocks = [Set{Any}(worlds_list)]
+      389     while true
+      389         block_index = Dict{Any,Int}()
+     1633         for (i, block) in enumerate(blocks), world in block
+     2034             block_index[world] = i
+     2889         end
+      389         groups = Dict{Any,Vector{Any}}()
+      389         for world in worlds_list
+     2034             labels = Tuple(_atom_truth(model, atom_name, world) for atom_name in atoms)
+     2034             successors = Tuple(Tuple(sort!(unique(block_index[target] for target in
+        -                 _targets_tuple(model, world, relation_name)))) for relation_name in relations)
+     2034             key = (labels, successors)
+     2034             push!(get!(groups, key, Any[]), world)
+     2034         end
+      389         next_blocks = [Set(group) for group in values(groups)]
+    34311         sort!(next_blocks, by=block -> findfirst(world -> world in block, worlds_list))
+      389         length(next_blocks) == length(blocks) &&
+        -             all(any(next_block == block for next_block in next_blocks) for block in blocks) && break
+      257         blocks = next_blocks
+      257     end
+      132     [BisimulationClass(tuple(block...)) for block in blocks]
+        - end
+        - 
+        - """Return the largest auto-bisimulation quotient of a finite model.
+        - 
+        - The result is a `BisimulationContraction` wrapper.  `contraction_world(q, w)`
+        - selects the quotient world corresponding to an original world, while `check`
+        - and `extension` delegate normally.  For n worlds, r relations, and maximum
+        - out-degree d, partition refinement costs O(n²rd log d) worst-case time and
+        - O(nrd + n) working space; quotient construction adds O(nrd) time and storage.
+        - Relation functions must be accompanied by `relations`; dictionary-backed frames
+        - infer relation names.
+        - """
+      264 function bisimulation_contraction(model::Model; atoms=nothing, relations=nothing)
+      132     atoms === nothing && _opaque_valuation(model) &&
+        -         throw(ArgumentError("callable valuations require an explicit atoms keyword"))
+      264     atom_names = atoms === nothing ? _valuation_atoms(model) : collect(atoms)
+      264     relation_names = relations === nothing ? _model_relation_names(frame(model)) : collect(relations)
+      132     relations === nothing && frame(model).relations isa Function &&
+        -         throw(ArgumentError("callable accessibility requires an explicit relations keyword"))
+      132     quotient_classes = _classes_for_model(model, atom_names, relation_names)
+      132     mapping = Dict{Any,Any}()
+      132     for class in quotient_classes
+      600         for world in class.members
+      623             mapping[world] = class
+     1223         end
+      600     end
+      132     adjacency = Dict{Any,Any}()
+      132     for relation_name in relation_names
+      132         relation_map = Dict{Any,Any}()
+      132         for class in quotient_classes
+      600             targets = BisimulationClass[]
+      630             for target in _targets_tuple(model, class.members[1], relation_name)
+     1686                 quotient = mapping[target]
+     3357                 quotient in targets || push!(targets, quotient)
+     2256             end
+      600             relation_map[class] = tuple(targets...)
+      600         end
+      132         adjacency[relation_name] = relation_map
+      132     end
+      132     qframe = Frame(tuple(quotient_classes...), adjacency; index=true)
+    81817     qvaluation = (atom_value, quotient) -> begin
+    81685         original = quotient isa BisimulationClass ? quotient.members[1] : quotient
+    81685         atom_name = atom_value
+    81685         for candidate in atom_names
+   163362             if candidate isa Atom && isequal(value(candidate), atom_value)
+        1                 atom_name = candidate
+        1                 break
+        -             end
+   163361         end
+    81685         _atom_truth(model, atom_name, original)
+        -     end
+      132     qmodel = Model(qframe, algebra(model), qvaluation)
+      132     BisimulationContraction(qmodel, tuple(quotient_classes...), mapping)
+        - end
+        - const contract = bisimulation_contraction
+        - const contraction = bisimulation_contraction

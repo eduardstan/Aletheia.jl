@@ -1,0 +1,585 @@
+        - # Inductive logic programming foundations over the first-order syntax.
+        - # Definitions and terminology follow Muggleton & De Raedt (1994), §5.2.
+        - 
+        - """A signed atomic first-order literal (Muggleton & De Raedt, §5.2 [muggleton1994](@cite))."""
+        - struct Literal
+        -     atom::Union{Predicate,Equality}
+        -     positive::Bool
+       19     function Literal(atom::Union{Predicate,Equality}, positive::Bool=true)
+      213         new(atom, positive)
+        -     end
+        - end
+        - 
+        2 Literal(formula::FONegation) = formula.child isa Union{Predicate,Equality} ? Literal(formula.child, false) :
+        -     throw(ArgumentError("a literal may negate only a predicate or equality"))
+        1 Literal(other) = throw(ArgumentError("a literal must contain a predicate or equality; got $(typeof(other))"))
+        2 literal(atom::Union{Predicate,Equality}, positive::Bool=true) = Literal(atom, positive)
+        1 positive_literal(atom::Union{Predicate,Equality}) = Literal(atom, true)
+        1 negative_literal(atom::Union{Predicate,Equality}) = Literal(atom, false)
+        1 positive_literal(literal::Literal) = literal.positive
+        1 negative_literal(literal::Literal) = !literal.positive
+        - 
+        - """Return the signed atom carried by a literal."""
+        1 atoms(literal::Literal) = literal.atom
+        - 
+       21 function Base.show(io::IO, literal::Literal)
+       34     literal.positive || print(io, "¬")
+       21     print(io, _fo_text(literal.atom))
+        - end
+       21 Base.string(literal::Literal) = sprint(show, literal)
+        - 
+      125 _normalize_literal(literal::Literal) = literal
+       59 _normalize_literal(atom::Union{Predicate,Equality}) = Literal(atom)
+        1 _normalize_literal(formula::FONegation) = Literal(formula)
+        1 _normalize_literal(other) = throw(ArgumentError("expected a predicate, equality, or literal; got $(typeof(other))"))
+        - 
+        - """A clause, represented compactly as a canonical immutable tuple of literals.
+        - 
+        - The tuple has set semantics: duplicate literals are removed and ordering is
+        - canonicalized for stable equality, hashing, and display.  A clause is read as
+        - the disjunction of its literals; the empty clause is contradiction. This is the
+        - clause representation of Muggleton & De Raedt, §5.2 [muggleton1994](@cite).
+        - """
+        - struct Clause{L<:Tuple}
+        -     literals::L
+      108     function Clause(literals::Tuple)
+      165         normalized = Literal[_normalize_literal(literal) for literal in literals]
+      207         unique!(normalized)
+      106         sort!(normalized, by=_literal_sort_key)
+      106         canonical = tuple(normalized...)
+      106         new{typeof(canonical)}(canonical)
+        -     end
+        - end
+        - 
+        1 Clause(literals::AbstractVector) = Clause(tuple(literals...))
+        2 Clause(literals::AbstractSet) = Clause(tuple(literals...))
+       36 Clause(first, rest...) = Clause(tuple(first, rest...))
+        5 Clause() = Clause(())
+        - 
+       94 Base.length(clause::Clause) = length(clause.literals)
+      227 Base.iterate(clause::Clause, state...) = iterate(clause.literals, state...)
+        2 Base.getindex(clause::Clause, i::Integer) = clause.literals[i]
+        9 Base.isempty(clause::Clause) = isempty(clause.literals)
+        2 Base.eltype(::Type{<:Clause}) = Literal
+      148 _literal_sort_key(literal::Literal) = (literal.positive ? 1 : 0, string(typeof(literal.atom)), repr(literal.atom))
+        - function _clause_set_equal(left::Clause, right::Clause)
+       15     length(left) == length(right) && all(any(isequal(literal, other) for other in right) for literal in left)
+        - end
+       15 Base.isequal(left::Clause, right::Clause) = _clause_set_equal(left, right)
+       10 Base.:(==)(left::Clause, right::Clause) = isequal(left, right)
+        3 function Base.hash(clause::Clause, seed::UInt)
+        -     # XOR makes the hash independent of the tuple's canonical order.
+      190     foldl((h, literal) -> xor(h, hash(literal, seed)), clause.literals; init=hash(length(clause), seed))
+        - end
+        4 function Base.show(io::IO, clause::Clause)
+        9     isempty(clause) ? print(io, "⊥") : print(io, join(string.(clause.literals), " ∨ "))
+        - end
+        9 Base.string(clause::Clause) = sprint(show, clause)
+        - 
+        - """A Horn clause: a clause with at most one positive literal (Muggleton & De Raedt, §3.2 [muggleton1994](@cite))."""
+        - struct HornClause
+        -     clause::Clause
+       14     function HornClause(clause::Clause)
+       61         count(literal -> literal.positive, clause.literals) <= 1 ||
+        -             throw(ArgumentError("a Horn clause has at most one positive literal"))
+       17         new(clause)
+        -     end
+        - end
+        1 HornClause(literals::Tuple) = HornClause(Clause(literals))
+        1 HornClause(literals::AbstractVector) = HornClause(Clause(literals))
+        1 HornClause(literals::AbstractSet) = HornClause(Clause(literals))
+        2 HornClause(first, rest...) = HornClause(Clause(first, rest...))
+        5 HornClause(head::Union{Nothing,Predicate,Equality}, body::Union{Predicate,Equality}...) =
+        -     HornClause(head === nothing ? Clause(tuple((Literal(a, false) for a in body)...)) :
+        -                Clause((Literal(head, true), (Literal(a, false) for a in body)...)))
+        2 Base.length(clause::HornClause) = length(clause.clause)
+        5 Base.iterate(clause::HornClause, state...) = iterate(clause.clause, state...)
+        1 Base.getindex(clause::HornClause, i::Integer) = clause.clause[i]
+        1 function _horn_clause_string(clause::HornClause)
+        1     lits = clause.clause.literals
+        4     pos_idx = findfirst(l -> l.positive, lits)
+        1     pos_lit = pos_idx !== nothing ? lits[pos_idx] : nothing
+        1     neg_lits = [l for l in lits if !l.positive]
+        - 
+        1     head_str = pos_lit !== nothing ? _fo_text(pos_lit.atom) : ""
+        1     body_str = join([_fo_text(l.atom) for l in neg_lits], ", ")
+        - 
+        1     if pos_lit !== nothing && !isempty(neg_lits)
+        1         return "$head_str :- $body_str"
+        0     elseif pos_lit !== nothing && isempty(neg_lits)
+        0         return head_str
+        0     elseif pos_lit === nothing && !isempty(neg_lits)
+        0         return ":- $body_str"
+        -     else
+        0         return "⊥"
+        -     end
+        - end
+        - 
+        - Base.show(io::IO, clause::HornClause) = print(io, _horn_clause_string(clause))
+        - Base.show(io::IO, ::MIME"text/plain", clause::HornClause) = print(io, _horn_clause_string(clause))
+        1 Base.string(clause::HornClause) = _horn_clause_string(clause)
+        2 Base.:(==)(left::HornClause, right::HornClause) = left.clause == right.clause
+        3 Base.hash(clause::HornClause, h::UInt) = hash(clause.clause, h)
+        2 literals(clause::Clause) = clause.literals
+        1 literals(clause::HornClause) = clause.clause.literals
+        - 
+        - """A finite background knowledge base, represented as a tuple of clauses (Muggleton & De Raedt, §3 [muggleton1994](@cite))."""
+        - struct ClauseSet{C<:Tuple}
+        -     clauses::C
+        6     function ClauseSet(clauses::Tuple)
+        9         normalized = Clause[clause isa HornClause ? clause.clause : clause isa Clause ? clause : Clause(clause)
+        -                             for clause in clauses]
+       11         unique!(normalized)
+        6         sort!(normalized, by=string)
+        6         canonical = tuple(normalized...)
+        6         new{typeof(canonical)}(canonical)
+        -     end
+        - end
+        1 ClauseSet(clauses::AbstractVector) = ClauseSet(tuple(clauses...))
+        1 ClauseSet(clauses::AbstractSet) = ClauseSet(tuple(clauses...))
+        2 ClauseSet(first, rest...) = ClauseSet(tuple(first, rest...))
+        1 ClauseSet() = ClauseSet(())
+        - const BackgroundKnowledge = ClauseSet
+        5 Base.length(knowledge::ClauseSet) = length(knowledge.clauses)
+       17 Base.iterate(knowledge::ClauseSet, state...) = iterate(knowledge.clauses, state...)
+        1 Base.getindex(knowledge::ClauseSet, i::Integer) = knowledge.clauses[i]
+        2 Base.isequal(left::ClauseSet, right::ClauseSet) = length(left) == length(right) &&
+        -     all(any(isequal(clause, other) for other in right) for clause in left)
+        2 Base.:(==)(left::ClauseSet, right::ClauseSet) = isequal(left, right)
+        3 Base.hash(knowledge::ClauseSet, seed::UInt) = foldl((h, clause) -> xor(h, hash(clause, seed)), knowledge.clauses;
+        -                                                     init=hash(length(knowledge), seed))
+        2 clauses(knowledge::ClauseSet) = knowledge.clauses
+        1 Base.show(io::IO, knowledge::ClauseSet) = print(io, "ClauseSet(", join(string.(knowledge.clauses), ", "), ")")
+        - 
+        - function Base.show(io::IO, ::MIME"text/plain", knowledge::ClauseSet)
+        -     nc = length(knowledge.clauses)
+        -     print(io, "ClauseSet ($nc clause$(nc == 1 ? "" : "s"))")
+        -     if nc <= 15
+        -         for c in knowledge.clauses
+        -             h_c = ishorn(c) ? HornClause(c) : c
+        -             print(io, "\n  ", string(h_c))
+        -         end
+        -     else
+        -         for c in knowledge.clauses[1:10]
+        -             h_c = ishorn(c) ? HornClause(c) : c
+        -             print(io, "\n  ", string(h_c))
+        -         end
+        -         print(io, "\n  … ($(nc - 10) elided)")
+        -     end
+        - end
+        - 
+        1 Base.string(knowledge::ClauseSet) = sprint(show, knowledge)
+        - 
+        - """A finite substitution for first-order variables (Muggleton & De Raedt, Definition 5.3 [muggleton1994](@cite))."""
+        - struct Substitution
+        -     bindings::Tuple
+       20     function Substitution(bindings::Tuple)
+       22         normalized = Pair{Variable,FirstOrderTerm}[_as_variable(pair.first) => _as_term(pair.second)
+        -                                                     for pair in bindings]
+       17         keys_seen = Set{Variable}()
+       17         result = Pair{Variable,FirstOrderTerm}[]
+       17         for pair in normalized
+       11             pair.first in keys_seen && throw(ArgumentError("a substitution cannot bind a variable twice"))
+       10             push!(keys_seen, pair.first)
+       10             push!(result, pair)
+       10         end
+       17         sort!(result, by=pair -> string(pair.first.name))
+       16         canonical = tuple(result...)
+       16         new(canonical)
+        -     end
+        - end
+        8 Substitution() = Substitution(())
+        2 function _as_variable(variable)
+       19     variable isa Variable && return variable
+       17     variable isa Symbol && return Variable(variable)
+        2     variable isa AbstractString && return Variable(variable)
+        2     throw(ArgumentError("substitution keys must be variables, symbols, or strings"))
+        - end
+        2 function _as_term(term)
+       13     term isa FirstOrderTerm || throw(ArgumentError("substitution values must be first-order terms"))
+       11     term
+        - end
+        3 Substitution(bindings::AbstractDict) = Substitution(tuple((pair.first => pair.second for pair in bindings)...))
+        1 Substitution(bindings::AbstractVector) = Substitution(tuple(bindings...))
+        8 Substitution(bindings::Pair...) = Substitution(tuple(bindings...))
+        2 Base.length(substitution::Substitution) = length(substitution.bindings)
+        4 Base.iterate(substitution::Substitution, state...) = iterate(substitution.bindings, state...)
+        5 function Base.getindex(substitution::Substitution, variable)
+        5     variable = _as_variable(variable)
+        4     for pair in substitution.bindings
+       14         pair.first == variable && return pair.second
+        7     end
+        2     throw(KeyError(variable))
+        - end
+        3 Base.haskey(substitution::Substitution, variable) = try
+        3     substitution[variable]; true
+        - catch error
+        2     error isa KeyError || rethrow(); false
+        - end
+        - 
+       58 function _substitution_lookup(substitution::Substitution, variable::Variable)
+       81     for pair in substitution.bindings
+       86         pair.first == variable && return pair.second
+        8     end
+       23     nothing
+        - end
+       58 function _apply_substitution(term::Variable, substitution::Substitution, seen::Set{Variable})
+       58     bound = _substitution_lookup(substitution, term)
+       58     bound === nothing && return term
+       35     term in seen && return term
+       35     next_seen = copy(seen)
+       35     push!(next_seen, term)
+       35     _apply_substitution(bound, substitution, next_seen)
+        - end
+       36 _apply_substitution(term::Constant, substitution::Substitution, seen::Set{Variable}) = term
+        9 _apply_substitution(term::FunctionTerm, substitution::Substitution, seen::Set{Variable}) =
+        -     FunctionTerm(term.name, tuple((_apply_substitution(argument, substitution, seen) for argument in term.arguments)...))
+        - 
+        - """Apply a normalized substitution to a term, atomic formula, or clause.
+        - 
+        - Bindings are followed through variable chains; this is the usual composed application,
+        - not a capture-avoiding operation for quantified formulas."""
+       59 substitute(term::FirstOrderTerm, substitution::Substitution) = _apply_substitution(term, substitution, Set{Variable}())
+        3 substitute(substitution::Substitution, term::FirstOrderTerm) = substitute(term, substitution)
+       46 function substitute(formula::Predicate, substitution::Substitution)
+       46     Predicate(formula.name, tuple((substitute(argument, substitution) for argument in formula.arguments)...))
+        - end
+        1 function substitute(formula::Equality, substitution::Substitution)
+        1     Equality(substitute(formula.left, substitution), substitute(formula.right, substitution))
+        - end
+       87 substitute(literal::Literal, substitution::Substitution) =
+        -     Literal(substitute(literal.atom, substitution), literal.positive)
+       57 substitute(clause::Clause, substitution::Substitution) = Clause(tuple((substitute(literal, substitution) for literal in clause)...))
+        1 substitute(clause::HornClause, substitution::Substitution) = HornClause(substitute(clause.clause, substitution))
+        1 substitute(knowledge::ClauseSet, substitution::Substitution) = ClauseSet(tuple((substitute(clause, substitution) for clause in knowledge)...))
+        - 
+      138 function _match_term(pattern::Variable, target::FirstOrderTerm, environment::Dict{Variable,FirstOrderTerm})
+      177     existing = get(environment, pattern, nothing)
+      138     if existing === nothing
+       99         environment[pattern] = target
+       99         return true
+        -     end
+       39     isequal(existing, target)
+        - end
+       18 function _match_term(pattern::Constant, target::FirstOrderTerm, environment)
+       18     target isa Constant && isequal(pattern.value, target.value)
+        - end
+       12 function _match_term(pattern::FunctionTerm, target::FirstOrderTerm, environment)
+       12     target isa FunctionTerm || return false
+        8     isequal(pattern.name, target.name) || return false
+        8     length(pattern.arguments) == length(target.arguments) || return false
+        8     all(_match_term(pattern.arguments[i], target.arguments[i], environment) for i in eachindex(pattern.arguments))
+        - end
+      221 function _match_literal(pattern::Literal, target::Literal, environment::Dict{Variable,FirstOrderTerm})
+      267     pattern.positive == target.positive || return false
+      175     left, right = pattern.atom, target.atom
+      185     typeof(left) === typeof(right) || return false
+      165     if left isa Predicate
+      191         isequal(left.name, right.name) || return false
+      124         length(left.arguments) == length(right.arguments) || return false
+      122         return all(_match_term(left.arguments[i], right.arguments[i], environment) for i in eachindex(left.arguments))
+        -     end
+        8     _match_term(left.left, right.left, environment) && _match_term(left.right, right.right, environment)
+        - end
+        - 
+        - """Decide Plotkin's θ-subsumption: some substitution makes `left` a subset of `right`.
+        - 
+        - The search is a direct backtracking matcher and is exponential in the worst case,
+        - as expected for the NP-complete general problem.  Variables in `right` are treated
+        - as ordinary target terms; only variables in `left` are bound. The definition is
+        - Muggleton & De Raedt, Definition 5.3 [muggleton1994](@cite).
+        - """
+      104 function subsumes(left::Clause, right::Clause)
+        -     # A substitution may identify literals, so clause cardinality is not a safe
+        -     # pruning bound (and equivalent clauses in the survey rely on this case).
+      157     patterns = collect(left.literals)
+      315     function search(position, environment)
+      211         position > length(patterns) && return true
+      150         pattern = patterns[position]
+      150         for target in right.literals
+      221             next = copy(environment)
+      221             _match_literal(pattern, target, next) && search(position + 1, next) && return true
+      137         end
+        -         false
+        -     end
+      104     search(1, Dict{Variable,FirstOrderTerm}())
+        - end
+       12 subsumes(left::HornClause, right::HornClause) = subsumes(left.clause, right.clause)
+        1 subsumes(left::Clause, right::HornClause) = subsumes(left, right.clause)
+        3 subsumes(left::HornClause, right::Clause) = subsumes(left.clause, right)
+        - 
+        - const theta_subsumes = subsumes
+        - """The ILP generality quasi-order, implemented by θ-subsumption (Muggleton & De Raedt, §5.2 [muggleton1994](@cite))."""
+        1 more_general(left, right) = subsumes(left, right)
+        1 more_specific(left, right) = subsumes(right, left)
+        1 function equivalent_under_subsumption(left, right)
+        1     subsumes(left, right) && subsumes(right, left)
+        - end
+        - 
+        - # Small, deliberately explicit lazy helpers for refinement operators.
+        - struct _UniqueIterator{I}
+       16     source::I
+        - end
+       16 Base.IteratorSize(::Type{<:_UniqueIterator}) = Base.SizeUnknown()
+       40 function Base.iterate(iterator::_UniqueIterator, state=(Set{Any}(), nothing, false))
+       58     seen, source_state, started = state
+       41     while true
+       42         next = started ? iterate(iterator.source, source_state) : iterate(iterator.source)
+       40         next === nothing && return nothing
+       27         item, source_state = next
+       27         started = true
+       27         item in seen && continue
+       27         push!(seen, item)
+       27         return item, (seen, source_state, started)
+        0     end
+        - end
+        - 
+       28 function _proper_specialization(parent::Union{Clause,HornClause}, child::Union{Clause,HornClause})
+       28     subsumes(parent, child) && !subsumes(child, parent)
+        - end
+        7 function _proper_generalization(parent::Union{Clause,HornClause}, child::Union{Clause,HornClause})
+        7     subsumes(child, parent) && !subsumes(parent, child)
+        - end
+        - 
+        - # Refining a Horn clause must retain its invariant and type.  HornClause's
+        - # constructor deliberately rejects an added positive head when one already
+        - # exists, rather than silently widening the result to an ordinary Clause.
+       24 _refinement_candidate(parent::Clause, candidate::Clause) = candidate
+        6 _refinement_candidate(parent::HornClause, candidate::Clause) = HornClause(candidate)
+        - 
+        6 function _fresh_variable(clause::Clause, index::Int)
+        6     used = Set{Symbol}()
+        6     for literal in clause
+       20         for term in _clause_terms(literal.atom)
+       22             term isa Variable && push!(used, term.name)
+       22         end
+       18     end
+        6     candidate = Symbol("_G", index)
+       16     while candidate in used
+        2         index += 1
+        2         candidate = Symbol("_G", index)
+        2     end
+        6     Variable(candidate)
+        - end
+       11 function _clause_terms(atom::Predicate)
+       11     Iterators.flatten((_term_tree(term) for term in atom.arguments))
+        - end
+        5 function _clause_terms(atom::Equality)
+        5     Iterators.flatten((_term_tree(term) for term in (atom.left, atom.right)))
+        - end
+       16 _term_tree(term::Variable) = (term,)
+        5 _term_tree(term::Constant) = (term,)
+        8 function _term_tree(term::FunctionTerm)
+        8     descendants = Iterators.flatten((_term_tree(argument) for argument in term.arguments))
+        8     Iterators.flatten(((term,), descendants))
+        - end
+        - 
+        - function _replace_term(term::Variable, target, replacement)
+        4     isequal(term, target) ? replacement : term
+        - end
+        2 _replace_term(term::Constant, target, replacement) = isequal(term, target) ? replacement : term
+        3 function _replace_term(term::FunctionTerm, target, replacement)
+        3     isequal(term, target) ? replacement : FunctionTerm(term.name, tuple((_replace_term(argument, target, replacement) for argument in term.arguments)...))
+        - end
+        4 function _replace_atom(atom::Predicate, target, replacement)
+        4     Predicate(atom.name, tuple((_replace_term(term, target, replacement) for term in atom.arguments)...))
+        - end
+        2 function _replace_atom(atom::Equality, target, replacement)
+        2     Equality(_replace_term(atom.left, target, replacement), _replace_term(atom.right, target, replacement))
+        - end
+       10 _replace_term(literal::Literal, target, replacement) = Literal(_replace_atom(literal.atom, target, replacement), literal.positive)
+        - 
+        1 function _predicate_template(predicate)
+        6     if predicate isa Literal || predicate isa Predicate || predicate isa Equality
+        2         return _normalize_literal(predicate)
+        4     elseif predicate isa Pair && predicate.second isa Integer
+        3         name, arity = predicate.first, Int(predicate.second)
+        4         arity >= 0 || throw(ArgumentError("predicate arity must be non-negative"))
+        2         variables = tuple((Variable(Symbol("_A", i)) for i in 1:arity)...)
+        2         return Literal(Predicate(name, variables))
+        -     end
+        1     throw(ArgumentError("predicates must contain atomic templates or name => arity pairs"))
+        - end
+        - function _predicate_templates(predicates)
+        9     predicates === nothing && return ()
+        5     if predicates isa AbstractArray || predicates isa AbstractSet || predicates isa Tuple
+        5         return tuple((_predicate_template(predicate) for predicate in predicates)...)
+        -     end
+        1     (_predicate_template(predicate) for predicate in predicates)
+        - end
+        - 
+        - """Return a lazy stream of proper specializations under θ-subsumption.
+        - 
+        - The one-step operator applies supplied substitutions and/or adds one supplied
+        - literal template, exactly the two operations described in Muggleton & De Raedt
+        - (1994), §5.2.2. Finite `literals`/`predicates` and a finite substitution set
+        - make this one-step space locally finite; iterable vocabularies are consumed
+        - lazily, so an unbounded language can be sampled without materialization. A
+        - `max_literals` bound applies to every emitted candidate, including substitutions;
+        - it must be `nothing` or a non-negative integer. Refining a `HornClause` returns
+        - `HornClause` values and rejects additions that would create a second positive
+        - literal. The operator is sound and proper, but is not claimed complete or
+        - optimal: it cannot generate literals outside the bias and does not perform
+        - reduced-clause canonicalization.
+        - """
+       34 function downward_refinements(clause::Union{Clause,HornClause}; literals=nothing, predicates=nothing,
+        -                               substitutions=nothing, max_literals=nothing)
+       18     max_literals === nothing || (max_literals isa Integer && max_literals >= 0) ||
+        -         throw(ArgumentError("max_literals must be nothing or a non-negative integer"))
+       16     base = clause isa HornClause ? clause.clause : clause
+       45     within_limit(candidate) = max_literals === nothing || length(candidate) <= max_literals
+       16     can_keep = max_literals === nothing || length(base) <= max_literals
+       16     can_add = max_literals === nothing || length(base) < max_literals
+        -     # Candidate vocabularies are iterated, not collected: an unbounded language
+        -     # bias can therefore be consumed with `Iterators.take`.
+       16     templates = if literals === nothing
+       10         _predicate_templates(predicates)
+        7     elseif literals isa AbstractArray || literals isa AbstractSet || literals isa Tuple
+        5         tuple((_normalize_literal(literal) for literal in literals)...)
+        -     else
+        2         (_normalize_literal(literal) for literal in literals)
+        -     end
+       14     collection_substitutions = substitutions isa AbstractArray || substitutions isa AbstractSet || substitutions isa Tuple
+       14     if collection_substitutions
+        5         substitutions_source = tuple((s isa Substitution ? s : Substitution(s) for s in substitutions)...)
+        -         # Iterate a lazy literal stream outside the finite substitution tuple,
+        -         # so a non-collection vocabulary is reusable for every supplied θ.
+        4         base_candidates = can_keep ?
+        -             (_refinement_candidate(clause, candidate) for candidate in
+        -              (substitute(base, substitution) for substitution in substitutions_source)
+        -              if within_limit(candidate)) : ()
+        4         per_template = can_add ?
+        -             ((_refinement_candidate(clause, candidate) for candidate in
+        -               (Clause((substitute(base, substitution).literals..., template)) for substitution in substitutions_source)
+        -               if within_limit(candidate)) for template in templates) : ()
+        4         source = Iterators.flatten((base_candidates, Iterators.flatten(per_template)))
+        -     else
+        9         substitutions_source = substitutions === nothing ? (Substitution(),) :
+        -             (substitutions isa Substitution ? (substitutions,) :
+        -              substitutions isa AbstractDict ? (Substitution(substitutions),) :
+        -              (s isa Substitution ? s : Substitution(s) for s in substitutions))
+        9         per_substitution = (
+        -             Iterators.flatten((
+        -                 can_keep ?
+        -                     (_refinement_candidate(clause, candidate) for candidate in
+        -                      (substitute(base, substitution),) if within_limit(candidate)) : (),
+        -                 can_add ?
+        -                     (_refinement_candidate(clause, candidate) for candidate in
+        -                      (Clause((substitute(base, substitution).literals..., template)) for template in templates)
+        -                      if within_limit(candidate)) : ()
+        -             )) for substitution in substitutions_source)
+        9         source = Iterators.flatten(per_substitution)
+        -     end
+       41     _UniqueIterator(Iterators.filter(candidate -> _proper_specialization(clause, candidate), source))
+        - end
+        - 
+        - """Return a lazy stream of proper generalizations under θ-subsumption.
+        - 
+        - This operator deletes one literal and replaces one non-variable subterm by a
+        - fresh variable. It is sound, proper, locally finite for a finite clause, and
+        - intentionally incomplete: no complete generalization operator exists for full
+        - clausal logic without a language bias because θ-subsumption has infinite
+        - chains (Muggleton & De Raedt (1994), §5.2.2).
+        - """
+        3 function upward_refinements(clause::Union{Clause,HornClause})
+        3     base = clause isa HornClause ? clause.clause : clause
+        3     deletions = (Clause(tuple((base.literals[j] for j in eachindex(base.literals) if j != i)...)) for i in eachindex(base.literals))
+        3     terms = Any[]
+        3     for literal in base
+        7         for term in _clause_terms(literal.atom)
+       12             term isa Variable || any(existing -> isequal(existing, term), terms) || push!(terms, term)
+        7         end
+        6     end
+        3     generalizations = (Clause(tuple((_replace_term(literal, term, _fresh_variable(base, i))
+        -                                    for literal in base)...)) for (i, term) in enumerate(terms))
+       10     _UniqueIterator(Iterators.filter(candidate -> _proper_generalization(base, candidate),
+        -         Iterators.flatten((deletions, generalizations))))
+        - end
+        - 
+        - const downward_refinement = downward_refinements
+        - const upward_refinement = upward_refinements
+        - const specializations = downward_refinements
+        - const generalizations = upward_refinements
+        - 
+        - """Return whether a clause is a Horn clause (Muggleton & De Raedt, §3.2 [muggleton1994](@cite))."""
+        5 ishorn(clause::Clause) = count(literal -> literal.positive, clause.literals) <= 1
+        - ishorn(::HornClause) = true
+        - 
+        - abstract type ILPExample end
+        - """An example in learning from entailment: a query and its positive/negative label
+        - (Muggleton & De Raedt, §3 [muggleton1994](@cite))."""
+        - struct EntailmentExample{E} <: ILPExample
+        1     example::E
+        -     positive::Bool
+        - end
+        2 EntailmentExample(example; positive=true) = EntailmentExample(example, Bool(positive))
+        - """An example in learning from interpretations: an interpretation and its label
+        - (Muggleton & De Raedt, §3 [muggleton1994](@cite))."""
+        - struct InterpretationExample{I} <: ILPExample
+        3     interpretation::I
+        -     positive::Bool
+        - end
+        6 InterpretationExample(interpretation; positive=true) = InterpretationExample(interpretation, Bool(positive))
+        - """An example in learning from proofs: a proof object and its label
+        - (Muggleton & De Raedt, §5 [muggleton1994](@cite))."""
+        - struct ProofExample{P} <: ILPExample
+        1     proof::P
+        -     positive::Bool
+        - end
+        2 ProofExample(proof; positive=true) = ProofExample(proof, Bool(positive))
+        - """Construct an example for learning from entailment [muggleton1994](@cite)."""
+        2 learning_from_entailment(example; positive=true) = EntailmentExample(example; positive=positive)
+        - """Construct a modal `Model` example for learning from interpretations [muggleton1994](@cite).
+        - 
+        - The named learning-setting constructor intentionally follows [`interpretation_example`](@ref)
+        - and rejects first-order adapters; callers with another interpretation type can use
+        - [`InterpretationExample`](@ref) directly.
+        - """
+        4 learning_from_interpretations(example; positive=true) = interpretation_example(example; positive=positive)
+        - """Construct an example for learning from proofs [muggleton1994](@cite)."""
+        2 learning_from_proofs(example; positive=true) = ProofExample(example; positive=positive)
+        - 
+        - """Present a Kripke `Model` directly as an interpretation example.
+        - 
+        - Aletheia's `Model` is an interpretation (a frame plus valuation), so this is
+        - the concrete bridge to learning from interpretations. Boolean modal models can
+        - also be converted to first-order interpretations with `first_order_interpretation`.
+        - The setting follows Muggleton & De Raedt, §3 [muggleton1994](@cite).
+        - """
+        3 function interpretation_example(model::Model; positive=true)
+        3     InterpretationExample(model; positive=positive)
+        - end
+        4 interpretation_example(other; positive=true) =
+        -     throw(ArgumentError("learning from interpretations expects a modal Model, got $(typeof(other))"))
+        2 model_example(model::Model; positive=true) = interpretation_example(model; positive=positive)
+        - 
+        - Base.show(io::IO, sub::Substitution) =
+        -     print(io, "Substitution(", join(["$(p.first) => $(p.second)" for p in sub.bindings], ", "), ")")
+        - 
+        - function Base.show(io::IO, ::MIME"text/plain", sub::Substitution)
+        -     if isempty(sub.bindings)
+        -         print(io, "Substitution: {}")
+        -     else
+        -         b_str = join(["$(p.first) ↦ $(p.second)" for p in sub.bindings], ", ")
+        -         print(io, "Substitution: {$b_str}")
+        -     end
+        - end
+        - 
+        - Base.show(io::IO, ex::EntailmentExample) =
+        -     print(io, "EntailmentExample(", ex.positive ? "+" : "-", ", ", ex.example, ")")
+        - 
+        - Base.show(io::IO, ::MIME"text/plain", ex::EntailmentExample) =
+        -     print(io, "EntailmentExample (", ex.positive ? "+" : "-", "): ", ex.example)
+        - 
+        - Base.show(io::IO, ex::InterpretationExample) =
+        -     print(io, "InterpretationExample(", ex.positive ? "+" : "-", ", ", ex.interpretation, ")")
+        - 
+        - Base.show(io::IO, ::MIME"text/plain", ex::InterpretationExample) =
+        -     print(io, "InterpretationExample (", ex.positive ? "+" : "-", "): ", ex.interpretation)
+        - 
+        - Base.show(io::IO, ex::ProofExample) =
+        -     print(io, "ProofExample(", ex.positive ? "+" : "-", ", ", ex.proof, ")")
+        - 
+        - Base.show(io::IO, ::MIME"text/plain", ex::ProofExample) =
+        -     print(io, "ProofExample (", ex.positive ? "+" : "-", "): ", ex.proof)
+        - 

@@ -1,0 +1,335 @@
+        - # Bottom-up evaluation over the formula pool's dependency-ordered DAG.
+        - # The walk is shared by Boolean and many-valued models; only the extension
+        - # operations specialize on the algebra and their storage type.
+        - 
+        - struct _EvaluationPlan{P,A}
+    20039     positions::P
+        -     adjacency::A
+        - end
+        - 
+        - struct _EvaluationNode
+   127957     id::Int
+        -     kind::Symbol
+        -     payload::Any
+        -     children::Tuple{Vararg{Int}}
+        - end
+        - 
+    20039 function _evaluation_nodes(formula::Formula)
+    20039     dag_nodes = dag(formula)
+    40078     ids = [node.id for node in dag_nodes]
+    20039     nodes = Vector{_EvaluationNode}(undef, length(dag_nodes))
+    20039     for (slot, node) in enumerate(dag_nodes)
+   322581         child_slots = ntuple(i -> searchsortedfirst(ids, node.children[i]), length(node.children))
+   127957         nodes[slot] = _EvaluationNode(node.id, node.kind, node.payload, child_slots)
+   235875     end
+    20039     nodes
+        - end
+        - 
+    20039 function _relation_names(nodes::Vector{_EvaluationNode})
+    20039     names = Set{Any}()
+    20039     for node in nodes
+   127957         if node.kind === :branch
+    97312             connective = node.payload
+   175575             if connective isa Diamond || connective isa Box
+    38695                 push!(names, relation(connective))
+        -             end
+        -         end
+   127957     end
+    20039     names
+        - end
+        - 
+    15959 function _cache_relation(frame::Frame, relation_name)
+    15969     stored = frame.relations
+    15969     (stored isa Function || stored isa _RelationProvider) && return false
+    16035     haskey(stored, relation_name) || return true
+    15883     !(stored[relation_name] isa Function)
+        - end
+        - 
+      337 function _relation_adjacency(frame::Frame, relation_name, positions)
+      337     if frame.relations isa _IntervalRelationMap
+        6         specialized = _interval_relation_adjacency(frame, frame.relations, relation_name, positions)
+        6         specialized !== nothing && return specialized
+        -     end
+      333     world_count = length(frame)
+      333     rows = Vector{Vector{Int}}(undef, world_count)
+      333     columns = [falses(world_count) for _ in 1:world_count]
+      333     seen = Set{Int}()
+      333     for source in worlds(frame)
+     2848         source_position = get(positions, source, 0)
+     1424         1 <= source_position <= world_count || throw(KeyError(source))
+     1424         targets = Int[]
+    17309         empty!(seen)
+     2712         for target in accessible(frame, source, relation_name)
+     3661             target_position = get(positions, target, 0)
+     3659             1 <= target_position <= world_count || throw(KeyError(target))
+     6030             target_position in seen && continue
+     3658             push!(seen, target_position)
+     3658             push!(targets, target_position)
+     3658             columns[target_position][source_position] = true
+     6031         end
+     1424         rows[source_position] = targets
+     1729     end
+      333     _RelationAdjacency(rows, columns)
+        - end
+        - 
+    20039 function _evaluation_plan(nodes::Vector{_EvaluationNode}, model::Model)
+    20039     frame = model.frame
+    20039     cache = model.cache
+    20039     adjacency = Dict{Any,_RelationAdjacency}()
+    40078     for relation_name in _relation_names(nodes)
+    15969         if !_cache_relation(frame, relation_name)
+       10             adjacency[relation_name] = _relation_adjacency(frame, relation_name, cache.positions)
+       10             continue
+        -         end
+    15959         lock(cache.lock)
+    15959         try
+    15959             if !haskey(cache.adjacency, relation_name)
+      324                 cache.adjacency[relation_name] = _relation_adjacency(frame, relation_name, cache.positions)
+        -             end
+    15959             adjacency[relation_name] = cache.adjacency[relation_name]
+        -         finally
+    15959             unlock(cache.lock)
+        -         end
+    31938     end
+    20039     _EvaluationPlan(cache.positions, adjacency)
+        - end
+        - 
+        - @inline function _node_atom(formula::Formula, node::_EvaluationNode)
+    30645     Atom(pool(formula), node.id, node.payload)
+        - end
+        - 
+       55 function _atom_extension(node::_EvaluationNode, formula::Formula, model::Model{T}, positions, ::Type{Vector{T}})::Vector{T} where T
+       55     values = Vector{T}(undef, length(frame(model)))
+       55     atom_formula = _node_atom(formula, node)
+       55     for world in worlds(frame(model))
+      104         values[positions[world]] = interpret(atom_formula, model, world)
+      134     end
+       53     values
+        - end
+        - 
+    30590 function _atom_extension(node::_EvaluationNode, formula::Formula, model::Model{Bool,A}, positions, ::Type{BitVector})::BitVector where {A<:BooleanAlgebra}
+    30590     values = falses(length(frame(model)))
+    30590     atom_formula = _node_atom(formula, node)
+    30590     for world in worlds(frame(model))
+   166722         values[positions[world]] = interpret(atom_formula, model, world)
+   196988     end
+    30590     values
+        - end
+        - 
+        1 function _negation_extension(algebra::TruthAlgebra, values::Vector{T})::Vector{T} where T
+        5     result = Vector{T}(undef, length(values))
+        5     for i in eachindex(values)
+       12         result[i] = negation(algebra, values[i])::T
+       19     end
+        5     result
+        - end
+        - 
+    19337 function _negation_extension(::BooleanAlgebra, values::BitVector)::BitVector
+    19337     .~values
+        - end
+        - 
+        6 function _meet_extension(algebra::TruthAlgebra, left::Vector{T}, right::Vector{T})::Vector{T} where T
+       11     result = Vector{T}(undef, length(left))
+       11     for i in eachindex(left)
+       19         result[i] = meet(algebra, left[i], right[i])::T
+       27     end
+       11     result
+        - end
+        - 
+    19739 function _meet_extension(::BooleanAlgebra, left::BitVector, right::BitVector)::BitVector
+    19739     left .& right
+        - end
+        - 
+        1 function _join_extension(algebra::TruthAlgebra, left::Vector{T}, right::Vector{T})::Vector{T} where T
+        2     result = Vector{T}(undef, length(left))
+        2     for i in eachindex(left)
+        4         result[i] = join(algebra, left[i], right[i])::T
+        6     end
+        2     result
+        - end
+        - 
+    19462 function _join_extension(::BooleanAlgebra, left::BitVector, right::BitVector)::BitVector
+    19462     left .| right
+        - end
+        - 
+        2 function _implication_extension(algebra::TruthAlgebra, left::Vector{T}, right::Vector{T})::Vector{T} where T
+        3     result = Vector{T}(undef, length(left))
+        3     for i in eachindex(left)
+        7         result[i] = implication(algebra, left[i], right[i])::T
+       11     end
+        3     result
+        - end
+        - 
+       57 function _implication_extension(::BooleanAlgebra, left::BitVector, right::BitVector)::BitVector
+       57     (.~left) .| right
+        - end
+        - 
+        7 function _diamond_extension(algebra::TruthAlgebra, child::Vector{T}, adjacency::_RelationAdjacency)::Vector{T} where T
+        7     rows = adjacency.rows
+        7     result = Vector{T}(undef, length(rows))
+        7     for source in eachindex(rows)
+       17         value = bottom(algebra)::T
+       17         for target in rows[source]
+       13             value = join(algebra, value, child[target])::T
+       13         end
+       17         result[source] = value
+       27     end
+        7     result
+        - end
+        - 
+    38680 function _diamond_extension(::BooleanAlgebra, child::BitVector, adjacency::_RelationAdjacency)::BitVector
+    38680     result = falses(length(child))
+    38680     for target in eachindex(child)
+   318133         child[target] && (result .|= adjacency.columns[target])
+   383696     end
+    38680     result
+        - end
+        - 
+        8 function _box_extension(algebra::TruthAlgebra, child::Vector{T}, adjacency::_RelationAdjacency)::Vector{T} where T
+        8     rows = adjacency.rows
+        8     result = Vector{T}(undef, length(rows))
+        8     for source in eachindex(rows)
+       17         value = top(algebra)::T
+       17         for target in rows[source]
+       11             value = meet(algebra, value, child[target])::T
+       11         end
+       17         result[source] = value
+       26     end
+        8     result
+        - end
+        - 
+    19638 function _box_extension(::BooleanAlgebra, child::BitVector, adjacency::_RelationAdjacency)::BitVector
+    19638     .~_diamond_extension(BOOLEAN, .~child, adjacency)
+        - end
+        - 
+    97312 function _branch_extension(node::_EvaluationNode, values::Vector{E}, model::Model, plan::_EvaluationPlan, ::Type{E})::E where E
+    97312     connective = node.payload
+    97312     if connective isa Negation
+    19342         return _negation_extension(model.algebra, values[node.children[1]])
+    77970     elseif connective isa Conjunction
+    19750         return _meet_extension(model.algebra, values[node.children[1]], values[node.children[2]])
+    58220     elseif connective isa Disjunction
+    19464         return _join_extension(model.algebra, values[node.children[1]], values[node.children[2]])
+    38756     elseif connective isa Implication
+       60         return _implication_extension(model.algebra, values[node.children[1]], values[node.children[2]])
+    38696     elseif connective isa Diamond
+    19049         return _diamond_extension(model.algebra, values[node.children[1]], plan.adjacency[relation(connective)])
+    19647     elseif connective isa Box
+    19646         return _box_extension(model.algebra, values[node.children[1]], plan.adjacency[relation(connective)])
+        -     end
+        1     throw(ArgumentError("no evaluator for connective $(repr(connective))"))
+        - end
+        - 
+        - function _node_extension(node::_EvaluationNode, formula::Formula, model::Model, values::Vector{E}, plan::_EvaluationPlan, ::Type{E})::E where E
+   127957     node.kind === :atom && return _atom_extension(node, formula, model, plan.positions, E)
+    97312     _branch_extension(node, values, model, plan, E)
+        - end
+        - 
+    20039 function _evaluate(formula::Formula, model::Model, ::Type{E})::E where E
+    20039     nodes = _evaluation_nodes(formula)
+    20039     values = Vector{E}(undef, length(nodes))
+    20039     plan = _evaluation_plan(nodes, model)
+    20039     for (slot, node) in enumerate(nodes)
+   127957         values[slot] = _node_extension(node, formula, model, values, plan, E)
+   235872     end
+    20036     values[end]
+        - end
+        - 
+        - """
+        -     Extension(values, worlds)
+        -     Extension(values, model)
+        - 
+        - A display view wrapping an extension result vector and world tuple to provide
+        - a rich REPL display showing which worlds satisfy the formula.
+        - """
+        - struct Extension{T,V<:AbstractVector{T},W<:Tuple}
+       38     values::V
+        -     worlds::W
+        - end
+        - 
+       69 Extension(values::AbstractVector, model::Model) = Extension(values, frame(model).worlds)
+       77 
+        - """
+        1     describe(extension_result, model)
+        - 
+        2 Return an [`Extension`](@ref) view of `extension_result` over `model` for rich REPL printing.
+        - """
+        - describe(ext::AbstractVector, model::Model) = Extension(ext, model)
+        - describe(io::IO, ext::AbstractVector, model::Model) = show(io, MIME("text/plain"), Extension(ext, model))
+        - 
+        - Base.show(io::IO, ext::Extension) = print(io, "Extension(", ext.values, ")")
+        - 
+        - function Base.show(io::IO, ::MIME"text/plain", ext::Extension{Bool})
+        -     n_tot = length(ext.worlds)
+        -     n_sat = count(ext.values)
+        -     print(io, "Extension ($n_sat of $n_tot world$(n_tot == 1 ? "" : "s") satisfy)")
+        -     sat_worlds = [ext.worlds[i] for i in 1:n_tot if ext.values[i]]
+        -     unsat_worlds = [ext.worlds[i] for i in 1:n_tot if !ext.values[i]]
+        - 
+        -     if n_tot <= 15
+        -         sat_str = isempty(sat_worlds) ? "(none)" : join(repr.(sat_worlds), ", ")
+        -         unsat_str = isempty(unsat_worlds) ? "(none)" : join(repr.(unsat_worlds), ", ")
+        -         print(io, "\n  Satisfied at: ", sat_str)
+        -         print(io, "\n  Unsatisfied at: ", unsat_str)
+        -     else
+        -         if !isempty(sat_worlds)
+        -             shown = join(repr.(sat_worlds[1:min(5, length(sat_worlds))]), ", ")
+        -             elided = length(sat_worlds) > 5 ? ", … ($(length(sat_worlds)-5) elided)" : ""
+        -             print(io, "\n  Satisfied at: ", shown, elided)
+        -         else
+        -             print(io, "\n  Satisfied at: (none)")
+        -         end
+        -     end
+        - end
+        - 
+        - function Base.show(io::IO, ::MIME"text/plain", ext::Extension{T}) where T
+        -     n_tot = length(ext.worlds)
+        -     print(io, "Extension ($n_tot world$(n_tot == 1 ? "" : "s"))")
+        -     if n_tot <= 15
+        -         for i in 1:n_tot
+        -             print(io, "\n  ", repr(ext.worlds[i]), " => ", ext.values[i])
+        -         end
+        -     else
+        -         for i in 1:5
+        -             print(io, "\n  ", repr(ext.worlds[i]), " => ", ext.values[i])
+        -         end
+        -         print(io, "\n  … ($(n_tot - 5) elided)")
+        -     end
+        - end
+        - 
+        - """
+        -     extension(φ, model)
+        - 
+       18 Return the extension of `φ` over the model's worlds, in world-index order (or
+       19 enumeration order when no index is supplied). A Boolean model returns a `BitVector`;
+        - every other algebra returns a vector whose element type is the algebra's carrier type.
+        - To construct a rich display view of the extension, pass the result and model to
+       20 [`Extension`](@ref) or [`describe`](@ref).
+       20 """
+        - function extension(formula::Formula, model::Model{Bool,A}) where {A<:BooleanAlgebra}
+        -     _evaluate(formula, model, BitVector)
+        - end
+        - 
+        - function extension(formula::Formula, model::Model{T}) where T
+        -     _evaluate(formula, model, Vector{T})
+        - end
+        - 
+        - """
+    19848     check(φ, model, world)
+    19981 
+    19980 Return the truth value of `φ` at `world`.  The result is exactly the carrier
+    19979 type of the model's algebra.  Evaluation uses the same DAG walk as
+        - [`extension`](@ref).
+        - """
+       20 function check(formula::Formula, model::Model{Bool,A}, world)::Bool where {A<:BooleanAlgebra}
+       20     position = world_position(frame(model), world)
+       20     values = _evaluate(formula, model, BitVector)
+       19     values[position]
+        - end
+        - 
+        - function check(formula::Formula, model::Model{T}, world)::T where T
+        -     position = world_position(frame(model), world)
+        -     values = _evaluate(formula, model, Vector{T})
+        -     values[position]
+        - end
+        - 

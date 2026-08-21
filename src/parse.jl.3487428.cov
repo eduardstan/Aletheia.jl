@@ -1,0 +1,180 @@
+        - import Base: parse
+        - 
+        - struct _Token
+      130     kind::Symbol
+        -     text::String
+        - end
+        - 
+       28 function _tokenize(source::AbstractString, signature::Signature)
+       28     operators = sort!(collect(notation.(signature.connectives)), by=length, rev=true)
+       28     tokens = _Token[]
+       28     chars = String(source)
+       28     i = firstindex(chars)
+       55     last = lastindex(chars)
+      145     while i <= last
+      117         c = chars[i]
+      117         if isspace(c)
+       30             i = nextind(chars, i)
+       15             continue
+      102         elseif c == '"'
+        2             i = nextind(chars, i)
+        1             buffer = IOBuffer()
+        1             closed = false
+        6             while i <= last
+        6                 c = chars[i]
+        6                 if c == '"'
+        2                     i = nextind(chars, i)
+        1                     closed = true
+        1                     break
+        5                 elseif c == '\\'
+        2                     i = nextind(chars, i)
+        1                     i <= last || throw(ArgumentError("unterminated quoted atom"))
+        1                     escaped = chars[i]
+        1                     escaped == '"' || escaped == '\\' || throw(ArgumentError("unsupported escape in quoted atom"))
+        1                     print(buffer, escaped)
+        -                 else
+        4                     print(buffer, c)
+        -                 end
+       10                 i = nextind(chars, i)
+        5             end
+        1             closed || throw(ArgumentError("unterminated quoted atom"))
+        2             push!(tokens, _Token(:atom, String(take!(buffer))))
+        1             continue
+      101         elseif c == '('
+       12             push!(tokens, _Token(:lparen, "(")); i = nextind(chars, i); continue
+       89         elseif c == ')'
+        9             push!(tokens, _Token(:rparen, ")")); i = nextind(chars, i); continue
+       80         elseif c == ','
+        9             push!(tokens, _Token(:comma, ",")); i = nextind(chars, i); continue
+        -         end
+       71         matched = nothing
+       71         for op in operators
+      274             startswith(SubString(chars, i, last), op) && (matched = op; break)
+      243         end
+       71         if matched !== nothing
+       31             push!(tokens, _Token(:operator, matched))
+       31             i = nextind(chars, i, length(matched))
+       31             continue
+        -         end
+       40         start = i
+       80         while i <= last
+       64             c = chars[i]
+      502             if isspace(c) || c in ('(', ')', ',') || any(op -> startswith(SubString(chars, i, last), op), operators)
+       24                 break
+        -             end
+       80             i = nextind(chars, i)
+       40         end
+       40         i == start && throw(ArgumentError("cannot tokenize input near $(repr(chars[i:end]))"))
+       40         push!(tokens, _Token(:atom, String(chars[start:prevind(chars, i)])))
+      117     end
+       28     push!(tokens, _Token(:end, ""))
+       28     tokens
+        - end
+        - 
+        - mutable struct _Parser{F}
+       28     tokens::Vector{_Token}
+        -     position::Int
+        -     pool::FormulaPool
+        -     bynotation::Dict{String,Any}
+        -     atom_parser::F
+        - end
+        - 
+      228 @inline _current(parser::_Parser) = parser.tokens[parser.position]
+        - @inline function _advance!(parser::_Parser)
+       98     token = _current(parser)
+       98     parser.position += 1
+       98     token
+        - end
+        - 
+       65 function _parse_prefix!(parser::_Parser)
+       65     token = _advance!(parser)
+       65     if token.kind == :atom
+       38         return atom(parser.pool, parser.atom_parser(token.text))
+       27     elseif token.kind == :lparen
+        2         result = _parse_expression!(parser, 0)
+        1         _current(parser).kind == :rparen || throw(ArgumentError("expected ')'"))
+        1         _advance!(parser)
+        1         return result
+       25     elseif token.kind == :operator
+       23         connective = parser.bynotation[token.text]
+       23         n = arity(parser.pool.signature, connective)
+       23         if n == 0
+        3             if _current(parser).kind == :lparen
+        3                 _advance!(parser)
+        4                 _current(parser).kind == :rparen || throw(ArgumentError("expected ')' after nullary connective"))
+        2                 _advance!(parser)
+        -             end
+        2             return branch(parser.pool, connective)
+       20         elseif n == 1
+        -             # A parenthesized unary call is accepted as well as prefix notation.
+       15             if _current(parser).kind == :lparen
+        3                 _advance!(parser)
+        3                 child = _parse_expression!(parser, 0)
+        5                 _current(parser).kind == :rparen || throw(ArgumentError("expected ')' after unary connective"))
+        1                 _advance!(parser)
+        -             else
+       12                 child = _parse_expression!(parser, precedence(connective))
+        -             end
+       13             return branch(parser.pool, connective, child)
+        -         else
+        6             _current(parser).kind == :lparen ||
+        -                 throw(ArgumentError("connective $(repr(token.text)) with arity $n needs function notation"))
+        4             _advance!(parser)
+        4             parsed = Any[]
+        4             if _current(parser).kind != :rparen
+       12                 while true
+       12                     push!(parsed, _parse_expression!(parser, 0))
+       12                     _current(parser).kind == :comma || break
+        8                     _advance!(parser)
+        8                 end
+        -             end
+        5             _current(parser).kind == :rparen || throw(ArgumentError("expected ')' after connective arguments"))
+        3             _advance!(parser)
+        5             length(parsed) == n || throw(ArgumentError("connective $(repr(token.text)) expects $n arguments"))
+        1             return branch(parser.pool, connective, Tuple(parsed))
+        -         end
+        -     end
+        2     throw(ArgumentError("unexpected token $(repr(token.text))"))
+        - end
+        - 
+       65 function _parse_expression!(parser::_Parser, minimum_precedence::Int)
+       65     left = _parse_prefix!(parser)
+       62     while true
+       62         token = _current(parser)
+       62         token.kind == :operator || break
+       14         connective = parser.bynotation[token.text]
+       14         arity(parser.pool.signature, connective) == 2 || break
+       28         p = precedence(connective)
+       14         p < minimum_precedence && break
+        8         _advance!(parser)
+       11         next_minimum = associativity(connective) == :right ? p : p + 1
+        8         right = _parse_expression!(parser, next_minimum)
+        8         left = branch(parser.pool, connective, left, right)
+        8     end
+       54     left
+        - end
+        - 
+        - """
+        -     parse(pool, source; atom_parser=identity)
+        - 
+        - Parse a formula over the pool's signature.  Atoms are parsed by
+        - `atom_parser`, which receives their token text and defaults to returning a
+        - `String`; this keeps parsing independent of any semantic or truth-value type.
+        - The parser is precedence-aware and accepts both infix binary notation and
+        - prefix/function notation for higher-arity connectives.
+        - """
+       56 function parse(pool::FormulaPool, source::AbstractString; atom_parser=identity)
+       28     bynotation = Dict{String,Any}()
+       28     for connective in pool.signature.connectives
+      184         text = notation(connective)
+      184         haskey(bynotation, text) && throw(ArgumentError("duplicate connective notation $(repr(text))"))
+      184         bynotation[text] = connective
+      153     end
+       28     parser = _Parser(_tokenize(source, pool.signature), 1, pool, bynotation, atom_parser)
+       28     result = _parse_expression!(parser, 0)
+       18     _current(parser).kind == :end || throw(ArgumentError("unexpected token $(repr(_current(parser).text))"))
+       18     result
+        - end
+        - 
+        - """Parse with the pool as the second argument; a convenience spelling for [`parse`](@ref)."""
+        2 parse(source::AbstractString, pool::FormulaPool; kwargs...) = parse(pool, source; kwargs...)

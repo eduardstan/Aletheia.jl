@@ -1,0 +1,773 @@
+        - # Compatibility vocabulary for consumers migrating from SoleLogics.
+        - #
+        - # This module is deliberately nested: `using Aletheia.SoleLogics` imports the
+        - # incumbent spellings without adding them to Aletheia's own namespace.
+        - """
+        -     Aletheia.SoleLogics
+        - 
+        - Opt-in vocabulary adapters for consumers migrating from SoleLogics. The
+        - module keeps incumbent names out of Aletheia's top-level namespace and raises
+        - explicit errors for concepts with no faithful equivalent.
+        - """
+        - module SoleLogics
+        - 
+        - import ..Aletheia
+        - 
+        - const children = Aletheia.children
+        - const value = Aletheia.value
+        - const arity = Aletheia.arity
+        - const hasdual = Aletheia.hasdual
+        - const dual = Aletheia.dual
+        - const relation = Aletheia.relation
+        - 
+        - """An error-producing marker for an old API with no faithful Aletheia value.
+        - 
+        - The symbol is a type parameter so every marker has a distinct dispatch type.
+        - That matters for consumers which define one method per legacy relation name.
+        - """
+        - struct _UnsupportedName{Name} end
+        - Base.show(io::IO, ::_UnsupportedName{Name}) where Name =
+        -     print(io, "unsupported SoleLogics.", Name)
+        1 (value::_UnsupportedName{Name})(args...) where Name =
+        -     _unsupported(Name, "this legacy value is a deliberate compatibility gap")
+        - _unsupported_name(name::Symbol) = _UnsupportedName{name}()
+        - 
+       16 function _unsupported(name::Symbol, detail::AbstractString)
+       16     throw(ArgumentError("SoleLogics.$name has no faithful Aletheia equivalent: $detail"))
+        - end
+        - 
+        - # Aletheia's explicit pool is hidden behind this one migration-only default.
+        - # New code should use FormulaPool/Signature directly instead.
+        - const _DEFAULT_SIGNATURE = Aletheia.Signature((Aletheia.:¬, Aletheia.:∧, Aletheia.:∨, Aletheia.:→))
+        - const _DEFAULT_POOL = Aletheia.FormulaPool(_DEFAULT_SIGNATURE)
+        - 
+        - """The Aletheia formula interface used in place of SoleLogics.Formula."""
+        - const Formula = Aletheia.Formula
+        - const SyntaxStructure = Aletheia.Formula
+        - const SyntaxTree = Aletheia.Formula
+        - abstract type NamedConnective{Name} end
+        - struct _CompatConnective{Name,C} <: NamedConnective{Name}
+        -     native::C
+        - end
+        - const _NOT = _CompatConnective{:¬,Aletheia.Negation}(Aletheia.:¬)
+        - const _AND = _CompatConnective{:∧,Aletheia.Conjunction}(Aletheia.:∧)
+        - const _OR = _CompatConnective{:∨,Aletheia.Disjunction}(Aletheia.:∨)
+        - const _IMP = _CompatConnective{:→,Aletheia.Implication}(Aletheia.:→)
+        - const Operator = NamedConnective
+        - const Connective = Operator
+        - const AbstractRelation = Aletheia.RelationFamily
+        - const BoxRelationalConnective = Aletheia.Box{<:Any}
+        - const DiamondRelationalConnective = Aletheia.Diamond{<:Any}
+        - const _LegacyConnective = Union{Aletheia.Negation,Aletheia.Conjunction,Aletheia.Disjunction,Aletheia.Implication}
+        - 
+        - # Truth values are intentionally separate from formulas. Keeping markers for
+        - # old spellings makes a bad migration fail at the point of use, with a useful
+        - # explanation, instead of turning a truth value into an atom.
+        - abstract type Truth end
+        - struct BooleanTruth <: Truth
+        -     value::Bool
+        - end
+        - const TOP = BooleanTruth(true)
+        - const BOT = BooleanTruth(false)
+        - const ⊤ = TOP
+        - const ⊥ = BOT
+        1 value(truth::BooleanTruth) = truth.value
+        1 istop(truth::BooleanTruth) = truth.value
+        1 isbot(truth::BooleanTruth) = !truth.value
+        - istop(value) = false
+        - isbot(value) = false
+        1 children(::Truth) = ()
+        - arity(::Truth) = 0
+        1 truths(::Aletheia.Formula) = Truth[]
+        1 truths(::Truth) = _unsupported(:truths, "truth markers are semantic values, not formula truth collections")
+        1 collatetruth(args...) = _unsupported(:collatetruth,
+        -     "Aletheia evaluates semantic values through TruthAlgebra and never treats them as formulas")
+        - 
+        - 
+        - # Compatibility formulas wrap ordinary Aletheia DAG handles.  Keeping the
+        - # wrapper type here (rather than extending Aletheia.Atom's constructor) makes
+        - # the migration constructor local while allowing `Atom` in `isa` and dispatch.
+        - # A tuple-shaped cached view keeps the legacy indexing/destructuring surface
+        - # while reusing canonical child wrappers for every traversal.
+        - struct _CompatChildren{N,P<:Aletheia.FormulaPool}
+       14     pool::P
+        -     ids::NTuple{N,Int}
+        - end
+        - Base.size(::_CompatChildren{N}) where N = (N,)
+        3 Base.length(::_CompatChildren{N}) where N = N
+        - Base.firstindex(::_CompatChildren) = 1
+        - Base.lastindex(children::_CompatChildren{N}) where N = N
+       12 Base.getindex(children::_CompatChildren, i::Int) =
+        -     _wrap_id(children.pool, children.ids[i])
+        - Base.iterate(::_CompatChildren{0}) = nothing
+     2009 @inline Base.iterate(children::_CompatChildren{N}) where N =
+        -     N == 0 ? nothing : (_wrap_id(children.pool, children.ids[1]), 2)
+        - @inline function Base.iterate(children::_CompatChildren{N}, state::Int) where N
+     4012     state > N && return nothing
+     2006     (_wrap_id(children.pool, children.ids[state]), state + 1)
+        - end
+        1 Base.IteratorSize(::_CompatChildren) = Base.HasLength()
+        1 Base.IteratorEltype(::_CompatChildren) = Base.EltypeUnknown()
+        2 Base.:(==)(children::_CompatChildren, values::Tuple) =
+        -     length(children) == length(values) && all(children[i] == values[i] for i in eachindex(values))
+        - Base.:(==)(values::Tuple, children::_CompatChildren) = children == values
+        - 
+        - # Compatibility formulas wrap ordinary Aletheia DAG handles.  Keeping the
+        - # wrapper type here (rather than extending Aletheia.Atom's constructor) makes
+        - # the migration constructor local while allowing `Atom` in `isa` and dispatch.
+        - struct Atom{V,P<:Aletheia.FormulaPool} <: Aletheia.Formula
+        -     pool::P
+        -     id::Int
+        -     payload::V
+       18     Atom{V,P}(pool::P, id::Int, payload::V) where {V,P<:Aletheia.FormulaPool} = new{V,P}(pool, id, payload)
+        -     Atom(native::Aletheia.Atom{V,P}, ::Val{:native}) where {V,P<:Aletheia.FormulaPool} =
+        -         new{V,P}(native.pool, native.id, native.value)
+        - end
+        - struct _CompatBranch{C,N,P<:Aletheia.FormulaPool} <: Aletheia.Formula
+        -     pool::P
+        -     id::Int
+        -     connective::C
+        -     childview::_CompatChildren{N,P}
+       14     function _CompatBranch{C,N,P}(pool::P, id::Int, connective::C, ids::NTuple{N,Int}) where {C,N,P<:Aletheia.FormulaPool}
+       14         new{C,N,P}(pool, id, connective, _CompatChildren{N,P}(pool, ids))
+        -     end
+        -     _CompatBranch(native::Aletheia.Branch{C,N,P}) where {C,N,P<:Aletheia.FormulaPool} =
+        -         _CompatBranch{C,N,P}(native.pool, native.id, native.connective, native.children)
+        - end
+        - const _CompatFormula = Union{Atom,_CompatBranch}
+        - const _CompatCacheEntry = Union{Nothing,Atom,_CompatBranch}
+        - const _WRAPPER_CACHE = IdDict{Aletheia.FormulaPool,Vector{_CompatCacheEntry}}()
+        - const _WRAPPER_CACHE_LOCK = ReentrantLock()
+        - const _NEGATION_CACHE = IdDict{Aletheia.FormulaPool,Vector{Int}}()
+        - const _NEGATION_CACHE_LOCK = ReentrantLock()
+        - const SyntaxLeaf = Atom
+        - const AbstractAtom = Atom
+        - @inline _wrap(formula::Atom) = formula
+        - @inline _wrap(formula::_CompatBranch) = formula
+       22 @inline _wrap(formula::Aletheia.Atom{V,P}) where {V,P<:Aletheia.FormulaPool} = _wrap_id(formula.pool, formula.id)
+       15 @inline _wrap(formula::Aletheia.Branch{C,N,P}) where {C,N,P<:Aletheia.FormulaPool} = _wrap_id(formula.pool, formula.id)
+       13 @inline _unwrap(formula::Atom) = Aletheia._formula_unlocked(formula.pool, formula.id)
+        6 @inline _unwrap(formula::_CompatBranch) = Aletheia._formula_unlocked(formula.pool, formula.id)
+        - @inline _unwrap(formula::Aletheia.Formula) = formula
+       11 @inline _formula_pool(formula::Atom) = formula.pool
+        2 @inline _formula_pool(formula::_CompatBranch) = formula.pool
+       15 Base.:(==)(left::Atom, right::Atom) = left.pool === right.pool && left.id == right.id
+        3 Base.:(==)(left::_CompatBranch, right::_CompatBranch) = left.pool === right.pool && left.id == right.id
+        - Base.isequal(left::Atom, right::Atom) = left == right
+        - Base.isequal(left::_CompatBranch, right::_CompatBranch) = left == right
+        - Base.hash(formula::Atom, h::UInt) = hash(objectid(formula.pool), hash(formula.id, h))
+        - Base.hash(formula::_CompatBranch, h::UInt) = hash(objectid(formula.pool), hash(formula.id, h))
+        5 @inline function _wrap_id(pool::P, id::Int) where {P<:Aletheia.FormulaPool}
+     8130     cache = get(_WRAPPER_CACHE, pool, nothing)
+     4070     if cache !== nothing && id <= length(cache)
+     4039         cached = cache[id]
+     8077         cached === nothing || return cached
+        -     end
+       32     lock(_WRAPPER_CACHE_LOCK)
+       32     try
+       32         cache = get!(_WRAPPER_CACHE, pool) do
+       10             _CompatCacheEntry[]
+        -         end
+       66         while id > length(cache)
+       34             push!(cache, nothing)
+       34         end
+       32         cached = cache[id]
+       32         cached === nothing || return cached
+       32         node = pool.nodes[id]
+       46         wrapped = node.kind == 0x01 ? Atom{typeof(node.payload),P}(pool, id, node.payload) :
+        -             _CompatBranch{typeof(node.payload),length(node.children),P}(pool, id, node.payload, node.children)
+       32         cache[id] = wrapped
+       32         wrapped
+        -     finally
+       32         unlock(_WRAPPER_CACHE_LOCK)
+        -     end
+        - end
+        - 
+        9 function Atom(value)
+        9     value isa Aletheia.Formula && _unsupported(:Atom,
+        -         "Aletheia atoms cannot contain formulas; use children/branch instead")
+        9     value isa Truth && _unsupported(:Atom,
+        -         "truth values are semantic values, not formulas in Aletheia")
+        8     _wrap(Aletheia.atom(_DEFAULT_POOL, value))
+        - end
+        - 
+        - # Sole treats connective values as constructors.  Keep Aletheia's values (and
+        - # thus their type-level dispatch identity) while adding the opt-in call form.
+        1 function (connective::Aletheia.Negation)(formula::Aletheia.Formula)
+        1     Branch(connective, formula)
+        - end
+        - function (connective::Union{Aletheia.Conjunction,Aletheia.Disjunction,
+        -         Aletheia.Implication})(left::Aletheia.Formula, right::Aletheia.Formula)
+        -     Branch(connective, left, right)
+        - end
+        - 
+        - @inline function _hasconnective(signature::Aletheia.Signature, connective)
+        9     for candidate in Aletheia.connectives(signature)
+       27         isequal(candidate, connective) && return true
+       16     end
+        -     false
+        - end
+        - 
+        - # The overwhelmingly common construction path has compatibility children from
+        - # one pool. Keep it straight-line: the previous generic pool merge allocated a
+        - # temporary Vector and repeatedly rebuilt tuples for every branch.
+        - function _formula_pool_for(connective, formulas::Tuple)
+        8     isempty(formulas) && return _DEFAULT_POOL
+        7     first_formula = formulas[1]
+        7     candidate = if first_formula isa _CompatFormula
+        6         _formula_pool(first_formula)
+        1     elseif first_formula isa Aletheia.Formula
+        0         Aletheia.pool(first_formula)
+        -     else
+        1         nothing
+        -     end
+        7     if candidate !== nothing
+        6         same = true
+        6         for i in 2:length(formulas)
+        4             formula = formulas[i]
+        4             pool = if formula isa _CompatFormula
+        1                 _formula_pool(formula)
+        3             elseif formula isa Aletheia.Formula
+        2                 Aletheia.pool(formula)
+        -             else
+        1                 continue
+        -             end
+        3             if pool !== candidate
+        3                 same = false
+        3                 break
+        -             end
+        1         end
+        9         same && _hasconnective(Aletheia.signature(candidate), connective) && return candidate
+        -     end
+        6     _merge_formula_pools(connective, formulas)
+        - end
+        - 
+        5 function _merge_formula_pools(connective, formulas::Tuple)
+        6     merged = ()
+        6     for formula in formulas
+        9         formula isa Aletheia.Formula || continue
+       11         pool = formula isa _CompatFormula ? _formula_pool(formula) : Aletheia.pool(formula)
+       11         for candidate in Aletheia.connectives(Aletheia.signature(pool))
+       79             any(existing -> existing === candidate, merged) || (merged = (merged..., candidate))
+       28         end
+       12     end
+       22     any(candidate -> candidate === connective, merged) || (merged = (merged..., connective))
+        6     Aletheia.FormulaPool(Aletheia.Signature(merged))
+        - end
+        - 
+        2 @inline function _repool(formula::Atom, target)
+       11     formula.pool === target ? formula :
+        -         _wrap(Aletheia.atom(target, value(formula)))
+        - end
+        1 @inline function _repool(formula::_CompatBranch{C,N,P}, target) where {C,N,P}
+        1     formula.pool === target ? formula : begin
+        1         cs = children(formula)
+        3         ids = ntuple(i -> _unwrap(_repool(cs[i], target)), N)
+        1         _wrap(Aletheia.branch(target, formula.connective, ids))
+        -     end
+        - end
+        4 function _repool(formula::Aletheia.Formula, target)
+        4     Aletheia.pool(formula) === target && return _wrap(formula)
+        4     formula isa Aletheia.Atom && return _wrap(Aletheia.atom(target, Aletheia.value(formula)))
+        1     formula isa Aletheia.Branch || _unsupported(:SyntaxBranch,
+        -         "children must be Aletheia formulas (got $(typeof(formula)))")
+        1     _wrap(Aletheia.branch(target, Aletheia.operator(formula),
+        -         Tuple(_unwrap(_repool(child, target)) for child in Aletheia.children(formula))))
+        - end
+        - 
+        6 @inline _compat_child_id(child::Atom, pool) = child.pool === pool ? child.id : 0
+        1 @inline _compat_child_id(child::_CompatBranch, pool) = child.pool === pool ? child.id : 0
+        1 @inline _compat_child_id(child::Aletheia.Atom, pool) = Aletheia.pool(child) === pool ? Aletheia.id(child) : 0
+        1 @inline _compat_child_id(child::Aletheia.Branch, pool) = Aletheia.pool(child) === pool ? Aletheia.id(child) : 0
+        - @inline _compat_child_id(child, pool) = 0
+        - 
+        - @inline function _compat_negation(pool::P, child_id::Int) where {P<:Aletheia.FormulaPool}
+        1     cache = get(_NEGATION_CACHE, pool, nothing)
+        1     if cache !== nothing && child_id <= length(cache)
+        0         branch_id = cache[child_id]
+        0         branch_id != 0 && return _wrap_id(pool, branch_id)
+        -     end
+        1     lock(_NEGATION_CACHE_LOCK)
+        1     try
+        1         cache = get!(_NEGATION_CACHE, pool) do
+        1             Int[]
+        -         end
+        2         while child_id > length(cache)
+        1             push!(cache, 0)
+        1         end
+        1         branch_id = cache[child_id]
+        1         if branch_id == 0
+        1             branch_id = Aletheia._intern!(pool, 0x02, Aletheia.:¬, (child_id,))
+        1             cache[child_id] = branch_id
+        -         end
+        1         return _wrap_id(pool, branch_id)
+        -     finally
+        1         unlock(_NEGATION_CACHE_LOCK)
+        -     end
+        - end
+        - 
+        - @inline function _compat_branch(connective, child::F) where {F<:_CompatFormula}
+        1     Aletheia.arity(connective) == 1 || return _compat_branch(connective, (child,))
+        1     pool = child.pool
+        1     _hasconnective(Aletheia.signature(pool), connective) || return _compat_branch(connective, (child,))
+        1     connective isa Aletheia.Negation && return _compat_negation(pool, child.id)
+        0     _wrap_id(pool, Aletheia._intern!(pool, 0x02, connective, (child.id,)))
+        - end
+        - @inline function _compat_branch(connective, left::F, right::G) where {F<:_CompatFormula,G<:_CompatFormula}
+        6     Aletheia.arity(connective) == 2 || return _compat_branch(connective, (left, right))
+        6     pool = left.pool
+       11     if right.pool === pool && _hasconnective(Aletheia.signature(pool), connective)
+        5         return _wrap_id(pool, Aletheia._intern!(pool, 0x02, connective, (left.id, right.id)))
+        -     end
+        1     _compat_branch(connective, (left, right))
+        - end
+        - 
+        8 function _compat_branch(connective, children::Tuple)
+       10     pool = _formula_pool_for(connective, children)
+        8     expected = Aletheia.arity(connective)
+        8     expected == length(children) || throw(ArgumentError(
+        -         "$(repr(connective)) expects $expected children, got $(length(children))"))
+       16     ids = ntuple(i -> _compat_child_id(children[i], pool), length(children))
+        6     if all(!iszero, ids) && _hasconnective(Aletheia.signature(pool), connective)
+        0         connective isa Aletheia.Negation && return _compat_negation(pool, ids[1])
+        0         branch_id = Aletheia._intern!(pool, 0x02, connective, ids)
+        0         return _wrap_id(pool, branch_id)
+        -     end
+       16     normalized = ntuple(i -> _repool(children[i], pool), length(children))
+       13     _wrap(Aletheia.branch(pool, connective, ntuple(i -> _unwrap(normalized[i]), length(normalized))))
+        - end
+        1 function Branch(connective::_LegacyConnective, children::Tuple)
+        4     connective isa _UnsupportedName && _unsupported(:SyntaxBranch,
+        -         "the requested connective is not implemented by Aletheia")
+        4     _compat_branch(connective, children)
+        - end
+        1 Branch(connective::_LegacyConnective, children::Tuple{F}) where {F<:_CompatFormula} =
+        -     Aletheia.arity(connective) == 1 ? _compat_branch(connective, children[1]) :
+        -         _compat_branch(connective, children)
+        6 Branch(connective::_LegacyConnective, children::Tuple{F,G}) where {F<:_CompatFormula,G<:_CompatFormula} =
+        -     Aletheia.arity(connective) == 2 ? _compat_branch(connective, children[1], children[2]) :
+        -         _compat_branch(connective, children)
+       11 Branch(connective::_LegacyConnective, children...) = Branch(connective, children)
+        3 Branch(connective::Aletheia.Diamond, children...) = _compat_branch(connective, children)
+        - Branch(connective::Aletheia.Box, children...) = _compat_branch(connective, children)
+        - const SyntaxBranch = Branch
+        - 
+        - # Old accessors and tree walks.
+        1 @inline token(formula::Atom) = formula
+        - @inline token(::_CompatBranch{Aletheia.Negation}) = _NOT
+        7 @inline token(::_CompatBranch{Aletheia.Conjunction}) = _AND
+        - @inline token(::_CompatBranch{Aletheia.Disjunction}) = _OR
+        - @inline token(::_CompatBranch{Aletheia.Implication}) = _IMP
+        1 @inline function token(formula::_CompatBranch)
+        1     native = formula.connective
+        1     native isa Aletheia.Negation && return _NOT
+        1     native isa Aletheia.Conjunction && return _AND
+        1     native isa Aletheia.Disjunction && return _OR
+        1     native isa Aletheia.Implication && return _IMP
+        1     native
+        - end
+        - token(formula::Aletheia.Atom) = formula
+        - token(formula::Aletheia.Branch) = Aletheia.operator(formula)
+        1 Aletheia.arity(connective::_CompatConnective) = Aletheia.arity(connective.native)
+        - Aletheia.notation(connective::_CompatConnective) = Aletheia.notation(connective.native)
+        1 token(value::Truth) = value
+        1 op(value) = token(value)
+       11 @inline value(formula::Atom) = formula.payload
+       16 @inline children(::Atom) = ()
+     2013 @inline children(formula::_CompatBranch) = formula.childview
+        - @inline nchildren(::Atom) = 0
+        1 @inline nchildren(formula::_CompatBranch{C,N,P}) where {C,N,P} = N
+        1 tree(formula::Aletheia.Formula) = formula
+        - nchildren(formula::Aletheia.Formula) = Aletheia.nchildren(formula)
+        - 
+        6 function _walk(formula::Aletheia.Formula, out::Vector)
+        6     for child in children(formula)
+        4         _walk(child, out)
+        6     end
+        6     push!(out, formula)
+        6     out
+        - end
+        - const _FORMULA_CACHE_ENTRY = Union{Nothing,Vector{Aletheia.Formula}}
+        - const _FORMULA_CACHE = IdDict{Aletheia.FormulaPool,Vector{_FORMULA_CACHE_ENTRY}}()
+        - const _FORMULA_CACHE_LOCK = ReentrantLock()
+       15 function _cached_formulas(formula::Union{Atom,_CompatBranch})
+       15     pool = formula.pool
+       15     id = formula.id
+       15     lock(_FORMULA_CACHE_LOCK)
+       15     try
+       15         cache = get!(_FORMULA_CACHE, pool) do
+        2             _FORMULA_CACHE_ENTRY[]
+        -         end
+       21         while id > length(cache)
+        6             push!(cache, nothing)
+        6         end
+       15         cached = cache[id]
+       28         cached === nothing || return cached
+        -     finally
+       15         unlock(_FORMULA_CACHE_LOCK)
+        -     end
+        2     result = _walk(formula, Aletheia.Formula[])
+        2     lock(_FORMULA_CACHE_LOCK)
+        2     try
+        2         cache = _FORMULA_CACHE[pool]
+        2         cache[id] = result
+        2         result
+        -     finally
+        2         unlock(_FORMULA_CACHE_LOCK)
+        -     end
+        - end
+        - formulas(formula::Atom) = _cached_formulas(formula)
+       15 formulas(formula::_CompatBranch) = _cached_formulas(formula)
+        - function formulas(formula::Aletheia.Formula)
+        -     _walk(formula, Aletheia.Formula[])
+        - end
+        - const _SUBFORMULA_CACHE = IdDict{Aletheia.FormulaPool,Vector{_FORMULA_CACHE_ENTRY}}()
+        4 function _cached_subformulas(formula::Union{Atom,_CompatBranch})
+        4     pool = formula.pool
+        4     id = formula.id
+        4     lock(_FORMULA_CACHE_LOCK)
+        4     try
+        4         cache = get!(_SUBFORMULA_CACHE, pool) do
+        2             _FORMULA_CACHE_ENTRY[]
+        -         end
+       10         while id > length(cache)
+        6             push!(cache, nothing)
+        6         end
+        4         cached = cache[id]
+        6         cached === nothing || return cached
+        -     finally
+        4         unlock(_FORMULA_CACHE_LOCK)
+        -     end
+        4     result = sort!(copy(formulas(formula)), by=height)
+        2     lock(_FORMULA_CACHE_LOCK)
+        2     try
+        2         cache = _SUBFORMULA_CACHE[pool]
+        2         cache[id] = result
+        2         result
+        -     finally
+        2         unlock(_FORMULA_CACHE_LOCK)
+        -     end
+        - end
+        4 function subformulas(formula::Union{Atom,_CompatBranch}; sorted=true)
+        4     sorted ? _cached_subformulas(formula) : formulas(formula)
+        - end
+        - function subformulas(formula::Aletheia.Formula; sorted=true)
+        -     result = formulas(formula)
+        -     sorted ? sort!(result, by=height) : result
+        - end
+        1 function atoms(formula::Aletheia.Formula)
+        4     [node for node in formulas(formula) if node isa Atom || node isa Aletheia.Atom]
+        - end
+        1 function leaves(formula::Aletheia.Formula)
+        1     atoms(formula)
+        - end
+        1 function connectives(formula::Aletheia.Formula)
+        4     [token(node) for node in formulas(formula) if node isa _CompatBranch || node isa Aletheia.Branch]
+        - end
+        1 operators(formula::Aletheia.Formula) = connectives(formula)
+        1 ntokens(formula::Aletheia.Formula) = length(formulas(formula))
+        2 natoms(formula::Aletheia.Formula) = length(atoms(formula))
+        1 nleaves(formula::Aletheia.Formula) = natoms(formula)
+        2 nconnectives(formula::Aletheia.Formula) = length(connectives(formula))
+        1 noperators(formula::Aletheia.Formula) = nconnectives(formula)
+        9 function height(formula::Aletheia.Formula)::Int
+       15     cs = children(formula)
+       15     isempty(cs) && return 0
+        3     child_height = 0
+        3     for child in cs
+        6         child_height = max(child_height, height(child))
+        9     end
+        3     1 + child_height
+        - end
+        - 
+        - # Aletheia's normal forms are ordinary hash-consed formulas, not Sole's
+        - # leftmost wrapper types. These helpers are useful for formulas after parsing.
+        4 @inline _native_connective(formula::_CompatBranch) = formula.connective
+        - @inline _native_connective(formula::Aletheia.Branch) = Aletheia.operator(formula)
+        9 function _flatten!(out::Vector{Aletheia.Formula}, formula::Aletheia.Formula, connective)
+        9     if (formula isa _CompatBranch || formula isa Aletheia.Branch) &&
+        -             _native_connective(formula) isa connective
+        3         child = children(formula)
+        3         _flatten!(out, child[1], connective)
+        3         _flatten!(out, child[2], connective)
+        -     else
+        6         push!(out, formula)
+        -     end
+        9     out
+        - end
+        - function _flatten(formula::Aletheia.Formula, connective)
+        3     _flatten!(Aletheia.Formula[], formula, connective)
+        - end
+        2 conjuncts(formula::Aletheia.Formula) = _flatten(formula, Aletheia.Conjunction)
+        1 disjuncts(formula::Aletheia.Formula) = _flatten(formula, Aletheia.Disjunction)
+        1 grandchildren(formula::Aletheia.Formula) = children(formula)
+        1 nconjuncts(formula::Aletheia.Formula) = length(conjuncts(formula))
+        - 
+        - # Poolless spellings remain available for old call sites; explicit pool forms
+        - # are also accepted and preserve Aletheia's pool semantics.
+        1 atom(value) = Atom(value)
+        3 atom(pool::Aletheia.FormulaPool, value) = _wrap(Aletheia.atom(pool, value))
+        1 branch(pool::Aletheia.FormulaPool, connective, children...) =
+        -     _wrap(Aletheia.branch(pool, connective, Tuple(_unwrap.(children))))
+        1 branch(connective::_LegacyConnective, children...) = Branch(connective, children...)
+        - 
+        4 function syntaxstring(formula::Aletheia.Formula; kwargs...)
+        2     allowed = (:threshold_digits, :function_notation, :remove_redundant_parentheses, :parenthesize_atoms)
+        3     unknown = setdiff(collect(keys(kwargs)), collect(allowed))
+        2     isempty(unknown) || _unsupported(:syntaxstring,
+        -         "Aletheia's printer does not accept keyword(s) $(join(string.(unknown), ", ")).")
+        2     Aletheia.syntaxstring(_unwrap(formula))
+        - end
+        - syntaxstring(connective::_CompatConnective; kwargs...) = Aletheia.notation(connective.native)
+        2 syntaxstring(connective::_LegacyConnective; kwargs...) = Aletheia.notation(connective)
+        2 syntaxstring(value; kwargs...) = string(value)
+        - 
+        - # Parser adapter. The callback returns an atom payload in Aletheia; callbacks
+        - # written for SoleLogics may return the compatibility Atom constructor.
+        1 function _payload(atom_parser, text)
+       10     parsed = atom_parser(text)
+       10     parsed isa Truth && _unsupported(:parseformula,
+        -         "truth values are not formula leaves in Aletheia")
+        9     parsed isa Atom ? value(parsed) : parsed isa Aletheia.Atom ? Aletheia.value(parsed) : parsed
+        - end
+        2 function _parse_pool(additional_operators)
+        2     extras = additional_operators === nothing ? () : Tuple(additional_operators)
+        6     all(c -> arity(c) isa Integer, extras)
+        2     Aletheia.FormulaPool(Aletheia.Signature((Aletheia.:¬, Aletheia.:∧, Aletheia.:∨, Aletheia.:→, extras...)))
+        - end
+       14 function parseformula(expr::AbstractString; atom_parser=identity,
+        -         additional_operators=nothing, function_notation=false, kwargs...)
+        7     ignored = (:additional_whitespaces, :opening_parenthesis, :closing_parenthesis, :arg_delim,
+        -         :threshold_digits, :remove_redundant_parentheses, :parenthesize_atoms)
+        7     unknown = setdiff(collect(keys(kwargs)), collect(ignored))
+        7     isempty(unknown) || _unsupported(:parseformula,
+        -         "Aletheia's parser does not accept keyword(s) $(join(string.(unknown), ", "))")
+        7     pool = additional_operators === nothing ? _DEFAULT_POOL : _parse_pool(additional_operators)
+       17     _wrap(Aletheia.parse(pool, expr; atom_parser=text -> _payload(atom_parser, text)))
+        - end
+        2 parseformula(::Type{<:Aletheia.Formula}, expr::AbstractString; kwargs...) = parseformula(expr; kwargs...)
+        2 parseformula(expr::AbstractString, additional_operators; kwargs...) =
+        -     parseformula(expr; additional_operators=additional_operators, kwargs...)
+        2 parseformula(::Type{<:Aletheia.Formula}, expr::AbstractString, additional_operators; kwargs...) =
+        -     parseformula(expr; additional_operators=additional_operators, kwargs...)
+        - 
+        - # Core evaluation/model names retain their Aletheia meaning. In particular,
+        - # check now consumes a Model rather than Sole's InterpretationSet.  Formula
+        - # wrappers are unwrapped at this boundary.
+        1 check(formula::Aletheia.Formula, args...) =
+        -     Aletheia.check(_unwrap(formula), args...)
+        - interpret(formula::Aletheia.Formula, args...) =
+        -     Aletheia.interpret(_unwrap(formula), args...)
+        - frame = Aletheia.frame
+        - algebra = Aletheia.algebra
+        - domain = Aletheia.domain
+        - top = Aletheia.top
+        - bot = Aletheia.bot
+        - worlds = Aletheia.worlds
+        1 worldtype(f) = eltype(Aletheia.worlds(Aletheia.frame(f)))
+        - accessible = Aletheia.accessible
+        2 allworlds(f) = collect(Aletheia.worlds(f))
+        1 accessibles(f, world, relation) = collect(Aletheia.accessible(f, world, relation))
+        - 
+        - # Legacy formula containers are deliberately not aliases: Aletheia's ordinary
+        - # Formula is a pool-local DAG, and cannot honestly promise grandchildren or
+        - # leftmost linear-form invariants.
+        - abstract type LeftmostLinearForm end
+        - const LeftmostConjunctiveForm = LeftmostLinearForm
+        - const LeftmostDisjunctiveForm = LeftmostLinearForm
+        - const DNF = LeftmostLinearForm
+        - const CNF = LeftmostLinearForm
+        - struct Literal
+        2     function Literal(args...)
+        2         _legacy_container(:Literal, args...)
+        -     end
+        - end
+        - const AbstractInterpretationSet = _unsupported_name(:AbstractInterpretationSet)
+        3 function _legacy_container(name, args...)
+        3     _unsupported(name, "Aletheia has ordinary Formula DAGs, not Sole leftmost/interpretation-set containers")
+        - end
+        1 LeftmostLinearForm(args...) = _legacy_container(:LeftmostLinearForm, args...)
+        1 function ispos(args...)
+        1     _unsupported(:ispos, "Aletheia has no Literal wrapper; use an explicit negation branch")
+        - end
+        - 
+        - # Modal and dimensional spellings with a direct data-level equivalent.
+        - const Interval = Aletheia.Interval
+        - const Interval2D = Aletheia.Interval2D
+        - const Point = Aletheia.Point
+        - const Point1D = Aletheia.Point
+        - const Point2D = Aletheia.Point
+        - const FullDimensionalFrame = Aletheia.FullDimensionalFrame
+        5 diamond(relation_value) = Aletheia.Diamond(relation_value)
+        1 box(relation_value) = Aletheia.Box(relation_value)
+        - const IA_A = Aletheia.IA_A
+        - const IA_L = Aletheia.IA_L
+        - const IA_B = Aletheia.IA_B
+        - const IA_E = Aletheia.IA_E
+        - const IA_D = Aletheia.IA_D
+        - const IA_O = Aletheia.IA_O
+        - const IA_Ai = Aletheia.IA_Ai
+        - const IA_Li = Aletheia.IA_Li
+        - const IA_Bi = Aletheia.IA_Bi
+        - const IA_Ei = Aletheia.IA_Ei
+        - const IA_Di = Aletheia.IA_Di
+        - const IA_Oi = Aletheia.IA_Oi
+        - const IA_AorO = Aletheia.IA_AorO
+        - const IA_DorBorE = Aletheia.IA_DorBorE
+        - const IA_AiorOi = Aletheia.IA_AiorOi
+        - const IA_DiorBiorEi = Aletheia.IA_DiorBiorEi
+        - const IA_I = Aletheia.IA_I
+        - const IA7Relations = Aletheia.IA7Relations
+        - const IA3Relations = Aletheia.IA3Relations
+        - const RCC5Relations = Aletheia.RCC5Relations
+        - const Topo_DR = Aletheia.Topo_DR
+        - const Topo_PP = Aletheia.Topo_PP
+        - const Topo_PPi = Aletheia.Topo_PPi
+        - const TruthDict = Aletheia.Valuation
+        1 KripkeStructure(frame_value, valuation_value) = Aletheia.Model(frame_value, Aletheia.BOOLEAN, valuation_value)
+        - 
+        - # Names used by Sole's modal and collection helpers.
+        - const IARelations = (IA_A, IA_L, IA_B, IA_E, IA_D, IA_O, IA_Ai, IA_Li, IA_Bi, IA_Ei, IA_Di, IA_Oi)
+        1 function alphabet(args...)
+        1     _unsupported(:alphabet, "Aletheia has no model-wide alphabet object; collect Atom payloads from a Formula")
+        - end
+        1 function feature(args...)
+        1     _unsupported(:feature, "feature metadata belongs to SoleData conditions, not Aletheia syntax")
+        - end
+        1 function condition(args...)
+        1     _unsupported(:condition, "condition metadata belongs to SoleData conditions, not Aletheia syntax")
+        - end
+        1 function threshold(args...)
+        1     _unsupported(:threshold, "threshold metadata belongs to SoleData conditions, not Aletheia syntax")
+        - end
+        1 function normalize(args...)
+        1     _unsupported(:normalize, "Aletheia's normal-form conversion is explicit: use cnf or dnf")
+        - end
+        1 function sample(args...)
+        1     _unsupported(:sample, "random SoleLogics generation is not part of Aletheia's compatibility surface")
+        - end
+        1 function worldtype(::Aletheia.Frame)
+        1     _unsupported(:worldtype, "Aletheia frames are heterogeneous tuples; use eltype(worlds(frame)) explicitly")
+        - end
+        1 name(connective) = Symbol(Aletheia.notation(connective))
+        - 
+        - # These names preserve the incumbent aliases to Aletheia's relation values;
+        - # use the definitions from SoleLogics rather than guessing from their spelling.
+        - const CL_N = Aletheia.CL_N
+        - const CL_S = Aletheia.CL_S
+        - const CL_E = Aletheia.CL_E
+        - const CL_W = Aletheia.CL_W
+        - const CL_NE = Aletheia.CL_NE
+        - const CL_NW = Aletheia.CL_NW
+        - const CL_SE = Aletheia.CL_SE
+        - const CL_SW = Aletheia.CL_SW
+        - const HS_A = Aletheia.IA_A
+        - const HS_L = Aletheia.IA_L
+        - const HS_B = Aletheia.IA_B
+        - const HS_E = Aletheia.IA_E
+        - const HS_D = Aletheia.IA_D
+        - const HS_O = Aletheia.IA_O
+        - const HS_Ai = Aletheia.IA_Ai
+        - const HS_Li = Aletheia.IA_Li
+        - const HS_Bi = Aletheia.IA_Bi
+        - const HS_Ei = Aletheia.IA_Ei
+        - const HS_Di = Aletheia.IA_Di
+        - const HS_Oi = Aletheia.IA_Oi
+        - const LRCC8_Rec_DC = Aletheia.Topo_DC
+        - const LRCC8_Rec_EC = Aletheia.Topo_EC
+        - const LRCC8_Rec_PO = Aletheia.Topo_PO
+        - const LRCC8_Rec_TPP = Aletheia.Topo_TPP
+        - const LRCC8_Rec_TPPi = Aletheia.Topo_TPPi
+        - const LRCC8_Rec_NTPP = Aletheia.Topo_NTPP
+        - const LRCC8_Rec_NTPPi = Aletheia.Topo_NTPPi
+        - const LTLFP_F = Aletheia.GREATER
+        - const LTLFP_P = Aletheia.LESSER
+        - 
+        - # A small, explicit nested replacement for SoleLogics.ManyValuedLogics.
+        - module ManyValuedLogics
+        - import ...Aletheia
+        - struct _UnsupportedMV{Name} end
+        1 Base.show(io::IO, ::_UnsupportedMV{Name}) where Name =
+        -     print(io, "unsupported SoleLogics.ManyValuedLogics.", Name)
+        1 (value::_UnsupportedMV{Name})(args...) where Name =
+        -     _unsupported(Name, "this many-valued legacy value is a deliberate compatibility gap")
+        - _unsupported_mv(name::Symbol) = _UnsupportedMV{name}()
+        - export FiniteTruth, ContinuousTruth, FiniteFLewAlgebra, getdomain
+        - export GodelAlgebra, LukasiewiczAlgebra, BooleanAlgebra
+        - export booleanalgebra, precedeq, succeedeq, maximalmembers, minimalmembers
+        - export α, β
+        - for name in (:FiniteTruth, :ContinuousTruth, :FiniteFLewAlgebra)
+        -     @eval abstract type $(name) end
+        1     @eval (::Type{$(name)})(args...) = _unsupported($(QuoteNode(name)), "Aletheia does not provide Sole's finite tableau type")
+        - end
+        - const GodelAlgebra = Aletheia.GodelAlgebra
+        - const LukasiewiczAlgebra = Aletheia.LukasiewiczAlgebra
+        - const BooleanAlgebra = Aletheia.BooleanAlgebra
+        1 getdomain(algebra::Aletheia.TruthAlgebra) = Aletheia.domain(algebra)
+        1 getdomain(args...) = _unsupported(:getdomain, "the supplied value is not an Aletheia TruthAlgebra")
+        8 function _unsupported(name::Symbol, detail::AbstractString)
+        8     throw(ArgumentError("SoleLogics.ManyValuedLogics.$name has no faithful Aletheia equivalent: $detail"))
+        - end
+        1 booleanalgebra(args...) = _unsupported(:booleanalgebra,
+        -     "Aletheia uses BooleanAlgebra() as an explicit TruthAlgebra")
+        1 precedeq(args...) = _unsupported(:precedeq,
+        -     "Aletheia's finite chains expose ordered levels rather than Sole order relations")
+        1 succeedeq(args...) = _unsupported(:succeedeq,
+        -     "Aletheia's chain algebra does not implement Sole's successor protocol")
+        1 maximalmembers(args...) = _unsupported(:maximalmembers, "many-valued tableau order helpers are not in Aletheia")
+        1 minimalmembers(args...) = _unsupported(:minimalmembers, "many-valued tableau order helpers are not in Aletheia")
+        - const α = _unsupported_mv(:α)
+        - const β = _unsupported_mv(:β)
+        - for name in (:G3, :G4, :G5, :G6, :H4, :H6, :H6_1, :H6_2, :H6_3, :H9, :Ł3, :Ł4)
+        -     @eval const $(name) = _unsupported_mv($(QuoteNode(name)))
+        - end
+        - end
+        - export Formula, SyntaxStructure, SyntaxTree, SyntaxLeaf, SyntaxBranch, Branch
+        - export Atom, AbstractAtom, AbstractRelation, Operator, Connective, NamedConnective
+        - export BoxRelationalConnective, DiamondRelationalConnective
+        - export Interval, Interval2D, Point, Point1D, Point2D, FullDimensionalFrame, diamond, box
+        - export IA_A, IA_L, IA_B, IA_E, IA_D, IA_O, IA_Ai, IA_Li, IA_Bi, IA_Ei, IA_Di, IA_Oi
+        - export token, op, tree, children, value, nchildren, arity, syntaxstring, hasdual, dual, relation
+        - export formulas, subformulas, atoms, leaves, connectives, operators, ntokens, natoms, nleaves
+        - export nconnectives, noperators, height, conjuncts, disjuncts, grandchildren, nconjuncts
+        - export parseformula, check, interpret, frame, algebra, domain, top, bot, worlds, allworlds
+        - export accessible, accessibles, worldtype
+        - export Truth, BooleanTruth, TOP, BOT, ⊤, ⊥, istop, isbot, truths, collatetruth
+        - export dnf, cnf, normalize, LeftmostLinearForm, LeftmostConjunctiveForm
+        - export LeftmostDisjunctiveForm, DNF, CNF, Literal, AbstractInterpretationSet, ispos
+        - export IARelations, IA7Relations, IA3Relations, IA_AorO, IA_DorBorE, IA_AiorOi,
+        -     IA_DiorBiorEi, IA_I, RCC5Relations, Topo_DR, Topo_PP, Topo_PPi,
+        -     alphabet, feature, condition, threshold, name, sample
+        - export TruthDict, KripkeStructure
+        - export ManyValuedLogics
+        - for name in (:CL_N, :CL_S, :CL_E, :CL_W, :CL_NE, :CL_NW, :CL_SE, :CL_SW,
+        -     :LRCC8_Rec_DC, :LRCC8_Rec_EC, :LRCC8_Rec_PO, :LRCC8_Rec_TPP,
+        -     :LRCC8_Rec_TPPi, :LRCC8_Rec_NTPP, :LRCC8_Rec_NTPPi,
+        -     :HS_A, :HS_L, :HS_B, :HS_E, :HS_D, :HS_O,
+        -     :HS_Ai, :HS_Li, :HS_Bi, :HS_Ei, :HS_Di, :HS_Oi,
+        -     :LTLFP_F, :LTLFP_P)
+        -     @eval export $(name)
+        - end
+        - 
+        1 dnf(formula::Aletheia.Formula) = _wrap(Aletheia.dnf(_unwrap(formula)))
+        1 cnf(formula::Aletheia.Formula) = _wrap(Aletheia.cnf(_unwrap(formula)))
+        - 
+        - # Aletheia names useful to a consumer that is being migrated incrementally.
+        - const FormulaPool = Aletheia.FormulaPool
+        - const Signature = Aletheia.Signature
+        - const parse = Aletheia.parse
+        - const Model = Aletheia.Model
+        - const Valuation = Aletheia.Valuation
+        - const TruthAlgebra = Aletheia.TruthAlgebra
+        - const BooleanAlgebra = Aletheia.BooleanAlgebra
+        - const GodelAlgebra = Aletheia.GodelAlgebra
+        - const LukasiewiczAlgebra = Aletheia.LukasiewiczAlgebra
+        - export FormulaPool, Signature, atom, branch, parse, Model, Valuation, TruthAlgebra
+        - export BooleanAlgebra, GodelAlgebra, LukasiewiczAlgebra
+        - export ¬, ∧, ∨, →
+        - const ¬ = Aletheia.:¬
+        - const ∧ = Aletheia.:∧
+        - const ∨ = Aletheia.:∨
+        - const → = Aletheia.:→
+        - 
+        - end

@@ -80,7 +80,7 @@
     diamond = branch(pool, Diamond(:R), p)
     box = branch(pool, Box(:R), p)
     @test check(conjunction, model, :a) === UInt8(2)
-    @test extension(conjunction, model) isa Extension && extension(conjunction, model).values isa Vector{UInt8}
+    @test extension(conjunction, model) isa Vector{UInt8}
     @test extension(conjunction, model) == UInt8[2, 2]
     @test check(diamond, model, :a) === UInt8(4)
     @test check(box, model, :a) === UInt8(4)
