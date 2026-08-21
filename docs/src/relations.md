@@ -53,9 +53,11 @@ domains.
 Aletheia provides all thirteen Allen values in `ALLEN_RELATIONS`, including
 `EQUALS`, and compatibility `IA_*` spellings. `interval_frame(n)` makes all
 intervals over `n` cells; `rectangle_frame(nx, ny)` makes all axis-aligned
-rectangles. Both return the existing `Frame`, so the evaluator and model cache
-are unchanged. The RCC8 implementation includes the formal eighth relation
-`RCC_EQ`; `RCC8_BASICS` retains the seven-value compatibility list.
+rectangles. Both return the existing `Frame`; canonical interval providers use
+direct lazy successor ranges for the hot `BEFORE` path while generic relation
+families retain the predicate fallback. The RCC8 implementation includes the
+formal eighth relation `RCC_EQ`; `RCC8_BASICS` retains the seven-value
+compatibility list.
 
 ```@example relations
 using Aletheia
@@ -103,10 +105,12 @@ true
 true
 ```
 
-Allen, RCC8, and Compass 2D point relations are relation-family implementations,
-not claims that the five references define those particular application fragments.
-RCC5 composition is intentionally left for later work rather than exposing an
-incomplete API.
+Allen, RCC8, RCC5, and Compass 2D point relations are relation-family
+implementations, not claims that the five references define those particular
+application fragments. `IA7Relations` and `IA3Relations` are the incumbent's
+coarser Allen subsets; `RCC5Relations` is `(Topo_DR, PO, Topo_PP, Topo_PPi)`.
+Each generated successor set is exhaustively checked against its predicate on
+small interval and rectangle domains.
 
 ## Compass logic 2D point relations
 

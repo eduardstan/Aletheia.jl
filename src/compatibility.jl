@@ -351,12 +351,22 @@ const IA_Bi = Aletheia.IA_Bi
 const IA_Ei = Aletheia.IA_Ei
 const IA_Di = Aletheia.IA_Di
 const IA_Oi = Aletheia.IA_Oi
+const IA_AorO = Aletheia.IA_AorO
+const IA_DorBorE = Aletheia.IA_DorBorE
+const IA_AiorOi = Aletheia.IA_AiorOi
+const IA_DiorBiorEi = Aletheia.IA_DiorBiorEi
+const IA_I = Aletheia.IA_I
+const IA7Relations = Aletheia.IA7Relations
+const IA3Relations = Aletheia.IA3Relations
+const RCC5Relations = Aletheia.RCC5Relations
+const Topo_DR = Aletheia.Topo_DR
+const Topo_PP = Aletheia.Topo_PP
+const Topo_PPi = Aletheia.Topo_PPi
 const TruthDict = Aletheia.Valuation
 KripkeStructure(frame_value, valuation_value) = Aletheia.Model(frame_value, Aletheia.BOOLEAN, valuation_value)
 
 # Names used by Sole's modal and collection helpers.
 const IARelations = (IA_A, IA_L, IA_B, IA_E, IA_D, IA_O, IA_Ai, IA_Li, IA_Bi, IA_Ei, IA_Di, IA_Oi)
-const RCC5Relations = _unsupported_name(:RCC5Relations)
 function alphabet(args...)
     _unsupported(:alphabet, "Aletheia has no model-wide alphabet object; collect Atom payloads from a Formula")
 end
@@ -464,7 +474,9 @@ export accessible, accessibles, worldtype
 export Truth, BooleanTruth, TOP, BOT, ⊤, ⊥, istop, isbot, truths, collatetruth
 export dnf, cnf, normalize, LeftmostLinearForm, LeftmostConjunctiveForm
 export LeftmostDisjunctiveForm, DNF, CNF, Literal, AbstractInterpretationSet, ispos
-export IARelations, RCC5Relations, alphabet, feature, condition, threshold, name, sample
+export IARelations, IA7Relations, IA3Relations, IA_AorO, IA_DorBorE, IA_AiorOi,
+    IA_DiorBiorEi, IA_I, RCC5Relations, Topo_DR, Topo_PP, Topo_PPi,
+    alphabet, feature, condition, threshold, name, sample
 export TruthDict, KripkeStructure
 export ManyValuedLogics
 for name in (:CL_N, :CL_S, :CL_E, :CL_W, :CL_NE, :CL_NW, :CL_SE, :CL_SW,

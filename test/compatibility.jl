@@ -105,7 +105,6 @@ end
     @test_throws ArgumentError CompatibilityClient.collatetruth(CompatibilityClient.:∧, (CompatibilityClient.⊤, CompatibilityClient.⊥))
     @test_throws ArgumentError CompatibilityClient.LeftmostConjunctiveForm([p, q])
     @test_throws ArgumentError CompatibilityClient.ispos(nothing)
-    @test_throws ArgumentError CompatibilityClient.RCC5Relations()
     @test_throws ArgumentError CompatibilityClient.alphabet(nothing)
     @test_throws ArgumentError CompatibilityClient.feature(nothing)
     @test_throws ArgumentError CompatibilityClient.condition(nothing)
@@ -120,7 +119,9 @@ end
     @test CompatibilityClient.IARelations == (Aletheia.IA_A, Aletheia.IA_L, Aletheia.IA_B, Aletheia.IA_E, Aletheia.IA_D, Aletheia.IA_O, Aletheia.IA_Ai, Aletheia.IA_Li, Aletheia.IA_Bi, Aletheia.IA_Ei, Aletheia.IA_Di, Aletheia.IA_Oi)
     @test CompatibilityClient.box(CompatibilityClient.IA_L) isa Aletheia.Box
     @test CompatibilityClient.name(Aletheia.:∧) == :∧
-    @test sprint(show, CompatibilityClient.RCC5Relations) == "unsupported SoleLogics.RCC5Relations"
+    @test CompatibilityClient.RCC5Relations == Aletheia.RCC5Relations
+    @test CompatibilityClient.IA3Relations == Aletheia.IA3Relations
+    @test CompatibilityClient.IA7Relations == Aletheia.IA7Relations
     @test_throws ArgumentError CompatibilityClient.Literal()
     @test_throws ArgumentError CompatibilityClient.Literal(p)
     @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.precedeq(1, 2)
@@ -133,7 +134,6 @@ end
 
 module DistinctUnsupportedClient
 using Aletheia.SoleLogics
-marker_method(::typeof(RCC5Relations)) = :rcc5
 marker_method(::typeof(AbstractInterpretationSet)) = :interpretation
 end
 
@@ -142,12 +142,8 @@ end
     atom_value = CompatibilityClient.Atom(:r)
     @test atom_value isa CompatibilityClient.Atom
     @test CompatibilityClient.value(atom_value) == :r
-    @test typeof(CompatibilityClient.RCC5Relations) !=
-        typeof(CompatibilityClient.AbstractInterpretationSet)
-    @test DistinctUnsupportedClient.marker_method(CompatibilityClient.RCC5Relations) == :rcc5
     @test DistinctUnsupportedClient.marker_method(CompatibilityClient.AbstractInterpretationSet) == :interpretation
-    for (marker, name) in ((CompatibilityClient.RCC5Relations, :RCC5Relations),
-            (CompatibilityClient.AbstractInterpretationSet, :AbstractInterpretationSet))
+    for (marker, name) in ((CompatibilityClient.AbstractInterpretationSet, :AbstractInterpretationSet),)
         error = try
             marker()
         catch caught

@@ -40,12 +40,16 @@ end
 
 function _cache_relation(frame::Frame, relation_name)
     stored = frame.relations
-    stored isa Function && return false
+    (stored isa Function || stored isa _RelationProvider) && return false
     haskey(stored, relation_name) || return true
     !(stored[relation_name] isa Function)
 end
 
 function _relation_adjacency(frame::Frame, relation_name, positions)
+    if frame.relations isa _IntervalRelationMap
+        specialized = _interval_relation_adjacency(frame, frame.relations, relation_name, positions)
+        specialized !== nothing && return specialized
+    end
     world_count = length(frame)
     rows = Vector{Vector{Int}}(undef, world_count)
     columns = [falses(world_count) for _ in 1:world_count]

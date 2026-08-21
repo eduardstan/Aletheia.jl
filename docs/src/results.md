@@ -54,8 +54,33 @@ same representation.
 | random modal, 24 worlds / .15 / depth 4 | 21.06 μs | 6.34 μs | 3.32× | 409 / 17.703 KiB ; 106 / 14.516 KiB |
 | random modal, 8 worlds / .50 / depth 4 | 18.87 μs | 3.28 μs | 5.75× | 341 / 12.234 KiB ; 74 / 4.891 KiB |
 | random modal, 24 worlds / .50 / depth 4 | 20.19 μs | 7.03 μs | 2.87× | 406 / 20.781 KiB ; 106 / 14.516 KiB |
-| interval adjacency, n=6 | 1.14 μs | 31.52 μs | 0.04× | 103 / 4.141 KiB ; 111 / 5.406 KiB |
-| Allen BEFORE check, n=6 | 11.22 μs | 6.36 μs | 1.76× | 230 / 32.234 KiB ; 183 / 22.906 KiB |
+| interval adjacency, n=6 | 0.94 μs | 0.84 μs | 1.12× | 103 / 4.141 KiB ; 100 / 3.656 KiB |
+| Allen BEFORE check, n=6 | 14.14 μs | 6.70 μs | 2.11× | 230 / 32.234 KiB ; 176 / 22.109 KiB |
+### Dimensional traversal profile and size sweep
+
+The pre-fix Julia `Profile` trace sampled the `relation_successors` generator
+at `src/dimensional.jl` while it compared every candidate world with
+`target.x > source.y`; this was the per-source O(|W|) scan. The fix keeps
+`accessible` lazy, but canonical interval providers now expose arithmetic
+ranges to the adjacency builder. A follow-up sweep (same warmed benchmark
+child, five samples) was:
+
+| n | SoleLogics | Aletheia | allocations (incumbent ; ours) |
+| ---: | ---: | ---: | ---: |
+| 6 | 0.94 μs | 0.84 μs | 103 / 4.141 KiB ; 100 / 3.656 KiB |
+| 12 | 19.12 μs | 2.89 μs | 442 / 33.484 KiB ; 373 / 19.563 KiB |
+| 24 | 1.01 ms | 23.12 μs | 2,036 / 394.969 KiB ; 1,462 / 161.477 KiB |
+| 36 | 10.43 ms | 123.36 μs | 5,054 / 1.598 MiB ; 3,358 / 693.648 KiB |
+
+The superlinear incumbent curve confirms traversal, not fixed call overhead,
+is the regression. The interval adjacency row above reuses the frame's prebuilt world index; the
+index is part of Aletheia's generated-frame evaluator cache and is not rebuilt
+in the hot call. The same run measured the consumer subsets at n=6: IA3
+50.03 μs vs 4.69 μs (3,048 vs 211 allocations), IA7 37.81 μs vs 10.65 μs
+(2,484 vs 407), and RCC5 71.00 μs vs 38.22 μs (4,104 vs 999), SoleLogics vs
+Aletheia. All generated edges are checked against their predicates in
+`test/relations.jl`.
+
 | finite chain G3 check, depth 2 | 2.32 μs | 1.70 μs | 1.36× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
 | finite chain Ł3 check, depth 2 | 2.23 μs | 2.08 μs | 1.08× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
 | non-chain H4 check, depth 2 | 2.47 μs | 2.07 μs | 1.19× | 40 / 1.469 KiB ; 42 / 2.484 KiB |

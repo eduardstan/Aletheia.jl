@@ -112,32 +112,87 @@ function _interval_successors(worlds, n, kfirst, klast, lfirst, llast, mode)
 end
 function Base.iterate(iter::_IntervalSuccessors)
     k = iter.kfirst
-    l = iter.mode == 0 ? k + 1 : iter.lfirst
-    iterate(iter, k * (iter.n + 1) + l)
+    l = iter.mode == 0 || iter.mode == 3 ? k + 1 : iter.lfirst
+    state = k * (iter.n + 1) + l
+    iter.mode == 3 && k == iter.kfirst && l == iter.llast ?
+        iterate(iter, (k + 1) * (iter.n + 1) + k + 2) :
+        iter.mode == 4 && k == iter.klast && l == iter.lfirst ?
+            iterate(iter, k * (iter.n + 1) + l + 1) : iterate(iter, state)
 end
 function Base.iterate(iter::_IntervalSuccessors, state::Int)
     base = iter.n + 1
     k = state ÷ base
     l = state - k * base
     (k > iter.klast || l > iter.llast) && return nothing
+    if iter.mode == 3 && k == iter.kfirst && l == iter.llast
+        return iterate(iter, (k + 1) * base + k + 2)
+    elseif iter.mode == 4 && k == iter.klast && l == iter.lfirst
+        return iterate(iter, k * base + l + 1)
+    end
     value = iter.worlds[_interval_world_index(k, l, iter.n)]
-    next = if iter.mode == 0
+    next = if iter.mode == 0 || iter.mode == 3
         l < iter.llast ? k * base + l + 1 : (k + 1) * base + k + 2
-    elseif iter.mode == 1
+    elseif iter.mode == 1 || iter.mode == 4
         l < iter.llast ? k * base + l + 1 : (k + 1) * base + iter.lfirst
     else
         (k + 1) * base + l
     end
     value, next
 end
+@inline function _interval_before_successors(source::Interval, boundaries, worlds)
+    right = searchsortedfirst(boundaries, source.y)
+    first_left = right + 1
+    n = length(boundaries)
+    first_left >= n ? () : Iterators.drop(worlds, _interval_world_index(first_left, first_left + 1, n) - 1)
+end
+
 function _interval_relation_successors(relation, source::Interval, boundaries, worlds)
     left = searchsortedfirst(boundaries, source.x)
     right = searchsortedfirst(boundaries, source.y)
     n = length(boundaries)
     (left > n || right > n || !isequal(boundaries[left], source.x) ||
         !isequal(boundaries[right], source.y)) && return nothing
-    if relation === BEFORE
-        return (target for target in worlds if target.x > source.y)
+    if relation === IA_AorO
+        return _interval_successors(worlds, n, left + 1, right, right + 1, n, 1)
+    elseif relation === IA_DorBorE
+        return _interval_successors(worlds, n, left, right - 1, 0, right, 3)
+    elseif relation === IA_AiorOi
+        return _interval_successors(worlds, n, 1, left - 1, left, right - 1, 1)
+    elseif relation === IA_DiorBiorEi
+        return _interval_successors(worlds, n, 1, left, right, n, 4)
+    elseif relation === IA_I
+        return (target for target in worlds if target.x <= source.y && source.x <= target.y &&
+            (target.x != source.x || target.y != source.y))
+    elseif relation === DC
+        return Iterators.flatten((_interval_relation_successors(BEFORE, source, boundaries, worlds),
+            _interval_relation_successors(AFTER, source, boundaries, worlds)))
+    elseif relation === EC
+        return Iterators.flatten((_interval_relation_successors(MEETS, source, boundaries, worlds),
+            _interval_relation_successors(MET_BY, source, boundaries, worlds)))
+    elseif relation === PO
+        return Iterators.flatten((_interval_relation_successors(OVERLAPS, source, boundaries, worlds),
+            _interval_relation_successors(OVERLAPPED_BY, source, boundaries, worlds)))
+    elseif relation === TPP
+        return Iterators.flatten((_interval_relation_successors(STARTS, source, boundaries, worlds),
+            _interval_relation_successors(FINISHES, source, boundaries, worlds)))
+    elseif relation === TPPi
+        return Iterators.flatten((_interval_relation_successors(STARTED_BY, source, boundaries, worlds),
+            _interval_relation_successors(FINISHED_BY, source, boundaries, worlds)))
+    elseif relation === NTPP
+        return _interval_relation_successors(DURING, source, boundaries, worlds)
+    elseif relation === NTPPi
+        return _interval_relation_successors(CONTAINS, source, boundaries, worlds)
+    elseif relation === RCC_EQ
+        return _interval_relation_successors(EQUALS, source, boundaries, worlds)
+    elseif relation === Topo_DR
+        return Iterators.flatten((_interval_successors(worlds, n, right, n - 1, right + 1, n, 1),
+            _interval_successors(worlds, n, 1, left - 1, 0, left, 0)))
+    elseif relation === Topo_PP
+        return _interval_successors(worlds, n, 1, left, right, n, 4)
+    elseif relation === Topo_PPi
+        return _interval_successors(worlds, n, left, right - 1, 0, right, 3)
+    elseif relation === BEFORE
+        return _interval_before_successors(source, boundaries, worlds)
     elseif relation === MEETS
         return _interval_successors(worlds, n, right, right, right + 1, n, 1)
     elseif relation === OVERLAPS
@@ -170,8 +225,10 @@ function relation_successors(::BeforeRelation, source::Interval, worlds)
     (target for target in worlds if target.x > source.y)
 end
 function relation_successors(relation::IntervalRelation, source::Interval, worlds)
-    world_values = _world_values(worlds)
-    _interval_relation_successors(relation, source, _interval_boundaries(world_values), world_values)
+    (target for target in worlds if relation_holds(relation, source, target))
+end
+function relation_successors(relation::RCCRelation, source::Interval, worlds)
+    (target for target in worlds if relation_holds(relation, source, target))
 end
 
 # Bounded-domain point dispatch. A user-defined relation uses the public
@@ -280,6 +337,9 @@ function _rectangle_rcc_holds(relation::RCCRelation, ax, ay, bx, by)
     bpropersubseta = acontainsb && !equal
     externally_connected = !disconnected && (_interval_touching(ax, bx) || _interval_touching(ay, by)) &&
         !acontainsb && !bcontainsa
+    relation === Topo_DR ? disconnected || externally_connected :
+    relation === Topo_PP ? (bcontainsa && !equal) :
+    relation === Topo_PPi ? (acontainsb && !equal) :
     relation === DC ? disconnected :
     relation === EC ? externally_connected :
     relation === RCC_EQ ? equal :
@@ -299,12 +359,7 @@ function _rectangle_rcc_successors(relation::RCCRelation, source, xworlds, yworl
         if _rectangle_rcc_holds(relation, source.x, source.y, x, y)) for x in xworlds))
 end
 function relation_successors(relation::RCCRelation, source::Rectangle, worlds)
-    world_values = _world_values(worlds)
-    xvalues = tuple((world.x for world in world_values)...)
-    yvalues = tuple((world.y for world in world_values)...)
-    xb, yb = _interval_boundaries(xvalues), _interval_boundaries(yvalues)
-    _rectangle_rcc_successors(relation, source, collect(_interval_worlds(xb)),
-        collect(_interval_worlds(yb)))
+    (target for target in worlds if relation_holds(relation, source, target))
 end
 
 function _rectangle_relation_successors(relation::RectangleRelation, source, xb, yb, xworlds, yworlds)
@@ -324,20 +379,53 @@ function relation_successors(relation::RectangleRelation, source::Rectangle, wor
         collect(_interval_worlds(yb)))
 end
 
+struct _IntervalRelationMap{B,W,T} <: _RelationProvider
+    boundaries::B
+    world_values::W
+    worlds::T
+    canonical_index::Bool
+end
+
+function (provider::_IntervalRelationMap)(source, relation)
+    targets = relation === BEFORE ? _interval_before_successors(source, provider.boundaries, provider.world_values) :
+        _interval_relation_successors(relation, source, provider.boundaries, provider.world_values)
+    targets === nothing && (targets = relation_successors(relation, source, provider.worlds))
+    targets === nothing &&
+        (targets = (target for target in provider.worlds if _dimensional_relation_holds(relation, source, target, provider.worlds)))
+    targets
+end
+
+function _interval_relation_adjacency(frame, provider::_IntervalRelationMap, relation, positions)
+    relation === BEFORE || return nothing
+    provider.canonical_index || return nothing
+    frame_worlds = frame.worlds
+    world_count = length(frame_worlds)
+    boundary_count = length(provider.boundaries)
+    rows = Vector{Vector{Int}}(undef, world_count)
+    columns = [falses(world_count) for _ in 1:world_count]
+    for (source_position, source) in enumerate(frame_worlds)
+        right = searchsortedfirst(provider.boundaries, source.y)
+        first_left = right + 1
+        if first_left >= boundary_count
+            rows[source_position] = Int[]
+            continue
+        end
+        first_target = _interval_world_index(first_left, first_left + 1, boundary_count)
+        targets = first_target:world_count
+        rows[source_position] = collect(targets)
+        for target_position in targets
+            columns[target_position][source_position] = true
+        end
+    end
+    _RelationAdjacency(rows, columns)
+end
+
 """Build a one-dimensional interval frame over `domain`."""
 function interval_frame(domain; index=true)
     boundaries = _boundaries(domain)
     ws = _interval_worlds(boundaries)
     world_values = collect(ws)
-    relation_map = (source, relation) -> begin
-        targets = relation === BEFORE ?
-            relation_successors(relation, source, world_values) :
-            _interval_relation_successors(relation, source, boundaries, world_values)
-        targets === nothing && (targets = relation_successors(relation, source, ws))
-        targets === nothing &&
-            (targets = (target for target in ws if _dimensional_relation_holds(relation, source, target, ws)))
-        targets
-    end
+    relation_map = _IntervalRelationMap(boundaries, world_values, ws, !(index isa AbstractDict))
     Frame(ws, relation_map; index=index)
 end
 
