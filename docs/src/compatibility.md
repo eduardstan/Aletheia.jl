@@ -64,24 +64,30 @@ The nested `ManyValuedLogics` imports are `FiniteFLewAlgebra`, `FiniteTruth`,
 | Incumbent name | Compatibility result |
 | --- | --- |
 | `Formula`, `SyntaxStructure`, `SyntaxTree` | `Aletheia.Formula`; formulas are pool-local DAG handles. |
-| `Atom(value)` | A local compatibility constructor over `Aletheia.atom`, using a migration-only default pool. New code should use `atom(pool, value)`. |
+| `Atom` and `Atom(value)` | A compatibility `Atom <: Aletheia.Formula` wrapper is a real type for `isa`/dispatch; `Atom(value)` wraps an atom in the migration-only default pool. New code should use `atom(pool, value)`. |
 | `SyntaxBranch(op, children...)` | A local compatibility constructor over `Aletheia.branch`, using the children's pool and repooling when a modal connective is added. |
 | `children`, `value`, `token`, `tree` | `children`/`value` are direct; `token` returns the atom itself for a leaf and `operator` for a branch; `tree` is identity. |
 | `syntaxstring`, `arity`, `nchildren`, `height`, `atoms`, `leaves`, `operators`, `ntokens`, `natoms`, `nleaves`, `nconnectives`, `noperators` | Tree-walk adapters over ordinary Aletheia formulas. Display-only Sole keywords are accepted and ignored. |
 | `parseformula` | Parses through an explicit compatibility pool; `atom_parser` callbacks returning a compatibility `Atom` are unwrapped to their payload. |
 | `dnf`, `cnf` | Aletheia's classical normal forms, returning ordinary pooled formulas. |
 | `dual`, `hasdual`, `arity`, `relation` | Direct for Aletheia connective values (`¬`, `∧`, `∨`, `→`, `Diamond`, `Box`). |
-| `∧`, `∨`, `¬`, `→`, `NamedConnective`, `Operator` | Standard values map directly; parameterized `NamedConnective{:symbol}` construction does not. |
+| `∧`, `∨`, `¬`, `→`, `NamedConnective`, `Operator` | Aletheia values remain the underlying operators; compatibility connective wrappers provide `NamedConnective{:symbol}` dispatch for migrated consumers. |
 | `Interval`, `Interval2D`, `Point`, `Point1D`, `Point2D`, `FullDimensionalFrame`, `IA_*`, `IARelations` | Data-level aliases to Aletheia's dimensional and Allen APIs. `IARelations` keeps Sole's 12-value order and excludes `EQUALS`. |
 | `diamond`, `box`, `TruthDict`, `KripkeStructure`, `allworlds`, `accessibles` | Small adapters to `Diamond`/`Box`, `Valuation`/Boolean `Model`, and lazy frame access (the latter is collected). |
+| `HS_*` | Direct aliases of Aletheia's `IA_*` Allen interval relations, including inverses. |
+| `LRCC8_Rec_*` | Direct aliases of Aletheia's `Topo_*` RCC8 relations; the incumbent orientation is retained (notably `Topo_TPP = TPPi`). |
+| `LTLFP_F`, `LTLFP_P` | Direct aliases of Aletheia's `GREATER` and `LESSER` point relations. |
 | `ManyValuedLogics` | Exists as a nested namespace. Aletheia's `BooleanAlgebra`, `GodelAlgebra`, and `LukasiewiczAlgebra` are available; old tableau algebras are not. |
 
 The poolless `Atom(value)` and `SyntaxBranch(op, children...)` spellings are
-deliberate conveniences of the legacy path only. The hidden default pool used
-by `Atom` is local to `Aletheia.SoleLogics`; formula identity and equality
-remain pool-local, so these conveniences are not equivalent to threading an
-explicit pool through new code. Explicit `Aletheia.atom(pool, ...)` and
-`Aletheia.branch(pool, ...)` remain the core API.
+deliberate conveniences of the legacy path only. `Atom` is a compatibility
+wrapper type, so `φ isa Atom` and dispatch work without adding a one-argument
+constructor to `Aletheia.Atom`; the PR 11 parent-namespace opt-in regression
+therefore remains intact. The hidden default pool used by `Atom` is local to
+`Aletheia.SoleLogics`; formula identity and equality remain pool-local, so
+these conveniences are not equivalent to threading an explicit pool through
+new code. Explicit `Aletheia.atom(pool, ...)` and `Aletheia.branch(pool, ...)`
+remain the core API.
 
 ## Deliberate gaps
 
@@ -105,14 +111,39 @@ explicit pool through new code. Explicit `Aletheia.atom(pool, ...)` and
   they are not approximated by syntax payload inspection.
 * `RCC5Relations` is intentionally absent from Aletheia's selected RCC8
   fragment. The `RCC5Relations` binding is an error-producing marker. The
-  `CL_*`, `HS_*`, `LRCC8_Rec_*`, and `LTLFP_*` names and the many-valued tableau
-  order helpers similarly remain explicit semantic gaps.
+  `CL_*` names remain explicit semantic gaps because Compass relations are not
+  implemented. Every unsupported marker has its own singleton dispatch type,
+  so one consumer method per name does not overwrite another; invoking a
+  marker still raises the explicit symbol-specific error. The many-valued
+  tableau order helpers similarly remain explicit gaps.
 * Aletheia formula equality is pool-local and `subterms` are distinct DAG IDs;
   Sole tree-occurrence equality and ordering are not silently redefined.
   `subformulas` here returns formula handles in dependency/height order.
 * Existing consumers still say `using SoleLogics`. This layer cannot satisfy a
   top-level package import without changing that import (or adding a separate
   package, which this task deliberately does not do).
+
+## SoleReasoners propositional smoke test
+
+A scratch import-migrated SoleReasoners checkout was run against this nested
+module (the checkout is not part of this repository). Its precompilation is
+clean, including consumers that define separate methods for `LTLFP_F` and
+`LTLFP_P`. With the same six formulas used by the benchmark scout, every result
+agrees with the incumbent:
+
+```text
+p => true
+¬p => true
+p∨¬p => true
+p∧¬p => false
+(p→q)∧p∧¬q => false
+(p∨q)∧(¬p∨q) => true
+```
+
+This validates the propositional tableau boundary only. Many-valued tableaux
+remain blocked by the deliberately absent finite FLew-algebra and tableau
+truth-carrier implementations; that is the next independent blocker, not a
+silent semantic fallback.
 
 ## Evidence
 

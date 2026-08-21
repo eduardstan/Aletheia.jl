@@ -20,10 +20,10 @@ end
     @test !(:SoleLogics in names(Aletheia, all=false))
 
     p, q, conjunction, parsed = CompatibilityClient.basic()
-    @test p isa Aletheia.Atom
-    @test q isa Aletheia.Atom
-    @test conjunction isa Aletheia.Branch
-    @test CompatibilityClient.token(conjunction) === Aletheia.:∧
+    @test p isa CompatibilityClient.Atom
+    @test q isa CompatibilityClient.Atom
+    @test conjunction isa Aletheia.Formula
+    @test CompatibilityClient.token(conjunction).native === Aletheia.:∧
     @test CompatibilityClient.children(conjunction) == (p, q)
     @test CompatibilityClient.value(p) == "p"
     @test CompatibilityClient.tree(conjunction) === conjunction
@@ -36,7 +36,7 @@ end
     @test CompatibilityClient.leaves(conjunction) == [p, q]
     @test CompatibilityClient.formulas(conjunction) == [p, q, conjunction]
     @test CompatibilityClient.subformulas(conjunction) == [p, q, conjunction]
-    @test CompatibilityClient.connectives(conjunction) == [Aletheia.:∧]
+    @test [c.native for c in CompatibilityClient.connectives(conjunction)] == [Aletheia.:∧]
     @test CompatibilityClient.ntokens(conjunction) == 3
     @test CompatibilityClient.natoms(conjunction) == 2
     @test CompatibilityClient.nleaves(conjunction) == 2
@@ -50,16 +50,16 @@ end
     @test CompatibilityClient.dual(Aletheia.:∧) === Aletheia.:∨
     @test CompatibilityClient.hasdual(Aletheia.:∧)
     @test CompatibilityClient.relation(Aletheia.Diamond(:G)) == :G
-    @test CompatibilityClient.op(conjunction) === Aletheia.:∧
+    @test CompatibilityClient.op(conjunction).native === Aletheia.:∧
     @test CompatibilityClient.token(p) === p
     @test CompatibilityClient.token(CompatibilityClient.⊤) === CompatibilityClient.⊤
-    @test CompatibilityClient.operators(conjunction) == [Aletheia.:∧]
-    @test CompatibilityClient.atom("r") isa Aletheia.Atom
+    @test [c.native for c in CompatibilityClient.operators(conjunction)] == [Aletheia.:∧]
+    @test CompatibilityClient.atom("r") isa CompatibilityClient.Atom
     compat_pool = CompatibilityClient.FormulaPool(CompatibilityClient.Signature((Aletheia.:∧,)))
     compat_p, compat_q = CompatibilityClient.atom(compat_pool, "s"), CompatibilityClient.atom(compat_pool, "t")
-    @test compat_p isa Aletheia.Atom
-    @test CompatibilityClient.branch(compat_pool, Aletheia.:∧, compat_p, compat_q) isa Aletheia.Branch
-    @test CompatibilityClient.branch(Aletheia.:∧, p, q) isa Aletheia.Branch
+    @test compat_p isa CompatibilityClient.Atom
+    @test CompatibilityClient.branch(compat_pool, Aletheia.:∧, compat_p, compat_q) isa Aletheia.Formula
+    @test CompatibilityClient.branch(Aletheia.:∧, p, q) isa Aletheia.Formula
     @test CompatibilityClient.syntaxstring(Aletheia.:∧) == "∧"
     @test CompatibilityClient.syntaxstring(17) == "17"
     @test CompatibilityClient.value(CompatibilityClient.⊤)
@@ -70,10 +70,10 @@ end
     @test isempty(CompatibilityClient.truths(p))
     @test_throws ArgumentError CompatibilityClient.truths(CompatibilityClient.⊤)
     modal = CompatibilityClient.SyntaxBranch(CompatibilityClient.diamond(CompatibilityClient.IA_L), p)
-    @test modal isa Aletheia.Branch
+    @test modal isa Aletheia.Formula
     @test CompatibilityClient.relation(CompatibilityClient.token(modal)) == CompatibilityClient.IA_L
     nested_modal = CompatibilityClient.SyntaxBranch(CompatibilityClient.diamond(CompatibilityClient.IA_L), conjunction)
-    @test nested_modal isa Aletheia.Branch
+    @test nested_modal isa Aletheia.Formula
     @test_throws ArgumentError CompatibilityClient.SyntaxBranch(CompatibilityClient.diamond(CompatibilityClient.IA_L))
     @test_throws ArgumentError CompatibilityClient.SyntaxBranch(Aletheia.:∧, 1)
     @test CompatibilityClient.Interval(1, 2) == Aletheia.Interval(1, 2)
@@ -128,4 +128,42 @@ end
     @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.maximalmembers((1, 2))
     @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.minimalmembers((1, 2))
     @test sprint(show, CompatibilityClient.ManyValuedLogics.G3) == "unsupported SoleLogics.ManyValuedLogics.G3"
+end
+
+
+module DistinctUnsupportedClient
+using Aletheia.SoleLogics
+marker_method(::typeof(CL_N)) = :north
+marker_method(::typeof(CL_S)) = :south
+end
+
+@testset "consumer-facing Atom and relation aliases" begin
+    @test CompatibilityClient.Atom isa Type
+    atom_value = CompatibilityClient.Atom(:r)
+    @test atom_value isa CompatibilityClient.Atom
+    @test CompatibilityClient.value(atom_value) == :r
+    @test typeof(CompatibilityClient.CL_N) != typeof(CompatibilityClient.CL_S)
+    @test DistinctUnsupportedClient.marker_method(CompatibilityClient.CL_N) == :north
+    @test DistinctUnsupportedClient.marker_method(CompatibilityClient.CL_S) == :south
+    for marker in (CompatibilityClient.CL_N, CompatibilityClient.CL_S,
+            CompatibilityClient.CL_E, CompatibilityClient.CL_W)
+        @test_throws ArgumentError marker()
+    end
+
+    @test (CompatibilityClient.HS_A, CompatibilityClient.HS_L,
+        CompatibilityClient.HS_B, CompatibilityClient.HS_E, CompatibilityClient.HS_D,
+        CompatibilityClient.HS_O, CompatibilityClient.HS_Ai, CompatibilityClient.HS_Li,
+        CompatibilityClient.HS_Bi, CompatibilityClient.HS_Ei, CompatibilityClient.HS_Di,
+        CompatibilityClient.HS_Oi) ===
+        (Aletheia.IA_A, Aletheia.IA_L, Aletheia.IA_B, Aletheia.IA_E, Aletheia.IA_D,
+        Aletheia.IA_O, Aletheia.IA_Ai, Aletheia.IA_Li, Aletheia.IA_Bi, Aletheia.IA_Ei,
+        Aletheia.IA_Di, Aletheia.IA_Oi)
+    @test (CompatibilityClient.LRCC8_Rec_DC, CompatibilityClient.LRCC8_Rec_EC,
+        CompatibilityClient.LRCC8_Rec_PO, CompatibilityClient.LRCC8_Rec_TPP,
+        CompatibilityClient.LRCC8_Rec_TPPi, CompatibilityClient.LRCC8_Rec_NTPP,
+        CompatibilityClient.LRCC8_Rec_NTPPi) ===
+        (Aletheia.Topo_DC, Aletheia.Topo_EC, Aletheia.Topo_PO, Aletheia.Topo_TPP,
+        Aletheia.Topo_TPPi, Aletheia.Topo_NTPP, Aletheia.Topo_NTPPi)
+    @test CompatibilityClient.LTLFP_F === Aletheia.GREATER
+    @test CompatibilityClient.LTLFP_P === Aletheia.LESSER
 end
