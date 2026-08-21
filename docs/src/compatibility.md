@@ -78,7 +78,7 @@ The nested `ManyValuedLogics` imports are `FiniteFLewAlgebra`, `FiniteTruth`,
 | `HS_*` | Direct aliases of Aletheia's `IA_*` Allen interval relations, including inverses. |
 | `LRCC8_Rec_*` | Direct aliases of Aletheia's `Topo_*` RCC8 relations; the incumbent orientation is retained (notably `Topo_TPP = TPPi`). |
 | `LTLFP_F`, `LTLFP_P` | Direct aliases of Aletheia's `GREATER` and `LESSER` point relations. |
-| `ManyValuedLogics` | Exists as a nested namespace. Aletheia's `BooleanAlgebra`, `GodelAlgebra`, and `LukasiewiczAlgebra` are available; old tableau algebras are not. |
+| `ManyValuedLogics` | Exists as a nested namespace. Aletheia's `BooleanAlgebra`, `GodelAlgebra`, `LukasiewiczAlgebra`, and finite FLew algebras are available; Sole tableau truth-carrier/order helpers remain unsupported. |
 
 The poolless `Atom(value)` and `SyntaxBranch(op, children...)` spellings are
 deliberate conveniences of the legacy path only. `Atom` is a compatibility
@@ -146,10 +146,10 @@ positional arguments: Aletheia's core methods have no keyword-argument surface,
 so advertising `kwargs...` would create calls that can never resolve (and fails
 JET on Julia 1.10/1.11).
 
-This validates the propositional tableau boundary only. Many-valued tableaux
-remain blocked by the deliberately absent finite FLew-algebra and tableau
-truth-carrier implementations; that is the next independent blocker, not a
-silent semantic fallback.
+This validates the propositional tableau boundary only. Aletheia now provides
+finite FLew algebras, but many-valued tableaux remain blocked by the missing
+SoleReasoners tableau truth-carrier and order-helper compatibility surface; that
+is the next independent blocker, not a silent semantic fallback.
 
 ## Evidence
 
