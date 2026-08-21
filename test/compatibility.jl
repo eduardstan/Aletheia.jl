@@ -36,6 +36,28 @@ end
     @test @allocated(tokenaccess(conjunction)) == 0
     @test @allocated(valueaccess(p)) == 0
     @test CompatibilityClient.SyntaxBranch(∧, p, q) === conjunction
+    @test Aletheia.SoleLogics._hasconnective(Aletheia.signature(p.pool), ∧)
+    @test Aletheia.SoleLogics._formula_pool_for(∧, ()) isa Aletheia.FormulaPool
+    @test Aletheia.SoleLogics._formula_pool_for(∧, (p, 1)) isa Aletheia.FormulaPool
+    @test Aletheia.SoleLogics._merge_formula_pools(∧, (p, q)) isa Aletheia.FormulaPool
+    @test Aletheia.SoleLogics._wrap_id(p.pool, p.id) === p
+    @test Aletheia.SoleLogics._compat_branch(∧, (p, q)) === conjunction
+    @test Aletheia.SoleLogics._wrap(p) === p
+    @test Aletheia.SoleLogics.Atom{String,typeof(p.pool)}(p.pool, p.id) == p
+    native_p = Aletheia.atom(p.pool, "native-p")
+    native_q = Aletheia.atom(p.pool, "native-q")
+    native_branch = CompatibilityClient.SyntaxBranch(∧, native_p, native_q)
+    @test native_branch isa Aletheia.Formula
+    @test CompatibilityClient.token(native_p) === native_p
+    @test CompatibilityClient.token(native_branch).native === Aletheia.:∧
+    @test CompatibilityClient.children(native_branch) == Aletheia.children(native_branch)
+    @test CompatibilityClient.nchildren(native_branch) == 2
+    @test CompatibilityClient.formulas(native_branch) isa Vector
+    @test CompatibilityClient.subformulas(native_branch) isa Vector
+    @test CompatibilityClient.height(native_branch) == 1
+    @test CompatibilityClient.syntaxstring(native_branch) == "native-p ∧ native-q"
+    @test Aletheia.SoleLogics.Atom(native_p, Val(:native)) ==
+        Aletheia.SoleLogics.Atom("native-p")
     other_pool = Aletheia.FormulaPool(Aletheia.Signature((Aletheia.:¬,
         Aletheia.:∧, Aletheia.:∨, Aletheia.:→)))
     other_q = Aletheia.SoleLogics.atom(other_pool, "q")
@@ -43,6 +65,9 @@ end
     @test cross_pool isa Aletheia.Formula
     @test CompatibilityClient.syntaxstring(cross_pool) == "p ∧ q"
     @test cross_pool !== conjunction
+    @test Aletheia.SoleLogics._repool(conjunction, other_pool) isa Aletheia.Formula
+    @test Aletheia.SoleLogics._repool(native_branch, other_pool) isa Aletheia.Formula
+    @test CompatibilityClient.SyntaxBranch(CompatibilityClient.box(CompatibilityClient.IA_L), p) isa Aletheia.Formula
     @test_throws ArgumentError CompatibilityClient.SyntaxBranch(∧, p)
     @test CompatibilityClient.value(p) == "p"
     @test CompatibilityClient.tree(conjunction) === conjunction
@@ -54,7 +79,9 @@ end
     @test CompatibilityClient.atoms(conjunction) == [p, q]
     @test CompatibilityClient.leaves(conjunction) == [p, q]
     @test CompatibilityClient.formulas(conjunction) == [p, q, conjunction]
+    @test CompatibilityClient.formulas(conjunction) === CompatibilityClient.formulas(conjunction)
     @test CompatibilityClient.subformulas(conjunction) == [p, q, conjunction]
+    @test CompatibilityClient.subformulas(conjunction) === CompatibilityClient.subformulas(conjunction)
     @test [c.native for c in CompatibilityClient.connectives(conjunction)] == [Aletheia.:∧]
     @test CompatibilityClient.ntokens(conjunction) == 3
     @test CompatibilityClient.natoms(conjunction) == 2
