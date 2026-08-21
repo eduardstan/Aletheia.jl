@@ -129,7 +129,7 @@ function section_measure(label, cases, side; timeout=CASE_TIMEOUT)
     process = run(pipeline(command, stdout=path, stderr=devnull); wait=false)
     wait(process)
     output = read(path, String); rm(path; force=true)
-    lines = [split(strip(line)) for line in splitlines(output) if !isempty(strip(line))]
+    lines = [split(strip(line)) for line in split(output, '\n') if !isempty(strip(line))]
     if process.exitcode == 124 || process.exitcode == 137
         return [Measurement(missing, missing, missing, "section timeout ($(timeout)s)") for _ in cases]
     end
