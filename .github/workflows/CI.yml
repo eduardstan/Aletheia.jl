@@ -1,12 +1,14 @@
 # Pull requests run the full three-version Linux and Windows matrix, documentation,
-# and coverage checks. Manual dispatch runs the same checks; there is no push-to-main
-# run because squash merges already-green pull requests without changing the tree.
+# and coverage checks. Manual dispatch runs the same checks. Main pushes run only the
+# documentation job so publishing does not reintroduce duplicate test runs.
 
 name: CI
 
 on:
   workflow_dispatch:
   pull_request:
+  push:
+    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -32,8 +34,11 @@ jobs:
       - uses: julia-actions/julia-runtest@v1
 
   documentation:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    # Main pushes publish docs; pull requests and manual runs still build them.
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     name: Documentation
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -42,8 +47,10 @@ jobs:
         with:
           version: "1.12"
       - uses: julia-actions/cache@v2
-      - name: Build documentation
+      - name: Build and deploy documentation
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: julia --project=docs docs/make.jl
 
   coverage:
