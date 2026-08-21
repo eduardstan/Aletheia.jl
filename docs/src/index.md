@@ -42,9 +42,9 @@ Venema, §§1.2–1.3 (pp. 9–26) [blackburn2001; §§1.2–1.3, pp. 9–26](@c
 Aletheia supplies syntax, semantic structures, finite evaluation, a small
 first-order target syntax/evaluator, theory utilities, and ILP foundations. It
 does **not** ship a modal theorem prover, a first-order prover, a learner, RCC5
-composition, 2-D point relations, or the incumbent's many-valued tableau
-engines. The [theory](theory.md) and [learning](learning.md) chapters call these boundaries
-out where they matter.
+composition, or the incumbent's many-valued tableau engines. The
+[theory](theory.md) and [learning](learning.md) chapters call these boundaries out
+where they matter.
 
 The design and measurements were developed in stages. The accompanying
 benchmark is human-run, and its differential suite is kept outside package

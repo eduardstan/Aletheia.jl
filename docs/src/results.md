@@ -82,8 +82,8 @@ workload without a measurement.
 
 The benchmark still leaves later-stage rows explicitly empty: random modal
 checking, many-valued checking in the comparison harness, and future relation
-fragments. RCC5 composition and 2-D point semantics are also intentionally
-absent. The package's semantic/evaluation tests do cover Boolean, Gödel,
+fragments. RCC5 composition is also intentionally absent. The package's
+semantic/evaluation tests do cover Boolean, Gödel,
 Łukasiewicz, modal, generated-frame, and custom-family behavior; an empty
 comparison row is not an unimplemented package API silently presented as a win.
 
