@@ -177,9 +177,110 @@ end
     @test_throws ArgumentError rectangle_frame(0, 2)
     @test_throws ArgumentError point_frame([2, 1])
     @test_throws ArgumentError FullDimensionalFrame((1, 2, 3))
-    @test_throws ArgumentError Full2DPointFrame(2, 2)
+    @test Full2DPointFrame(2, 2).worlds == point_frame(2, 2).worlds
     @test_throws ArgumentError interval_frame([1, 1])
     @test_throws ArgumentError rectangle_frame([1, 1], [1, 2])
+
+    @testset "Point2DRelation family and 2D point frames" begin
+        @test length(POINT2D_RELATIONS) == 8
+        @test length(Point2DRelations) == 8
+        @test Point2DRelations == (CL_N, CL_S, CL_E, CL_W, CL_NE, CL_NW, CL_SE, CL_SW)
+
+        display_pairs = [
+            (CL_N, "N"), (CL_S, "S"), (CL_E, "E"), (CL_W, "W"),
+            (CL_NE, "NE"), (CL_NW, "NW"), (CL_SE, "SE"), (CL_SW, "SW")
+        ]
+        for (r, expected_str) in display_pairs
+            @test sprint(show, r) == expected_str
+            @test r isa Point2DRelation
+            @test r isa RelationFamily
+            @test istransitive(r)
+        end
+
+        converses = [
+            (CL_N, CL_S), (CL_S, CL_N),
+            (CL_E, CL_W), (CL_W, CL_E),
+            (CL_NE, CL_SW), (CL_SW, CL_NE),
+            (CL_NW, CL_SE), (CL_SE, CL_NW),
+        ]
+        for (r1, r2) in converses
+            @test inverse(r1) === r2
+            @test converse(r1) === r2
+            @test converse(converse(r1)) === r1
+            @test inverse(inverse(r1)) === r1
+        end
+
+        # Hand-checked accessibility on a 3x3 grid
+        pf3x3 = point_frame(3, 3)
+        @test length(worlds(pf3x3)) == 9
+        center = Point(2, 2)
+        @test collect(accessible(pf3x3, center, CL_N)) == [Point(2, 3)]
+        @test collect(accessible(pf3x3, center, CL_S)) == [Point(2, 1)]
+        @test collect(accessible(pf3x3, center, CL_E)) == [Point(3, 2)]
+        @test collect(accessible(pf3x3, center, CL_W)) == [Point(1, 2)]
+        @test collect(accessible(pf3x3, center, CL_NE)) == [Point(3, 3)]
+        @test collect(accessible(pf3x3, center, CL_NW)) == [Point(1, 3)]
+        @test collect(accessible(pf3x3, center, CL_SE)) == [Point(3, 1)]
+        @test collect(accessible(pf3x3, center, CL_SW)) == [Point(1, 1)]
+
+        sw_corner = Point(1, 1)
+        @test collect(accessible(pf3x3, sw_corner, CL_N)) == [Point(1, 2), Point(1, 3)]
+        @test collect(accessible(pf3x3, sw_corner, CL_E)) == [Point(2, 1), Point(3, 1)]
+        @test collect(accessible(pf3x3, sw_corner, CL_NE)) == [Point(2, 2), Point(2, 3), Point(3, 2), Point(3, 3)]
+        @test isempty(accessible(pf3x3, sw_corner, CL_S))
+        @test isempty(accessible(pf3x3, sw_corner, CL_W))
+        @test isempty(accessible(pf3x3, sw_corner, CL_SW))
+        @test isempty(accessible(pf3x3, sw_corner, CL_NW))
+        @test isempty(accessible(pf3x3, sw_corner, CL_SE))
+
+        # Check relation_holds explicitly (both Point objects and Tuples)
+        @test relation_holds(CL_N, Point(1, 1), Point(1, 2))
+        @test !relation_holds(CL_N, Point(1, 1), Point(2, 2))
+        @test relation_holds(CL_NE, Point(1, 1), Point(2, 2))
+        @test relation_holds(CL_SW, Point(2, 2), Point(1, 1))
+        @test relation_holds(CL_N, (1, 1), (1, 2))
+        @test relation_holds(CL_S, (1, 2), (1, 1))
+        @test relation_holds(CL_E, (1, 1), (2, 1))
+        @test relation_holds(CL_W, (2, 1), (1, 1))
+        @test relation_holds(CL_NW, (2, 1), (1, 2))
+        @test relation_holds(CL_SE, (1, 2), (2, 1))
+
+        # Test frame transitivity
+        for r in POINT2D_RELATIONS
+            @test istransitive(pf3x3, r)
+        end
+
+        # Test Full2DPointFrame and FullDimensionalFrame
+        @test Full2DPointFrame(3, 3).worlds == pf3x3.worlds
+        @test FullDimensionalFrame((3, 3), Point).worlds == pf3x3.worlds
+
+        # Lazy iterator check (does not return Vector directly, returns Generator)
+        @test !(accessible(pf3x3, center, CL_N) isa Vector)
+
+        # End-to-end modal check over 2D point frame
+        pool2d = FormulaPool(Signature((Diamond(CL_NE), Box(CL_SW))))
+        p_atom = atom(pool2d, "p")
+        f_dia = branch(pool2d, Diamond(CL_NE), p_atom)
+        f_box = branch(pool2d, Box(CL_SW), p_atom)
+
+        # p holds only at (3, 3)
+        model2d = Model(pf3x3, BOOLEAN, Dict("p" => Set([Point(3, 3)])))
+        @test check(f_dia, model2d, Point(2, 2)) == true
+        @test check(f_dia, model2d, Point(3, 3)) == false
+        @test check(f_dia, model2d, Point(1, 1)) == true
+
+        # Model where p holds at all worlds except (2, 2)
+        all_except_center = Set(w for w in worlds(pf3x3) if w != center)
+        model2d_box = Model(pf3x3, BOOLEAN, Dict("p" => all_except_center))
+        # SW of (2, 2) is (1, 1), where p is true, so [SW]p at (2, 2) is true
+        @test check(f_box, model2d_box, center) == true
+
+        # Invalid domains check
+        @test_throws ArgumentError point_frame(Int[], 1:3)
+        @test_throws ArgumentError point_frame(1:3, Int[])
+        @test_throws ArgumentError point_frame([2, 1], 1:3)
+        @test_throws ArgumentError point_frame(1:3, [2, 1])
+    end
 
     @test collect(accessible(points, 10, CustomPointRelation())) == [10]
     hooked_point_calls[] = 0
