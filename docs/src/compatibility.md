@@ -110,8 +110,8 @@ remain the core API.
 * `AbstractInterpretationSet`, `alphabet`, `feature`, `condition`, `threshold`,
   and `normalize` are SoleData/SoleModels concepts. They raise clear errors;
   they are not approximated by syntax payload inspection.
-* `RCC5Relations` is intentionally absent from Aletheia's selected RCC8
-  fragment and is an error-producing marker. It and the many-valued tableau
+* `RCC5Relations`, `IA3Relations`, and `IA7Relations` now map directly to
+  Aletheia's RCC5 and coarser Allen relation values. The many-valued tableau
   order helpers remain explicit semantic gaps. Compass `CL_*` names now map directly to Aletheia's 2D point
   relations. Every unsupported marker has its own singleton dispatch type,
   so one consumer method per name does not overwrite another; invoking a

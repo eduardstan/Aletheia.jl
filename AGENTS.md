@@ -20,7 +20,8 @@ When updating this file, preserve this bar for all agents and keep entries conci
 ## Modal breadth
 
 - Relation values and their generic `relation_holds` protocol live in `src/relations.jl`; generated interval/rectangle/point constructors live in `src/dimensional.jl`, and frame-condition traits/axiom schemas live in `src/frameclasses.jl`.
-- Dimensional constructors return the existing `Frame` with a callable accessibility provider, so `src/evaluation.jl` remains unchanged; RCC8 is the selected topological fragment and `RCC5` is intentionally later.
+- Generated interval frames use a private canonical relation provider and direct adjacency construction for `BEFORE`; arbitrary relation families retain the lazy predicate fallback. IA3/IA7 and RCC5 memberships follow SoleLogics' definitions and are exhaustively checked in `test/relations.jl`.
+- Dimensional constructors return the existing `Frame` with a callable accessibility provider; `src/evaluation.jl` recognizes the private interval provider for direct `BEFORE` adjacency while retaining generic fallback. RCC8 and RCC5 are available topological fragments.
 
 ## Semantics layer
 

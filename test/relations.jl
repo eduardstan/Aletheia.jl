@@ -74,6 +74,13 @@ end
     @test IA_B === STARTED_BY && IA_Bi === STARTS
     @test IA_E === FINISHED_BY && IA_Ei === FINISHES
     @test IA_D === CONTAINS && IA_Di === DURING
+    # Membership matches SoleLogics' IA7/IA3 definitions.
+    @test IA7Relations == (IA_AorO, IA_L, IA_DorBorE, IA_AiorOi, IA_Li, IA_DiorBiorEi)
+    @test IA3Relations == (IA_I, IA_L, IA_Li)
+    @test IA72IARelations(IA_AorO) == (IA_A, IA_O)
+    @test IA72IARelations(IA_DorBorE) == (IA_D, IA_B, IA_E)
+    @test IA32IARelations(IA_I) == (IA_A, IA_O, IA_D, IA_B, IA_E,
+        IA_Ai, IA_Oi, IA_Di, IA_Bi, IA_Ei)
     @test collect(accessible(interval_frame(5), I(2, 4), IA_B)) == [I(2, 3)]
     interval_worlds = worlds(interval_frame(3))
     @test collect(relation_successors(BEFORE, I(1, 2), interval_worlds)) ==
@@ -85,6 +92,24 @@ end
     @test all(collect(relation_successors(r, source, interval_worlds)) ==
         [target for target in interval_worlds if relation_holds(r, source, target)]
         for r in ALLEN_RELATIONS for source in interval_worlds)
+    coarse_relations = (IA_AorO, IA_DorBorE, IA_AiorOi, IA_DiorBiorEi, IA_I)
+    for (coarse, primitives) in zip(coarse_relations,
+            ((IA_A, IA_O), (IA_D, IA_B, IA_E), (IA_Ai, IA_Oi),
+                (IA_Di, IA_Bi, IA_Ei), IA32IARelations(IA_I)))
+        @test all(relation_holds(coarse, source, target) ==
+            any(relation_holds(r, source, target) for r in primitives)
+            for source in interval_worlds for target in interval_worlds)
+        @test all(Set(relation_successors(coarse, source, interval_worlds)) ==
+            Set(target for target in interval_worlds if relation_holds(coarse, source, target))
+            for source in interval_worlds)
+    end
+    provider_frame = interval_frame(3)
+    provider_worlds = worlds(provider_frame)
+    for r in (coarse_relations..., RCC8_RELATIONS..., RCC5Relations...)
+        @test all(Set(accessible(provider_frame, source, r)) ==
+            Set(target for target in provider_worlds if relation_holds(r, source, target))
+            for source in provider_worlds)
+    end
 
     @test relation_holds(DC, I(1, 2), I(3, 4))
     @test relation_holds(EC, I(1, 2), I(2, 3))
@@ -99,6 +124,21 @@ end
     end
     @test length(RCC8_BASICS) == 7
     @test Topo_TPP === TPPi && Topo_NTPP === NTPPi
+    @test RCC5Relations == (Topo_DR, PO, Topo_PP, Topo_PPi)
+    @test inverse(Topo_DR) === Topo_DR && inverse(Topo_PP) === Topo_PPi
+    @test relation_holds(Topo_DR, I(1, 2), I(2, 3))
+    @test relation_holds(Topo_PP, I(1, 2), I(1, 4))
+    @test relation_holds(Topo_PPi, I(1, 4), I(1, 2))
+    for r in RCC8_RELATIONS
+        @test all(Set(relation_successors(r, source, interval_worlds)) ==
+            Set(target for target in interval_worlds if relation_holds(r, source, target))
+            for source in interval_worlds)
+    end
+    for r in RCC5Relations
+        @test all(Set(relation_successors(r, source, interval_worlds)) ==
+            Set(target for target in interval_worlds if relation_holds(r, source, target))
+            for source in interval_worlds)
+    end
 
     rectangles = worlds(rectangle_frame(2, 2))
     @test length(rectangles) == 9
@@ -116,6 +156,11 @@ end
     @test all(collect(relation_successors(r, source, rectangles)) ==
         [target for target in rectangles if relation_holds(r, source, target)]
         for r in RCC8_RELATIONS for source in rectangles)
+    @test all(sum(relation_holds(r, source, target) for r in RCC5Relations) == 1
+        for source in rectangles for target in rectangles if !relation_holds(RCC_EQ, source, target))
+    @test all(Set(relation_successors(r, source, rectangles)) ==
+        Set(target for target in rectangles if relation_holds(r, source, target))
+        for r in RCC5Relations for source in rectangles)
     rr = rectangle_relation(MEETS, MEETS)
     @test inverse(rr) == rectangle_relation(MET_BY, MET_BY)
     @test isequal(rr, rectangle_relation(MEETS, MEETS))
@@ -312,6 +357,28 @@ end
     @test extension(diamond, model) == BitVector([true, false, false, false, false, false])
     @test check(box, model, I(1, 2)) == true
     @test check(box, model, I(3, 4)) == true
+
+    # The optimized provider is used only for canonical enumeration order;
+    # custom index permutations retain the generic, predicate-checked path.
+    noindex_frame = interval_frame(3; index=false)
+    noindex_worlds = collect(worlds(noindex_frame))
+    noindex_positions = Dict(world => i for (i, world) in enumerate(noindex_worlds))
+    @test Aletheia._relation_adjacency(noindex_frame, BEFORE, noindex_positions).rows ==
+        [[noindex_positions[target] for target in noindex_worlds if relation_holds(BEFORE, source, target)]
+            for source in noindex_worlds]
+    permuted = Dict(world => length(noindex_worlds) - i + 1 for (i, world) in enumerate(noindex_worlds))
+    permuted_frame = interval_frame(3; index=permuted)
+    permuted_adjacency = Aletheia._relation_adjacency(permuted_frame, BEFORE, permuted)
+    expected_permuted = Vector{Vector{Int}}(undef, length(noindex_worlds))
+    for source in noindex_worlds
+        expected_permuted[permuted[source]] =
+            [permuted[target] for target in noindex_worlds if relation_holds(BEFORE, source, target)]
+    end
+    @test permuted_adjacency.rows == expected_permuted
+    @test Aletheia._relation_adjacency(interval_frame(3), MEETS,
+        noindex_positions).rows ==
+        [[noindex_positions[target] for target in noindex_worlds if relation_holds(MEETS, source, target)]
+            for source in noindex_worlds]
 end
 
 

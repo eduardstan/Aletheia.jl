@@ -69,6 +69,17 @@ elseif kind == "interval_adjacency"
     else
         frame = Aletheia.interval_frame(n); ws = collect(Aletheia.worlds(frame)); execute(() -> interval_adjacency_a(frame, Aletheia.BEFORE, ws))
     end
+elseif kind == "interval_subset"
+    name, n_text = parts; n = parse(Int, n_text)
+    if side == "incumbent"
+        frame = SoleLogics.FullDimensionalFrame((n,), SoleLogics.Interval{Int}); ws = collect(SoleLogics.allworlds(frame))
+        relation_set = name == "ia3" ? SoleLogics.IA3Relations : name == "ia7" ? SoleLogics.IA7Relations : SoleLogics.RCC5Relations
+        execute(() -> interval_subset_s(frame, relation_set, ws))
+    else
+        frame = Aletheia.interval_frame(n); ws = collect(Aletheia.worlds(frame))
+        relation_set = name == "ia3" ? Aletheia.IA3Relations : name == "ia7" ? Aletheia.IA7Relations : Aletheia.RCC5Relations
+        execute(() -> interval_subset_a(frame, relation_set, ws))
+    end
 elseif kind == "interval_check"
     n = parse(Int, argument)
     if side == "incumbent"

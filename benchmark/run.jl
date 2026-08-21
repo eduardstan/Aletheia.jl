@@ -81,7 +81,11 @@ for n in (DEEP ? (6, 12, 24, 36) : (6,))
     push!(interval_cases, ("interval_adjacency", string(n))); push!(interval_labels, "interval adjacency n=$n")
     push!(interval_cases, ("interval_check", string(n))); push!(interval_labels, "Allen BEFORE check n=$n")
 end
-add_section_rows!("interval / dimensional", interval_labels, interval_cases; note="Aletheia BEFORE / SoleLogics IA_L")
+for name in ("ia3", "ia7", "rcc5")
+    push!(interval_cases, ("interval_subset", "$name:6")); push!(interval_labels, "interval subset $name n=6")
+end
+add_section_rows!("interval / dimensional", interval_labels, interval_cases;
+    note="Aletheia direct canonical traversal / SoleLogics arithmetic range traversal")
 
 println("[many-valued check]")
 mv_cases = [("many_check", "$algebra_name:$depth") for algebra_name in ("godel", "lukasiewicz", "h4"), depth in (DEEP ? (2, 4, 6) : (2,))]

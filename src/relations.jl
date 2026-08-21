@@ -130,6 +130,49 @@ const IA_Ei = FINISHES
 const IA_Di = DURING
 const IA_Oi = OVERLAPPED_BY
 
+# Coarser Allen relation families used by the Sole ecosystem. Their members
+# are unions of the primitive Allen relations, with the same orientation as
+# the corresponding incumbent values.
+struct IA_AorORelation <: IntervalRelation end
+struct IA_DorBorERelation <: IntervalRelation end
+struct IA_AiorOiRelation <: IntervalRelation end
+struct IA_DiorBiorEiRelation <: IntervalRelation end
+struct IA_IRelation <: IntervalRelation end
+
+const IA_AorO = IA_AorORelation()
+const IA_DorBorE = IA_DorBorERelation()
+const IA_AiorOi = IA_AiorOiRelation()
+const IA_DiorBiorEi = IA_DiorBiorEiRelation()
+const IA_I = IA_IRelation()
+
+const IA7Relation = Union{IA_AorORelation, IA_AiorOiRelation,
+    IA_DorBorERelation, IA_DiorBiorEiRelation}
+const IA3Relation = IA_IRelation
+
+const IA7Relations = (IA_AorO, IA_L, IA_DorBorE, IA_AiorOi, IA_Li, IA_DiorBiorEi)
+const IA3Relations = (IA_I, IA_L, IA_Li)
+
+IA72IARelations(::IA_AorORelation) = (IA_A, IA_O)
+IA72IARelations(::IA_AiorOiRelation) = (IA_Ai, IA_Oi)
+IA72IARelations(::IA_DorBorERelation) = (IA_D, IA_B, IA_E)
+IA72IARelations(::IA_DiorBiorEiRelation) = (IA_Di, IA_Bi, IA_Ei)
+IA32IARelations(::IA_IRelation) = (IA_A, IA_O, IA_D, IA_B, IA_E,
+    IA_Ai, IA_Oi, IA_Di, IA_Bi, IA_Ei)
+
+relation_holds(::IA_AorORelation, a, b) = relation_holds(IA_A, a, b) || relation_holds(IA_O, a, b)
+relation_holds(::IA_DorBorERelation, a, b) = relation_holds(IA_D, a, b) ||
+    relation_holds(IA_B, a, b) || relation_holds(IA_E, a, b)
+relation_holds(::IA_AiorOiRelation, a, b) = relation_holds(IA_Ai, a, b) || relation_holds(IA_Oi, a, b)
+relation_holds(::IA_DiorBiorEiRelation, a, b) = relation_holds(IA_Di, a, b) ||
+    relation_holds(IA_Bi, a, b) || relation_holds(IA_Ei, a, b)
+relation_holds(::IA_IRelation, a, b) = any(r -> relation_holds(r, a, b), IA32IARelations(IA_I))
+
+inverse(::IA_AorORelation) = IA_AiorOi
+inverse(::IA_DorBorERelation) = IA_DiorBiorEi
+inverse(::IA_AiorOiRelation) = IA_AorO
+inverse(::IA_DiorBiorEiRelation) = IA_DorBorE
+inverse(::IA_IRelation) = IA_I
+
 const ALLEN_RELATIONS = (BEFORE, MEETS, OVERLAPS, STARTS, DURING, FINISHES, EQUALS,
     AFTER, MET_BY, OVERLAPPED_BY, STARTED_BY, CONTAINS, FINISHED_BY)
 const IntervalRelations = ALLEN_RELATIONS
@@ -149,6 +192,11 @@ _relation_name(::OverlappedByRelation) = "overlapped-by"
 _relation_name(::StartedByRelation) = "started-by"
 _relation_name(::ContainsRelation) = "contains"
 _relation_name(::FinishedByRelation) = "finished-by"
+_relation_name(::IA_AorORelation) = "AO"
+_relation_name(::IA_DorBorERelation) = "DBE"
+_relation_name(::IA_AiorOiRelation) = "A̅O̅"
+_relation_name(::IA_DiorBiorEiRelation) = "D̅B̅E̅"
+_relation_name(::IA_IRelation) = "I"
 _relation_name(::IdentityRelation) = "identity"
 Base.show(io::IO, relation::IntervalRelation) = print(io, _relation_name(relation))
 
@@ -304,6 +352,30 @@ inverse(::TangentialProperPartInverseRelation) = TPP
 inverse(::NonTangentialProperPartRelation) = NTPPi
 inverse(::NonTangentialProperPartInverseRelation) = NTPP
 inverse(::RCCEqualsRelation) = RCC_EQ
+
+# RCC5 coarsens RCC8 by joining disconnected/contact and proper-part cases.
+struct RCC5DisjointRelation <: RCCRelation end
+struct RCC5ProperPartRelation <: RCCRelation end
+struct RCC5ProperPartInverseRelation <: RCCRelation end
+
+const Topo_DR = RCC5DisjointRelation()
+const Topo_PP = RCC5ProperPartRelation()
+const Topo_PPi = RCC5ProperPartInverseRelation()
+const RCC5_RELATIONS = (Topo_DR, PO, Topo_PP, Topo_PPi)
+const RCC5Relations = RCC5_RELATIONS
+const RCC5Relation = Union{RCC5DisjointRelation, typeof(PO), RCC5ProperPartRelation,
+    RCC5ProperPartInverseRelation}
+
+relation_holds(::RCC5DisjointRelation, a, b) = relation_holds(DC, a, b) || relation_holds(EC, a, b)
+relation_holds(::RCC5ProperPartRelation, a, b) = relation_holds(TPP, a, b) || relation_holds(NTPP, a, b)
+relation_holds(::RCC5ProperPartInverseRelation, a, b) = relation_holds(TPPi, a, b) || relation_holds(NTPPi, a, b)
+inverse(::RCC5DisjointRelation) = Topo_DR
+inverse(::RCC5ProperPartRelation) = Topo_PPi
+inverse(::RCC5ProperPartInverseRelation) = Topo_PP
+
+_relation_name(::RCC5DisjointRelation) = "dr"
+_relation_name(::RCC5ProperPartRelation) = "pp"
+_relation_name(::RCC5ProperPartInverseRelation) = "ppi"
 
 # ---------------------------------------------------------------------------
 # Compass logic 2D point relations
