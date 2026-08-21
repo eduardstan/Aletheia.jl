@@ -94,50 +94,80 @@ end
 function _interval_world_index(left, right, n)
     (left - 1) * (2n - left) ÷ 2 + right - left
 end
-function _interval_value(boundaries, worlds, left, right, n)
-    worlds === nothing ? Interval(boundaries[left], boundaries[right]) :
-        worlds[_interval_world_index(left, right, n)]
+struct _IntervalSuccessors{W}
+    worlds::W
+    n::Int
+    kfirst::Int
+    klast::Int
+    lfirst::Int
+    llast::Int
+    mode::UInt8
 end
-function _interval_candidates(boundaries, krange, lfirst, llast, worlds=nothing)
-    isempty(krange) && return ()
-    n = length(boundaries)
-    Iterators.flatten((
-        (_interval_value(boundaries, worlds, k, l, n) for l in lfirst(k):llast(k))
-        for k in krange if lfirst(k) <= llast(k)))
+Base.eltype(::Type{_IntervalSuccessors{W}}) where W = eltype(W)
+Base.IteratorSize(::Type{<:_IntervalSuccessors}) = Base.SizeUnknown()
+
+function _interval_successors(worlds, n, kfirst, klast, lfirst, llast, mode)
+    kfirst > klast || lfirst > llast ? () :
+        _IntervalSuccessors(worlds, n, kfirst, klast, lfirst, llast, UInt8(mode))
 end
-function _interval_relation_successors(relation, source::Interval, boundaries, worlds=nothing)
-    left = findfirst(value -> isequal(value, source.x), boundaries)
-    right = findfirst(value -> isequal(value, source.y), boundaries)
-    (left === nothing || right === nothing) && return nothing
+function Base.iterate(iter::_IntervalSuccessors)
+    k = iter.kfirst
+    l = iter.mode == 0 ? k + 1 : iter.lfirst
+    iterate(iter, k * (iter.n + 1) + l)
+end
+function Base.iterate(iter::_IntervalSuccessors, state::Int)
+    base = iter.n + 1
+    k = state ÷ base
+    l = state - k * base
+    (k > iter.klast || l > iter.llast) && return nothing
+    value = iter.worlds[_interval_world_index(k, l, iter.n)]
+    next = if iter.mode == 0
+        l < iter.llast ? k * base + l + 1 : (k + 1) * base + k + 2
+    elseif iter.mode == 1
+        l < iter.llast ? k * base + l + 1 : (k + 1) * base + iter.lfirst
+    else
+        (k + 1) * base + l
+    end
+    value, next
+end
+function _interval_relation_successors(relation, source::Interval, boundaries, worlds)
+    left = searchsortedfirst(boundaries, source.x)
+    right = searchsortedfirst(boundaries, source.y)
     n = length(boundaries)
+    (left > n || right > n || !isequal(boundaries[left], source.x) ||
+        !isequal(boundaries[right], source.y)) && return nothing
     if relation === BEFORE
-        return _interval_candidates(boundaries, (right + 1):(n - 1), k -> k + 1, _ -> n, worlds)
+        return (target for target in worlds if target.x > source.y)
     elseif relation === MEETS
-        return (_interval_value(boundaries, worlds, right, l, n) for l in (right + 1):n)
+        return _interval_successors(worlds, n, right, right, right + 1, n, 1)
     elseif relation === OVERLAPS
-        return _interval_candidates(boundaries, (left + 1):(right - 1), _ -> right + 1, _ -> n, worlds)
+        return _interval_successors(worlds, n, left + 1, right - 1, right + 1, n, 1)
     elseif relation === STARTS
-        return (_interval_value(boundaries, worlds, left, l, n) for l in (right + 1):n)
+        return _interval_successors(worlds, n, left, left, right + 1, n, 1)
     elseif relation === DURING
-        return _interval_candidates(boundaries, 1:(left - 1), _ -> right + 1, _ -> n, worlds)
+        return _interval_successors(worlds, n, 1, left - 1, right + 1, n, 1)
     elseif relation === FINISHES
-        return (_interval_value(boundaries, worlds, k, right, n) for k in 1:(left - 1))
+        return _interval_successors(worlds, n, 1, left - 1, right, right, 2)
     elseif relation === EQUALS
         return (source,)
     elseif relation === AFTER
-        return _interval_candidates(boundaries, 1:(left - 2), k -> k + 1, _ -> left - 1, worlds)
+        return _interval_successors(worlds, n, 1, left - 2, 0, left - 1, 0)
     elseif relation === MET_BY
-        return (_interval_value(boundaries, worlds, k, left, n) for k in 1:(left - 1))
+        return _interval_successors(worlds, n, 1, left - 1, left, left, 2)
     elseif relation === OVERLAPPED_BY
-        return _interval_candidates(boundaries, 1:(left - 1), k -> left + 1, _ -> right - 1, worlds)
+        return _interval_successors(worlds, n, 1, left - 1, left + 1, right - 1, 1)
     elseif relation === STARTED_BY
-        return (_interval_value(boundaries, worlds, left, l, n) for l in (left + 1):(right - 1))
+        return _interval_successors(worlds, n, left, left, left + 1, right - 1, 1)
     elseif relation === CONTAINS
-        return _interval_candidates(boundaries, (left + 1):(right - 2), k -> k + 1, _ -> right - 1, worlds)
+        return _interval_successors(worlds, n, left + 1, right - 2, 0, right - 1, 0)
     elseif relation === FINISHED_BY
-        return (_interval_value(boundaries, worlds, k, right, n) for k in (left + 1):(right - 1))
+        return _interval_successors(worlds, n, left + 1, right - 1, right, right, 2)
     end
     nothing
+end
+
+function relation_successors(::BeforeRelation, source::Interval, worlds)
+    (target for target in worlds if target.x > source.y)
 end
 function relation_successors(relation::IntervalRelation, source::Interval, worlds)
     world_values = _world_values(worlds)
@@ -275,7 +305,9 @@ function interval_frame(domain; index=true)
     ws = _interval_worlds(boundaries)
     world_values = collect(ws)
     relation_map = (source, relation) -> begin
-        targets = _interval_relation_successors(relation, source, boundaries, world_values)
+        targets = relation === BEFORE ?
+            relation_successors(relation, source, world_values) :
+            _interval_relation_successors(relation, source, boundaries, world_values)
         targets === nothing && (targets = relation_successors(relation, source, ws))
         targets === nothing &&
             (targets = (target for target in ws if _dimensional_relation_holds(relation, source, target, ws)))

@@ -87,8 +87,7 @@ The **before** run (before `relation_successors`) was:
 | full adjacency n=24 (300 worlds) | 216.38 μs | 493.12 μs | 0.44x | 2047 / 4093 |
 | end-to-end check n=24 | 759.09 μs | 1.03 ms | 0.74x | 2852 / 5171 |
 
-The **after** run (same quick suite, after the hook and arithmetic generated
-frame paths) was:
+The **allocating-hook** run (merged base, before the lazy-shape fix) was:
 
 | row | SoleLogics | Aletheia | ratio (S/A) | allocations |
 | --- | ---: | ---: | ---: | ---: |
@@ -100,13 +99,25 @@ frame paths) was:
 | full adjacency n=24 (300 worlds) | 180.56 μs | 1.05 ms | 0.17x | 2047 / 17002 |
 | end-to-end check n=24 | 663.66 μs | 1.13 ms | 0.59x | 2852 / 18427 |
 
-These are remeasurements after merging the theory stage into the branch. The
-hook materially improves Aletheia's n=12 adjacency construction versus the
-pre-hook row (353 μs → 36.3 μs), but the n=24 row is highly variable (493 μs
-pre-hook versus 1.05 ms here). The hook does **not** close the gap reliably:
-Aletheia remains 1.70x slower end-to-end at n=24, and the single-query row
-remains about 19x slower. The n=6 end-to-end case is 2.08x faster for Aletheia;
-n=12 is effectively tied at 0.94x.
+The **fixed lazy-hook** run (merged base, with a lazy arithmetic successor
+iterator and a reused adjacency `seen` buffer) was:
+
+| row | SoleLogics | Aletheia | ratio (S/A) | allocations |
+| --- | ---: | ---: | ---: | ---: |
+| generated IA-before | 216 ns | 6.08 μs | 0.04x | 6 / 97 |
+| full adjacency n=6 (21 worlds) | 1.46 μs | 2.30 μs | 0.63x | 106 / 110 |
+| end-to-end check n=6 | 11.89 μs | 7.95 μs | 1.50x | 247 / 212 |
+| full adjacency n=12 (78 worlds) | 16.34 μs | 28.28 μs | 0.58x | 446 / 457 |
+| end-to-end check n=12 | 70.07 μs | 1.00 ms | 0.07x | 745 / 760 |
+| full adjacency n=24 (300 worlds) | 193.81 μs | 342.21 μs | 0.57x | 2047 / 2056 |
+| end-to-end check n=24 | 720.50 μs | 786.28 μs | 0.92x | 2852 / 3057 |
+
+These are remeasurements after merging the theory stage into the branch. The allocating hook explains the apparent n=24 regression: it raised
+allocations from 764 to 1534 at n=12 and from 4093 to 17002 at n=24. The
+fixed lazy hook removes that per-source materialisation; fixed allocations are
+457 and 2056, respectively, below the pre-hook figures. This is the shape fix,
+not a timing/noise explanation. The fixed n=24 end-to-end row is now 786.28 μs
+versus 720.50 μs (0.92x), while the single-query row remains about 28x slower.
 
 The hook is optional: generated interval, rectangle, and point frames provide
 arithmetic successor paths for their built-in relation families, while an
@@ -116,8 +127,8 @@ the generic predicate filter. The external-family tests cover both paths.
 ### Theory contraction
 
 The theory row is intentionally a measurement, not a promise. In the merged-base
-quick run (600 dense, identically labelled worlds), raw checking was 976.77 μs
-and contraction plus checking was 16.05 ms (0.06x): contraction did **not**
+quick run (600 dense, identically labelled worlds), raw checking was 984.90 μs
+and contraction plus checking was 16.20 ms (0.06x): contraction did **not**
 win once quotient construction was included. That negative result is published
 rather than hidden; a downstream workload may amortize the quotient across many
 checks.
