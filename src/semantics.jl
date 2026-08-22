@@ -470,6 +470,54 @@ end
 Base.iterate(frame::Frame, state...) = iterate(frame.worlds, state...)
 Base.length(frame::Frame) = length(frame.worlds)
 
+Base.show(io::IO, frame::Frame) =
+    print(io, "Frame(", length(frame.worlds), " world", length(frame.worlds) == 1 ? "" : "s", ")")
+
+function Base.show(io::IO, ::MIME"text/plain", frame::Frame)
+    nw = length(frame.worlds)
+    nrel = frame.relations isa AbstractDict ? length(frame.relations) : 1
+    rel_str = nrel == 1 ? "1 relation" : "$nrel relations"
+    print(io, "Frame ($nw world$(nw == 1 ? "" : "s"), $rel_str)")
+
+    if nw <= 10
+        print(io, "\n  Worlds ($(nw)): ")
+        print(io, join(repr.(frame.worlds), ", "))
+        if frame.relations isa AbstractDict && !isempty(frame.relations)
+            print(io, "\n  Relations:")
+            for (name, adj) in frame.relations
+                print(io, "\n    ", repr(name), ": ")
+                if adj isa AbstractDict
+                    lines = String[]
+                    for w in frame.worlds
+                        targets = _relation_targets(frame, w, name)
+                        if !isempty(targets)
+                            t_str = join(repr.(targets), ", ")
+                            push!(lines, "$(repr(w)) → $t_str")
+                        end
+                    end
+                    if isempty(lines)
+                        print(io, "(none)")
+                    else
+                        print(io, join(lines, "; "))
+                    end
+                else
+                    print(io, "<callable>")
+                end
+            end
+        elseif !(frame.relations isa AbstractDict)
+            print(io, "\n  Relations: <callable>")
+        end
+    else
+        shown_worlds = join(repr.(frame.worlds[1:5]), ", ")
+        elided = nw - 5
+        print(io, "\n  Worlds ($nw): $shown_worlds, … ($elided elided)")
+        if frame.relations isa AbstractDict && !isempty(frame.relations)
+            rel_names = join(repr.(keys(frame.relations)), ", ")
+            print(io, "\n  Relations: $rel_names")
+        end
+    end
+end
+
 """
     Valuation(data)
 
@@ -674,3 +722,137 @@ function interpret(atom::Atom, model::Model{T}, world)::T where T
     raw isa T || throw(ArgumentError("valuation returned $(typeof(raw)); expected $T"))
     _validate_atom_value(model.algebra, raw)
 end
+
+Base.show(io::IO, model::Model) =
+    print(io, "Model(", length(frame(model).worlds), " world", length(frame(model).worlds) == 1 ? "" : "s", ", ", algebra(model), ")")
+
+function _format_valuation_summary(val_data, worlds_tuple)
+    lines = String[]
+    if val_data isa AbstractDict
+        atom_map = Dict{Any, Dict{Any, Any}}()
+        for (k, v) in val_data
+            if k isa Tuple && length(k) == 2
+                w1_idx = findfirst(w -> isequal(w, k[1]), worlds_tuple)
+                w2_idx = findfirst(w -> isequal(w, k[2]), worlds_tuple)
+                if w1_idx !== nothing && w2_idx === nothing
+                    w, a = k[1], k[2]
+                elseif w2_idx !== nothing && w1_idx === nothing
+                    a, w = k[1], k[2]
+                else
+                    a, w = k[1], k[2]
+                end
+                get!(atom_map, a, Dict{Any,Any}())[w] = v
+            elseif any(w -> isequal(w, k), worlds_tuple)
+                if v isa AbstractDict
+                    for (a, val) in v
+                        get!(atom_map, a, Dict{Any,Any}())[k] = val
+                    end
+                end
+            else
+                a = k
+                if v isa AbstractSet || v isa AbstractVector || v isa Tuple
+                    for w in v
+                        get!(atom_map, a, Dict{Any,Any}())[w] = true
+                    end
+                elseif v isa AbstractDict
+                    for (w, val) in v
+                        get!(atom_map, a, Dict{Any,Any}())[w] = val
+                    end
+                else
+                    get!(atom_map, a, Dict{Any,Any}())[:all] = v
+                end
+            end
+        end
+
+        for a in sort(collect(keys(atom_map)); by=string)
+            wdict = atom_map[a]
+            if all(v -> v === true, values(wdict))
+                sat_worlds = [w for w in worlds_tuple if get(wdict, w, false) === true]
+                if isempty(sat_worlds)
+                    push!(lines, "$(a): {}")
+                else
+                    push!(lines, "$(a): {$(join(repr.(sat_worlds), ", "))}")
+                end
+            else
+                parts = String[]
+                for w in worlds_tuple
+                    if haskey(wdict, w)
+                        push!(parts, "$(repr(w)) => $(wdict[w])")
+                    end
+                end
+                if isempty(parts)
+                    push!(lines, "$(a): {}")
+                else
+                    push!(lines, "$(a): {$(join(parts, ", "))}")
+                end
+            end
+        end
+    end
+    lines
+end
+
+function Base.show(io::IO, ::MIME"text/plain", model::Model)
+    f = frame(model)
+    nw = length(f.worlds)
+    alg = algebra(model)
+    nrel = f.relations isa AbstractDict ? length(f.relations) : 1
+    rel_str = nrel == 1 ? "1 relation" : "$nrel relations"
+    print(io, "Model ($nw world$(nw == 1 ? "" : "s"), $rel_str, $alg)")
+
+    if nw <= 10
+        print(io, "\n  Worlds ($(nw)): ")
+        print(io, join(repr.(f.worlds), ", "))
+
+        if f.relations isa AbstractDict && !isempty(f.relations)
+            print(io, "\n  Relations:")
+            for (name, adj) in f.relations
+                print(io, "\n    ", repr(name), ": ")
+                if adj isa AbstractDict
+                    lines = String[]
+                    for w in f.worlds
+                        targets = _relation_targets(f, w, name)
+                        if !isempty(targets)
+                            t_str = join(repr.(targets), ", ")
+                            push!(lines, "$(repr(w)) → $t_str")
+                        end
+                    end
+                    if isempty(lines)
+                        print(io, "(none)")
+                    else
+                        print(io, join(lines, "; "))
+                    end
+                else
+                    print(io, "<callable>")
+                end
+            end
+        end
+
+        val = valuation(model)
+        val_data = val isa Valuation ? val.data : val
+        if val_data isa AbstractDict && !isempty(val_data)
+            print(io, "\n  Valuation:")
+            lines = _format_valuation_summary(val_data, f.worlds)
+            for line in lines
+                print(io, "\n    ", line)
+            end
+        elseif val_data isa Function
+            print(io, "\n  Valuation: <function>")
+        end
+    else
+        shown_worlds = join(repr.(f.worlds[1:5]), ", ")
+        elided = nw - 5
+        print(io, "\n  Worlds ($nw): $shown_worlds, … ($elided elided)")
+        if f.relations isa AbstractDict && !isempty(f.relations)
+            rel_names = join(repr.(keys(f.relations)), ", ")
+            print(io, "\n  Relations: $rel_names")
+        end
+        val = valuation(model)
+        val_data = val isa Valuation ? val.data : val
+        if val_data isa AbstractDict
+            print(io, "\n  Valuation: $(length(val_data)) entry/entries")
+        elseif val_data isa Function
+            print(io, "\n  Valuation: <function>")
+        end
+    end
+end
+

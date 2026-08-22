@@ -93,6 +93,32 @@ struct BisimulationContraction{M,Q,W}
 end
 const QuotientModel = BisimulationContraction
 
+Base.show(io::IO, contraction::BisimulationContraction) =
+    print(io, "BisimulationContraction(", length(contraction.world_map), " → ", length(contraction.classes), " worlds)")
+
+function Base.show(io::IO, ::MIME"text/plain", contraction::BisimulationContraction)
+    n_orig = length(contraction.world_map)
+    n_classes = length(contraction.classes)
+    ratio = n_orig == 0 ? 0.0 : (1.0 - n_classes / n_orig)
+    pct = round(Int, ratio * 100)
+    print(io, "BisimulationContraction ($n_orig → $n_classes worlds, $pct% collapse ratio)")
+
+    if n_classes <= 10
+        print(io, "\n  Classes ($n_classes):")
+        for (i, class) in enumerate(contraction.classes)
+            members_str = join(repr.(class.members), ", ")
+            print(io, "\n    Class $i: $members_str")
+        end
+    else
+        print(io, "\n  Classes ($n_classes):")
+        for (i, class) in enumerate(contraction.classes[1:5])
+            members_str = join(repr.(class.members), ", ")
+            print(io, "\n    Class $i: $members_str")
+        end
+        print(io, "\n    … ($(n_classes - 5) elided)")
+    end
+end
+
 model(contraction::BisimulationContraction) = contraction.model
 classes(contraction::BisimulationContraction) = contraction.classes
 world_map(contraction::BisimulationContraction) = contraction.world_map

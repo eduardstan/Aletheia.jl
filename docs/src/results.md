@@ -56,6 +56,26 @@ same representation.
 | random modal, 24 worlds / .50 / depth 4 | 20.19 μs | 7.03 μs | 2.87× | 406 / 20.781 KiB ; 106 / 14.516 KiB |
 | interval adjacency, n=6 | 0.94 μs | 0.84 μs | 1.12× | 103 / 4.141 KiB ; 100 / 3.656 KiB |
 | Allen BEFORE check, n=6 | 14.14 μs | 6.70 μs | 2.11× | 230 / 32.234 KiB ; 176 / 22.109 KiB |
+| finite chain G3 check, depth 2 | 2.32 μs | 1.70 μs | 1.36× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
+| finite chain Ł3 check, depth 2 | 2.23 μs | 2.08 μs | 1.08× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
+| non-chain H4 check, depth 2 | 2.47 μs | 2.07 μs | 1.19× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
+| learning from interpretations, 8 models / 4 hypotheses | 235.70 μs | 71.03 μs | 3.32× | 6,354 / 226.531 KiB ; 1,928 / 115.469 KiB |
+
+The extension comparison is explicitly an equivalent all-world check loop on
+SoleLogics because it has no `extension` API; it is not labelled as an
+unsupported incumbent win. Modal rows use the fixed seed above and disable
+normalization to isolate evaluation. The ILP row constructs
+`learning_from_interpretations` examples and scores hypotheses over all
+interpretations through the check/eval loop. H4 is the landed finite
+non-chain FLew algebra, not a fabricated placeholder.
+
+The largest evaluation ratios are attributable to allocation shape: the
+incumbent all-world extension loop allocates a fresh structural evaluation per
+world (12,604 and 78,436 allocations), while Aletheia evaluates the formula DAG
+once into a BitVector (143 and 339). The random modal ratios shrink with larger
+world counts because both sides then pay relation traversal; this is measured
+allocation/time behavior, not an assumed cause.
+
 ### Dimensional traversal profile and size sweep
 
 The pre-fix Julia `Profile` trace sampled the `relation_successors` generator
@@ -81,25 +101,36 @@ in the hot call. The same run measured the consumer subsets at n=6: IA3
 Aletheia. All generated edges are checked against their predicates in
 `test/relations.jl`.
 
-| finite chain G3 check, depth 2 | 2.32 μs | 1.70 μs | 1.36× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
-| finite chain Ł3 check, depth 2 | 2.23 μs | 2.08 μs | 1.08× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
-| non-chain H4 check, depth 2 | 2.47 μs | 2.07 μs | 1.19× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
-| learning from interpretations, 8 models / 4 hypotheses | 235.70 μs | 71.03 μs | 3.32× | 6,354 / 226.531 KiB ; 1,928 / 115.469 KiB |
+## Stage 2a SoleModels consumer (repeated on stage 2b head)
 
-The extension comparison is explicitly an equivalent all-world check loop on
-SoleLogics because it has no `extension` API; it is not labelled as an
-unsupported incumbent win. Modal rows use the fixed seed above and disable
-normalization to isolate evaluation. The ILP row constructs
-`learning_from_interpretations` examples and scores hypotheses over all
-interpretations through the check/eval loop. H4 is the landed finite
-non-chain FLew algebra, not a fabricated placeholder.
+The earlier single-run **12.3× cold / 15.0× warm** consumer headline is
+replaced by this eight-repetition distribution.  The method is unchanged: a
+fixed `0xDADA_2024` seed, exact mask gate before each timing, fresh warmed
+children under GNU `timeout`, five BenchmarkTools samples per measurement,
+and file-captured output.  Ratios are baseline/routed.
 
-The largest evaluation ratios are attributable to allocation shape: the
-incumbent all-world extension loop allocates a fresh structural evaluation per
-world (12,604 and 78,436 allocations), while Aletheia evaluates the formula DAG
-once into a BitVector (143 and 339). The random modal ratios shrink with larger
-world counts because both sides then pay relation traversal; this is measured
-allocation/time behavior, not an assumed cause.
+Across all 18 sweep rows and repetitions, the median ratio is **14.9× cold /
+15.1× warm** (row-median aggregate: **15.1× / 14.6×**).  This is a typical
+central tendency, not a stable per-row guarantee: the full min/median/max/spread
+table and every loadavg reading are in
+`data/al-dataset-consumer/report.md` and its raw `run.txt`.
+
+| representative row | cold ratio min / median / max (spread) | warm ratio min / median / max (spread) |
+| --- | ---: | ---: |
+| 16 rules, depth 4, 16 instances (row 6) | 1.52× / 14.66× / 199.39× (197.87×) | 1.10× / 13.60× / 190.54× (189.44×) |
+| 16 rules, depth 4, 16 instances (row 9) | 1.51× / 14.73× / 16.47× (14.96×) | 1.38× / 13.81× / 19.57× (18.19×) |
+| 16 rules, depth 4, 16 instances (row 12) | 13.36× / 15.21× / 16.35× (2.99×) | 9.84× / 13.74× / 16.06× (6.22×) |
+| 16 rules, depth 4, 16 instances (row 15) | 1.50× / 15.11× / 173.93× (172.43×) | 12.13× / 13.65× / 25.72× (13.59×) |
+| 16 rules, depth 4, 16 instances (row 18) | 12.49× / 15.46× / 17.37× (4.88×) | 13.75× / 15.11× / 40.50× (26.75×) |
+
+The agreement gate passed in all eight repetitions (six shapes, 352 exact
+rule-instance masks).  Allocation counts were deterministic for every routed
+and warm row; five baseline-cold rows varied between repetitions and are
+reported as a defect/measurement finding rather than averaged away.  Some
+ranges include parity or a loss (the minimum is 0.25× cold and 0.99× warm),
+so contention is not the only explanation: endpoint loadavg does not track the
+outliers monotonically.  Stage 2b produced no systematic shift detectable
+within this spread.
 
 ## Bisimulation contraction amortisation
 
