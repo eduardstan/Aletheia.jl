@@ -101,6 +101,37 @@ in the hot call. The same run measured the consumer subsets at n=6: IA3
 Aletheia. All generated edges are checked against their predicates in
 `test/relations.jl`.
 
+## Stage 2a SoleModels consumer (repeated on stage 2b head)
+
+The earlier single-run **12.3× cold / 15.0× warm** consumer headline is
+replaced by this eight-repetition distribution.  The method is unchanged: a
+fixed `0xDADA_2024` seed, exact mask gate before each timing, fresh warmed
+children under GNU `timeout`, five BenchmarkTools samples per measurement,
+and file-captured output.  Ratios are baseline/routed.
+
+Across all 18 sweep rows and repetitions, the median ratio is **14.9× cold /
+15.1× warm** (row-median aggregate: **15.1× / 14.6×**).  This is a typical
+central tendency, not a stable per-row guarantee: the full min/median/max/spread
+table and every loadavg reading are in
+`data/al-dataset-consumer/report.md` and its raw `run.txt`.
+
+| representative row | cold ratio min / median / max (spread) | warm ratio min / median / max (spread) |
+| --- | ---: | ---: |
+| 16 rules, depth 4, 16 instances (row 6) | 1.52× / 14.66× / 199.39× (197.87×) | 1.10× / 13.60× / 190.54× (189.44×) |
+| 16 rules, depth 4, 16 instances (row 9) | 1.51× / 14.73× / 16.47× (14.96×) | 1.38× / 13.81× / 19.57× (18.19×) |
+| 16 rules, depth 4, 16 instances (row 12) | 13.36× / 15.21× / 16.35× (2.99×) | 9.84× / 13.74× / 16.06× (6.22×) |
+| 16 rules, depth 4, 16 instances (row 15) | 1.50× / 15.11× / 173.93× (172.43×) | 12.13× / 13.65× / 25.72× (13.59×) |
+| 16 rules, depth 4, 16 instances (row 18) | 12.49× / 15.46× / 17.37× (4.88×) | 13.75× / 15.11× / 40.50× (26.75×) |
+
+The agreement gate passed in all eight repetitions (six shapes, 352 exact
+rule-instance masks).  Allocation counts were deterministic for every routed
+and warm row; five baseline-cold rows varied between repetitions and are
+reported as a defect/measurement finding rather than averaged away.  Some
+ranges include parity or a loss (the minimum is 0.25× cold and 0.99× warm),
+so contention is not the only explanation: endpoint loadavg does not track the
+outliers monotonically.  Stage 2b produced no systematic shift detectable
+within this spread.
+
 ## Bisimulation contraction amortisation
 
 The correctness gate ran **96 seeded random labelled models** and 16 random
