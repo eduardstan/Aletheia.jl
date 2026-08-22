@@ -8,6 +8,8 @@
 struct VocabularyUnknownConnective end
 Aletheia.arity(::VocabularyUnknownConnective) = 1
 
+struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
+
 @testset "frame, world, and relation vocabulary" begin
     worlds_small = (:a, :b, :c)
     frame_small = Frame(worlds_small,
@@ -209,7 +211,40 @@ Aletheia.arity(::VocabularyUnknownConnective) = 1
     @test Base.isequal(atom_p, branch(pool, Diamond(globalrel), atom_p)) == false
     @test (atom_p == branch(pool, Diamond(globalrel), atom_p)) == false
 
-    @test collect(accessibles(frame_small, [:a, :b], :R)) == [:b, :c]
+    # The world-set accessibility view is lazy and must survive re-iteration:
+    # a shared `seen` set across passes silently drops already-yielded worlds.
+    reachable = accessibles(frame_small, [:a, :b], :R)
+    @test !(reachable isa AbstractVector)
+    @test collect(reachable) == [:b, :c]
+    @test !isempty(reachable)
+    @test collect(reachable) == [:b, :c]
+
+    # Natural relations keep the frame's world validation, and an explicitly
+    # stored adjacency still wins over the natural reading.
+    @test_throws KeyError accessible(frame_small, :not_a_world, identityrel)
+    @test_throws KeyError accessible(frame_small, :not_a_world, globalrel)
+    @test_throws KeyError accessible(frame_small, :not_a_world, at_b)
+    @test_throws KeyError accessible(frame_small, :not_a_world, tocenterrel)
+    stored_identity = Frame(worlds_small, Dict(identityrel => Dict(:a => (:b,), :b => (), :c => ())))
+    @test collect(accessible(stored_identity, :a, identityrel)) == [:b]
+    callable_relations = Frame(worlds_small, (world, relation) ->
+        relation == identityrel ? (world == :a ? (:b,) : ()) : ())
+    @test collect(accessible(callable_relations, :a, identityrel)) == [:b]
+    @test collect(accessible(callable_relations, :a, globalrel)) == []
+
+    # `check(formula, model, AnyWorld())` is satisfaction at some world; the
+    # many-valued branch counts only the algebra's top as satisfied.
+    any_pool = FormulaPool(Signature((¬, ∧)))
+    any_p = atom(any_pool, "p")
+    any_frame = Frame((:w1, :w2))
+    @test check(any_p, Model(any_frame, BOOLEAN, Dict("p" => Set([:w2]))), AnyWorld())
+    @test !check(any_p, Model(any_frame, BOOLEAN, Dict("p" => Set{Symbol}())), AnyWorld())
+    @test check(branch(any_pool, ¬, any_p),
+        Model(any_frame, BOOLEAN, Dict("p" => Set([:w2]))), AnyWorld())
+    @test check(any_p, Model(any_frame, GodelAlgebra(),
+        Dict("p" => Dict(:w1 => 1.0, :w2 => 0.5))), AnyWorld())
+    @test !check(any_p, Model(any_frame, GodelAlgebra(),
+        Dict("p" => Dict(:w1 => 0.9, :w2 => 0.5))), AnyWorld())
     @test_throws ArgumentError collateworlds(frame_small, VocabularyUnknownConnective(), (Set([:a]),))
 
     # Point and rectangle dimensional defaults share the ordinary Frame API.
@@ -222,4 +257,36 @@ Aletheia.arity(::VocabularyUnknownConnective) = 1
     @test emptyworld(grid) == Point(-1, -1)
     @test centralworld(rectangles) isa Rectangle
     @test emptyworld(rectangles) == Rectangle(Interval(-1, 0), Interval(-1, 0))
+
+    # Non-dimensional worlds have no dimensional default, and a frame type that
+    # does not implement the protocol is told to provide one.
+    symbolic_frame = Frame(worlds_small)
+    @test_throws MethodError emptyworld(symbolic_frame)
+    @test_throws MethodError centralworld(symbolic_frame)
+    @test_throws ErrorException emptyworld(VocabularyBareFrame())
+    @test_throws ErrorException centralworld(VocabularyBareFrame())
+
+    # Grounding relations reach the same worlds from every source.
+    center = centralworld(interval)
+    center_pool = FormulaPool(Signature((Diamond(tocenterrel), Box(tocenterrel), Diamond(globalrel))))
+    center_p = atom(center_pool, "p")
+    center_diamond = branch(center_pool, Diamond(tocenterrel), center_p)
+    center_box = branch(center_pool, Box(tocenterrel), center_p)
+    at_center = Model(interval, BOOLEAN, Dict("p" => Set([center])))
+    nowhere = Model(interval, BOOLEAN, Dict("p" => Set{typeof(center)}()))
+    @test all(extension(center_diamond, at_center))
+    @test all(extension(center_box, at_center))
+    @test !any(extension(center_diamond, nowhere))
+    @test all(check(center_diamond, at_center, world) for world in worlds(interval))
+    @test all(extension(branch(center_pool, Diamond(globalrel), center_p), at_center))
+    @test !any(extension(branch(center_pool, Diamond(globalrel), center_p), nowhere))
+
+    # A stored adjacency keeps precedence over the natural grounding reading.
+    stored_global = Frame(worlds_small,
+        Dict(globalrel => Dict(:a => (:b,), :b => (:c,), :c => ())))
+    stored_pool = FormulaPool(Signature((Diamond(globalrel),)))
+    stored_p = atom(stored_pool, "p")
+    stored_model = Model(stored_global, BOOLEAN, Dict("p" => Set([:c])))
+    @test extension(branch(stored_pool, Diamond(globalrel), stored_p), stored_model) ==
+        BitVector([false, true, false])
 end

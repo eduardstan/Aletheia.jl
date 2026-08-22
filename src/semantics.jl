@@ -366,6 +366,13 @@ end
 
 function _relation_targets(frame::Frame, world, relation_name)
     _is_world(frame.worlds, world) || throw(KeyError(world))
+    _stored_relation_targets(frame, world, relation_name)
+end
+
+_has_stored_relation(frame::Frame, relation) =
+    frame.relations isa AbstractDict && haskey(frame.relations, relation)
+
+function _stored_relation_targets(frame::Frame, world, relation_name)
     stored = frame.relations
     if stored isa Function || stored isa _RelationProvider
         if applicable(stored, world, relation_name)
@@ -400,11 +407,31 @@ end
 """Return the lazy worlds accessible from `world` via `relation`."""
 accessibles(frame::Frame, world, relation_name) = accessible(frame, world, relation_name)
 
+# A lazy de-duplicating view.  The `seen` set is allocated per iteration pass,
+# so the returned object stays re-iterable like any other lazy iterator.
+struct _DistinctWorlds{S}
+    source::S
+end
+Base.IteratorSize(::Type{<:_DistinctWorlds}) = Base.SizeUnknown()
+Base.IteratorEltype(::Type{<:_DistinctWorlds}) = Base.EltypeUnknown()
+Base.iterate(distinct::_DistinctWorlds) = _next_distinct(distinct, Set{Any}(), ())
+Base.iterate(distinct::_DistinctWorlds, state) = _next_distinct(distinct, state[1], (state[2],))
+
+function _next_distinct(distinct::_DistinctWorlds, seen, inner)
+    while true
+        step = iterate(distinct.source, inner...)
+        step === nothing && return nothing
+        value, inner_state = step
+        inner = (inner_state,)
+        value in seen && continue
+        push!(seen, value)
+        return value, (seen, inner_state)
+    end
+end
+
 """Return distinct worlds reachable from a world vector, lazily."""
 function accessibles(frame::Frame, world_set::AbstractVector, relation_name)
-    seen = Set{Any}()
-    targets = (target for source in world_set for target in accessible(frame, source, relation_name))
-    Iterators.filter(target -> target in seen ? false : (push!(seen, target); true), targets)
+    _DistinctWorlds((target for source in world_set for target in accessible(frame, source, relation_name)))
 end
 
 """Return the worlds satisfying a Boolean connective from child extensions.

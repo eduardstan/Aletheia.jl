@@ -85,6 +85,11 @@ end
     world = first(CompatibilityClient.allworlds(world_frame))
     model = CompatibilityClient.KripkeStructure(world_frame, Dict("p" => Set([world])))
     @test CompatibilityClient.check(p, model, world)
+    @test Set(CompatibilityClient.collateworlds(world_frame,
+        CompatibilityClient.token(conjunction), (Set([world]), Set([world])))) == Set([world])
+    grounded = CompatibilityClient.SyntaxBranch(
+        CompatibilityClient.diamond(CompatibilityClient.globalrel), p)
+    @test CompatibilityClient.isgrounded(grounded)
     @test CompatibilityClient.TruthDict(Dict("p" => Set([world]))) isa CompatibilityClient.Valuation
     @test CompatibilityClient.worldtype(model) <: CompatibilityClient.Interval
     @test_throws ArgumentError CompatibilityClient.worldtype(world_frame)

@@ -592,16 +592,15 @@ end
 ismodal(::Any) = false
 ismodal(::Type{<:Diamond}) = true
 ismodal(::Type{<:Box}) = true
-ismodal(::Union{Diamond,Box}) = true
+ismodal(connective::AbstractRelationalConnective) = ismodal(typeof(connective))
 isunary(connective) = arity(connective) == 1
 isbox(::Any) = false
 isbox(::Type{<:Diamond}) = false
 isbox(::Type{<:Box}) = true
-isbox(::Box) = true
-isbox(::Diamond) = false
+isbox(connective::AbstractRelationalConnective) = isbox(typeof(connective))
 isdiamond(::Any) = false
-isdiamond(connective::Union{Diamond,Box}) = ismodal(typeof(connective)) && !isbox(typeof(connective))
 isdiamond(C::Type) = ismodal(C) && !isbox(C)
+isdiamond(connective::AbstractRelationalConnective) = isdiamond(typeof(connective))
 
 const NEGATION = Negation()
 const CONJUNCTION = Conjunction()

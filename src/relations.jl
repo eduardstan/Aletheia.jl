@@ -87,18 +87,41 @@ syntaxstring(::ToCenterRelation; kwargs...) = "◉"
 # spellings for identity; retain both as the same singleton value.
 const identityrel = IDENTITY
 
+"""Return whether a relation has source-independent accessibility targets.
+
+A `true` result promises that evaluating accessibility from any world in a
+frame yields the same target set; evaluators may use this contract when
+constructing relation extensions.
+"""
 isgrounding(::Any) = false
 isgrounding(::GlobalRelation) = true
 isgrounding(::AtWorldRelation) = true
 isgrounding(::ToCenterRelation) = true
 
-# Frame-level natural relations are handled before a frame's user relation
-# map.  Each method returns an iterable, so `accessible` can preserve its
-# lazy generator boundary.
-_relation_targets(frame::Frame, world, ::GlobalRelation) = frame.worlds
-_relation_targets(frame::Frame, world, ::IdentityRelation) = (world,)
-_relation_targets(frame::Frame, world, relation::AtWorldRelation) = (relation.w,)
-_relation_targets(frame::Frame, world, ::ToCenterRelation) = (centralworld(frame),)
+# Frame-level natural relations provide defaults for ordinary maps. Explicit
+# stored/callable providers retain precedence, except the center relation whose
+# target is defined by the frame itself. Each method returns an iterable so
+# `accessible` can preserve its lazy generator boundary.
+function _natural_targets(frame::Frame, world, relation, natural)
+    _is_world(frame.worlds, world) || throw(KeyError(world))
+    _has_stored_relation(frame, relation) &&
+        return _stored_relation_targets(frame, world, relation)
+    # Callable/provider frames are explicit accessibility definitions.  Keep
+    # the center relation natural because dimensional providers do not define a
+    # source predicate for it.
+    relation isa ToCenterRelation && return natural()
+    (frame.relations isa Function || frame.relations isa _RelationProvider) &&
+        return _stored_relation_targets(frame, world, relation)
+    natural()
+end
+_relation_targets(frame::Frame, world, relation::GlobalRelation) =
+    _natural_targets(frame, world, relation, () -> frame.worlds)
+_relation_targets(frame::Frame, world, relation::IdentityRelation) =
+    _natural_targets(frame, world, relation, () -> (world,))
+_relation_targets(frame::Frame, world, relation::AtWorldRelation) =
+    _natural_targets(frame, world, relation, () -> (relation.w,))
+_relation_targets(frame::Frame, world, relation::ToCenterRelation) =
+    _natural_targets(frame, world, relation, () -> (centralworld(frame),))
 accessibles(frame::Frame, ::GlobalRelation) = worlds(frame)
 
 # ---------------------------------------------------------------------------
