@@ -289,3 +289,11 @@ function check(formula::Formula, model::Model{T}, world)::T where T
     values = _evaluate(formula, model, Vector{T})
     values[position]
 end
+
+"""Check whether a formula holds at some world via the incumbent marker."""
+function check(formula::Formula, model::Model{Bool,A}, ::AnyWorld)::Bool where {A<:BooleanAlgebra}
+    any(extension(formula, model))
+end
+function check(formula::Formula, model::Model{T}, ::AnyWorld)::Bool where T
+    any(value -> value == top(algebra(model)), extension(formula, model))
+end

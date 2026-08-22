@@ -4,6 +4,19 @@ import Base: join
 # Formula syntax remains in syntax.jl; this file never turns a truth value into a
 # Formula, nor does it evaluate a Branch.
 
+"""Marker for values used as worlds in modal frames."""
+abstract type AbstractWorld end
+"""Abstract accessibility-frame vocabulary used by Sole consumers."""
+abstract type AbstractFrame{W} end
+"""Abstract frame with one implicit accessibility relation."""
+abstract type AbstractUniModalFrame{W} <: AbstractFrame{W} end
+"""Abstract frame with named accessibility relations."""
+abstract type AbstractMultiModalFrame{W} <: AbstractFrame{W} end
+"""The incumbent's world-set dispatch alias."""
+const AbstractWorlds{W} = AbstractVector{W} where {W<:AbstractWorld}
+"""Marker used when a grounded formula is checked without choosing a world."""
+struct AnyWorld end
+
 """
     TruthAlgebra{T}
 
@@ -225,7 +238,7 @@ position dictionary for algorithms that use stable positions.  A one-world
 frame uses this same ordinary type; no propositional special case exists.
 See Blackburn, de Rijke, and Venema, *Modal Logic*, §1.3 [blackburn2001](@cite).
 """
-struct Frame{W<:Tuple,RS,I}
+struct Frame{W<:Tuple,RS,I} <: AbstractMultiModalFrame{eltype(W)}
     worlds::W
     relations::RS
     index::I
@@ -353,6 +366,13 @@ end
 
 function _relation_targets(frame::Frame, world, relation_name)
     _is_world(frame.worlds, world) || throw(KeyError(world))
+    _stored_relation_targets(frame, world, relation_name)
+end
+
+_has_stored_relation(frame::Frame, relation) =
+    frame.relations isa AbstractDict && haskey(frame.relations, relation)
+
+function _stored_relation_targets(frame::Frame, world, relation_name)
     stored = frame.relations
     if stored isa Function || stored isa _RelationProvider
         if applicable(stored, world, relation_name)
@@ -382,6 +402,69 @@ function accessible(frame::Frame, world, relation_name)
     targets isa AbstractString && return (target for target in (targets,))
     targets isa Nothing && throw(ArgumentError("accessibility must return an iterable"))
     (target for target in targets)
+end
+
+"""Return the lazy worlds accessible from `world` via `relation`."""
+accessibles(frame::Frame, world, relation_name) = accessible(frame, world, relation_name)
+
+# A lazy de-duplicating view.  The `seen` set is allocated per iteration pass,
+# so the returned object stays re-iterable like any other lazy iterator.
+struct _DistinctWorlds{S}
+    source::S
+end
+Base.IteratorSize(::Type{<:_DistinctWorlds}) = Base.SizeUnknown()
+Base.IteratorEltype(::Type{<:_DistinctWorlds}) = Base.EltypeUnknown()
+Base.iterate(distinct::_DistinctWorlds) = _next_distinct(distinct, Set{Any}(), ())
+Base.iterate(distinct::_DistinctWorlds, state) = _next_distinct(distinct, state[1], (state[2],))
+
+function _next_distinct(distinct::_DistinctWorlds, seen, inner)
+    while true
+        step = iterate(distinct.source, inner...)
+        step === nothing && return nothing
+        value, inner_state = step
+        inner = (inner_state,)
+        value in seen && continue
+        push!(seen, value)
+        return value, (seen, inner_state)
+    end
+end
+
+"""Return distinct worlds reachable from a world vector, lazily."""
+function accessibles(frame::Frame, world_set::AbstractVector, relation_name)
+    _DistinctWorlds((target for source in world_set for target in accessible(frame, source, relation_name)))
+end
+
+"""Return the worlds satisfying a Boolean connective from child extensions.
+
+The result is a materialised world set, as in the incumbent collation API;
+accessibility itself remains lazy and is only consumed by the modal predicates.
+"""
+function collateworlds(frame::AbstractFrame, connective, truth_sets::Tuple)
+    expected = arity(connective)
+    length(truth_sets) == expected || throw(ArgumentError(
+        "cannot collate $(length(truth_sets)) truth sets for $(typeof(connective)) with arity $expected"))
+    frame_worlds = worlds(frame)
+    if connective isa Conjunction
+        return collect(intersect(truth_sets[1], truth_sets[2]))
+    elseif connective isa Disjunction
+        return collect(union(truth_sets[1], truth_sets[2]))
+    elseif connective isa Implication
+        return collect(union(setdiff(collect(frame_worlds), truth_sets[1]), truth_sets[2]))
+    elseif connective isa Negation
+        return collect(setdiff(collect(frame_worlds), truth_sets[1]))
+    elseif connective isa Diamond
+        relation_name = relation(connective)
+        relation_name isa GlobalRelation && return isempty(truth_sets[1]) ? eltype(frame_worlds)[] : collect(frame_worlds)
+        return [world for world in frame_worlds if any(target -> target in truth_sets[1],
+            accessible(frame, world, relation_name))]
+    elseif connective isa Box
+        relation_name = relation(connective)
+        relation_name isa GlobalRelation && return length(truth_sets[1]) == length(frame_worlds) ?
+            collect(frame_worlds) : eltype(frame_worlds)[]
+        return [world for world in frame_worlds if all(target -> target in truth_sets[1],
+            accessible(frame, world, relation_name))]
+    end
+    throw(ArgumentError("no world collation for connective $(repr(connective))"))
 end
 
 Base.iterate(frame::Frame, state...) = iterate(frame.worlds, state...)

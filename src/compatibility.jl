@@ -566,8 +566,37 @@ bot = Aletheia.bot
 worlds = Aletheia.worlds
 worldtype(f) = eltype(Aletheia.worlds(Aletheia.frame(f)))
 accessible = Aletheia.accessible
+accessibles = Aletheia.accessibles
 allworlds(f) = collect(Aletheia.worlds(f))
-accessibles(f, world, relation) = collect(Aletheia.accessible(f, world, relation))
+function collateworlds(frame, connective, truth_sets::Tuple)
+    native = connective isa _CompatConnective ? connective.native : connective
+    Aletheia.collateworlds(frame, native, truth_sets)
+end
+
+# Frame/world/relation vocabulary retained by Sole consumers.  These are
+# direct aliases, so dispatch and singleton identity remain Aletheia's.
+const AbstractFrame = Aletheia.AbstractFrame
+const AbstractUniModalFrame = Aletheia.AbstractUniModalFrame
+const AbstractMultiModalFrame = Aletheia.AbstractMultiModalFrame
+const AbstractWorld = Aletheia.AbstractWorld
+const AbstractWorlds = Aletheia.AbstractWorlds
+const AnyWorld = Aletheia.AnyWorld
+const AbstractRelationalConnective = Aletheia.AbstractRelationalConnective
+const globalrel = Aletheia.globalrel
+const identityrel = Aletheia.identityrel
+const GlobalRel = Aletheia.GlobalRel
+const IdentityRel = Aletheia.IdentityRel
+const AtWorldRelation = Aletheia.AtWorldRelation
+const tocenterrel = Aletheia.tocenterrel
+const ToCenterRel = Aletheia.ToCenterRel
+centralworld = Aletheia.centralworld
+emptyworld = Aletheia.emptyworld
+ismodal = Aletheia.ismodal
+isunary = Aletheia.isunary
+isdiamond = Aletheia.isdiamond
+isbox = Aletheia.isbox
+isgrounding = Aletheia.isgrounding
+isgrounded(formula::Aletheia.Formula) = Aletheia.isgrounded(_unwrap(formula))
 
 # Legacy formula containers are deliberately not aliases: Aletheia's ordinary
 # Formula is a pool-local DAG, and cannot honestly promise grandchildren or
@@ -620,6 +649,7 @@ const IA_I = Aletheia.IA_I
 const IA7Relations = Aletheia.IA7Relations
 const IA3Relations = Aletheia.IA3Relations
 const RCC5Relations = Aletheia.RCC5Relations
+const RCC8Relations = Aletheia.RCC8Relations
 const Topo_DR = Aletheia.Topo_DR
 const Topo_PP = Aletheia.Topo_PP
 const Topo_PPi = Aletheia.Topo_PPi
@@ -731,12 +761,17 @@ export token, op, tree, children, value, nchildren, arity, syntaxstring, hasdual
 export formulas, subformulas, atoms, leaves, connectives, operators, ntokens, natoms, nleaves
 export nconnectives, noperators, height, conjuncts, disjuncts, grandchildren, nconjuncts
 export parseformula, check, interpret, frame, algebra, domain, top, bot, worlds, allworlds
-export accessible, accessibles, worldtype
+export accessible, accessibles, collateworlds, worldtype
+export AbstractFrame, AbstractUniModalFrame, AbstractMultiModalFrame
+export AbstractWorld, AbstractWorlds, AnyWorld, AbstractRelationalConnective
+export globalrel, identityrel, GlobalRel, IdentityRel, AtWorldRelation
+export tocenterrel, ToCenterRel, centralworld, emptyworld
+export ismodal, isunary, isdiamond, isbox, isgrounding, isgrounded
 export Truth, BooleanTruth, TOP, BOT, ⊤, ⊥, istop, isbot, truths, collatetruth
 export dnf, cnf, normalize, LeftmostLinearForm, LeftmostConjunctiveForm
 export LeftmostDisjunctiveForm, DNF, CNF, Literal, AbstractInterpretationSet, ispos
 export IARelations, IA7Relations, IA3Relations, IA_AorO, IA_DorBorE, IA_AiorOi,
-    IA_DiorBiorEi, IA_I, RCC5Relations, Topo_DR, Topo_PP, Topo_PPi,
+    IA_DiorBiorEi, IA_I, RCC5Relations, RCC8Relations, Topo_DR, Topo_PP, Topo_PPi,
     alphabet, feature, condition, threshold, name, sample
 export TruthDict, KripkeStructure
 export ManyValuedLogics
