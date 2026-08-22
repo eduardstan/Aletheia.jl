@@ -51,10 +51,55 @@ converse(relation) = inverse(relation)
 
 # A generic identity relation is useful when a frame needs equality explicitly.
 struct IdentityRelation <: RelationFamily end
+const IdentityRel = IdentityRelation
 const IDENTITY = IdentityRelation()
 const ID = IDENTITY
 relation_holds(::IdentityRelation, source, target) = isequal(source, target)
 inverse(relation::IdentityRelation) = relation
+
+# Relations used by the incumbent frame vocabulary.  They are values rather
+# than syntax connectives; modal connectives carry one of these values in
+# their relation field.
+struct GlobalRelation <: RelationFamily end
+const GlobalRel = GlobalRelation
+const globalrel = GlobalRelation()
+relation_holds(::GlobalRelation, source, target) = true
+inverse(relation::GlobalRelation) = relation
+arity(::GlobalRelation) = 2
+syntaxstring(::GlobalRelation; kwargs...) = "G"
+
+struct AtWorldRelation{W} <: RelationFamily
+    w::W
+end
+relation_holds(relation::AtWorldRelation, source, target) = isequal(target, relation.w)
+arity(::AtWorldRelation) = 2
+syntaxstring(relation::AtWorldRelation; kwargs...) = "@($(string(relation.w)))"
+
+struct ToCenterRelation <: RelationFamily end
+const ToCenterRel = ToCenterRelation
+const tocenterrel = ToCenterRelation()
+arity(::IdentityRelation) = 2
+syntaxstring(::IdentityRelation; kwargs...) = "="
+arity(::ToCenterRelation) = 2
+syntaxstring(::ToCenterRelation; kwargs...) = "◉"
+
+# Incumbent names and Aletheia's established relation protocol use different
+# spellings for identity; retain both as the same singleton value.
+const identityrel = IDENTITY
+
+isgrounding(::Any) = false
+isgrounding(::GlobalRelation) = true
+isgrounding(::AtWorldRelation) = true
+isgrounding(::ToCenterRelation) = true
+
+# Frame-level natural relations are handled before a frame's user relation
+# map.  Each method returns an iterable, so `accessible` can preserve its
+# lazy generator boundary.
+_relation_targets(frame::Frame, world, ::GlobalRelation) = frame.worlds
+_relation_targets(frame::Frame, world, ::IdentityRelation) = (world,)
+_relation_targets(frame::Frame, world, relation::AtWorldRelation) = (relation.w,)
+_relation_targets(frame::Frame, world, ::ToCenterRelation) = (centralworld(frame),)
+accessibles(frame::Frame, ::GlobalRelation) = worlds(frame)
 
 # ---------------------------------------------------------------------------
 # Allen's thirteen basic relations
@@ -317,6 +362,12 @@ _relation_name(::RCCEqualsRelation) = "rcc-equals"
 Base.show(io::IO, relation::PointRelation) = print(io, _relation_name(relation))
 Base.show(io::IO, relation::RCCRelation) = print(io, _relation_name(relation))
 Base.show(io::IO, relation::IdentityRelation) = print(io, _relation_name(relation))
+_relation_name(::GlobalRelation) = "global"
+_relation_name(::AtWorldRelation) = "at-world"
+_relation_name(::ToCenterRelation) = "to-center"
+Base.show(io::IO, relation::GlobalRelation) = print(io, _relation_name(relation))
+Base.show(io::IO, relation::AtWorldRelation) = print(io, _relation_name(relation))
+Base.show(io::IO, relation::ToCenterRelation) = print(io, _relation_name(relation))
 
 const DISCONNECTED = DC
 const EXTERNALLY_CONNECTED = EC

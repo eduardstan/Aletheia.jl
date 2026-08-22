@@ -244,6 +244,7 @@ include("algebras.jl")
 include("relations.jl")
 include("theory.jl")
 include("compatibility.jl")
+include("vocabulary.jl")
 include("ilp.jl")
 include("examples.jl")
 @testset "Aletheia" begin

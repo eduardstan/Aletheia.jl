@@ -88,7 +88,7 @@ end
     @test CompatibilityClient.TruthDict(Dict("p" => Set([world]))) isa CompatibilityClient.Valuation
     @test CompatibilityClient.worldtype(model) <: CompatibilityClient.Interval
     @test_throws ArgumentError CompatibilityClient.worldtype(world_frame)
-    @test CompatibilityClient.accessibles(world_frame, world, CompatibilityClient.IA_L) isa Vector
+    @test !(CompatibilityClient.accessibles(world_frame, world, CompatibilityClient.IA_L) isa Vector)
     @test CompatibilityClient.ManyValuedLogics.getdomain(CompatibilityClient.ManyValuedLogics.BooleanAlgebra()) == (false, true)
     @test CompatibilityClient.parseformula(CompatibilityClient.SyntaxTree, "⟨before⟩p", [CompatibilityClient.diamond(CompatibilityClient.IA_L)]) isa Aletheia.Formula
     @test CompatibilityClient.parseformula(CompatibilityClient.SyntaxTree, "p") isa Aletheia.Formula
