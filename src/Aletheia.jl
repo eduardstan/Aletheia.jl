@@ -106,21 +106,21 @@ export issatisfiable, isvalid, entails
 @doc "Allen interval relation: the first interval ends before the second begins." BEFORE
 @doc "The singleton Boolean algebra value; its carrier is `Bool` and it supplies Boolean truth operations." BOOLEAN
 @doc "Alias for [`ClauseSet`](@ref)." BackgroundKnowledge
-@doc "A model quotient produced by identifying bisimilar worlds." BisimulationContraction
-@doc "The finite two-element FLew algebra, with one-based `UInt8` carrier values and derived lattice, monoid, and implication tables." BooleanFLewAlgebra
-@doc "Compass relation for the closest east point." CL_E
-@doc "Compass relation for the closest north point." CL_N
-@doc "Compass relation for the closest north-east point." CL_NE
-@doc "Compass relation for the closest north-west point." CL_NW
-@doc "Compass relation for the closest south point." CL_S
-@doc "Compass relation for the closest south-east point." CL_SE
-@doc "Compass relation for the closest south-west point." CL_SW
-@doc "Compass relation for the closest west point." CL_W
+@doc "A wrapper containing an original model and its bisimulation classes/world map." BisimulationContraction
+@doc "The finite two-element FLew algebra, with one-based `UInt8` carrier values, explicit lattice and monoid tables, and a derived implication table." BooleanFLewAlgebra
+@doc "Compass relation: `b` is strictly east of `a` on the same horizontal line (`_px(b) > _px(a)` and `_py(a) == _py(b)`). The `Closest*` name is inherited for compatibility and does not mean nearest." CL_E
+@doc "Compass relation: `b` is strictly north of `a` on the same vertical line (`_px(a) == _px(b)` and `_py(b) > _py(a)`). The `Closest*` name is inherited for compatibility and does not mean nearest." CL_N
+@doc "Compass relation: `b` is strictly north-east of `a` (`_px(b) > _px(a)` and `_py(b) > _py(a)`). The `Closest*` name is inherited for compatibility and does not mean nearest." CL_NE
+@doc "Compass relation: `b` is strictly north-west of `a` (`_px(b) < _px(a)` and `_py(b) > _py(a)`). The `Closest*` name is inherited for compatibility and does not mean nearest." CL_NW
+@doc "Compass relation: `b` is strictly south of `a` on the same vertical line (`_px(a) == _px(b)` and `_py(b) < _py(a)`). The `Closest*` name is inherited for compatibility and does not mean nearest." CL_S
+@doc "Compass relation: `b` is strictly south-east of `a` (`_px(b) > _px(a)` and `_py(b) < _py(a)`). The `Closest*` name is inherited for compatibility and does not mean nearest." CL_SE
+@doc "Compass relation: `b` is strictly south-west of `a` (`_px(b) < _px(a)` and `_py(b) < _py(a)`). The `Closest*` name is inherited for compatibility and does not mean nearest." CL_SW
+@doc "Compass relation: `b` is strictly west of `a` on the same horizontal line (`_px(b) < _px(a)` and `_py(a) == _py(b)`). The `Closest*` name is inherited for compatibility and does not mean nearest." CL_W
 @doc "Canonical connective value for conjunction." CONJUNCTION
 @doc "Allen interval relation: the first interval strictly contains the second." CONTAINS
 @doc "Alias for [`FunctionTerm`](@ref)." CompoundTerm
 @doc "Stateless syntax marker type for conjunction." Conjunction
-@doc "First-order constant carrying a value symbol." Constant
+@doc "First-order constant carrying an arbitrary value." Constant
 @doc "RCC8 relation: the regions are disconnected." DC
 @doc "Alias for the RCC8 disconnected relation [`DC`](@ref)." DISCONNECTED
 @doc "Canonical connective value for disjunction." DISJUNCTION
@@ -175,12 +175,12 @@ export issatisfiable, isvalid, entails
 @doc "Named six-element finite FLew algebra H6.2." H6_2
 @doc "Named six-element finite FLew algebra H6.3." H6_3
 @doc "Named nine-element finite FLew algebra." H9
-@doc "Return the constituent IA relations represented by an IA3 value." IA32IARelations
-@doc "Union type of IA3 relation values." IA3Relation
-@doc "Tuple of the three IA3 interval relation values." IA3Relations
+@doc "Return the ten Allen relations represented by the IA3 value `IA_I`." IA32IARelations
+@doc "IA3 relation value type (`IA_IRelation`)." IA3Relation
+@doc "Tuple of the three interval relation values in the IA3 partition." IA3Relations
 @doc "Return the constituent IA relations represented by an IA7 value." IA72IARelations
-@doc "Union type of IA7 relation values." IA7Relation
-@doc "Tuple of the six IA7 interval relation values." IA7Relations
+@doc "Union type of the four composite IA7 relation values." IA7Relation
+@doc "Tuple of the six interval relation values in the IA7 partition." IA7Relations
 @doc "Alias for [`ALLEN_RELATIONS`](@ref)." IARelations
 @doc "IA shorthand relation for Allen `MEETS`." IA_A
 @doc "Allen interval relation alias for [`AFTER`](@ref)." IA_AFTER
@@ -201,7 +201,7 @@ export issatisfiable, isvalid, entails
 @doc "IA shorthand relation for Allen `FINISHES`." IA_Ei
 @doc "Allen interval relation alias for [`FINISHED_BY`](@ref)." IA_FINISHED_BY
 @doc "Allen interval relation alias for [`FINISHES`](@ref)." IA_FINISHES
-@doc "IA3 relation combining the six non-inverse interior Allen relations." IA_I
+@doc "IA3 relation combining the ten Allen relations other than `BEFORE`, `AFTER`, and `EQUALS`." IA_I
 @doc "IA shorthand relation for Allen `BEFORE`." IA_L
 @doc "IA shorthand relation for Allen `AFTER`." IA_Li
 @doc "Allen interval relation alias for [`MEETS`](@ref)." IA_MEETS
@@ -233,7 +233,7 @@ export issatisfiable, isvalid, entails
 @doc "Allen interval relation: the first begins exactly when the second ends." MET_BY
 @doc "Alias for [`MINIMUM`](@ref)." MIN
 @doc "Point relation selecting the first point in the ordered domain." MINIMUM
-@doc "Canonical zero-ary value identifying the negation connective." NEGATION
+@doc "Canonical connective value for negation." NEGATION
 @doc "Alias for [`NTPP`](@ref)." NON_TANGENTIAL_PROPER_PART
 @doc "Alias for [`NTPPi`](@ref)." NON_TANGENTIAL_PROPER_PART_INVERSE
 @doc "Alias for [`NEGATION`](@ref)." NOT
@@ -283,13 +283,13 @@ export issatisfiable, isvalid, entails
 @doc "Topological alias for [`DC`](@ref)." Topo_DC
 @doc "RCC5 relation: the regions are disconnected (DC or EC)." Topo_DR
 @doc "Topological alias for [`EC`](@ref)." Topo_EC
-@doc "Topological relation alias for [`NTPPi`](@ref)." Topo_NTPP
-@doc "Topological relation alias for [`NTPP`](@ref)." Topo_NTPPi
+@doc "Topological relation whose first region contains the second non-tangentially; this value is [`NTPPi`](@ref) (the RCC8 inverse)." Topo_NTPP
+@doc "Topological relation whose first region is a non-tangential proper part of the second; this value is [`NTPP`](@ref)." Topo_NTPPi
 @doc "Topological alias for [`PO`](@ref)." Topo_PO
 @doc "RCC5 relation: the first region is a proper part of the second." Topo_PP
 @doc "RCC5 inverse relation: the first region contains the second as a proper part." Topo_PPi
-@doc "Topological relation alias for [`TPPi`](@ref)." Topo_TPP
-@doc "Topological relation alias for [`TPP`](@ref)." Topo_TPPi
+@doc "Topological relation whose first region contains the second tangentially; this value is [`TPPi`](@ref) (the RCC8 inverse)." Topo_TPP
+@doc "Topological relation whose first region is a tangential proper part of the second; this value is [`TPP`](@ref)." Topo_TPPi
 @doc "Alias for [`PropositionalProver`](@ref)." TruthTableProver
 @doc "First-order variable identified by a symbol." Variable
 @doc "Lowercase alias for [`AFTER`](@ref)." after
@@ -327,19 +327,19 @@ export issatisfiable, isvalid, entails
 @doc "Test whether a connective has arity one." isunary
 @doc "Test validity using a propositional prover." isvalid
 @doc "Return the lattice join table of a finite FLew algebra." join_table
-@doc "Compute lattice join in an algebra." lattice_join
+@doc "Compute lattice join in a finite FLew algebra." lattice_join
 @doc "Return the lattice meet table of a finite FLew algebra." lattice_meet_table
 @doc "Alias for [`lattice_join`](@ref)." latticejoin
-@doc "Compute lattice meet in an algebra." latticemeet
+@doc "Compute lattice meet in a finite FLew algebra." latticemeet
 @doc "Construct an ILP literal from a predicate or equality." literal
 @doc "Return the literals contained in a clause or Horn clause." literals
 @doc "Alias for [`latticemeet`](@ref)." lmeet
 @doc "Lowercase alias for [`MEETS`](@ref)." meets
 @doc "Lowercase alias for [`MET_BY`](@ref)." met_by
-@doc "Return the model represented by a bisimulation contraction." model
+@doc "Return the original model stored in a bisimulation contraction." model
 @doc "Build an interpretation-learning example from a model." model_example
-@doc "Compute the monoid operation in an algebra." monoid
-@doc "Compute the monoid operation in an algebra." monoid_operation
+@doc "Compute the monoid operation in a finite FLew algebra." monoid
+@doc "Compute the monoid operation in a finite FLew algebra." monoid_operation
 @doc "Alias for the monoid product operation." monoid_product
 @doc "Return the monoid operation table of a finite FLew algebra." monoid_table
 @doc "Return whether the first clause is more specific under θ-subsumption." more_specific
@@ -350,7 +350,7 @@ export issatisfiable, isvalid, entails
 @doc "Test strict order precedence of finite truth values." precedes
 @doc "Construct a relation on rectangles from two axis relations." rectangle_relation
 @doc "Test whether a frame relation is reflexive." reflexive
-@doc "Alias for the residual implication operation." residuum
+@doc "Alias for the residual implication operation in a finite FLew algebra." residuum
 @doc "Test whether a frame relation is serial." serial
 @doc "Alias for [`downward_refinements`](@ref)." specializations
 @doc "Alias for [`standard_translation`](@ref)." standardtranslate
@@ -361,10 +361,10 @@ export issatisfiable, isvalid, entails
 @doc "Test whether a frame relation is symmetric." symmetric
 @doc "Alias for [`subsumes`](@ref)." theta_subsumes
 @doc "Alias for the monoid product operation." tnorm
-@doc "Alias for [`ToCenterRelation`](@ref)." tocenterrel
+@doc "Singleton to-center relation value of [`ToCenterRelation`](@ref)." tocenterrel
 @doc "Test whether a frame relation is transitive." transitive
 @doc "Alias for [`standard_translation`](@ref)." translate
-@doc "Return the common frame when every model-family instance shares one." uniform_frame
+@doc "Return the shared frame when every model-family instance has an equal frame; return `nothing` for an empty or non-uniform family." uniform_frame
 @doc "Alias for [`upward_refinements`](@ref)." upward_refinement
 @doc "Alias for [`checkclass`](@ref)." validclass
 @doc "Return the original-world to quotient-world map." world_map
