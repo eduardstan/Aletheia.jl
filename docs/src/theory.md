@@ -173,21 +173,3 @@ for a known true answer. The convenience forms use
 `issatisfiable(formula)`/`isvalid(formula)` with a fresh propositional prover;
 applications with a modal backend should pass their own `AbstractProver`
 explicitly.
-
-```@docs
-standard_translation
-FirstOrderInterpretation
-evaluate
-first_order_interpretation
-bisimilar
-bisimulation_contraction
-iscnf
-isdnf
-to_cnf
-to_dnf
-AbstractProver
-ProverResult
-PropositionalProver
-prove
-prove_valid
-```

@@ -113,18 +113,3 @@ positive literal when it would create a second head. `max_literals` bounds every
 emitted candidate, including substitution-only candidates; it must be `nothing`
 or a non-negative integer. The implementation is therefore a foundation for a
 learner, not a learner, prover, or least-Herbrand-model evaluator.
-
-```@docs
-Literal
-Clause
-HornClause
-ClauseSet
-Substitution
-substitute
-subsumes
-downward_refinements
-upward_refinements
-InterpretationExample
-interpretation_example
-learning_from_interpretations
-```

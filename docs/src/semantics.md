@@ -85,18 +85,3 @@ branch is a `MethodError`, which prevents a second, subtly different evaluator
 from appearing. Use `check` for a point and `extension` for the whole model.
 The result of `extension` is world-index ordered; `world_position` gives the
 position used by `check`.
-
-```@docs
-TruthAlgebra
-BooleanAlgebra
-GodelAlgebra
-LukasiewiczAlgebra
-Frame
-Valuation
-Model
-interpret
-check
-extension
-Extension
-describe
-```
