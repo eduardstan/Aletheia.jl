@@ -142,6 +142,16 @@ warmup that hides first use.  The change in the published numbers is explicitly
 from the corrected phase labels, paired allocation sampler, and this measured
 sharing optimization.
 
+A run-order diagnostic also checked the apparent later-row degradation.  The
+same case occurs at rows 3, 6, 9, 12, 15, and 18; in published order its
+first-use maxima were 4.554, 8.988, 10.097, 7.455, 70.375, and 60.159 ms.  In
+three additional gated repetitions with rows 13–18 run first, the corresponding
+maxima were 4.409, 4.091, 4.473, 4.214, 4.268, and 4.812 ms in that same
+original-row order.  The large tails did not move to the first positions, so
+there is no simple monotonic position effect.  The later observations remain
+published as measured spread; the diagnostic artifacts are in
+`data/al-dataset-consumer/order-diagnostic-late-first/`.
+
 ## Bisimulation contraction amortisation
 
 The correctness gate ran **96 seeded random labelled models** and 16 random

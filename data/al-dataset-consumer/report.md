@@ -113,6 +113,39 @@ and churn **23.575 / 24.698 / 28.259 ms**.  Its paired first-use allocation
 figure is **238,333 / 41,728,784 bytes**; steady state is **208,757 /
 38,957,136 bytes**.
 
+## Run-order diagnostic
+
+The repeated-case rows are intentionally the same case:
+`16:6:4:0.5:1:16` appears at rows 3, 6, 9, 12, 15, and 18.  In the
+published-order repetitions, their routed first-use maximums (the maximum of
+the five-repetition median-time samples) were 4.554, 8.988, 10.097, 7.455,
+70.375, and 60.159 ms.  That is not monotonic in row position, although the
+large observations happened in the later positions.
+
+I then ran **three** more gated repetitions with rows 13–18 first, followed by
+rows 1–12, using the same fixed seeds, sampler, timeout, and file-backed load
+recording.  The permutation and raw outputs are in
+`order-diagnostic-late-first/`.  The result did **not** move the large tails to
+the first six positions:
+
+| original row | position in late-first run | original-order max (ms) | late-first max (ms) |
+|---:|---:|---:|---:|
+| 3 | 9 | 4.554 | 4.409 |
+| 6 | 12 | 8.988 | 4.091 |
+| 9 | 15 | 10.097 | 4.473 |
+| 12 | 18 | 7.455 | 4.214 |
+| 15 | 3 | 70.375 | 4.268 |
+| 18 | 6 | 60.159 | 4.812 |
+
+Thus the current evidence rejects a simple monotonic sweep-position effect:
+putting rows 13–18 first removed rather than reproduced their 60–70 ms
+selected-sample tails.  The later-row observations remain real measurements,
+but this intervention does not identify heap growth or fragmentation as their
+cause; process-level GC/scheduling variance or another accumulating condition
+would need a more controlled probe.  Readers comparing rows should treat the
+published min/median/max as a distribution over the run, not as a shape-only
+cost.
+
 ## First-use optimization: shared frame adjacency
 
 The first-use construction was genuine, so widening warmup was not used to hide

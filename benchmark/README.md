@@ -83,5 +83,7 @@ come from the sample nearest the median time, not BenchmarkTools' minimum over
 an unspecified sample set; sample ranges and GC time are retained.  The
 corrected repeated artifacts are under
 `data/al-dataset-consumer/corrected-repetitions/`.  The temporary copies and
-environments are removed on exit.  No SoleData dependency is added to
-Aletheia itself.
+environments are removed on exit.  For run-order diagnostics, set
+`DATASET_CONSUMER_CASE_ORDER` to a comma-separated permutation of `1:18`; the
+case seeds and shapes remain unchanged while the timing order is recorded in
+the result header.  No SoleData dependency is added to Aletheia itself.

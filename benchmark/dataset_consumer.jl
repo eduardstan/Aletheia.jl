@@ -54,7 +54,7 @@ function setup_environment(environment, aletheia_root, consumer_package)
     Pkg.develop(Pkg.PackageSpec(path=aletheia_root); io=devnull)
     Pkg.develop(Pkg.PackageSpec(path=consumer_package); io=devnull)
     Pkg.develop(Pkg.PackageSpec(path=SOLEDATA_PATH); io=devnull)
-    Pkg.add(["DataFrames", "Graphs", "SoleLogics"]; io=devnull)
+    Pkg.add(["BenchmarkTools", "DataFrames", "Graphs", "SoleLogics"]; io=devnull)
     Pkg.instantiate(; io=devnull)
 end
 
@@ -153,6 +153,18 @@ const TIMING_CASES = [
     "16:6:4:0.5:0:16", "16:6:4:0.5:1:16",
 ]
 
+# Reordering is an explicit diagnostic knob: the default preserves the
+# published sweep, while a comma-separated permutation tests for run-position
+# effects without changing any case's seed or shape.
+function selected_timing_cases()
+    encoded = get(ENV, "DATASET_CONSUMER_CASE_ORDER", "")
+    isempty(encoded) && return TIMING_CASES
+    order = parse.(Int, split(encoded, ','))
+    sort(order) == collect(1:length(TIMING_CASES)) ||
+        error("DATASET_CONSUMER_CASE_ORDER must be a permutation of 1:$(length(TIMING_CASES))")
+    TIMING_CASES[order]
+end
+
 scratch = mktempdir(ROOT)
 try
     baseline_package = joinpath(scratch, "SoleModels-baseline")
@@ -174,14 +186,15 @@ try
     println("mask gate: PASS; seed=0xDADA_2024; shapes=$(gate.shapes); " *
         "rule-instance masks=$(gate.rule_instance_cases)")
 
-    encoded_timing = join(TIMING_CASES, ";")
+    timing_cases = selected_timing_cases()
+    encoded_timing = join(timing_cases, ";")
     baseline_output, baseline_note = run_worker(baseline_environment, "timing",
         "baseline $encoded_timing"; allow_timeout=true)
     routed_output, routed_note = run_worker(routed_environment, "timing",
         "aletheia $encoded_timing"; allow_timeout=true)
-    baseline_timing = parse_timing(baseline_output, length(TIMING_CASES), "baseline";
+    baseline_timing = parse_timing(baseline_output, length(timing_cases), "baseline";
         note=baseline_note)
-    routed_timing = parse_timing(routed_output, length(TIMING_CASES), "aletheia";
+    routed_timing = parse_timing(routed_output, length(timing_cases), "aletheia";
         note=routed_note)
 
     result_path = get(ENV, "DATASET_CONSUMER_RESULT",
@@ -189,9 +202,10 @@ try
     mkpath(dirname(result_path))
     open(result_path, "w") do io
         println(io, "seed=0xDADA_2024")
+        println(io, "case-order=$(get(ENV, "DATASET_CONSUMER_CASE_ORDER", "default"))")
         println(io, "gate=PASS shapes=$(gate.shapes) rule-instance-masks=$(gate.rule_instance_cases)")
         println(io, "case | baseline first use | routed first use | baseline steady | routed steady | baseline churn | routed churn | adapter | formula conversion | extension/mask")
-        for (index, case) in enumerate(TIMING_CASES)
+        for (index, case) in enumerate(timing_cases)
             b, a = baseline_timing[index], routed_timing[index]
             println(io, "$(case) | $(fmt_measurement(b.first_use)) | $(fmt_measurement(a.first_use)) | " *
                 "$(fmt_measurement(b.steady)) | $(fmt_measurement(a.steady)) | " *
