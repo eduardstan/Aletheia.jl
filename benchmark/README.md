@@ -45,16 +45,16 @@ SOLEDATA_PATH=/path/to/SoleData julia --startup-file=no benchmark/dataset_protoc
 ```
 
 The command runs the agreement gate before timing, then writes the fixed-seed
-explicit sweep to `data/al-dataset-protocol/run.txt`.  To measure the real
+explicit sweep to `data/soledata-protocol/run.txt`.  To measure the real
 consumer path (default full plus one-step memosets), run:
 
 ```sh
 SOLEDATA_PATH=/path/to/SoleData julia --startup-file=no benchmark/dataset_protocol_supported.jl
 ```
 
-That follow-up writes `data/al-dataset-protocol/run-supported.txt` and reports
+That follow-up writes `data/soledata-protocol/run-supported.txt` and reports
 both cold first-check and warm repeated-check medians.  The report is
-`data/al-dataset-protocol/report.md`.  Both scripts' child-process sections use
+`data/soledata-protocol/report.md`.  Both scripts' child-process sections use
 GNU `timeout`, temporary files, medians, and allocation counts; no benchmark
 output is piped.
 
@@ -76,13 +76,13 @@ The script creates baseline and routed SoleModels copies under a temporary
 subdirectory of this checkout, runs a seeded mask gate first, then starts one
 warmed child per side under GNU `timeout`.  Child output and timeout handling
 use files, not pipes; the raw sweep is written to
-`data/al-dataset-consumer/run.txt`.  The timing worker reports three labelled
+`data/solemodels-consumer/run.txt`.  The timing worker reports three labelled
 phases: first use on genuinely new datasets, steady state after cache
 population, and repeated fresh-dataset churn.  Its allocation and byte fields
 come from the sample nearest the median time, not BenchmarkTools' minimum over
 an unspecified sample set; sample ranges and GC time are retained.  The
 corrected repeated artifacts are under
-`data/al-dataset-consumer/corrected-repetitions/`.  The temporary copies and
+`data/solemodels-consumer/corrected-repetitions/`.  The temporary copies and
 environments are removed on exit.  For run-order diagnostics, set
 `DATASET_CONSUMER_CASE_ORDER` to a comma-separated permutation of `1:18`; the
 case seeds and shapes remain unchanged while the timing order is recorded in

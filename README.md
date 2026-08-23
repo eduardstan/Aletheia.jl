@@ -1,28 +1,20 @@
 # Aletheia.jl
 
-Aletheia is a syntax-first Julia foundation for propositional, modal, many-valued,
-and first-order logic. It provides pooled immutable formulas, extensible
-connectives, parsing and printing, truth algebras (including finite FLew
-non-chain families), relational frames and models, Compass and RCC relation
-families, evaluation, bisimulation and contraction, standard translation, and
-ILP foundations. It also includes a dataset protocol and an opt-in SoleLogics
-compatibility layer. Aletheia is a foundation: it is **not** a prover and it is
-**not** a learner.
+Aletheia is a syntax-first Julia foundation for propositional, modal,
+many-valued, and first-order logic. Formulas are interned handles into an
+explicit pool; semantics live in models; one evaluator walks the shared DAG.
+It is a foundation: it is **not** a prover and it is **not** a learner.
+[Read the documentation](https://eduardstan.github.io/Aletheia.jl/).
 
-**[Read the documentation](https://eduardstan.github.io/Aletheia.jl/)**
+- Pooled immutable formulas, extensible connectives, parsing and printing.
+- Truth algebras, including finite FLew non-chain families.
+- Relational frames and models with Allen interval, Compass, and RCC relation
+  families.
+- Evaluation, bisimulation and contraction, and the standard translation.
+- ILP foundations, a model-family API for evaluating one formula across many
+  models, and an opt-in SoleLogics compatibility layer.
 
-## Install
-
-Aletheia is not yet in the Julia General registry. Install the current package
-from this repository with either:
-
-```julia
-using Pkg
-Pkg.develop(url="https://github.com/eduardstan/Aletheia.jl.git")
-# or: Pkg.add(url="https://github.com/eduardstan/Aletheia.jl.git")
-```
-
-## Start here
+## Try it in two minutes
 
 From a terminal, clone the repository and run the first result:
 
@@ -39,14 +31,12 @@ using Aletheia
 
 signature = Signature((¬, ∧, Diamond(:R), Box(:R)))
 pool = FormulaPool(signature)
-p = atom(pool, "p")
-q = atom(pool, "q")
 formula = parse(pool, "⟨R⟩p ∧ [R]q")
 println(syntaxstring(formula))
 
-frame = Frame((:w₁, :w₂),
+base_frame = Frame((:w₁, :w₂),
     Dict(:R => Dict(:w₁ => [:w₂], :w₂ => [:w₂])); index=true)
-model = Model(frame, BOOLEAN,
+model = Model(base_frame, BOOLEAN,
     Dict("p" => Set([:w₂]), "q" => Set([:w₁, :w₂])))
 println(check(formula, model, :w₁))
 ```
@@ -61,6 +51,17 @@ true
 For the same steps as a runnable file, use `julia --project=. examples/quickstart.jl`.
 Then continue with the [Quick start](https://eduardstan.github.io/Aletheia.jl/quickstart/) and the
 [runnable examples](examples/README.md).
+
+## Use it in your own project
+
+Once you want Aletheia in a project of your own, add it from the repository —
+it is not yet in the General registry:
+
+```julia
+using Pkg
+Pkg.develop(url="https://github.com/eduardstan/Aletheia.jl.git")
+# or: Pkg.add(url="https://github.com/eduardstan/Aletheia.jl.git")
+```
 
 ## Measurements
 

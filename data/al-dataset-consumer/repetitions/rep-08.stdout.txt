@@ -1,2 +1,0 @@
-mask gate: PASS; seed=0xDADA_2024; shapes=6; rule-instance masks=352
-timings written to data/al-dataset-consumer/repetitions/rep-08.run.txt

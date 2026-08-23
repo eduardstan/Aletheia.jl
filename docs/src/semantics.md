@@ -4,7 +4,6 @@
 CurrentModule = Aletheia
 ```
 
-
 ## Truth algebras
 
 [`TruthAlgebra`](@ref) is the semantic protocol. The built-ins are
@@ -13,15 +12,15 @@ CurrentModule = Aletheia
 carrier is `Float64`, while its algebra type records whether it is the unit
 interval or a finite chain.
 
-```@example semantics
+```jldoctest semantics
 using Aletheia
 
 for algebra in (BOOLEAN, GodelAlgebra(3), LukasiewiczAlgebra(4))
     println((typeof(algebra), domain(algebra), truth_type(algebra)))
 end
-```
 
-```text
+# output
+
 (BooleanAlgebra, (false, true), Bool)
 (GodelAlgebra{3}, (0.0, 0.5, 1.0), Float64)
 (LukasiewiczAlgebra{4}, (0.0, 0.3333333333333333, 0.6666666666666666, 1.0), Float64)
@@ -31,9 +30,11 @@ end
 methods on formulas. This keeps the semantic carrier visible to Julia's type
 inference and lets the same model/evaluation API support custom carriers. Atom
 values for finite chains are validated at `interpret`, so lazy valuations and
-compound formulas follow the same boundary. A value within `8eps(Float64)` of a
-finite-chain level is accepted and canonicalized to that level; off-chain values
-are rejected.
+compound formulas follow the same boundary. Finite chain levels are stored as
+`Float64`, so a value computed as `1/3` may not be bit-identical to the stored
+level. A value within `8eps(Float64)` of a level is therefore accepted and
+snapped to it; anything further off-chain is rejected rather than silently
+rounded.
 
 ## Frames, valuations, models
 
@@ -56,19 +57,19 @@ the reachable interned DAG. A repeated subformula is evaluated once. Boolean
 models use specialized bit operations; all other algebras use typed vectors,
 but both paths apply the same connective and relation semantics.
 
-```@example semantics
+```jldoctest semantics2
 using Aletheia
 sig = Signature((¬, ∧, Diamond(:R), Box(:R)))
 pool = FormulaPool(sig)
 p, q = atom(pool, "p"), atom(pool, "q")
 formula = branch(pool, ∧, branch(pool, Diamond(:R), p), branch(pool, Box(:R), q))
-frame = Frame((:a, :b, :c), Dict(:R => Dict(:a => [:b, :c], :b => [:b], :c => [])); index=true)
-model = Model(frame, BOOLEAN, Dict("p" => Set([:b]), "q" => Set([:a, :b])))
+base_frame = Frame((:a, :b, :c), Dict(:R => Dict(:a => [:b, :c], :b => [:b], :c => [])); index=true)
+model = Model(base_frame, BOOLEAN, Dict("p" => Set([:b]), "q" => Set([:a, :b])))
 println(extension(formula, model))
 println(check(formula, model, :a))
-```
 
-```text
+# output
+
 Bool[0, 1, 0]
 false
 ```
@@ -81,7 +82,7 @@ many-valued models it is the corresponding algebra fold.
 ## API boundary
 
 `interpret(atom, model, world)` is intentionally atom-only. Calling it on a
-branch is a `MethodError`, which prevents a second, subtly different evaluator
-from appearing. Use `check` for a point and `extension` for the whole model.
+branch is a `MethodError`. Compound formulas go through `check` (one world) or
+`extension` (every world), so there is exactly one evaluation path.
 The result of `extension` is world-index ordered; `world_position` gives the
 position used by `check`.

@@ -98,7 +98,7 @@ function fmt(m)
     @sprintf("%.3f ms; %d allocs / %d bytes", m.time / 1e6, m.allocs, m.memory)
 end
 
-result_path = get(ENV, "DATASET_PROTOCOL_RESULT", joinpath(ROOT, "data", "al-dataset-protocol", "run.txt"))
+result_path = get(ENV, "DATASET_PROTOCOL_RESULT", joinpath(ROOT, "data", "soledata-protocol", "run.txt"))
 mkpath(dirname(result_path))
 gate = run_gate()
 open(result_path, "w") do io

@@ -8,7 +8,14 @@ CurrentModule = Aletheia
 Aletheia.Aletheia
 ```
 
-This page lists the public Aletheia API.  Conceptual guides remain available in the surrounding chapters.
+This page lists every exported name, grouped by layer. If you are looking for a
+place to start, the ten names that carry most usage are `Signature`,
+`FormulaPool`, `atom`, `branch`, `parse`, `syntaxstring`, `Frame`, `Model`,
+`check`, and `extension`; the [Quick start](quickstart.md) uses all of them.
+
+Several names have alternate spellings retained for migration (`truthtype` for
+`truth_type`, `lmeet`/`latticemeet` for `lattice_meet`, `L3` for `Ł3`, and so
+on). New code should prefer the underscored, fully spelled form.
 
 ## Syntax and parsing
 

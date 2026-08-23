@@ -1,5 +1,8 @@
 # Migration from SoleLogics
 
+If you have code that imports SoleLogics, this page tells you what will and
+will not work if you point it at Aletheia instead.
+
 `Aletheia.SoleLogics` is an opt-in compatibility module. A consumer copy can
 replace its old import with:
 
@@ -9,59 +12,12 @@ using Aletheia.SoleLogics
 
 The module is nested, so these names are not added to `Aletheia` itself. It is
 not a package named `SoleLogics`; a consumer's `Project.toml` and import line
-must select the nested module explicitly. The scratch consumer experiment
-below made only that import change and did not modify either consumer checkout.
-
-## Scope derived from the consumers
-
-The following inventory was obtained by scanning the checked-out source trees,
-not by scanning the 79-name SoleLogics export list.
-
-### SolePostHoc
-
-Distinct qualified references (`SoleLogics.name`, including the `SL =
-SoleLogics` alias) are: `BooleanTruth`, `DNF`, `Formula`, `IARelations`,
-`LeftmostConjunctiveForm`, `LeftmostDisjunctiveForm`, `NamedConnective`,
-`RCC5Relations`, `SyntaxBranch`, `atoms`, `children`, `conjuncts`,
-`disjuncts`, `dnf`, `dual`, `feature`, `grandchildren`, `hasdual`, `ispos`,
-`istop`, `nchildren`, `parseformula`, `token`, and `value`.
-
-Bare names imported or used from wildcard imports in the source are:
-
-`AbstractInterpretationSet`, `AbstractRelation`, `Atom`, `BooleanTruth`, `DNF`,
-`Formula`, `LeftmostConjunctiveForm`, `LeftmostDisjunctiveForm`,
-`LeftmostLinearForm`, `Literal`, `NamedConnective`, `Operator`, `SyntaxBranch`,
-`SyntaxTree`, `⊤`, `∧`, `¬`, `atoms`, `alphabet`, `arity`, `children`,
-`conjuncts`, `disjuncts`, `dnf`, `dual`, `feature`, `grandchildren`, `hasdual`,
-`height`, `ispos`, `istop`, `name`, `nchildren`, `nconjuncts`, `nleaves`,
-`noperators`, `ntokens`, `normalize`, `op`, `operators`, `parseformula`,
-`relation`, `syntaxstring`, `threshold`, `token`, `tree`, `value`, and
-`worldtype`. The wildcard imports in dormant algorithm directories were
-included in this conservative list; the loaded `SolePostHoc` module itself
-uses the syntax names in `src/shared_utils.jl` and no SoleLogics name in its
-Orca path.
-
-### SoleReasoners
-
-Root imports and qualified references used by source, tests, and experiments
-are: `Atom`, `BooleanTruth`, `Formula`, `children` (often aliased as
-`subformulas`), `¬`, `∨`, `∧`, `→`, `⊥`, `height`, `isbot`, `istop`, `CL_N`,
-`CL_S`, `CL_E`, `CL_W`, `CL_NE`, `CL_NW`, `CL_SE`, `CL_SW`, `HS_A`, `HS_L`, `HS_B`, `HS_E`, `HS_D`, `HS_O`,
-`HS_Ai`, `HS_Li`, `HS_Bi`, `HS_Ei`, `HS_Di`, `HS_Oi`, `LRCC8_Rec_DC`,
-`LRCC8_Rec_EC`, `LRCC8_Rec_PO`, `LRCC8_Rec_TPP`, `LRCC8_Rec_TPPi`,
-`LRCC8_Rec_NTPP`, `LRCC8_Rec_NTPPi`, `LTLFP_F`, `LTLFP_P`, `Truth`,
-`syntaxstring`, `token`, `NamedConnective`, `BoxRelationalConnective`,
-`DiamondRelationalConnective`, `relation`, `arity`, `collatetruth`, and
-`sample`.
-
-The nested `ManyValuedLogics` imports are `FiniteFLewAlgebra`, `FiniteTruth`,
-`succeedeq`, `precedeq`, `getdomain`, `maximalmembers`, `minimalmembers`,
-`booleanalgebra`, `G3`, `G4`, `G5`, `G6`, `H4`, `H6`, `H6_1`, `H6_2`, `H6_3`,
-`H9`, `Ł3`, `Ł4`, `α`, `β`, and `BASE_MANY_VALUED_CONNECTIVES`.
+must select the nested module explicitly. The trials described below changed
+only that import line and left both consumer checkouts otherwise untouched.
 
 ## Mapping table
 
-| Incumbent name | Compatibility result |
+| SoleLogics name | Compatibility result |
 | --- | --- |
 | `Formula`, `SyntaxStructure`, `SyntaxTree` | `Aletheia.Formula`; formulas are pool-local DAG handles. |
 | `Atom` and `Atom(value)` | A compatibility `Atom <: Aletheia.Formula` wrapper is a real type for `isa`/dispatch; `Atom(value)` wraps an atom in the migration-only default pool. New code should use `atom(pool, value)`. |
@@ -76,7 +32,7 @@ The nested `ManyValuedLogics` imports are `FiniteFLewAlgebra`, `FiniteTruth`,
 | `CL_*` | Direct aliases of Aletheia's Compass 2D point relations (`CL_N`, `CL_S`, `CL_E`, `CL_W`, `CL_NE`, `CL_NW`, `CL_SE`, `CL_SW`). |
 | `diamond`, `box`, `TruthDict`, `KripkeStructure`, `allworlds`, `accessible`, `accessibles` | Small adapters to `Diamond`/`Box`, `Valuation`/Boolean `Model`, and lazy frame access; callers collect explicitly when they need storage. |
 | `HS_*` | Direct aliases of Aletheia's `IA_*` Allen interval relations, including inverses. |
-| `LRCC8_Rec_*` | Direct aliases of Aletheia's `Topo_*` RCC8 relations; the incumbent orientation is retained (notably `Topo_TPP = TPPi`). |
+| `LRCC8_Rec_*` | Direct aliases of Aletheia's `Topo_*` RCC8 relations; SoleLogics' orientation is retained (notably `Topo_TPP = TPPi`). |
 | `LTLFP_F`, `LTLFP_P` | Direct aliases of Aletheia's `GREATER` and `LESSER` point relations. |
 | `AbstractFrame`, `AbstractUniModalFrame`, `AbstractMultiModalFrame`, `AbstractWorld`, `AbstractWorlds`, `AnyWorld` | Direct frame/world dispatch vocabulary; `Frame` is a concrete multimodal frame and dimensional worlds subtype `AbstractWorld`. |
 | `globalrel`, `identityrel`, `AtWorldRelation`, `tocenterrel`, `centralworld`, `emptyworld` | Direct natural-relation values and frame hooks, with `identityrel === IDENTITY`; special accessibility remains lazy. |
@@ -87,8 +43,9 @@ The nested `ManyValuedLogics` imports are `FiniteFLewAlgebra`, `FiniteTruth`,
 The poolless `Atom(value)` and `SyntaxBranch(op, children...)` spellings are
 deliberate conveniences of the legacy path only. `Atom` is a compatibility
 wrapper type, so `φ isa Atom` and dispatch work without adding a one-argument
-constructor to `Aletheia.Atom`; the PR 11 parent-namespace opt-in regression
-therefore remains intact. The hidden default pool used by `Atom` is local to
+constructor to `Aletheia.Atom`. That matters because adding one would leak a
+poolless constructor into the top-level `Aletheia` namespace, which the
+compatibility layer is designed to keep opt-in; a regression test guards it. The hidden default pool used by `Atom` is local to
 `Aletheia.SoleLogics`; formula identity and equality remain pool-local, so
 these conveniences are not equivalent to threading an explicit pool through
 new code. Explicit `Aletheia.atom(pool, ...)` and `Aletheia.branch(pool, ...)`
@@ -124,16 +81,109 @@ remain the core API.
   Sole tree-occurrence equality and ordering are not silently redefined.
   `subformulas` here returns formula handles in dependency/height order.
 * Existing consumers still say `using SoleLogics`. This layer cannot satisfy a
-  top-level package import without changing that import (or adding a separate
-  package, which this task deliberately does not do).
+  top-level package import without changing that import. Publishing a separate
+  package named `SoleLogics` would satisfy it, and Aletheia deliberately does
+  not do that.
+* The compatibility `check` and `interpret` forwarders accept positional
+  arguments only. Aletheia's core methods have no keyword arguments, so
+  accepting `kwargs...` would advertise calls that can never resolve.
 
-## SoleReasoners propositional smoke test
+## What downstream packages actually use
 
-A scratch import-migrated SoleReasoners checkout was run against this nested
-module (the checkout is not part of this repository). Its precompilation is
-clean, including consumers that define separate methods for `LTLFP_F` and
-`LTLFP_P`. With the same six formulas used by the benchmark scout, every result
-agrees with the incumbent:
+Two packages depend heavily on SoleLogics: SolePostHoc and SoleReasoners. The
+lists below come from scanning their source trees rather than SoleLogics'
+79-name export list, so they describe the surface that migration actually has
+to cover.
+
+### SolePostHoc
+
+Distinct qualified references (`SoleLogics.name`, including the
+`SL = SoleLogics` alias):
+
+```text
+BooleanTruth  DNF  Formula  IARelations  LeftmostConjunctiveForm
+LeftmostDisjunctiveForm  NamedConnective  RCC5Relations  SyntaxBranch
+atoms  children  conjuncts  disjuncts  dnf  dual  feature  grandchildren
+hasdual  ispos  istop  nchildren  parseformula  token  value
+```
+
+Bare names imported or used from wildcard imports in the source:
+
+```text
+AbstractInterpretationSet  AbstractRelation  Atom  BooleanTruth  DNF  Formula
+LeftmostConjunctiveForm  LeftmostDisjunctiveForm  LeftmostLinearForm  Literal
+NamedConnective  Operator  SyntaxBranch  SyntaxTree  ⊤  ∧  ¬  atoms  alphabet
+arity  children  conjuncts  disjuncts  dnf  dual  feature  grandchildren
+hasdual  height  ispos  istop  name  nchildren  nconjuncts  nleaves
+noperators  ntokens  normalize  op  operators  parseformula  relation
+syntaxstring  threshold  token  tree  value  worldtype
+```
+
+The wildcard imports in dormant algorithm directories were included in this
+conservative list; the loaded `SolePostHoc` module itself uses the syntax names
+in `src/shared_utils.jl` and no SoleLogics name in its Orca path.
+
+### SoleReasoners
+
+Root imports and qualified references used by source, tests, and experiments:
+
+```text
+Atom  BooleanTruth  Formula  children (often aliased as subformulas)
+¬  ∨  ∧  →  ⊥  height  isbot  istop
+CL_N  CL_S  CL_E  CL_W  CL_NE  CL_NW  CL_SE  CL_SW
+HS_A  HS_L  HS_B  HS_E  HS_D  HS_O  HS_Ai  HS_Li  HS_Bi  HS_Ei  HS_Di  HS_Oi
+LRCC8_Rec_DC  LRCC8_Rec_EC  LRCC8_Rec_PO  LRCC8_Rec_TPP  LRCC8_Rec_TPPi
+LRCC8_Rec_NTPP  LRCC8_Rec_NTPPi  LTLFP_F  LTLFP_P  Truth  syntaxstring  token
+NamedConnective  BoxRelationalConnective  DiamondRelationalConnective
+relation  arity  collatetruth  sample
+```
+
+The nested `ManyValuedLogics` imports:
+
+```text
+FiniteFLewAlgebra  FiniteTruth  succeedeq  precedeq  getdomain
+maximalmembers  minimalmembers  booleanalgebra  G3  G4  G5  G6
+H4  H6  H6_1  H6_2  H6_3  H9  Ł3  Ł4  α  β  BASE_MANY_VALUED_CONNECTIVES
+```
+
+## Many-valued tableau bridge
+
+The nested `ManyValuedLogics` namespace maps SoleLogics' finite tableau
+protocol:
+
+* `FiniteTruth(index)` is an immutable boundary carrier with SoleLogics'
+  `.index`, `istop`, `isbot`, conversion, and syntax-display behavior;
+* `FiniteFLewAlgebra` wraps an Aletheia integer-table algebra and exposes
+  callable `join`, `meet`, `monoid`, and `implication` operations that return
+  boundary `FiniteTruth` values;
+* `getdomain`, `precedeq`, `succeedeq`, `maximalmembers`, and
+  `minimalmembers` follow SoleLogics' `order-utilities.jl` threshold code;
+  native Aletheia finite algebras are accepted by the same order helpers;
+* named G/Ł/H algebras, `booleanalgebra`, `α`, `β`, and
+  `BASE_MANY_VALUED_CONNECTIVES` are mapped to Aletheia's shipped tables and
+  connective values.
+
+The wrapper is deliberately confined to `Aletheia.SoleLogics`. Core
+`Aletheia.FiniteFLewAlgebra` evaluation still carries `UInt8` indices. Truth
+leaves are constants at the compatibility `check`/`interpret` boundary rather
+than valuation keys, while formulas without truth leaves take the unchanged
+core path. `ManyValuedLogics.FiniteTruth` retains SoleLogics' indexed carrier
+identity while converting to Aletheia's `UInt8` tables only inside the
+compatibility operation adapters, so the named finite FLew algebras and the
+threshold/order protocol remain compatible without boxing Aletheia's core
+evaluator values.
+
+## Trials against real consumers
+
+Each trial below used a local copy of a consumer package with its
+`using SoleLogics` line changed to `using Aletheia.SoleLogics`, and nothing
+else. The copies are not part of this repository.
+
+### SoleReasoners
+
+Precompilation of the modified copy is clean, including consumers that define
+separate methods for `LTLFP_F` and `LTLFP_P`. Using the same six formulas as
+the benchmark's differential suite, every result agrees with SoleLogics:
 
 ```text
 p => true
@@ -144,83 +194,49 @@ p∧¬p => false
 (p∨q)∧(¬p∨q) => true
 ```
 
-The compatibility `check` and `interpret` forwarders deliberately accept only
-positional arguments: Aletheia's core methods have no keyword-argument surface,
-so advertising `kwargs...` would create calls that can never resolve (and fails
-JET on Julia 1.10/1.11).
+The same copy loaded `alphasat` and ran seeded HS, Compass, RCC8, and temporal
+tableau calls; its selected HS suite agreed exactly with the native SoleLogics
+run, including the native `nothing` timeout outcomes. This exercises both the
+propositional tableau boundary and the finite-valued truth-carrier boundary,
+and both hold.
 
-This validates the propositional tableau boundary and the finite-valued
-truth-carrier boundary. `ManyValuedLogics.FiniteTruth` retains Sole's indexed
-carrier identity while converting to Aletheia's `UInt8` tables only inside the
-compatibility operation adapters. The named finite FLew algebras and the
-threshold/order protocol therefore remain compatible without boxing Aletheia's
-core evaluator values.
+### SolePostHoc
 
-## Many-valued tableau bridge
+A local copy of `SolePostHoc/src/shared_utils.jl` was loaded in a small module
+with SoleData/SoleModels test doubles and `using Aletheia.SoleLogics`; the
+SolePostHoc checkout itself was not modified. The loaded consumer functions
+`_element_to_string`, its `Atom`/`SyntaxBranch` traversal, and its parser
+callback all ran successfully. The `dnf_to_syntaxbranch` path could not be
+attempted because it requires the deliberately unsupported leftmost wrappers.
+The mapped surface is exercised directly by `test/compatibility.jl`, which adds
+neither Sole package as a dependency.
 
-The nested `ManyValuedLogics` namespace now maps Sole's finite tableau protocol:
+## Where the compatibility layer spent its time
 
-* `FiniteTruth(index)` is an immutable boundary carrier with the incumbent
-  `.index`, `istop`, `isbot`, conversion, and syntax-display behavior;
-* `FiniteFLewAlgebra` wraps an Aletheia integer-table algebra and exposes
-  callable `join`, `meet`, `monoid`, and `implication` operations that return
-  boundary `FiniteTruth` values;
-* `getdomain`, `precedeq`, `succeedeq`, `maximalmembers`, and
-  `minimalmembers` follow the incumbent `order-utilities.jl` threshold code;
-  native Aletheia finite algebras are accepted by the same order helpers;
-* named G/Ł/H algebras, `booleanalgebra`, `α`, `β`, and
-  `BASE_MANY_VALUED_CONNECTIVES` are mapped to Aletheia's shipped tables and
-  connective values.
-
-The wrapper is deliberately confined to `Aletheia.SoleLogics`. Core
-`Aletheia.FiniteFLewAlgebra` evaluation still carries `UInt8` indices. Truth
-leaves are constants at the compatibility `check`/`interpret` boundary rather
-than valuation keys, while formulas without truth leaves take the unchanged
-core path. A scratch
-import-migrated SoleReasoners copy loaded `alphasat` and ran seeded HS, Compass,
-RCC8, and temporal tableau calls; its selected HS suite agreed exactly with the
-native SoleLogics run, including the native `nothing` timeout outcomes. The
-scratch consumer was not committed.
-
-## Allocation profile and substrate rerun
-
-The pre-fix allocation profile used Julia's `Profile.Allocs.@profile` around ten
-warm tableau decisions. Its flat report attributed repeated compatibility work
-to `children` and both `_CompatChildren.iterate` methods, in addition to
-`Branch`/`_compat_branch`; this directly confirmed that traversal was boxing
-fresh adapters rather than the parser being the source of the search loss.
-After the fix, the same profile showed no repeated `children`, branch, or
-wrapper allocations; only the small iterator protocol tuples remained.
-The new wrapper fields retain the payload/connective and a precomputed child
-view, while the per-pool wrapper and formula caches make repeated DAG access
-reuse concrete immutable handles. The compatibility tests also assert inferred
-child-view types and a bounded allocation budget for 1,000 traversals.
+Allocation profiling over ten warm tableau decisions showed that the cost was
+in traversal, not parsing: the compatibility `children` accessor was allocating
+a fresh adapter object on every access. The wrapper now retains the payload,
+the connective, and a precomputed child view, and per-pool caches let repeated
+DAG access reuse the same immutable handles. The compatibility tests assert
+both the inferred child-view types and a bounded allocation budget for 1,000
+traversals.
 
 The agreement-first 72-formula sweep was rerun with the same seed and
 SoleReasoners propositional tableau. Both sides produced 72 decisions (36 SAT,
-36 UNSAT); timing was discarded for no disagreement. Medians below are
-Aletheia/native, and allocation counts are the corresponding native/Aletheia
-medians from the paired child-process runs:
+36 UNSAT); timing was discarded for no disagreement.
 
-| section | before time ratio | after time ratio | before allocations | after allocations |
+This table inverts the convention used on the [measured results](results.md)
+page: here a time ratio is **Aletheia divided by SoleLogics**, so *below* `1×`
+means Aletheia took less time. Allocation cells are **SoleLogics ; Aletheia**
+medians from the paired child-process runs.
+
+| section | before time (Aletheia ÷ SoleLogics) | after time (Aletheia ÷ SoleLogics) | before allocations | after allocations |
 | --- | ---: | ---: | ---: | ---: |
-| parse existing text | 0.185x | 0.117x | 645 / 146 | 459.5 / 96.5 |
-| construct from recipe | 62.30x | 1.10x | 136 / 1,427 | 94 / 85 |
-| pre-parsed tableau search | 2.38x | 0.78x | 340 / 1,921.5 | 144 / 116.5 |
+| parse existing text | 0.185× | 0.117× | 645 ; 146 | 459.5 ; 96.5 |
+| construct from recipe | 62.30× | 1.10× | 136 ; 1,427 | 94 ; 85 |
+| pre-parsed tableau search | 2.38× | 0.78× | 340 ; 1,921.5 | 144 ; 116.5 |
 
-The post-fix paired search median is below the incumbent (0.78x), rather than
-quietly treating parity as success. Exact command shape, timeout/file
-isolation, and the fixed seed are the same as the benchmark Evidence section
-in the timing report; the profile was collected before changing the wrapper
-representation and repeated after it.
-
-## Evidence
-
-A scratch copy of `SolePostHoc/src/shared_utils.jl` was loaded in a small module
-with SoleData/SoleModels test doubles and `using Aletheia.SoleLogics`; the copy
-was not committed and the consumer checkout was not modified. The loaded
-consumer functions `_element_to_string`, its `Atom`/`SyntaxBranch` traversal,
-and its parser callback all ran successfully. The `dnf_to_syntaxbranch` path
-could not be attempted because it requires the deliberately unsupported
-leftmost wrappers. The package tests exercise the mapped surface directly in
-`test/compatibility.jl`; they do not add either Sole package as a dependency.
+The post-fix paired search median is below SoleLogics' (0.78×), rather than
+quietly treating parity as success. Command shape, timeout and file isolation,
+and the fixed seed match the benchmark protocol; the profile was collected
+before changing the wrapper representation and repeated after it.

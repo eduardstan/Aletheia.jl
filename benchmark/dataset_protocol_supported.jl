@@ -101,7 +101,7 @@ function fmt(m)
 end
 
 result_path = get(ENV, "DATASET_PROTOCOL_SUPPORTED_RESULT",
-    joinpath(ROOT, "data", "al-dataset-protocol", "run-supported.txt"))
+    joinpath(ROOT, "data", "soledata-protocol", "run-supported.txt"))
 mkpath(dirname(result_path))
 gate = run_gate()
 open(result_path, "w") do io
