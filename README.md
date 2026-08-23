@@ -64,7 +64,7 @@ Then continue with the [Quick start](https://eduardstan.github.io/Aletheia.jl/qu
 
 ## Measurements
 
-Representative rows from the [full measured results](docs/src/results.md) compare
+Representative rows from the [full measured results](https://eduardstan.github.io/Aletheia.jl/results/) compare
 like-for-like APIs (SoleLogics / Aletheia):
 
 - Parsing, depth 2: **6.81×** (37.58 μs / 5.52 μs).
