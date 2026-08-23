@@ -59,6 +59,11 @@ const AbstractRelation = Aletheia.RelationFamily
 const BoxRelationalConnective = Aletheia.Box{<:Any}
 const DiamondRelationalConnective = Aletheia.Diamond{<:Any}
 const _LegacyConnective = Union{Aletheia.Negation,Aletheia.Conjunction,Aletheia.Disjunction,Aletheia.Implication}
+Base.:(==)(left::_CompatConnective, right::_LegacyConnective) = left.native === right
+Base.:(==)(left::_LegacyConnective, right::_CompatConnective) = right.native === left
+Base.isequal(left::_CompatConnective, right::_LegacyConnective) = left.native === right
+Base.isequal(left::_LegacyConnective, right::_CompatConnective) = right.native === left
+Base.hash(connective::_CompatConnective, h::UInt) = hash(connective.native, h)
 
 # Truth values remain distinct from ordinary pooled DAG atoms. They subtype the
 # compatibility Formula boundary so legacy tableaux can carry truth leaves,
@@ -761,7 +766,7 @@ end
     FiniteTruth(operation.table[Int(_index(left)), Int(_index(right))])
 end
 Base.getindex(operation::_FiniteOperation, left, right) =
-    operation.table[Int(_index(left)), Int(_index(right))]
+    FiniteTruth(operation.table[Int(_index(left)), Int(_index(right))])
 
 function _operation_table(operation, n::Int, name::AbstractString)
     source = if operation isa _FiniteOperation
@@ -797,7 +802,8 @@ struct FiniteFLewAlgebra{N}
     native::Aletheia.FiniteFLewAlgebra{N}
 end
 
-function Base.show(io::IO, algebra::FiniteFLewAlgebra{N}) where N
+Base.show(io::IO, algebra::FiniteFLewAlgebra) = print(io, string(typeof(algebra)))
+function Base.show(io::IO, ::MIME"text/plain", algebra::FiniteFLewAlgebra{N}) where N
     println(io, string(typeof(algebra)))
     println(io, "Domain: ", getdomain(algebra))
     println(io, "Bot: ", algebra.bot)
@@ -876,6 +882,22 @@ function minimalmembers(algebra::FiniteFLewAlgebra, threshold)
         isempty(filter(value -> precedes(algebra, value, candidate), candidates))]
 end
 
+# Native Aletheia finite algebras are accepted at this boundary as well.  The
+# order protocol still returns Sole carriers, so a consumer can mix a native
+# table with the compatibility thresholds without an accidental dispatch gap.
+precedeq(algebra::Aletheia.FiniteFLewAlgebra, left, right) =
+    precedeq(_wrap_algebra(algebra), left, right)
+precedes(algebra::Aletheia.FiniteFLewAlgebra, left, right) =
+    precedes(_wrap_algebra(algebra), left, right)
+succeedeq(algebra::Aletheia.FiniteFLewAlgebra, left, right) =
+    succeedeq(_wrap_algebra(algebra), left, right)
+succeedes(algebra::Aletheia.FiniteFLewAlgebra, left, right) =
+    succeedes(_wrap_algebra(algebra), left, right)
+maximalmembers(algebra::Aletheia.FiniteFLewAlgebra, threshold) =
+    maximalmembers(_wrap_algebra(algebra), threshold)
+minimalmembers(algebra::Aletheia.FiniteFLewAlgebra, threshold) =
+    minimalmembers(_wrap_algebra(algebra), threshold)
+
 function _unsupported(name::Symbol, detail::AbstractString)
     throw(ArgumentError("SoleLogics.ManyValuedLogics.$name has no faithful Aletheia equivalent: $detail"))
 end
@@ -917,6 +939,68 @@ export FiniteTruth, ContinuousTruth, FiniteFLewAlgebra, getdomain
 export GodelAlgebra, LukasiewiczAlgebra, BooleanAlgebra
 export booleanalgebra, precedeq, precedes, succeedeq, succeedes, maximalmembers, minimalmembers
 export α, β, BASE_MANY_VALUED_CONNECTIVES
+end
+
+# Truth leaves are represented as payloads in Aletheia's atom-only DAG.  Keep
+# that representation out of the core evaluator's hot path, but adapt it when
+# the opt-in compatibility `check`/`interpret` entry point sees one: a truth
+# payload is a constant of the model's algebra, never a valuation key.
+function _truth_payload(node)
+    node isa Truth && return node
+    if node isa Atom || node isa Aletheia.Atom
+        payload = value(node)
+        payload isa Truth && return payload
+    end
+    nothing
+end
+function _contains_truth(formula)
+    formula isa Truth && return true
+    any(node -> _truth_payload(node) !== nothing, formulas(formula))
+end
+function _truth_carrier(truth::Truth, algebra::Aletheia.TruthAlgebra)
+    if truth isa BooleanTruth
+        return istop(truth) ? Aletheia.top(algebra) : Aletheia.bottom(algebra)
+    elseif truth isa ManyValuedLogics.FiniteTruth
+        if algebra isa Aletheia.FiniteFLewAlgebra
+            truth.index <= length(algebra) || throw(ArgumentError(
+                "finite truth index $(truth.index) is outside the model algebra domain"))
+            return truth.index
+        elseif algebra isa Aletheia.BooleanAlgebra
+            truth.index == UInt8(1) && return true
+            truth.index == UInt8(2) && return false
+        end
+    end
+    _unsupported(:check,
+        "truth leaf $(repr(truth)) cannot be interpreted in $(typeof(algebra))")
+end
+function _truth_model(model::Aletheia.Model)
+    valuation = (atom, world) -> begin
+        truth = _truth_payload(atom)
+        if truth !== nothing
+            _truth_carrier(truth, Aletheia.algebra(model))
+        elseif atom isa Aletheia.Atom
+            Aletheia._lookup_atom(Aletheia.valuation(model), atom, world)
+        else
+            Aletheia._lookup_valuation(Aletheia.valuation(model), atom, world)
+        end
+    end
+    Aletheia.Model(Aletheia.frame(model), Aletheia.algebra(model), valuation)
+end
+function check(formula::Truth, model::Aletheia.Model, world)
+    _truth_carrier(formula, Aletheia.algebra(model))
+end
+function check(formula::Aletheia.Formula, model::Aletheia.Model, args...)
+    native = _unwrap(formula)
+    _contains_truth(formula) ? Aletheia.check(native, _truth_model(model), args...) :
+        Aletheia.check(native, model, args...)
+end
+function interpret(formula::Truth, model::Aletheia.Model, world)
+    _truth_carrier(formula, Aletheia.algebra(model))
+end
+function interpret(formula::Aletheia.Formula, model::Aletheia.Model, args...)
+    native = _unwrap(formula)
+    _contains_truth(formula) ? Aletheia.interpret(native, _truth_model(model), args...) :
+        Aletheia.interpret(native, model, args...)
 end
 
 export Formula, SyntaxStructure, SyntaxTree, SyntaxLeaf, SyntaxBranch, Branch

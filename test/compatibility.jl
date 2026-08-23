@@ -88,6 +88,15 @@ end
     world = first(CompatibilityClient.allworlds(world_frame))
     model = CompatibilityClient.KripkeStructure(world_frame, Dict("p" => Set([world])))
     @test CompatibilityClient.check(p, model, world)
+    truth_formula = CompatibilityClient.:∧(CompatibilityClient.⊤, p)
+    @test CompatibilityClient.check(truth_formula, model, world)
+    @test CompatibilityClient.interpret(CompatibilityClient.⊥, model, world) === false
+    MV = CompatibilityClient.ManyValuedLogics
+    finite_frame = Aletheia.Frame((1,), Dict())
+    finite_model = Aletheia.Model(finite_frame, Aletheia.G4, Dict("p" => UInt8(3)))
+    finite_formula = CompatibilityClient.:∧(MV.α, CompatibilityClient.Atom("p"))
+    @test CompatibilityClient.check(finite_formula, finite_model, 1) == UInt8(3)
+    @test CompatibilityClient.check(MV.β, finite_model, 1) == UInt8(4)
     @test CompatibilityClient.TruthDict(Dict("p" => Set([world]))) isa CompatibilityClient.Valuation
     @test CompatibilityClient.worldtype(model) <: CompatibilityClient.Interval
     @test_throws ArgumentError CompatibilityClient.worldtype(world_frame)
@@ -149,6 +158,10 @@ end
     @test CompatibilityClient.istop(MV.FiniteTruth(1)) && CompatibilityClient.isbot(MV.FiniteTruth(2))
     @test MV.G4.monoid(MV.α, MV.β) == MV.α
     @test MV.G4.implication(MV.α, MV.β) == MV.FiniteTruth(1)
+    @test MV.G4.join[MV.α, MV.α] == MV.G4.join(MV.α, MV.α)
+    @test CompatibilityClient.token(CompatibilityClient.:∧(p, p)) in MV.BASE_MANY_VALUED_CONNECTIVES
+    @test MV.precedeq(Aletheia.G4, MV.α, MV.β)
+    @test MV.maximalmembers(Aletheia.H4, MV.α) == [MV.β]
     @test MV.precedeq(MV.G4, MV.α, MV.β)
     @test MV.succeedeq(MV.G4, MV.β, MV.α)
     @test MV.precedes(MV.G4, MV.α, MV.β)
@@ -180,7 +193,8 @@ end
     @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.succeedeq(1, 2)
     @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.maximalmembers((1, 2))
     @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.minimalmembers((1, 2))
-    g3_show = sprint(show, MV.G3)
+    @test sprint(show, MV.G3) == string(typeof(MV.G3))
+    g3_show = sprint(show, MIME"text/plain"(), MV.G3)
     @test occursin("Domain: " * string(MV.getdomain(MV.G3)), g3_show)
     @test occursin("Bot: " * sprint(show, MV.G3.bot), g3_show)
     @test occursin("Top: " * sprint(show, MV.G3.top), g3_show)
