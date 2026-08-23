@@ -178,7 +178,7 @@ export issatisfiable, isvalid, entails
 @doc "Return the ten Allen relations represented by the IA3 value `IA_I`." IA32IARelations
 @doc "IA3 relation value type (`IA_IRelation`)." IA3Relation
 @doc "Tuple of the three interval relation values in the IA3 partition." IA3Relations
-@doc "Return the constituent IA relations represented by an IA7 value." IA72IARelations
+@doc "Return the constituent Allen relations represented by a composite IA7 relation value." IA72IARelations
 @doc "Union type of the four composite IA7 relation values." IA7Relation
 @doc "Tuple of the six interval relation values in the IA7 partition." IA7Relations
 @doc "Alias for [`ALLEN_RELATIONS`](@ref)." IARelations
@@ -318,7 +318,7 @@ export issatisfiable, isvalid, entails
 @doc "Lowercase alias for [`FINISHES`](@ref)." finishes
 @doc "Alias for [`first_order_interpretation`](@ref)." firstorder
 @doc "Alias for [`upward_refinements`](@ref)." generalizations
-@doc "Singleton global relation value, equivalent to [`GlobalRelation`](@ref)." globalrel
+@doc "Singleton value of [`GlobalRelation`](@ref), relating every source to every target." globalrel
 @doc "Singleton identity relation value, equivalent to [`IDENTITY`](@ref)." identityrel
 @doc "Return the residual implication table of a finite FLew algebra." implication_table
 @doc "Test whether a connective is a box modality." isbox
