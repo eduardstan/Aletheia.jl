@@ -1,7 +1,7 @@
 # Immutable dimensional worlds and generated finite frames.
 
 """An interval `[left,right]` with `left < right`."""
-struct Interval{T<:Real}
+struct Interval{T<:Real} <: AbstractWorld
     x::T
     y::T
     function Interval{T}(x::T, y::T) where {T<:Real}
@@ -12,13 +12,13 @@ end
 Interval(x::T, y::T) where {T<:Real} = Interval{T}(x, y)
 
 """An immutable axis-aligned rectangle, represented by two intervals."""
-struct Rectangle{T<:Real}
+struct Rectangle{T<:Real} <: AbstractWorld
     x::Interval{T}
     y::Interval{T}
 end
 
 """A small immutable point value (provided for dimensional API compatibility)."""
-struct Point
+struct Point <: AbstractWorld
     coordinates::Tuple
 end
 Point(x::T) where {T<:Real} = Point((x,))
@@ -520,3 +520,58 @@ Full2DFrame(n::Integer, m::Integer; kwargs...) = rectangle_frame(n, m; kwargs...
 Full1DPointFrame(n::Integer; kwargs...) = point_frame(n; kwargs...)
 Full2DPointFrame(n::Integer, m::Integer; kwargs...) = point_frame(n, m; kwargs...)
 
+# Frame vocabulary corresponding to SoleLogics' dimensional defaults.  These
+# methods intentionally inspect the generated world values rather than add a
+# second frame representation.
+function emptyworld(frame::AbstractMultiModalFrame)
+    error("Please, provide method emptyworld(::$(typeof(frame))).")
+end
+function centralworld(frame::AbstractMultiModalFrame)
+    error("Please, provide method centralworld(::$(typeof(frame))).")
+end
+
+function emptyworld(frame::Frame)
+    frame_worlds = worlds(frame)
+    isempty(frame_worlds) && throw(ArgumentError("a frame must contain at least one world"))
+    sample = first(frame_worlds)
+    sample isa Interval && return Interval(-1, 0)
+    sample isa Point && return length(sample.coordinates) == 1 ? Point(-1) : Point(-1, -1)
+    sample isa Real && return -one(sample)
+    sample isa Rectangle && return Rectangle(Interval(-1, 0), Interval(-1, 0))
+    throw(MethodError(emptyworld, (frame,)))
+end
+
+function _central_interval(frame_worlds, axis::Symbol)
+    endpoints = if axis === :x
+        collect(value for world in frame_worlds for value in (world.x, world.y))
+    else
+        collect(value for world in frame_worlds for value in (world.x, world.y))
+    end
+    low = minimum(endpoints)
+    high = maximum(endpoints)
+    n = high - low
+    left = low + div(n + 1, 2) - 1
+    Interval(left, left + 1 + (isodd(n) ? 0 : 1))
+end
+
+function centralworld(frame::Frame)
+    frame_worlds = worlds(frame)
+    isempty(frame_worlds) && throw(ArgumentError("a frame must contain at least one world"))
+    sample = first(frame_worlds)
+    if sample isa Interval
+        return _central_interval(frame_worlds, :x)
+    elseif sample isa Real
+        values = sort(collect(frame_worlds))
+        return values[div(length(values) + 1, 2)]
+    elseif sample isa Point
+        coordinates = first(frame_worlds).coordinates
+        length(coordinates) == 1 && return Point(sort(collect(w.coordinates[1] for w in frame_worlds))[div(length(frame_worlds) + 1, 2)])
+        xs = sort(unique(w.coordinates[1] for w in frame_worlds))
+        ys = sort(unique(w.coordinates[2] for w in frame_worlds))
+        return Point(xs[div(length(xs) + 1, 2)], ys[div(length(ys) + 1, 2)])
+    elseif sample isa Rectangle
+        return Rectangle(_central_interval(tuple((w.x for w in frame_worlds)...), :x),
+            _central_interval(tuple((w.y for w in frame_worlds)...), :x))
+    end
+    throw(MethodError(centralworld, (frame,)))
+end

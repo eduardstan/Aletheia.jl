@@ -51,10 +51,78 @@ converse(relation) = inverse(relation)
 
 # A generic identity relation is useful when a frame needs equality explicitly.
 struct IdentityRelation <: RelationFamily end
+const IdentityRel = IdentityRelation
 const IDENTITY = IdentityRelation()
 const ID = IDENTITY
 relation_holds(::IdentityRelation, source, target) = isequal(source, target)
 inverse(relation::IdentityRelation) = relation
+
+# Relations used by the incumbent frame vocabulary.  They are values rather
+# than syntax connectives; modal connectives carry one of these values in
+# their relation field.
+struct GlobalRelation <: RelationFamily end
+const GlobalRel = GlobalRelation
+const globalrel = GlobalRelation()
+relation_holds(::GlobalRelation, source, target) = true
+inverse(relation::GlobalRelation) = relation
+arity(::GlobalRelation) = 2
+syntaxstring(::GlobalRelation; kwargs...) = "G"
+
+struct AtWorldRelation{W} <: RelationFamily
+    w::W
+end
+relation_holds(relation::AtWorldRelation, source, target) = isequal(target, relation.w)
+arity(::AtWorldRelation) = 2
+syntaxstring(relation::AtWorldRelation; kwargs...) = "@($(string(relation.w)))"
+
+struct ToCenterRelation <: RelationFamily end
+const ToCenterRel = ToCenterRelation
+const tocenterrel = ToCenterRelation()
+arity(::IdentityRelation) = 2
+syntaxstring(::IdentityRelation; kwargs...) = "="
+arity(::ToCenterRelation) = 2
+syntaxstring(::ToCenterRelation; kwargs...) = "◉"
+
+# Incumbent names and Aletheia's established relation protocol use different
+# spellings for identity; retain both as the same singleton value.
+const identityrel = IDENTITY
+
+"""Return whether a relation has source-independent accessibility targets.
+
+A `true` result promises that evaluating accessibility from any world in a
+frame yields the same target set; evaluators may use this contract when
+constructing relation extensions.
+"""
+isgrounding(::Any) = false
+isgrounding(::GlobalRelation) = true
+isgrounding(::AtWorldRelation) = true
+isgrounding(::ToCenterRelation) = true
+
+# Frame-level natural relations provide defaults for ordinary maps. Explicit
+# stored/callable providers retain precedence, except the center relation whose
+# target is defined by the frame itself. Each method returns an iterable so
+# `accessible` can preserve its lazy generator boundary.
+function _natural_targets(frame::Frame, world, relation, natural)
+    _is_world(frame.worlds, world) || throw(KeyError(world))
+    _has_stored_relation(frame, relation) &&
+        return _stored_relation_targets(frame, world, relation)
+    # Callable/provider frames are explicit accessibility definitions.  Keep
+    # the center relation natural because dimensional providers do not define a
+    # source predicate for it.
+    relation isa ToCenterRelation && return natural()
+    (frame.relations isa Function || frame.relations isa _RelationProvider) &&
+        return _stored_relation_targets(frame, world, relation)
+    natural()
+end
+_relation_targets(frame::Frame, world, relation::GlobalRelation) =
+    _natural_targets(frame, world, relation, () -> frame.worlds)
+_relation_targets(frame::Frame, world, relation::IdentityRelation) =
+    _natural_targets(frame, world, relation, () -> (world,))
+_relation_targets(frame::Frame, world, relation::AtWorldRelation) =
+    _natural_targets(frame, world, relation, () -> (relation.w,))
+_relation_targets(frame::Frame, world, relation::ToCenterRelation) =
+    _natural_targets(frame, world, relation, () -> (centralworld(frame),))
+accessibles(frame::Frame, ::GlobalRelation) = worlds(frame)
 
 # ---------------------------------------------------------------------------
 # Allen's thirteen basic relations
@@ -317,6 +385,12 @@ _relation_name(::RCCEqualsRelation) = "rcc-equals"
 Base.show(io::IO, relation::PointRelation) = print(io, _relation_name(relation))
 Base.show(io::IO, relation::RCCRelation) = print(io, _relation_name(relation))
 Base.show(io::IO, relation::IdentityRelation) = print(io, _relation_name(relation))
+_relation_name(::GlobalRelation) = "global"
+_relation_name(::AtWorldRelation) = "at-world"
+_relation_name(::ToCenterRelation) = "to-center"
+Base.show(io::IO, relation::GlobalRelation) = print(io, _relation_name(relation))
+Base.show(io::IO, relation::AtWorldRelation) = print(io, _relation_name(relation))
+Base.show(io::IO, relation::ToCenterRelation) = print(io, _relation_name(relation))
 
 const DISCONNECTED = DC
 const EXTERNALLY_CONNECTED = EC

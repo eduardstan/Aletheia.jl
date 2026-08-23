@@ -360,6 +360,20 @@ isatom(::Branch) = false
 isbranch(::Atom) = false
 isbranch(::Branch) = true
 
+"""
+    isgrounded(formula)
+
+Return whether a formula is grounded according to SoleLogics' syntactic
+criterion: a grounding relational connective grounds its whole branch, while
+all other connective branches are grounded only when every child is grounded.
+"""
+function isgrounded(formula::Formula)
+    isatom(formula) && return false
+    connective = operator(formula)
+    (connective isa AbstractRelationalConnective && isgrounding(relation(connective))) ||
+        all(isgrounded, children(formula))
+end
+
 function _intern!(pool::FormulaPool, kind::UInt8, payload, childids::Tuple{Vararg{Int}})
     key = kind == 0x01 ? (:atom, payload) : (:branch, payload, childids)
     lock(pool.lock)
@@ -548,6 +562,9 @@ struct Negation end
 struct Conjunction end
 struct Disjunction end
 struct Implication end
+
+"""Abstract vocabulary shared by relational modal connectives."""
+abstract type AbstractRelationalConnective{R} end
 """
     Diamond(relation)
 
@@ -555,7 +572,7 @@ A unary modal connective carrying `relation` as a value.  The relation is a
 field, not a type parameter encoded in a singleton, so parametric relations
 remain ordinary syntax values.
 """
-struct Diamond{R}
+struct Diamond{R} <: AbstractRelationalConnective{R}
     relation::R
 end
 
@@ -565,9 +582,25 @@ end
 The syntactic dual modal connective for [`Diamond`](@ref), carrying its
 relation as a value.
 """
-struct Box{R}
+struct Box{R} <: AbstractRelationalConnective{R}
     relation::R
 end
+
+# SoleLogics-compatible modal/connective predicates.  The incumbent's
+# predicates intentionally default to `false` for non-connective values and
+# classify a diamond as any modal connective that is not a box.
+ismodal(::Any) = false
+ismodal(::Type{<:Diamond}) = true
+ismodal(::Type{<:Box}) = true
+ismodal(connective::AbstractRelationalConnective) = ismodal(typeof(connective))
+isunary(connective) = arity(connective) == 1
+isbox(::Any) = false
+isbox(::Type{<:Diamond}) = false
+isbox(::Type{<:Box}) = true
+isbox(connective::AbstractRelationalConnective) = isbox(typeof(connective))
+isdiamond(::Any) = false
+isdiamond(C::Type) = ismodal(C) && !isbox(C)
+isdiamond(connective::AbstractRelationalConnective) = isdiamond(typeof(connective))
 
 const NEGATION = Negation()
 const CONJUNCTION = Conjunction()
