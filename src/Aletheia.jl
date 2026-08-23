@@ -10,6 +10,7 @@ module Aletheia
 
 include("syntax.jl")
 include("parse.jl")
+include("display.jl")
 include("semantics.jl")
 include("algebras.jl")
 include("relations.jl")

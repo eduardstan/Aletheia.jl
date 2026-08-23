@@ -833,15 +833,21 @@ struct FiniteFLewAlgebra{N}
 end
 
 Base.show(io::IO, algebra::FiniteFLewAlgebra) = print(io, string(typeof(algebra)))
+# The payload keeps SoleLogics' shape — a domain of boxed truths and the raw
+# carrier tables — because migrating consumers read this view for parity with
+# the incumbent.  Only the presentation conventions are Aletheia's: colour when
+# the IO context has it, and a shape summary instead of a wall of indices for a
+# table too large to read.
 function Base.show(io::IO, ::MIME"text/plain", algebra::FiniteFLewAlgebra{N}) where N
-    println(io, string(typeof(algebra)))
-    println(io, "Domain: ", getdomain(algebra))
-    println(io, "Bot: ", algebra.bot)
-    println(io, "Top: ", algebra.top)
-    println(io, "Join: ", algebra.join.table)
-    println(io, "Meet: ", algebra.meet.table)
-    println(io, "T-norm: ", algebra.monoid.table)
-    print(io, "Implication: ", algebra.implication.table)
+    table(operation) = N <= 10 || Aletheia._display_limit(io) == typemax(Int) ?
+        string(operation.table) : "$(N)×$(N) carrier table"
+    Aletheia._display_header(io, string(typeof(algebra)))
+    for (label, content) in (("Domain", getdomain(algebra)), ("Bot", algebra.bot), ("Top", algebra.top),
+            ("Join", table(algebra.join)), ("Meet", table(algebra.meet)),
+            ("T-norm", table(algebra.monoid)), ("Implication", table(algebra.implication)))
+        Aletheia._display_label(io, 0, label)
+        print(io, content)
+    end
 end
 
 function _wrap_algebra(native::Aletheia.FiniteFLewAlgebra{N}) where N

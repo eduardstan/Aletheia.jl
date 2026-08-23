@@ -99,24 +99,19 @@ Base.show(io::IO, contraction::BisimulationContraction) =
 function Base.show(io::IO, ::MIME"text/plain", contraction::BisimulationContraction)
     n_orig = length(contraction.world_map)
     n_classes = length(contraction.classes)
-    ratio = n_orig == 0 ? 0.0 : (1.0 - n_classes / n_orig)
-    pct = round(Int, ratio * 100)
-    print(io, "BisimulationContraction ($n_orig → $n_classes worlds, $pct% collapse ratio)")
+    pct = n_orig == 0 ? 0 : round(Int, (1.0 - n_classes / n_orig) * 100)
+    _display_header(io, "BisimulationContraction",
+        "$n_orig → $n_classes world$(n_classes == 1 ? "" : "s"), $pct% collapse ratio")
 
-    if n_classes <= 10
-        print(io, "\n  Classes ($n_classes):")
-        for (i, class) in enumerate(contraction.classes)
-            members_str = join(repr.(class.members), ", ")
-            print(io, "\n    Class $i: $members_str")
-        end
-    else
-        print(io, "\n  Classes ($n_classes):")
-        for (i, class) in enumerate(contraction.classes[1:5])
-            members_str = join(repr.(class.members), ", ")
-            print(io, "\n    Class $i: $members_str")
-        end
-        print(io, "\n    … ($(n_classes - 5) elided)")
+    shown, elided = _display_bounded(io, contraction.classes, DISPLAY_ITEMS)
+    _display_label(io, 2, "Classes ($n_classes)", ":")
+    for (i, class) in enumerate(shown)
+        _display_label(io, 4, "Class $i")
+        members, member_elided = _display_bounded(io, class.members, DISPLAY_ITEMS)
+        print(io, join(repr.(members), ", "))
+        _display_elision(io, member_elided)
     end
+    _display_elision_line(io, 4, elided)
 end
 
 model(contraction::BisimulationContraction) = contraction.model

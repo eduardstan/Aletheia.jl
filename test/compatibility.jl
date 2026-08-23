@@ -209,6 +209,14 @@ end
     @test occursin("Top: " * sprint(show, MV.G3.top), g3_show)
     @test occursin("Join: " * string(MV.G3.join.table), g3_show)
     @test_throws ArgumentError MV.FiniteFLewAlgebra{3}(MV.G4.join, MV.G4.meet, MV.G4.monoid, 2, 1)
+    # The boundary view keeps SoleLogics' payload but follows Aletheia's
+    # presentation conventions: plain text without colour, colour with it.
+    @test !occursin('\e', g3_show)
+    @test occursin('\e', sprint(io -> show(IOContext(io, :color => true), MIME"text/plain"(), MV.G3)))
+    big = MV.FiniteFLewAlgebra(Aletheia._chain_flew(11, :godel))
+    @test occursin("Join: 11×11 carrier table", sprint(show, MIME"text/plain"(), big))
+    @test occursin("Join: " * string(big.join.table),
+        sprint(io -> show(IOContext(io, :limit => false), MIME"text/plain"(), big)))
 end
 
 

@@ -298,68 +298,122 @@ end
 # Alternate name makes the lattice meet unambiguous to callers that use the FLew notation directly.
 latticemeet(algebra::FiniteFLewAlgebra, left, right) = lattice_meet(algebra, left, right)
 
+"""
+    truthlabel(index)
+    truthlabel(algebra, value)
+
+Return the display label of a finite truth value.  The one-argument form uses
+the carrier convention shared with SoleLogics (`1` is `⊤`, `2` is `⊥` and the
+remaining indices are `α`, `β`, …); the two-argument form reads `⊥` and `⊤`
+off `algebra` so that a carrier laid out differently still labels correctly.
+
+Labels are a presentation concern only: the carrier itself stays an unboxed
+`UInt8` index.
+"""
+truthlabel(index::Integer) = string(Int(index) < 3 ? Char(8867 + Int(index)) : Char(942 + Int(index)))
+
+function truthlabel(algebra::FiniteFLewAlgebra, value)
+    index = _checked_finite_index(algebra, value)
+    index == algebra.top && return "⊤"
+    index == algebra.bot && return "⊥"
+    # Intermediate values are named α, β, … in carrier order; the label is
+    # deliberately not the index, which is storage detail.
+    rank = count(i -> i != Int(algebra.top) && i != Int(algebra.bot), 1:(Int(index) - 1))
+    string(Char(945 + rank))
+end
+
+function _display_truth(algebra::FiniteFLewAlgebra{N}, value) where N
+    # `Bool` is never the finite carrier, so it is left in its own form.
+    value isa Integer && !(value isa Bool) && 1 <= value <= N ?
+        truthlabel(algebra, value) : string(value)
+end
+
+"""Return the carrier in display order plus whether the lattice is a chain.
+
+A chain is shown in ascending order.  A non-chain lattice has no such order to
+show, so it is listed as `⊥`, the incomparable values, `⊤`, and the display
+says so rather than implying the carrier order is a ranking.
+"""
+function _algebra_order(algebra::FiniteFLewAlgebra{N}) where N
+    values = [FiniteTruth(i) for i in 1:N]
+    ischain = all(precedeq(algebra, x, y) || precedeq(algebra, y, x) for x in values, y in values)
+    ischain && return (sort(values; lt=(x, y) -> precedes(algebra, x, y)), true)
+    rest = [v for v in values if v != algebra.bot && v != algebra.top]
+    (unique(vcat(algebra.bot, rest, algebra.top)), false)
+end
+
+_truth_color(algebra::FiniteFLewAlgebra, value) =
+    value == algebra.top ? _DISPLAY_TOP : value == algebra.bot ? _DISPLAY_BOT : :normal
+
 function Base.show(io::IO, algebra::FiniteFLewAlgebra{N}) where N
-    print(io, "FiniteFLewAlgebra{$N}(bottom=$(algebra.bot), top=$(algebra.top))")
+    print(io, "FiniteFLewAlgebra{$N}(bottom=", truthlabel(algebra, algebra.bot),
+        ", top=", truthlabel(algebra, algebra.top), ")")
 end
 
 Base.show(io::IO, ::MIME"text/plain", ::BooleanAlgebra) =
-    print(io, "BooleanAlgebra (carrier Bool: {false, true})")
+    _display_header(io, "BooleanAlgebra", "carrier Bool: {false, true}")
 
 function Base.show(io::IO, ::MIME"text/plain", alg::GodelAlgebra{N}) where N
-    if N == 0
-        print(io, "GodelAlgebra (unit interval [0.0, 1.0])")
-    else
-        lvls = join(string.(levels(alg)), ", ")
-        print(io, "GodelAlgebra{$N} (chain of $N levels: $lvls)")
-    end
+    N == 0 && return _display_header(io, "GodelAlgebra", "unit interval [0.0, 1.0]")
+    lvls = join(string.(levels(alg)), ", ")
+    _display_header(io, "GodelAlgebra{$N}", "chain of $N levels: $lvls")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", alg::LukasiewiczAlgebra{N}) where N
-    if N == 0
-        print(io, "LukasiewiczAlgebra (unit interval [0.0, 1.0])")
-    else
-        lvls = join(string.(round.(levels(alg), digits=3)), ", ")
-        print(io, "LukasiewiczAlgebra{$N} (chain of $N levels: $lvls)")
-    end
+    N == 0 && return _display_header(io, "LukasiewiczAlgebra", "unit interval [0.0, 1.0]")
+    lvls = join(string.(round.(levels(alg), digits=3)), ", ")
+    _display_header(io, "LukasiewiczAlgebra{$N}", "chain of $N levels: $lvls")
 end
 
-function _render_table_rows(op_symbol::String, matrix::Matrix{FiniteTruth}, N::Int)
-    lines = String[]
-    hdr = " " * op_symbol * " │ " * join(string.(1:N), " ")
-    push!(lines, hdr)
-    div_line = "───┼" * "─"^(2 * N)
-    push!(lines, div_line)
-    for i in 1:N
-        row_str = " " * string(i) * " │ " * join(string.(matrix[i, :]), " ")
-        push!(lines, row_str)
+"""Render one operation table as element-labelled lines, in display order."""
+function _render_table_rows(op_symbol::String, matrix::Matrix{FiniteTruth}, order, labels)
+    width = maximum(length, labels)
+    cell(text) = lpad(text, width)
+    lines = String[" " * cell(op_symbol) * " │ " * join((cell(labels[Int(y)]) for y in order), " ")]
+    push!(lines, "─"^(width + 2) * "┼" * "─"^((width + 1) * length(order)))
+    for x in order
+        push!(lines, " " * cell(labels[Int(x)]) * " │ " *
+            join((cell(labels[Int(matrix[Int(x), Int(y)])]) for y in order), " "))
     end
     lines
 end
 
 function Base.show(io::IO, ::MIME"text/plain", algebra::FiniteFLewAlgebra{N}) where N
-    println(io, "FiniteFLewAlgebra{$N} (bottom=$(algebra.bot), top=$(algebra.top))\n")
-    if N <= 10
-        t1 = _render_table_rows("∧", algebra.meet, N)
-        t2 = _render_table_rows("∨", algebra.join, N)
-        t3 = _render_table_rows("→", algebra.implication, N)
+    order, ischain = _algebra_order(algebra)
+    labels = [truthlabel(algebra, i) for i in 1:N]
+    _display_header(io, "FiniteFLewAlgebra{$N}",
+        "$N value$(N == 1 ? "" : "s"), $(ischain ? "chain" : "not a chain"), " *
+        "bottom=$(truthlabel(algebra, algebra.bot)), top=$(truthlabel(algebra, algebra.top))")
 
-        titles = ["  Meet (∧)", "  Join (∨)", "  Implication (→)"]
-        w1 = max(maximum(length, t1), length(titles[1]))
-        w2 = max(maximum(length, t2), length(titles[2]))
+    shown, elided = _display_bounded(io, order, 12)
+    _display_label(io, 2, ischain ? "Order" : "Elements")
+    for (i, value) in enumerate(shown)
+        i == 1 || print(io, ischain ? " < " : ", ")
+        _styled(io, labels[Int(value)], _truth_color(algebra, value))
+    end
+    _display_elision(io, elided)
 
-        println(io, rpad(titles[1], w1 + 4), rpad(titles[2], w2 + 4), titles[3])
-        for i in 1:length(t1)
-            line1 = rpad(t1[i], w1 + 4)
-            line2 = rpad(t2[i], w2 + 4)
-            line3 = t3[i]
-            if i == length(t1)
-                print(io, line1, line2, line3)
-            else
-                println(io, line1, line2, line3)
-            end
+    N <= 10 || return
+    tables = (_render_table_rows("∧", algebra.meet, order, labels),
+              _render_table_rows("∨", algebra.join, order, labels),
+              _render_table_rows("→", algebra.implication, order, labels))
+    titles = ("  Meet (∧)", "  Join (∨)", "  Implication (→)")
+    widths = (max(maximum(length, tables[1]), length(titles[1])) + 4,
+              max(maximum(length, tables[2]), length(titles[2])) + 4,
+              0)
+
+    print(io, "\n\n")
+    for (title, width) in zip(titles, widths)
+        _styled(io, width == 0 ? title : rpad(title, width), _DISPLAY_DIM)
+    end
+    for i in eachindex(tables[1])
+        print(io, "\n")
+        # The axis row carries the element labels and the rule separates it;
+        # the body rows stay plain so the table reads as data, not decoration.
+        color = i == 1 ? _DISPLAY_HEAD : i == 2 ? _DISPLAY_DIM : :normal
+        for (table, width) in zip(tables, widths)
+            _styled(io, width == 0 ? table[i] : rpad(table[i], width), color)
         end
-    else
-        print(io, "  Carrier: 1:$N")
     end
 end
 

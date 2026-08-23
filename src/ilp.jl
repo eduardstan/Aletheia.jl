@@ -153,19 +153,12 @@ Base.show(io::IO, knowledge::ClauseSet) = print(io, "ClauseSet(", join(string.(k
 
 function Base.show(io::IO, ::MIME"text/plain", knowledge::ClauseSet)
     nc = length(knowledge.clauses)
-    print(io, "ClauseSet ($nc clause$(nc == 1 ? "" : "s"))")
-    if nc <= 15
-        for c in knowledge.clauses
-            h_c = ishorn(c) ? HornClause(c) : c
-            print(io, "\n  ", string(h_c))
-        end
-    else
-        for c in knowledge.clauses[1:10]
-            h_c = ishorn(c) ? HornClause(c) : c
-            print(io, "\n  ", string(h_c))
-        end
-        print(io, "\n  … ($(nc - 10) elided)")
+    _display_header(io, "ClauseSet", "$nc clause$(nc == 1 ? "" : "s")")
+    shown, elided = _display_bounded(io, knowledge.clauses, DISPLAY_ITEMS)
+    for clause in shown
+        print(io, "\n  ", string(ishorn(clause) ? HornClause(clause) : clause))
     end
+    _display_elision_line(io, 2, elided)
 end
 
 Base.string(knowledge::ClauseSet) = sprint(show, knowledge)
@@ -557,29 +550,35 @@ Base.show(io::IO, sub::Substitution) =
     print(io, "Substitution(", join(["$(p.first) => $(p.second)" for p in sub.bindings], ", "), ")")
 
 function Base.show(io::IO, ::MIME"text/plain", sub::Substitution)
-    if isempty(sub.bindings)
-        print(io, "Substitution: {}")
-    else
-        b_str = join(["$(p.first) ↦ $(p.second)" for p in sub.bindings], ", ")
-        print(io, "Substitution: {$b_str}")
-    end
+    _styled(io, "Substitution", _DISPLAY_HEAD; bold=true)
+    print(io, ": {")
+    shown, elided = _display_bounded(io, sub.bindings, DISPLAY_ITEMS)
+    print(io, join(["$(p.first) ↦ $(p.second)" for p in shown], ", "))
+    _display_elision(io, elided)
+    print(io, "}")
 end
 
 Base.show(io::IO, ex::EntailmentExample) =
     print(io, "EntailmentExample(", ex.positive ? "+" : "-", ", ", ex.example, ")")
 
-Base.show(io::IO, ::MIME"text/plain", ex::EntailmentExample) =
-    print(io, "EntailmentExample (", ex.positive ? "+" : "-", "): ", ex.example)
+function Base.show(io::IO, ::MIME"text/plain", ex::EntailmentExample)
+    _display_header(io, "EntailmentExample", ex.positive ? "+" : "-")
+    print(io, ": ", ex.example)
+end
 
 Base.show(io::IO, ex::InterpretationExample) =
     print(io, "InterpretationExample(", ex.positive ? "+" : "-", ", ", ex.interpretation, ")")
 
-Base.show(io::IO, ::MIME"text/plain", ex::InterpretationExample) =
-    print(io, "InterpretationExample (", ex.positive ? "+" : "-", "): ", ex.interpretation)
+function Base.show(io::IO, ::MIME"text/plain", ex::InterpretationExample)
+    _display_header(io, "InterpretationExample", ex.positive ? "+" : "-")
+    print(io, ": ", ex.interpretation)
+end
 
 Base.show(io::IO, ex::ProofExample) =
     print(io, "ProofExample(", ex.positive ? "+" : "-", ", ", ex.proof, ")")
 
-Base.show(io::IO, ::MIME"text/plain", ex::ProofExample) =
-    print(io, "ProofExample (", ex.positive ? "+" : "-", "): ", ex.proof)
+function Base.show(io::IO, ::MIME"text/plain", ex::ProofExample)
+    _display_header(io, "ProofExample", ex.positive ? "+" : "-")
+    print(io, ": ", ex.proof)
+end
 

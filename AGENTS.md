@@ -23,6 +23,12 @@ When updating this file, preserve this bar for all agents and keep entries conci
 - Generated interval frames use a private canonical relation provider and direct adjacency construction for `BEFORE`; arbitrary relation families retain the lazy predicate fallback. IA3/IA7 and RCC5 memberships follow SoleLogics' definitions and are exhaustively checked in `test/relations.jl`.
 - Dimensional constructors return the existing `Frame` with a callable accessibility provider; `src/evaluation.jl` recognizes the private interval provider for direct `BEFORE` adjacency while retaining generic fallback. RCC8 and RCC5 are available topological fragments.
 
+## Presentation layer
+
+- `src/display.jl` holds the shared rich-display conventions (bold header, dim section labels, `:color`/`:limit` handling, elision helpers); every `MIME"text/plain"` method in `src/` uses them.
+- Finite algebra carriers are one-based `UInt8` indices, never shown as such: `Aletheia.truthlabel` maps them to `⊥`, `α`, `β`, …, `⊤`. `test/presentation.jl` pins the exact plain-text output.
+- `Aletheia.SoleLogics.ManyValuedLogics`' algebra view deliberately keeps SoleLogics' payload (boxed domain, raw carrier tables) for migration parity; only its presentation follows the conventions above.
+
 ## Semantics layer
 
 - `src/semantics.jl` is the authoritative layer for `TruthAlgebra`, `Frame`, `Model`, and atom-only `interpret`; `src/evaluation.jl` provides the shared DAG walk for `check` and `extension`.
