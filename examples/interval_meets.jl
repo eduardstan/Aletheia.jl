@@ -11,6 +11,12 @@ formula = branch(pool, Diamond(MEETS), p)
 target = Interval(2, 3)
 model = Model(intervals, BOOLEAN, Dict("p" => Set([target])))
 
+println("Interval frame:")
+show(stdout, MIME"text/plain"(), intervals)
+println()
+println("Model with p at the target interval:")
+show(stdout, MIME"text/plain"(), model)
+println()
 println("worlds: ", collect(worlds(intervals)))
 println("MEETS successors of (1,2): ",
     collect(accessible(intervals, Interval(1, 2), MEETS)))
@@ -18,4 +24,3 @@ println("target valuation: ", target)
 println("check ⟨MEETS⟩p at (1,2): ", check(formula, model, Interval(1, 2)))
 println("relation predicate agrees: ",
     relation_holds(MEETS, Interval(1, 2), target))
-println("Demonstrated: Allen MEETS as modal accessibility with endpoint and world conventions.")

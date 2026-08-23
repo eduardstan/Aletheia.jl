@@ -1,14 +1,13 @@
 # Runnable examples
 
 Run any example from the repository root with `julia --project=. examples/<name>.jl`.
-Each one uses only Aletheia and ends with a statement of what it demonstrated.
-Cold Julia startup dominates these timings; each is roughly 2–5 seconds on a laptop.
+Each example is a small, self-contained lesson and uses Aletheia's rich terminal displays for its models, extensions, and other domain objects.
 
-- `quickstart.jl` — How do I parse, print, build a two-world model, and check a formula? (~2 s)
-- `interval_meets.jl` — How does Allen MEETS become modal accessibility, and which endpoints/worlds are used? (~2 s)
-- `bisimulation.jl` — Are two labelled roots bisimilar, and can `◇p` separate them after relabelling? (~2 s)
-- `contraction.jl` — Does bisimulation contraction reduce worlds without changing formula values? (~2 s)
-- `standard_translation.jl` — Does first-order standard translation agree with direct modal evaluation? (~2 s)
-- `normal_forms.jl` — Do CNF and DNF conversions preserve a classical formula's extension? (~2 s)
-- `many_valued.jl` — Where do Gödel and Łukasiewicz evaluation genuinely differ? (~2 s)
-- `ilp_walkthrough.jl` — How do θ-subsumption, refinement, and interpretation wrappers fit together? (~2 s)
+- `quickstart.jl` — Parse a modal formula, build a two-world model, and inspect its satisfying worlds.
+- `bisimulation.jl` — See how changing an atom label lets `◇p` distinguish otherwise bisimilar roots.
+- `contraction.jl` — Inspect a bisimulation quotient and verify that it preserves an extension.
+- `ilp_walkthrough.jl` — Follow θ-subsumption, lazy refinement, and a modal interpretation example.
+- `interval_meets.jl` — Use Allen's MEETS relation as modal accessibility between closed intervals.
+- `many_valued.jl` — Compare Gödel and Łukasiewicz values and see primitive modal folds at a dead end.
+- `normal_forms.jl` — Convert a classical formula to CNF and DNF and check semantic preservation.
+- `standard_translation.jl` — Compare direct modal evaluation with first-order standard translation.

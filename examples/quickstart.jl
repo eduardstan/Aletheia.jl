@@ -14,7 +14,10 @@ base_frame = Frame((:w₁, :w₂),
     Dict(:R => Dict(:w₁ => [:w₂], :w₂ => [:w₂])); index=true)
 model = Model(base_frame, BOOLEAN,
     Dict("p" => Set([:w₂]), "q" => Set([:w₁, :w₂])))
+println("Model:")
+show(stdout, MIME"text/plain"(), model)
+println()
 println("successors of w₁: ", collect(accessible(base_frame, :w₁, :R)))
 println("check at w₁: ", check(formula, model, :w₁))
-println("extension: ", extension(formula, model))
-println("Demonstrated: parse, print, build a two-world model, and check a modal formula.")
+show(stdout, MIME"text/plain"(), describe(extension(formula, model), model))
+println()
