@@ -109,6 +109,13 @@ end
     @test CompatibilityClient.istop(CompatibilityClient.⊤)
     @test CompatibilityClient.isbot(CompatibilityClient.⊥)
     @test_throws ArgumentError CompatibilityClient.Atom(CompatibilityClient.⊤)
+    @test_throws "truth values are semantic values" CompatibilityClient.Atom(CompatibilityClient.⊤)
+    truth_first = CompatibilityClient.SyntaxBranch(CompatibilityClient.:∧,
+        CompatibilityClient.⊤, p)
+    @test CompatibilityClient.nchildren(truth_first) == 2
+    @test CompatibilityClient.children(truth_first)[2] == p
+    @test CompatibilityClient.SyntaxBranch(CompatibilityClient.:¬,
+        CompatibilityClient.⊤) isa Aletheia.Formula
     @test_throws ArgumentError CompatibilityClient.parseformula("⊤"; atom_parser=_ -> CompatibilityClient.⊤)
     @test_throws ArgumentError CompatibilityClient.collatetruth(CompatibilityClient.:∧, (CompatibilityClient.⊤, CompatibilityClient.⊥))
     @test_throws ArgumentError CompatibilityClient.LeftmostConjunctiveForm([p, q])
@@ -143,6 +150,10 @@ end
     @test MV.succeedes(MV.G4, MV.β, MV.α)
     @test MV.maximalmembers(MV.H4, MV.FiniteTruth(2)) == MV.FiniteTruth[]
     @test MV.minimalmembers(MV.H4, MV.FiniteTruth(1)) == MV.FiniteTruth[]
+    @test MV.maximalmembers(MV.H4, MV.α) == [MV.β]
+    @test MV.minimalmembers(MV.H4, MV.α) == [MV.β]
+    @test MV.maximalmembers(MV.G4, MV.α) == [MV.FiniteTruth(2)]
+    @test MV.minimalmembers(MV.G4, MV.α) == [MV.β]
     @test MV.BASE_MANY_VALUED_CONNECTIVES == [CompatibilityClient.:∨,
         CompatibilityClient.:∧, CompatibilityClient.:→]
     @test_throws MethodError MV.FiniteTruth()
@@ -175,6 +186,8 @@ end
     @test direct isa MV.FiniteFLewAlgebra{2}
     @test direct.native isa Aletheia.FiniteFLewAlgebra{2}
     @test MV.getdomain(direct) == (MV.FiniteTruth(1), MV.FiniteTruth(2))
+    @test MV.getdomain(direct.native) == MV.getdomain(direct)
+    @test MV.getdomain(Aletheia.G4) == MV.getdomain(MV.G4)
     wrapped_ops = MV.FiniteFLewAlgebra{2}(direct.join, direct.meet, direct.monoid, 2, 1)
     @test wrapped_ops.monoid(MV.FiniteTruth(1), MV.FiniteTruth(2)) == MV.FiniteTruth(2)
     flat_join = [1, 1, 1, 2]

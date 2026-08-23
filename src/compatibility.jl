@@ -190,10 +190,10 @@ Base.hash(formula::_CompatBranch, h::UInt) = hash(objectid(formula.pool), hash(f
 end
 
 function Atom(value)
-    value isa Aletheia.Formula && _unsupported(:Atom,
-        "Aletheia atoms cannot contain formulas; use children/branch instead")
     value isa Truth && _unsupported(:Atom,
         "truth values are semantic values, not formulas in Aletheia")
+    value isa Aletheia.Formula && _unsupported(:Atom,
+        "Aletheia atoms cannot contain formulas; use children/branch instead")
     _wrap(Aletheia.atom(_DEFAULT_POOL, value))
 end
 
@@ -222,33 +222,28 @@ end
 # temporary Vector and repeatedly rebuilt tuples for every branch.
 function _formula_pool_for(connective, formulas::Tuple)
     isempty(formulas) && return _DEFAULT_POOL
-    first_formula = formulas[1]
-    candidate = if first_formula isa _CompatFormula
-        _formula_pool(first_formula)
-    elseif first_formula isa Aletheia.Formula
-        Aletheia.pool(first_formula)
-    else
-        nothing
-    end
-    if candidate !== nothing
-        same = true
-        for i in 2:length(formulas)
-            formula = formulas[i]
-            pool = if formula isa _CompatFormula
-                _formula_pool(formula)
-            elseif formula isa Truth
-                continue
-            elseif formula isa Aletheia.Formula
-                Aletheia.pool(formula)
-            else
-                continue
-            end
-            if pool !== candidate
-                same = false
-                break
-            end
+    candidate = nothing
+    same = true
+    for formula in formulas
+        pool = if formula isa Truth
+            continue
+        elseif formula isa _CompatFormula
+            _formula_pool(formula)
+        elseif formula isa Aletheia.Formula
+            Aletheia.pool(formula)
+        else
+            continue
         end
-        same && _hasconnective(Aletheia.signature(candidate), connective) && return candidate
+        if candidate === nothing
+            candidate = pool
+        elseif pool !== candidate
+            same = false
+            break
+        end
+    end
+    if candidate !== nothing && same &&
+            _hasconnective(Aletheia.signature(candidate), connective)
+        return candidate
     end
     _merge_formula_pools(connective, formulas)
 end
@@ -850,7 +845,7 @@ end
 # Sole's order and domain protocol, with the same threshold semantics as its
 # order-utilities.jl implementation.  Values are wrapped on the way out.
 getdomain(algebra::FiniteFLewAlgebra{N}) where N = ntuple(FiniteTruth, N)
-getdomain(algebra::Aletheia.FiniteFLewAlgebra) = getdomain(_wrap_algebra(algebra))
+getdomain(algebra::Aletheia.FiniteFLewAlgebra{N}) where N = ntuple(FiniteTruth, N)
 getdomain(algebra::Aletheia.TruthAlgebra) = Aletheia.domain(algebra)
 getdomain(args...) = _unsupported(:getdomain, "the supplied value is not a finite algebra")
 
