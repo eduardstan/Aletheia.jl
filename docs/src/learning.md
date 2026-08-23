@@ -4,7 +4,6 @@
 CurrentModule = Aletheia
 ```
 
-
 ## The connection
 
 Inductive logic programming distinguishes learning from entailment, learning
@@ -15,12 +14,10 @@ vocabulary are developed in Muggleton and De Raedt, §§3–5 (pp. 635–649)
 [muggleton1994; §§3–5, pp. 635–649](@cite).
 
 A Kripke [`Model`](@ref) is an interpretation in this sense: it is a domain of
-worlds, accessibility structure, and atom valuation. Therefore an existing
-modal decision tree or decision list can already be viewed as learning from
-interpretations over modal models. No conversion to a first-order tree is
-required, and no learner is smuggled into Aletheia by making this observation.
-The package supplies the example wrapper; a downstream learner supplies the
-hypothesis search and scoring.
+worlds, accessibility structure, and atom valuation. So a modal decision tree
+or decision list is already a learner over interpretations, with no conversion
+to a first-order representation. Aletheia supplies the example wrapper and the
+evaluator; the hypothesis search and scoring belong to the learner.
 
 ## A worked interpretation example
 
@@ -29,19 +26,19 @@ are the interpretation; `p` is true at `:w₁`. The wrapper records that this is
 positive example, and preserves object identity so a learner can retain the
 model's relation and valuation rather than flattening them into a feature bag.
 
-```@example learning
+```jldoctest learning
 using Aletheia
-frame = Frame((:w₁, :w₂), Dict(:R => Dict(:w₁ => [:w₂], :w₂ => [])); index=true)
-model = Model(frame, BOOLEAN, Dict("p" => Set([:w₁])))
+base_frame = Frame((:w₁, :w₂), Dict(:R => Dict(:w₁ => [:w₂], :w₂ => [])); index=true)
+model = Model(base_frame, BOOLEAN, Dict("p" => Set([:w₁])))
 example = interpretation_example(model; positive=true)
 
 println(example.interpretation === model)
 println(example.positive)
 println(collect(accessible(example.interpretation, :w₁, :R)))
 println(interpret(atom(FormulaPool(Signature((¬,))), "p"), model, :w₁))
-```
 
-```text
+# output
+
 true
 true
 [:w₂]
@@ -64,16 +61,16 @@ one positive literal. [`subsumes`](@ref) implements Plotkin's
 member of the second. See Muggleton and De Raedt, §5.2, Definition 5.3 (pp.
 642–645) [muggleton1994; §5.2, Definition 5.3, pp. 642–645](@cite).
 
-```@example learning
+```jldoctest learning_clauses
 using Aletheia
 X = Variable(:X)
 a = Constant(:a)
 general = HornClause(Predicate(:father, X), Predicate(:parent, X))
 specific = Clause(Predicate(:father, a), Literal(Predicate(:parent, a), false))
 println(subsumes(general, specific))
-```
 
-```text
+# output
+
 true
 ```
 
@@ -91,19 +88,19 @@ optimal. The unrestricted upward case has infinite chains, and a general
 complete operator cannot be claimed. See Muggleton and De Raedt, §5.2.2,
 Definition 5.4 (pp. 644–645) [muggleton1994; §5.2.2, Definition 5.4, pp. 644–645](@cite)
 and the bounded refinement-operator definitions in Tamaddoni-Nezhad and
-Muggleton, “A Note on Refinement Operators for IE-Based ILP Systems,” pp.
-297–314 of the ILP 2008 proceedings [zelezny2008; Tamaddoni-Nezhad and Muggleton, “A Note on Refinement Operators for IE-Based ILP Systems,” pp. 297–314](@cite).
+Muggleton, “A Note on Refinement Operators for IE-Based ILP Systems”, pp.
+297–314 of the ILP 2008 proceedings [zelezny2008; pp. 297–314](@cite).
 
-```@example learning
+```jldoctest learning_refinement
 using Aletheia
 X = Variable(:X)
 base = Clause(Predicate(:p, X))
 candidates = downward_refinements(base; literals=[Predicate(:q, X)])
 println(Base.IteratorSize(typeof(candidates)))
 println(collect(candidates))
-```
 
-```text
+# output
+
 Base.SizeUnknown()
 Any[p(X) ∨ q(X)]
 ```

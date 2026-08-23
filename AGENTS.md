@@ -15,6 +15,7 @@ When updating this file, preserve this bar for all agents and keep entries conci
 
 - The syntax implementation lives in `src/syntax.jl` and `src/parse.jl`; it is deliberately semantic-free.
 - Validate both package tests and the citation-aware docs build with `julia --project=. -e 'using Pkg; Pkg.test()'` and `julia --project=docs docs/make.jl`.
+- Every worked example under `docs/src/` is a script-style `jldoctest` block, so the docs build verifies its output. Regenerate expected output by running `makedocs` with `doctest = :fix` from a copy of `docs/make.jl` placed inside `docs/`; never hand-write it. A block whose expected output is empty is not fixed correctly and needs a manual pass.
 - CI enforces source line coverage with `julia --project=. -e 'using Pkg; Pkg.test(coverage=true)'` followed by `julia --project=coverage -e 'using Pkg; Pkg.instantiate(); include("coverage/check.jl")'`; do not commit generated `.cov` or manifests.
 
 ## Modal breadth
@@ -40,13 +41,14 @@ When updating this file, preserve this bar for all agents and keep entries conci
 
 ## Migration layer
 
-- `src/compatibility.jl` defines the nested opt-in `Aletheia.SoleLogics` vocabulary; the derived consumer inventory, mappings, deliberate gaps, and scratch-slice evidence live in `docs/src/compatibility.md`.
+- `src/compatibility.jl` defines the nested opt-in `Aletheia.SoleLogics` vocabulary; the derived consumer inventory, mappings, deliberate gaps, and consumer-trial evidence live in `docs/src/compatibility.md`.
 - `SoleLogics.ManyValuedLogics` finite tableau names are boundary adapters there: `FiniteTruth` retains the incumbent indexed object while `FiniteFLewAlgebra` delegates tables to Aletheia's unboxed `UInt8` algebras.
 
 ## ILP foundations
 
 - Clauses, θ-subsumption, lazy refinement operators, and learning-setting example wrappers live in `src/ilp.jl`; the reference terminology and properties are documented in `docs/src/index.md` with `muggleton1994`. `test/ilp.jl` covers the recursive implication counterexample and quasi-order boundaries.
 
-- Stage-1 SoleData dataset protocol is benchmark-only: `benchmark/dataset_protocol.jl` uses a temporary environment and read-only SoleData; results and the post-rebase decision evidence live in `data/al-dataset-protocol/report.md` and `run.txt`.
-- Stage-2a SoleModels consumer routing remains benchmark-only: `benchmark/dataset_consumer.jl` builds disposable package copies; the corrected first-use/steady/churn method, paired allocations, load records, and mask gates live in `data/al-dataset-consumer/report.md` and `corrected-repetitions/`.
+- The public documentation is written for an outside reader: no internal work-lane vocabulary (stage names, "incumbent", "scratch", "routed"), and SoleLogics is always named rather than alluded to.
+- Stage-1 SoleData dataset protocol is benchmark-only: `benchmark/dataset_protocol.jl` uses a temporary environment and read-only SoleData; results and the post-rebase decision evidence live in `data/soledata-protocol/report.md` and `run.txt`.
+- Stage-2a SoleModels consumer routing remains benchmark-only: `benchmark/dataset_consumer.jl` builds disposable package copies; the corrected first-use/steady/churn method, paired allocations, load records, and mask gates live in `data/solemodels-consumer/report.md` and `corrected-repetitions/`.
 - Relation adjacency is cached on `Frame` and shared by models that reuse that frame; the cache remains valuation-independent and non-uniform consumer frames are not coalesced (`src/semantics.jl`, `benchmark/dataset_consumer_route.jl`).

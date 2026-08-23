@@ -184,6 +184,6 @@ this is a correction, not an unexplained improvement.  The old aggregate
 From the repository root, set read-only SoleData and SoleModels checkout paths
 and run `benchmark/dataset_consumer.jl`.  It creates disposable package copies,
 runs the agreement gate first, and writes the raw table to
-`data/al-dataset-consumer/run.txt`.  The benchmark's subprocesses use GNU
+`data/solemodels-consumer/run.txt`.  The benchmark's subprocesses use GNU
 `timeout` and file redirection, never a pipe.  Dataset construction is outside
 the timed closures.  No SoleData or SoleModels package was modified.

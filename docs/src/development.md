@@ -1,7 +1,12 @@
 # Development and validation
 
-These commands are intentionally explicit. Run them from the repository root; the
-first invocation may spend extra time resolving and precompiling Julia packages.
+Run these from the repository root. The first invocation of each spends extra
+time resolving and precompiling Julia packages.
+
+Timings below were measured on a 12-thread Alder Lake laptop running Julia
+1.12.7; treat them as an order of magnitude, not a target. The package has no
+runtime dependencies, but the test, documentation, benchmark, and coverage
+environments are separate Julia projects.
 
 ## Package tests
 
@@ -15,9 +20,11 @@ A passing run ends with:
 Aletheia tests passed
 ```
 
-On the launch machine (Julia 1.12.7, 12 threads), this took **8m29s** wall
-clock. It includes Aqua/JET checks and the runnable examples; do not assume a
-quiet Julia process is hung.
+This took **8m29s** wall clock. It includes Aqua/JET checks and the runnable
+examples.
+
+!!! tip
+    Do not assume a quiet Julia process is hung.
 
 ## Documentation and doctests
 
@@ -32,13 +39,13 @@ Info: Doctest: running doctests.
 Info: ... RenderDocument: rendering document.
 ```
 
-The citation-aware build took **3m20s** on the launch machine. It may create a
+The citation-aware build took **3m20s**. It may create a
 local `docs/Manifest.toml`; that machine-specific file is not committed.
 
 ## Benchmarks
 
-Start with the bounded smoke path. It prints progress and a table without
-waiting on the incumbent comparison:
+Start with the smoke run. It exercises the harness and prints a table in about
+a minute, skipping the slowest SoleLogics comparisons:
 
 ```sh
 julia --project=benchmark benchmark/run.jl --smoke
@@ -51,21 +58,20 @@ benchmark smoke: PASS
 suite | SoleLogics median | Aletheia median
 ```
 
-On the launch machine, the first smoke run took **1m13s** (including a cold
-benchmark environment setup); the next run took 45s on the same checkout. These
-timings depend heavily on Julia precompile state. It deliberately
-skips interval, theory, and cold-subprocess rows, which remain in the full run. For the complete measurement harness, use:
+The first smoke run took **1m13s** (including a cold benchmark environment
+setup); the next run took 45s on the same checkout. These timings depend
+heavily on Julia precompile state. The smoke run deliberately skips interval,
+theory, and cold-subprocess rows, which remain in the full run. For the
+complete measurement harness, use:
 
 ```sh
 julia --project=benchmark benchmark/run.jl
 ```
 
-It prints `[case] ...` before every guarded case and always prints its table,
-even when an incumbent case is recorded as `>10s (not sampled)`. The full run is
-measured in minutes, not seconds: the previous launch-machine attempt reached
-10m without a table because an incumbent case was still inside its guard. The
-per-case progress and final report now make that wait visible; use `--deep` only
-for a deliberately slower diagnostic run.
+The full run prints `[case] …` before each case and always prints its table,
+even when a SoleLogics case times out and is recorded as `>10s (not sampled)`.
+Expect tens of minutes; the per-case progress lines let you tell a slow case
+from a hang. Use `--deep` only for a deliberately slower diagnostic run.
 
 ## Differential correctness
 
@@ -82,6 +88,6 @@ A passing run ends with:
 differential: PASS (64 formulas; seed 2716278820)
 ```
 
-The measured differential run took **1m46s** on the launch machine. It is
-deterministic for that seed and is separate from `Pkg.test()` so Aletheia does
-not acquire SoleLogics as a package dependency.
+The measured differential run took **1m46s**. It is deterministic for that
+seed and is separate from `Pkg.test()` so Aletheia does not acquire SoleLogics
+as a package dependency.

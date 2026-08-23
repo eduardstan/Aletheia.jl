@@ -1,49 +1,63 @@
 # Finite FLew-algebras
 
 Aletheia's finite many-valued semantics includes **FLew-algebras**: finite
-residuated lattices with a commutative monoid.  A value is a small integer
-index (`FiniteTruth`, currently `UInt8`) into a table carrier.  The public
+residuated lattices with a commutative monoid. A value is a small integer
+index (`FiniteTruth`, currently `UInt8`) into a table carrier. The public
 constructor is:
 
 ```julia
 FiniteFLewAlgebra(join_table, lattice_meet_table, monoid_table, bottom, top)
 ```
 
+where each table is a square `UInt8` matrix over the carrier indices.
+
 The constructor validates the bounded-lattice and commutative-monoid axioms,
-monotonicity of the monoid, and residuation.  It derives `x → z` as the
+monotonicity of the monoid, and residuation. It derives `x → z` as the
 largest `y` such that `x ⊙ y ≤ z`; implication is never accepted as an
-independent hand-written table.  `meet(algebra, x, y)` is the logical monoid
+independent hand-written table. `meet(algebra, x, y)` is the logical monoid
 conjunction, while `lattice_meet(algebra, x, y)` exposes the lattice meet used
 to derive `precedeq`.
 
 The named `G3`, `G4`, `G5`, `G6`, `Ł3`, `Ł4`, `H4`, `H6`, `H6_1`, `H6_2`,
-`H6_3`, and `H9` values reproduce the corresponding shipped SoleLogics
-join/meet/monoid tables element for element.  The table carrier is deliberately
-integer-indexed rather than boxed truth objects, so the common operation is a
-single `UInt8` table lookup.  The existing `GodelAlgebra{N}` and
+`H6_3`, and `H9` values reproduce the corresponding tables shipped by
+SoleLogics' `ManyValuedLogics` module, element for element. The table carrier
+is deliberately integer-indexed rather than boxed truth objects, so the common
+operation is a single `UInt8` table lookup. The existing `GodelAlgebra{N}` and
 `LukasiewiczAlgebra{N}` remain specialized `Float64` fast paths; tests compare
 them against these general finite constructions for every level.
 
 ## Why a chain is not enough
 
-Consider `H4`, with carrier ordered as `(⊤, ⊥, α, β)`.  Its lattice tables
-include
+`H4`'s carrier is the four `UInt8` indices `0x01`–`0x04`, in the order
+⊤, ⊥, α, β; `domain(H4)` returns them. The two middle values are incomparable:
+their join is ⊤ and their lattice meet is ⊥, while both are strictly between ⊥
+and ⊤.
 
-```text
-α ∨ β = ⊤       α ∧ β = ⊥
+```jldoctest algebras
+using Aletheia
+
+⊤H, ⊥H, α, β = domain(H4)
+println(join(H4, α, β) == ⊤H)
+println(lattice_meet(H4, α, β) == ⊥H)
+println(maximalmembers(H4, [α, β]))
+println(minimalmembers(H4, [α, β]))
+
+# output
+
+true
+true
+UInt8[0x03, 0x04]
+UInt8[0x03, 0x04]
 ```
 
-while both `α` and `β` are strictly between `⊥` and `⊤`.  Thus `α` and `β`
-are incomparable: a chain would have to put one below the other, changing at
-least one of these two table entries.  For example, a formula valuation may
-assign `p = α` and `q = β`; then `p ∧ q = ⊥` and `p ∨ q = ⊤`, a genuinely
-non-chain configuration that no totally ordered truth algebra can represent.
-`maximalmembers(H4, [α, β])` and `minimalmembers(H4, [α, β])` consequently
-return both values.
+A chain would have to put one of `α`, `β` below the other, changing at least
+one of those two table entries. For example, a formula valuation may assign
+`p = α` and `q = β`; then `p ∧ q = ⊥` and `p ∨ q = ⊤`, a genuinely non-chain
+configuration that no totally ordered truth algebra can represent.
 
 The order helpers are derived from the lattice meet:
 `precedeq(a, x, y)` means `lattice_meet(a, x, y) == x`, and
-`succeedeq` reverses the arguments.  `check` and `extension` use the same DAG
+`succeedeq` reverses the arguments. `check` and `extension` use the same DAG
 walk for these algebras as for Boolean and chain models; finite models return
 `UInt8` vectors, including for modal `Diamond` and `Box` formulas.
 

@@ -4,9 +4,11 @@
 CurrentModule = Aletheia
 ```
 
-
-Aletheia's theory layer keeps the interned modal formula as the source object
-and exposes small, testable boundaries rather than claiming a general prover.
+This chapter covers four utilities that sit on top of the evaluator: the
+standard translation into first-order logic, bisimulation and contraction,
+classical normal forms, and the prover interface. Each operates on ordinary
+interned formulas. Aletheia does not ship a modal or first-order prover; the
+prover section explains what it does ship.
 
 ## Standard translation
 
@@ -20,44 +22,42 @@ The first-order syntax and evaluator are a reference semantics, not a prover;
 Goranko, §§3.1–3.4 (pp. 97–145), gives the corresponding syntax, assignment,
 and validity vocabulary [goranko2016; §§3.1–3.4, pp. 97–145](@cite).
 
-```@example theory
+```jldoctest theory
 using Aletheia
 sig = Signature((¬, ∧, ∨, →, Diamond(:R), Box(:R)))
 pool = FormulaPool(sig)
 p, q = atom(pool, "p"), atom(pool, "q")
 formula = branch(pool, ∧, branch(pool, Diamond(:R), p), branch(pool, Box(:R), branch(pool, →, p, q)))
-frame = Frame((1, 2), Dict(:R => Dict(1 => [2], 2 => [2])); index=true)
-model = Model(frame, BOOLEAN, Dict("p" => Set([1]), "q" => Set([2])))
+base_frame = Frame((1, 2), Dict(:R => Dict(1 => [2], 2 => [2])); index=true)
+model = Model(base_frame, BOOLEAN, Dict("p" => Set([1]), "q" => Set([2])))
 translation = standard_translation(formula)
 first_order = first_order_interpretation(model)
 println(all(evaluate(translation, first_order, Dict(:x => w)) == check(formula, model, w)
-    for w in worlds(frame)))
-```
+    for w in worlds(base_frame)))
 
-```text
+# output
+
 true
 ```
 
-The adapter needs explicit atom and relation names when a model uses callable
-valuation/frame data. It accepts Boolean models because this translation is a
-classical reference bridge; it is not a many-valued first-order semantics.
+The bridge accepts Boolean models because it is a classical reference; it is
+not a many-valued first-order semantics.
 
-The atom and relation namespaces must agree between the two calls. For example,
-if a translation uses `atom_predicate = p -> Symbol("atom_", p)` and
-`relation_predicate = r -> Symbol("edge_", r)`, pass the same functions to
-`first_order_interpretation`; otherwise `evaluate` will report a missing
-predicate even though the modal model is valid. Dictionary-backed valuations
-and named frame relations are inferred, but callable valuations require
-`atoms=[...]` and callable accessibility requires `relations=[...]`. An atom
-handle may be supplied in `atoms` when the valuation is keyed by `Atom`; a
-string or other atom value is also accepted. First-order assignments are
-looked up by `Symbol` (for example `Dict(:x => world)`), and each assigned
-world must belong to the interpretation domain.
-
-The translation only has clauses for the built-in Boolean connectives and
-`Diamond`/`Box`; a custom connective raises `ArgumentError`. Likewise,
-`first_order_interpretation` does not translate many-valued models: use the
-native evaluator for Gödel or Łukasiewicz models instead.
+!!! note
+    The atom and relation namespaces must agree between the two calls. If a
+    translation uses `atom_predicate = p -> Symbol("atom_", p)` and
+    `relation_predicate = r -> Symbol("edge_", r)`, pass the same functions to
+    `first_order_interpretation`; otherwise `evaluate` reports a missing
+    predicate even though the modal model is valid. Dictionary-backed
+    valuations and named frame relations are inferred, but callable valuations
+    require `atoms=[...]` and callable accessibility requires `relations=[...]`.
+    An atom handle may be supplied in `atoms` when the valuation is keyed by
+    `Atom`; a string or other atom value is also accepted. First-order
+    assignments are looked up by `Symbol` (for example `Dict(:x => world)`),
+    and each assigned world must belong to the interpretation domain. The
+    translation only has clauses for the built-in Boolean connectives and
+    `Diamond`/`Box`; a custom connective raises `ArgumentError`, and
+    `first_order_interpretation` does not translate many-valued models.
 
 ## Bisimulation and contraction
 
@@ -70,7 +70,9 @@ Definition 2.16 and Theorem 2.20, pp. 64–67)
 `contraction_world` maps an original world to its quotient class before a
 caller evaluates on the quotient.
 
-The direct game check costs `O(n₁ n₂ r d₁ d₂)` per refinement pass and may make
+Write `n₁`, `n₂` for the world counts of the two models, `r` for the number of
+relations, and `d₁`, `d₂` for their maximum out-degrees. The direct game check
+costs `O(n₁ n₂ r d₁ d₂)` per refinement pass and may make
 `n₁ n₂` passes; the implementation's straightforward worst-case bound is
 `O((n₁ n₂)² r d₁ d₂)` time and `O(n₁ n₂)` space. Auto-contraction is
 `O(n² r d log d)` worst-case with `O(n r d + n)` working space, followed by
@@ -83,7 +85,7 @@ bisimilar while unlabelled, and `◇p` becomes a separating formula after `t` is
 labelled. The same model can then be contracted; checks on original worlds are
 forwarded through their quotient classes.
 
-```@example theory_bisimulation
+```jldoctest theory_bisimulation
 using Aletheia
 
 signature = Signature((¬, ∧, ∨, →, Diamond(:R), Box(:R)))
@@ -109,9 +111,9 @@ reduced = [check(formula, quotient, w) for w in worlds(base)]
 println("contraction world count: ", length(worlds(base)), " -> ",
     length(worlds(frame(quotient))))
 println("values preserved: ", original == reduced)
-```
 
-```text
+# output
+
 bisimilar before relabelling: true
 separator values after relabelling: false/true
 contraction world count: 3 -> 2
@@ -148,7 +150,7 @@ payload in the formula (and may include extras); an incomplete or duplicate
 override is rejected with `ArgumentError`. A downstream backend can implement `prove`,
 `prove_valid`, and entailment without changing syntax or semantics.
 
-```@example theory
+```jldoctest theory_prover
 using Aletheia
 sig = Signature((¬, ∧, →))
 pool = FormulaPool(sig)
@@ -157,9 +159,9 @@ tautology = branch(pool, →, p, p)
 contradiction = branch(pool, ∧, p, branch(pool, ¬, p))
 println(isvalid(tautology), " ", issatisfiable(contradiction))
 println(prove_valid(tautology, PropositionalProver()).status)
-```
 
-```text
+# output
+
 true false
 valid
 ```
@@ -168,7 +170,7 @@ valid
 `PropositionalProver` returns statuses such as `:sat`, `:unsat`, `:valid`, and
 `:invalid`; modal or custom branches return `ProverResult(:unknown)` rather
 than being treated as false. Consequently, inspect `result.status` when
-unknown and false must be distinguished—`Bool(result)` is only a convenience
+unknown and false must be distinguished — `Bool(result)` is only a convenience
 for a known true answer. The convenience forms use
 `issatisfiable(formula)`/`isvalid(formula)` with a fresh propositional prover;
 applications with a modal backend should pass their own `AbstractProver`

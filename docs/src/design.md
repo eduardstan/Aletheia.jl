@@ -4,7 +4,6 @@
 CurrentModule = Aletheia
 ```
 
-
 The central boundary is simple: a formula is syntax; a truth value is a result
 of interpreting syntax in a model. That distinction is not cosmetic. It lets
 one pooled formula DAG be evaluated in Boolean, Gödel, Łukasiewicz, or a
@@ -13,10 +12,10 @@ user-defined algebra without making truth carriers into special atom values.
 ## Similarity types and pooled DAGs
 
 `Signature` is a finite, value-based similarity type. `Diamond(:R)` and
-`Box(:R)` are ordinary connective values carrying relation data; relation names
-are not encoded in a parallel family of connective types. A user-defined
-connective extends the open `arity`, `notation`, and (when needed)
-`precedence`/`associativity` traits.
+`Box(:R)` are ordinary connective values carrying relation data: one connective
+type carries the relation as data, so a new relation needs no new connective
+type. A user-defined connective extends the open `arity`, `notation`, and (when
+needed) `precedence`/`associativity` traits.
 
 `Atom` and `Branch` are immutable handles into an explicit
 `FormulaPool`. A branch stores child IDs, not recursively typed child
@@ -24,7 +23,7 @@ values. Thus a deeply nested formula does not produce a recursively nested
 Julia type. Hash-consing makes repeated construction of the same atom or branch
 return the same pool-local ID:
 
-```@example design
+```jldoctest design
 using Aletheia
 
 pool = FormulaPool(Signature((¬, ∧)))
@@ -33,18 +32,18 @@ left = branch(pool, ¬, p)
 right = branch(pool, ¬, p)
 println(left == right)
 println(id(left), " ", subterms(left), " ", nsubterms(left))
-```
 
-```text
+# output
+
 true
 2 [1, 2] 2
 ```
 
 Equality is deliberately pool-local. The same spelling in another pool is a
-different formula, even if its printed syntax matches. This is stronger than a
-performance trick: the evaluator can index one vector by distinct reachable
-DAG nodes, and users cannot accidentally combine formulas from unrelated
-signatures. `dag` and `subterms` expose that identity when a
+different formula, even if its printed syntax matches. Pool-local identity is
+not only a performance device: the evaluator can index one vector by distinct
+reachable DAG nodes, and formulas from unrelated signatures cannot be
+accidentally combined. `dag` and `subterms` expose that identity when a
 later algorithm needs it.
 
 This follows the role of formula formation in the modal similarity-type
@@ -66,9 +65,10 @@ The consequence is visible in the API: [`interpret`](@ref) accepts an atom
 only; [`check`](@ref) and [`extension`](@ref) are the compound-formula entry
 points. This is the same separation between a valuation and satisfaction used
 in Blackburn et al., §1.3 (Definitions 1.19–1.20, pp. 16–18)
-[blackburn2001; §1.3, Definitions 1.19–1.20, pp. 16–18](@cite). The migration
-layer therefore rejects old truth-marker leaves rather than silently changing
-their identity; see [Migration](compatibility.md).
+[blackburn2001; §1.3, Definitions 1.19–1.20, pp. 16–18](@cite). SoleLogics
+represents ⊤ and ⊥ as formula leaves; the migration layer rejects them rather
+than silently reinterpreting them as atoms. See
+[Migration from SoleLogics](compatibility.md).
 
 ## Why many-valued logic is a parameter
 
@@ -110,15 +110,15 @@ precedence/associativity, and accepts prefix modal notation. The printer adds
 parentheses only when needed and quotes an atom whose text would collide with a
 connective or delimiter:
 
-```@example design
+```jldoctest design2
 using Aletheia
 pool = FormulaPool(Signature((¬, ∧, →)))
 f = parse(pool, "¬p → p ∧ q")
 println(syntaxstring(f))
 println(parse(pool, syntaxstring(f)) == f)
-```
 
-```text
+# output
+
 ¬p → p ∧ q
 true
 ```

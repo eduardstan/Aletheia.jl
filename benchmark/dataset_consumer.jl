@@ -198,7 +198,7 @@ try
         note=routed_note)
 
     result_path = get(ENV, "DATASET_CONSUMER_RESULT",
-        joinpath(ROOT, "data", "al-dataset-consumer", "run.txt"))
+        joinpath(ROOT, "data", "solemodels-consumer", "run.txt"))
     mkpath(dirname(result_path))
     open(result_path, "w") do io
         println(io, "seed=0xDADA_2024")
