@@ -163,12 +163,16 @@ The nested `ManyValuedLogics` namespace now maps Sole's finite tableau protocol:
   boundary `FiniteTruth` values;
 * `getdomain`, `precedeq`, `succeedeq`, `maximalmembers`, and
   `minimalmembers` follow the incumbent `order-utilities.jl` threshold code;
+  native Aletheia finite algebras are accepted by the same order helpers;
 * named G/Ł/H algebras, `booleanalgebra`, `α`, `β`, and
   `BASE_MANY_VALUED_CONNECTIVES` are mapped to Aletheia's shipped tables and
   connective values.
 
 The wrapper is deliberately confined to `Aletheia.SoleLogics`. Core
-`Aletheia.FiniteFLewAlgebra` evaluation still carries `UInt8` indices. A scratch
+`Aletheia.FiniteFLewAlgebra` evaluation still carries `UInt8` indices. Truth
+leaves are constants at the compatibility `check`/`interpret` boundary rather
+than valuation keys, while formulas without truth leaves take the unchanged
+core path. A scratch
 import-migrated SoleReasoners copy loaded `alphasat` and ran seeded HS, Compass,
 RCC8, and temporal tableau calls; its selected HS suite agreed exactly with the
 native SoleLogics run, including the native `nothing` timeout outcomes. The
