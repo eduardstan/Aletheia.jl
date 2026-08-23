@@ -63,12 +63,15 @@ end
     @test CompatibilityClient.syntaxstring(Aletheia.:∧) == "∧"
     @test CompatibilityClient.syntaxstring(17) == "17"
     @test CompatibilityClient.value(CompatibilityClient.⊤)
+    @test CompatibilityClient.syntaxstring(CompatibilityClient.⊤) == "⊤"
+    @test sprint(show, CompatibilityClient.⊥) == "⊥"
     @test !CompatibilityClient.istop(17)
     @test !CompatibilityClient.isbot(17)
     @test CompatibilityClient.children(CompatibilityClient.⊤) == ()
     @test CompatibilityClient.arity(CompatibilityClient.⊤) == 0
     @test isempty(CompatibilityClient.truths(p))
-    @test_throws ArgumentError CompatibilityClient.truths(CompatibilityClient.⊤)
+    @test CompatibilityClient.truths(CompatibilityClient.⊤) == [CompatibilityClient.⊤]
+    @test CompatibilityClient.leaves(CompatibilityClient.⊤) == [CompatibilityClient.⊤]
     modal = CompatibilityClient.SyntaxBranch(CompatibilityClient.diamond(CompatibilityClient.IA_L), p)
     @test modal isa Aletheia.Formula
     @test CompatibilityClient.relation(CompatibilityClient.token(modal)) == CompatibilityClient.IA_L
@@ -85,11 +88,29 @@ end
     world = first(CompatibilityClient.allworlds(world_frame))
     model = CompatibilityClient.KripkeStructure(world_frame, Dict("p" => Set([world])))
     @test CompatibilityClient.check(p, model, world)
+    truth_formula = CompatibilityClient.:∧(CompatibilityClient.⊤, p)
+    @test CompatibilityClient.check(truth_formula, model, world)
+    @test CompatibilityClient.interpret(CompatibilityClient.⊥, model, world) === false
+    MV = CompatibilityClient.ManyValuedLogics
+    @test CompatibilityClient.check(MV.FiniteTruth(1), model, world) === true
+    @test CompatibilityClient.check(MV.FiniteTruth(2), model, world) === false
+    finite_frame = Aletheia.Frame((1,), Dict())
+    finite_model = Aletheia.Model(finite_frame, Aletheia.G4, Dict("p" => UInt8(3)))
+    finite_formula = CompatibilityClient.:∧(MV.α, CompatibilityClient.Atom("p"))
+    @test CompatibilityClient.check(finite_formula, finite_model, 1) == UInt8(3)
+    @test CompatibilityClient.check(MV.β, finite_model, 1) == UInt8(4)
+    godel_model = Aletheia.Model(finite_frame, Aletheia.GodelAlgebra(4), Dict("p" => 1.0))
+    @test_throws ArgumentError CompatibilityClient.check(MV.α, godel_model, 1)
     @test CompatibilityClient.TruthDict(Dict("p" => Set([world]))) isa CompatibilityClient.Valuation
     @test CompatibilityClient.worldtype(model) <: CompatibilityClient.Interval
     @test_throws ArgumentError CompatibilityClient.worldtype(world_frame)
     @test CompatibilityClient.accessibles(world_frame, world, CompatibilityClient.IA_L) isa Vector
     @test CompatibilityClient.ManyValuedLogics.getdomain(CompatibilityClient.ManyValuedLogics.BooleanAlgebra()) == (false, true)
+    @test CompatibilityClient.ManyValuedLogics.getdomain(CompatibilityClient.ManyValuedLogics.G4) ==
+        (CompatibilityClient.ManyValuedLogics.FiniteTruth(1),
+         CompatibilityClient.ManyValuedLogics.FiniteTruth(2),
+         CompatibilityClient.ManyValuedLogics.FiniteTruth(3),
+         CompatibilityClient.ManyValuedLogics.FiniteTruth(4))
     @test CompatibilityClient.parseformula(CompatibilityClient.SyntaxTree, "⟨before⟩p", [CompatibilityClient.diamond(CompatibilityClient.IA_L)]) isa Aletheia.Formula
     @test CompatibilityClient.parseformula(CompatibilityClient.SyntaxTree, "p") isa Aletheia.Formula
     @test CompatibilityClient.parseformula("⟨before⟩p", [CompatibilityClient.diamond(CompatibilityClient.IA_L)]) isa Aletheia.Formula
@@ -101,6 +122,19 @@ end
     @test CompatibilityClient.istop(CompatibilityClient.⊤)
     @test CompatibilityClient.isbot(CompatibilityClient.⊥)
     @test_throws ArgumentError CompatibilityClient.Atom(CompatibilityClient.⊤)
+    @test_throws "truth values are semantic values" CompatibilityClient.Atom(CompatibilityClient.⊤)
+    truth_first = CompatibilityClient.SyntaxBranch(CompatibilityClient.:∧,
+        CompatibilityClient.⊤, p)
+    @test CompatibilityClient.nchildren(truth_first) == 2
+    @test CompatibilityClient.children(truth_first)[2] == p
+    @test CompatibilityClient.SyntaxBranch(CompatibilityClient.:¬,
+        CompatibilityClient.⊤) isa Aletheia.Formula
+    @test CompatibilityClient.SyntaxBranch(CompatibilityClient.:¬, CompatibilityClient.⊤) ==
+        CompatibilityClient.SyntaxBranch(CompatibilityClient.:¬, CompatibilityClient.⊤)
+    @test CompatibilityClient.SyntaxBranch(CompatibilityClient.:∧, CompatibilityClient.⊤,
+            CompatibilityClient.⊥) ==
+        CompatibilityClient.SyntaxBranch(CompatibilityClient.:∧, CompatibilityClient.⊤,
+            CompatibilityClient.⊥)
     @test_throws ArgumentError CompatibilityClient.parseformula("⊤"; atom_parser=_ -> CompatibilityClient.⊤)
     @test_throws ArgumentError CompatibilityClient.collatetruth(CompatibilityClient.:∧, (CompatibilityClient.⊤, CompatibilityClient.⊥))
     @test_throws ArgumentError CompatibilityClient.LeftmostConjunctiveForm([p, q])
@@ -111,11 +145,46 @@ end
     @test_throws ArgumentError CompatibilityClient.threshold(nothing)
     @test_throws ArgumentError CompatibilityClient.normalize(parsed)
     @test_throws ArgumentError CompatibilityClient.sample(parsed)
-    @test !(CompatibilityClient.ManyValuedLogics.G3 isa CompatibilityClient.ManyValuedLogics.FiniteTruth)
-    @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.G3()
-    @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.FiniteTruth()
-    @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.getdomain(nothing)
-    @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.booleanalgebra()
+    MV = CompatibilityClient.ManyValuedLogics
+    @test MV.G3 isa MV.FiniteFLewAlgebra
+    @test MV.booleanalgebra isa MV.FiniteFLewAlgebra
+    @test MV.FiniteTruth(1).index == UInt8(1)
+    @test MV.FiniteTruth(UInt8(2)) == convert(MV.FiniteTruth, 2)
+    @test convert(UInt8, MV.α) == UInt8(3)
+    @test convert(MV.FiniteTruth, CompatibilityClient.⊤) == MV.FiniteTruth(1)
+    @test convert(MV.FiniteTruth, 'α') == MV.α
+    @test convert(MV.FiniteTruth, '⊤') == MV.FiniteTruth(1)
+    @test convert(MV.FiniteTruth, "β") == MV.β
+    @test sprint(show, MV.FiniteTruth(1)) == "⊤"
+    @test sprint(show, MV.FiniteTruth(2)) == "⊥"
+    @test sprint(show, MV.α) == "α"
+    @test MV.syntaxstring(MV.α) == 'α'
+    @test CompatibilityClient.istop(MV.FiniteTruth(1)) && CompatibilityClient.isbot(MV.FiniteTruth(2))
+    @test MV.G4.monoid(MV.α, MV.β) == MV.α
+    @test MV.G4.implication(MV.α, MV.β) == MV.FiniteTruth(1)
+    @test MV.G4.join[MV.α, MV.α] == MV.G4.join(MV.α, MV.α)
+    @test CompatibilityClient.token(CompatibilityClient.:∧(p, p)) in MV.BASE_MANY_VALUED_CONNECTIVES
+    @test MV.precedeq(Aletheia.G4, MV.α, MV.β)
+    @test MV.maximalmembers(Aletheia.H4, MV.α) == [MV.β]
+    @test MV.precedeq(MV.G4, MV.α, MV.β)
+    @test MV.succeedeq(MV.G4, MV.β, MV.α)
+    @test MV.precedes(MV.G4, MV.α, MV.β)
+    @test MV.succeedeq(MV.G4, MV.α, MV.α)
+    @test MV.succeedes(MV.G4, MV.β, MV.α)
+    @test MV.maximalmembers(MV.H4, MV.FiniteTruth(2)) == MV.FiniteTruth[]
+    @test MV.minimalmembers(MV.H4, MV.FiniteTruth(1)) == MV.FiniteTruth[]
+    @test MV.maximalmembers(MV.H4, MV.α) == [MV.β]
+    @test MV.minimalmembers(MV.H4, MV.α) == [MV.β]
+    @test MV.maximalmembers(MV.G4, MV.α) == [MV.FiniteTruth(2)]
+    @test MV.minimalmembers(MV.G4, MV.α) == [MV.β]
+    @test MV.BASE_MANY_VALUED_CONNECTIVES == [CompatibilityClient.:∨,
+        CompatibilityClient.:∧, CompatibilityClient.:→]
+    @test_throws MethodError MV.FiniteTruth()
+    @test_throws ErrorException MV.FiniteTruth(0)
+    @test_throws ArgumentError MV.FiniteTruth(-1)
+    @test_throws ArgumentError MV.FiniteTruth(256)
+    @test_throws ArgumentError MV.getdomain(nothing)
+    @test_throws MethodError MV.booleanalgebra()
     @test CompatibilityClient.IARelations == (Aletheia.IA_A, Aletheia.IA_L, Aletheia.IA_B, Aletheia.IA_E, Aletheia.IA_D, Aletheia.IA_O, Aletheia.IA_Ai, Aletheia.IA_Li, Aletheia.IA_Bi, Aletheia.IA_Ei, Aletheia.IA_Di, Aletheia.IA_Oi)
     @test CompatibilityClient.box(CompatibilityClient.IA_L) isa Aletheia.Box
     @test CompatibilityClient.name(Aletheia.:∧) == :∧
@@ -128,7 +197,45 @@ end
     @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.succeedeq(1, 2)
     @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.maximalmembers((1, 2))
     @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.minimalmembers((1, 2))
-    @test sprint(show, CompatibilityClient.ManyValuedLogics.G3) == "unsupported SoleLogics.ManyValuedLogics.G3"
+    @test sprint(show, MV.G3) == string(typeof(MV.G3))
+    g3_show = sprint(show, MIME"text/plain"(), MV.G3)
+    @test occursin("Domain: " * string(MV.getdomain(MV.G3)), g3_show)
+    @test occursin("Bot: " * sprint(show, MV.G3.bot), g3_show)
+    @test occursin("Top: " * sprint(show, MV.G3.top), g3_show)
+    @test occursin("Join: " * string(MV.G3.join.table), g3_show)
+    @test_throws ArgumentError MV.FiniteFLewAlgebra{3}(MV.G4.join, MV.G4.meet, MV.G4.monoid, 2, 1)
+end
+
+
+@testset "many-valued compatibility boundary" begin
+    MV = CompatibilityClient.ManyValuedLogics
+    join_table = [1 1; 1 2]
+    meet_table = [1 2; 2 2]
+    direct = MV.FiniteFLewAlgebra(join_table, meet_table, meet_table, 2, 1)
+    @test direct isa MV.FiniteFLewAlgebra{2}
+    @test direct.native isa Aletheia.FiniteFLewAlgebra{2}
+    @test MV.getdomain(direct) == (MV.FiniteTruth(1), MV.FiniteTruth(2))
+    @test MV.getdomain(direct.native) == MV.getdomain(direct)
+    @test MV.getdomain(Aletheia.G4) == MV.getdomain(MV.G4)
+    wrapped_ops = MV.FiniteFLewAlgebra{2}(direct.join, direct.meet, direct.monoid, 2, 1)
+    @test wrapped_ops.monoid(MV.FiniteTruth(1), MV.FiniteTruth(2)) == MV.FiniteTruth(2)
+    flat_join = [1, 1, 1, 2]
+    flat_meet = [1, 2, 2, 2]
+    flat = MV.FiniteFLewAlgebra(flat_join, flat_meet, flat_meet, 2, 1)
+    @test flat isa MV.FiniteFLewAlgebra{2}
+    operation(table) = (left, right) -> MV.FiniteTruth(table[Int(left.index), Int(right.index)])
+    callable = MV.FiniteFLewAlgebra{2}(operation(join_table), operation(meet_table),
+        operation(meet_table), MV.FiniteTruth(2), MV.FiniteTruth(1))
+    @test callable.monoid(MV.FiniteTruth(2), MV.FiniteTruth(1)) == MV.FiniteTruth(2)
+    @test MV.FiniteFLewAlgebra(Aletheia.BooleanFLewAlgebra) isa MV.FiniteFLewAlgebra
+    @test_throws ArgumentError MV.FiniteFLewAlgebra([1, 2, 3], join_table, meet_table, 2, 1)
+    @test_throws ArgumentError MV.FiniteFLewAlgebra{2}(:bad, join_table, meet_table, 2, 1)
+    @test_throws ArgumentError MV.FiniteFLewAlgebra{2}([1, 2, 3], join_table, meet_table, 2, 1)
+    @test_throws ArgumentError MV.FiniteFLewAlgebra(join_table, [1, 2, 3], meet_table, 2, 1)
+    @test_throws ArgumentError MV.FiniteFLewAlgebra{256}(join_table, meet_table, meet_table, 2, 1)
+    @test_throws ArgumentError MV.FiniteFLewAlgebra((x, y) -> x, join_table, meet_table, 2, 1)
+    @test_throws ErrorException convert(MV.FiniteTruth, 'x')
+    @test_throws ErrorException convert(MV.FiniteTruth, "xy")
 end
 
 
@@ -155,10 +262,26 @@ end
     CompatibilityClient.Branch(CompatibilityClient.:∧, p, q)
     @test @allocated(CompatibilityClient.Branch(CompatibilityClient.:∧, p, q)) < 4096
     @test CompatibilityClient.:¬(p) isa Aletheia.Formula
+    @test CompatibilityClient.:¬(p) === CompatibilityClient.:¬(p)
+    @test CompatibilityClient.Branch(CompatibilityClient.:∧, (p, q)) isa Aletheia.Formula
+    @test Aletheia.SoleLogics._compat_branch(Aletheia.:∧, (p, q)) isa Aletheia.Formula
+    modal_connective = Aletheia.Diamond(:coverage)
+    modal_pool = CompatibilityClient.FormulaPool(CompatibilityClient.Signature((Aletheia.:∧, modal_connective)))
+    modal_atom = CompatibilityClient.atom(modal_pool, "modal")
+    @test Aletheia.SoleLogics._compat_branch(modal_connective, modal_atom) isa Aletheia.Formula
+    constant_formula = CompatibilityClient.:→(p, CompatibilityClient.⊥)
+    @test constant_formula isa Aletheia.Formula
+    @test CompatibilityClient.token(first(collect(CompatibilityClient.children(constant_formula)))) isa CompatibilityClient.Atom
+    @test CompatibilityClient.token(collect(CompatibilityClient.children(constant_formula))[2]) === CompatibilityClient.⊥
+    @test CompatibilityClient.truths(constant_formula) == [CompatibilityClient.⊥]
+    @test CompatibilityClient.atoms(constant_formula) == [p]
+    @test CompatibilityClient.leaves(constant_formula) == [p, CompatibilityClient.⊥]
+    @test CompatibilityClient.nleaves(constant_formula) == 2
 
     # Exercise the legacy/native pool merge path and both cached tree walks.
     native_pool = Aletheia.FormulaPool(Aletheia.Signature((Aletheia.:∧,)))
     native_atom = Aletheia.atom(native_pool, "native")
+    @test CompatibilityClient.Branch(CompatibilityClient.:∧, native_atom, p) isa Aletheia.Formula
     merged = CompatibilityClient.Branch(CompatibilityClient.:∧, p, native_atom)
     @test merged isa Aletheia.Formula
     other_pool = CompatibilityClient.FormulaPool(CompatibilityClient.Signature((Aletheia.:∧,)))

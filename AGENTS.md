@@ -35,6 +35,7 @@ When updating this file, preserve this bar for all agents and keep entries conci
 ## Migration layer
 
 - `src/compatibility.jl` defines the nested opt-in `Aletheia.SoleLogics` vocabulary; the derived consumer inventory, mappings, deliberate gaps, and scratch-slice evidence live in `docs/src/compatibility.md`.
+- `SoleLogics.ManyValuedLogics` finite tableau names are boundary adapters there: `FiniteTruth` retains the incumbent indexed object while `FiniteFLewAlgebra` delegates tables to Aletheia's unboxed `UInt8` algebras.
 
 ## ILP foundations
 

@@ -57,7 +57,7 @@ are: `Atom`, `BooleanTruth`, `Formula`, `children` (often aliased as
 The nested `ManyValuedLogics` imports are `FiniteFLewAlgebra`, `FiniteTruth`,
 `succeedeq`, `precedeq`, `getdomain`, `maximalmembers`, `minimalmembers`,
 `booleanalgebra`, `G3`, `G4`, `G5`, `G6`, `H4`, `H6`, `H6_1`, `H6_2`, `H6_3`,
-`H9`, `Ł3`, `Ł4`, `α`, and `β`.
+`H9`, `Ł3`, `Ł4`, `α`, `β`, and `BASE_MANY_VALUED_CONNECTIVES`.
 
 ## Mapping table
 
@@ -78,7 +78,7 @@ The nested `ManyValuedLogics` imports are `FiniteFLewAlgebra`, `FiniteTruth`,
 | `HS_*` | Direct aliases of Aletheia's `IA_*` Allen interval relations, including inverses. |
 | `LRCC8_Rec_*` | Direct aliases of Aletheia's `Topo_*` RCC8 relations; the incumbent orientation is retained (notably `Topo_TPP = TPPi`). |
 | `LTLFP_F`, `LTLFP_P` | Direct aliases of Aletheia's `GREATER` and `LESSER` point relations. |
-| `ManyValuedLogics` | Exists as a nested namespace. Aletheia's `BooleanAlgebra`, `GodelAlgebra`, `LukasiewiczAlgebra`, and finite FLew algebras are available; Sole tableau truth-carrier/order helpers remain unsupported. |
+| `ManyValuedLogics` | Exists as a nested namespace. Finite truth values and finite FLew algebras are boundary adapters over Aletheia's `UInt8` tables; named algebras, `BASE_MANY_VALUED_CONNECTIVES`, thresholds, and tableau order helpers are available. |
 
 The poolless `Atom(value)` and `SyntaxBranch(op, children...)` spellings are
 deliberate conveniences of the legacy path only. `Atom` is a compatibility
@@ -92,10 +92,10 @@ remain the core API.
 
 ## Deliberate gaps
 
-* `Truth`/`BooleanTruth`/`⊤`/`⊥` are markers only. Aletheia deliberately
-  keeps truth carriers out of syntax, so constructing `Atom(⊤)` or parsing a
-  truth leaf raises an `ArgumentError` explaining the mismatch. This is the
-  central old-identity gap.
+* `Truth`/`BooleanTruth`/`⊤`/`⊥` are compatibility leaves, not ordinary
+  Aletheia atoms. Direct `Atom(⊤)` construction and parsing a truth leaf still
+  raise an `ArgumentError`; finite tableau leaves are handled by the nested
+  `ManyValuedLogics` boundary adapter below.
 * `LeftmostLinearForm`, `LeftmostConjunctiveForm`,
   `LeftmostDisjunctiveForm`, `Literal`, `DNF`, and `CNF` have no faithful
   wrapper. Aletheia uses ordinary binary branches in a hash-consed DAG;
@@ -110,13 +110,12 @@ remain the core API.
 * `AbstractInterpretationSet`, `alphabet`, `feature`, `condition`, `threshold`,
   and `normalize` are SoleData/SoleModels concepts. They raise clear errors;
   they are not approximated by syntax payload inspection.
-* `RCC5Relations`, `IA3Relations`, and `IA7Relations` now map directly to
-  Aletheia's RCC5 and coarser Allen relation values. The many-valued tableau
-  order helpers remain explicit semantic gaps. Compass `CL_*` names now map directly to Aletheia's 2D point
-  relations. Every unsupported marker has its own singleton dispatch type,
-  so one consumer method per name does not overwrite another; invoking a
-  marker still raises the explicit symbol-specific error. The many-valued
-  tableau order helpers similarly remain explicit gaps.
+* `RCC5Relations`, `IA3Relations`, and `IA7Relations` map directly to
+  Aletheia's RCC5 and coarser Allen relation values. Compass `CL_*` names map
+  directly to Aletheia's 2D point relation values. Every unsupported marker
+  has its own singleton dispatch type, so one consumer method per name does
+  not overwrite another; invoking a marker still raises the explicit
+  symbol-specific error.
 * Aletheia formula equality is pool-local and `subterms` are distinct DAG IDs;
   Sole tree-occurrence equality and ordering are not silently redefined.
   `subformulas` here returns formula handles in dependency/height order.
@@ -146,10 +145,38 @@ positional arguments: Aletheia's core methods have no keyword-argument surface,
 so advertising `kwargs...` would create calls that can never resolve (and fails
 JET on Julia 1.10/1.11).
 
-This validates the propositional tableau boundary only. Aletheia now provides
-finite FLew algebras, but many-valued tableaux remain blocked by the missing
-SoleReasoners tableau truth-carrier and order-helper compatibility surface; that
-is the next independent blocker, not a silent semantic fallback.
+This validates the propositional tableau boundary and the finite-valued
+truth-carrier boundary. `ManyValuedLogics.FiniteTruth` retains Sole's indexed
+carrier identity while converting to Aletheia's `UInt8` tables only inside the
+compatibility operation adapters. The named finite FLew algebras and the
+threshold/order protocol therefore remain compatible without boxing Aletheia's
+core evaluator values.
+
+## Many-valued tableau bridge
+
+The nested `ManyValuedLogics` namespace now maps Sole's finite tableau protocol:
+
+* `FiniteTruth(index)` is an immutable boundary carrier with the incumbent
+  `.index`, `istop`, `isbot`, conversion, and syntax-display behavior;
+* `FiniteFLewAlgebra` wraps an Aletheia integer-table algebra and exposes
+  callable `join`, `meet`, `monoid`, and `implication` operations that return
+  boundary `FiniteTruth` values;
+* `getdomain`, `precedeq`, `succeedeq`, `maximalmembers`, and
+  `minimalmembers` follow the incumbent `order-utilities.jl` threshold code;
+  native Aletheia finite algebras are accepted by the same order helpers;
+* named G/Ł/H algebras, `booleanalgebra`, `α`, `β`, and
+  `BASE_MANY_VALUED_CONNECTIVES` are mapped to Aletheia's shipped tables and
+  connective values.
+
+The wrapper is deliberately confined to `Aletheia.SoleLogics`. Core
+`Aletheia.FiniteFLewAlgebra` evaluation still carries `UInt8` indices. Truth
+leaves are constants at the compatibility `check`/`interpret` boundary rather
+than valuation keys, while formulas without truth leaves take the unchanged
+core path. A scratch
+import-migrated SoleReasoners copy loaded `alphasat` and ran seeded HS, Compass,
+RCC8, and temporal tableau calls; its selected HS suite agreed exactly with the
+native SoleLogics run, including the native `nothing` timeout outcomes. The
+scratch consumer was not committed.
 
 ## Allocation profile and substrate rerun
 
