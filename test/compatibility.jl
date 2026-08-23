@@ -92,6 +92,8 @@ end
     @test CompatibilityClient.check(truth_formula, model, world)
     @test CompatibilityClient.interpret(CompatibilityClient.⊥, model, world) === false
     MV = CompatibilityClient.ManyValuedLogics
+    @test CompatibilityClient.check(MV.FiniteTruth(1), model, world) === true
+    @test CompatibilityClient.check(MV.FiniteTruth(2), model, world) === false
     finite_frame = Aletheia.Frame((1,), Dict())
     finite_model = Aletheia.Model(finite_frame, Aletheia.G4, Dict("p" => UInt8(3)))
     finite_formula = CompatibilityClient.:∧(MV.α, CompatibilityClient.Atom("p"))
