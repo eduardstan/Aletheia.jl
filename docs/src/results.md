@@ -19,7 +19,59 @@ The quick run below used Julia 1.12.7, `alderlake`, 12 threads, SoleLogics
 `count / bytes`. The section process amortisation is why this is finite rather
 than paying package startup once per cell.
 
+## How to read a row
+
+The labels describe the inputs to the timed call, not a claim that every
+benchmark is a general workload. Unless a section says otherwise, each number
+is the median of five samples in a warmed child Julia process; construction,
+parsing, printing, checking, and extension setup happen inside the timed call
+when the generator does so. A ratio is always **SoleLogics divided by
+Aletheia**: above `1×` means Aletheia took less time, below `1×` means it took
+more time, and `1×` is parity. Allocation cells are ordered the same way:
+**SoleLogics count / bytes ; Aletheia count / bytes**. They are not ratios.
+
+* **Depth** is the number of recursive levels. The ordinary syntax and
+  propositional/many-valued rows use a full binary `∧` tree of depth `d`, with
+  `2^d` leaves whose names cycle through eight atoms (`p1`–`p8`). `unshared`
+  constructs each occurrence separately. `shared` passes the same recipe child
+  twice; Aletheia's pool can preserve that shared node, while the incumbent
+  builder constructs each occurrence as it recurses. Modal formulas use the
+  deterministic `modal_formula(d)` generator instead: one recursive connective
+  per level (cycling `◇`, `□`, `∧q`, `∨p`) and the indicated atom leaves.
+* **Worlds** is the number of worlds in the finite model. `n` in an interval
+  row is the coordinate-domain size used to generate all integer intervals
+  (the frame therefore contains `n*(n+1)/2` worlds), not that world count.
+  `chain n` is instead a formula with `n` nested negations over one atom.
+* **Density** is the probability in `[0, 1]` used independently for each
+  ordered pair of worlds when generating the directed `R` edges. Thus `.15`
+  and `.50` mean 15% and 50% edge probability, not a percentage of worlds;
+  the graphs use the published fixed seed. In dataset rows, `uniform` means
+  all instances share one generated graph; `non-uniform` means each instance
+  gets its own graph.
+* **Instances** is the number of dataset models evaluated by a consumer call;
+  **rules** is the number of rules in that call, **points** is the number of
+  data points used to make each interval frame, and **modal** (or modal target)
+  is the probability/target used by that dataset generator. **Hypotheses** is
+  the number of candidate formulas scored against the stated number of
+  interpretations. In the contraction table, `original n`, `quotient q`, and
+  `q/n` mean original worlds, quotient worlds, and their fraction; `K` is the
+  number of formulas in a batch, and `C` is one contraction cost.
+
+The rows below also state the operation on each side. This matters: an
+identical semantic question can still have different APIs or setup costs, and
+those cases are labelled rather than presented as like-for-like calls.
+
 ## Syntax and loading
+
+The construction rows build the recipe above on each side: SoleLogics calls
+`SyntaxBranch` recursively, while Aletheia inserts atoms and branches into a
+`FormulaPool`. The parsing rows parse the same depth-2 text; printing
+serializes the already-built depth-2 formulas; round-trip parses and then
+serializes them. The equality row builds two `chain 16` formulas and calls
+`isequal` (Aletheia builds both in one pool; SoleLogics builds two structural
+values). The cold rows are different by design: each side is loaded in a fresh
+process, once for package load and once for load plus parsing/printing one atom;
+there is no allocation sample for those wall-clock measurements.
 
 | case | SoleLogics | Aletheia | ratio | allocations |
 | --- | ---: | ---: | ---: | ---: |
@@ -38,6 +90,44 @@ the incumbent structural comparison; it is not a claim that the APIs have the
 same representation.
 
 ## Evaluation suites
+
+The propositional rows build an unshared tree and a one-world Boolean model
+with eight atom sets, then call one per-world check on each side (`TruthDict`
+for SoleLogics; indexed `Model` and sets for Aletheia). The extension rows use
+the same unshared formulas and parity-valued eight-atom models over empty
+8-world or 32-world frames. Aletheia calls `extension` once, producing a
+`BitVector`; SoleLogics calls `check` once for every world and collects the
+answers. **This is explicitly not a like-for-like API comparison:** SoleLogics
+v0.13.7 has no `extension` method, so its side is the equivalent all-world
+semantic loop, not an unsupported incumbent result.
+
+For each random-modal row, the formula is the deterministic
+`modal_formula(depth)` shape described above; only the directed graph is
+random, with each edge drawn at the stated density and seed `SEED + worlds +
+depth`. Both sides check the first world, and normalization is disabled on the
+SoleLogics call. The default atom valuation is fixed (odd worlds for `p`,
+worlds divisible by three for `q`). These are therefore finite-model evaluator
+samples, not random formula populations.
+
+The dimensional rows construct the generated interval frame before timing.
+Adjacency measures all source worlds and the `BEFORE`/`IA_L` successors;
+`interval check` evaluates one diamond at the first world; IA3, IA7, and RCC5
+measure all-source successor counts for their relation sets. Aletheia uses the
+canonical generated provider and its prebuilt world index; SoleLogics uses its
+full dimensional frame and enumerates `accessibles`. The follow-up `n=12,24,36`
+sweep is the same adjacency operation, not additional formula checks.
+
+The finite-valued rows build the same unshared depth-2 tree and one-world
+finite model on each side, then ask the designated check question: SoleLogics
+calls its finite-algebra check, while Aletheia checks its result against the
+algebra's top value. G3 and Ł3 are three-valued chains; H4 is the landed
+four-valued non-chain. The interpretation-learning row constructs four
+hypotheses and eight seeded models (4–7 worlds, edge probability .35), then
+scores all 32 hypothesis/interpretation pairs. SoleLogics stores model/world/
+label tuples; Aletheia constructs `learning_from_interpretations` examples.
+Example and hypothesis construction is outside the timed score loop, so this
+is a paired score/evaluation hot path, not a comparison of learner
+construction APIs.
 
 | case | SoleLogics | Aletheia | ratio | allocations |
 | --- | ---: | ---: | ---: | ---: |
@@ -103,6 +193,30 @@ Aletheia. All generated edges are checked against their predicates in
 
 ## Stage 2a SoleModels consumer (corrected measurement)
 
+This is a narrow real-consumer trial, not a standalone evaluator ratio. Each
+case is encoded as `rules:points:depth:modal:shared:instances`: it creates a
+supported SoleData dataset with the stated number of instances and points,
+and seeded rules whose antecedents have the stated depth, modal-node
+probability, and shared-subtree flag. Rule atoms are drawn from 12 scalar
+conditions; internal nodes use `∧`, `∨`, or `→`, modal nodes use IA_L `◇` or
+`□`, and every rule is wrapped in a global `◇`. The timed operation sums
+`SoleModels.checkantecedent(rule, dataset)` over all rules. The baseline is the
+installed/native SoleModels path. The routed side is a disposable patched
+SoleModels copy: its adapter builds an Aletheia model family, converts each
+formula, and calls Aletheia `extension`, then returns the per-instance mask.
+Thus baseline versus routed is deliberately labelled as a consumer-path
+comparison with a wrapper/conversion shim on the routed side, not as two
+identical package calls. Dataset construction is outside the timing.
+
+There are five gated repetitions. For each repetition, first use and steady
+state each have five timed samples; churn has six. The displayed min/median/max
+are across those five repetitions, and allocations/bytes are from the sample
+nearest each phase's median time. First use evaluates five genuinely new
+identities after compile-only warmup; steady state repeats one populated
+family; churn evaluates six fresh identities. The repeated row is a run-order
+diagnostic, not a new shape. Routed-only adapter, conversion, and extension
+measurements are subcomponents, not extra speed headlines.
+
 The former **12.3× cold / 15.0× warm** and later **14.9× cold / 15.1× warm**
 headlines are retired.  The old cold cell mixed first-use adjacency construction
 with six fresh-dataset identities and BenchmarkTools reported the minimum
@@ -152,7 +266,45 @@ there is no simple monotonic position effect.  The later observations remain
 published as measured spread; the diagnostic artifacts are in
 `data/al-dataset-consumer/order-diagnostic-late-first/`.
 
+## Stage 1 SoleData real-dataset protocol
+
+This benchmark-only suite is separate from the synthetic tables above. The
+explicit sweep builds seeded `ExplicitModalLogiset` datasets with 1, 8, or 32
+instances and 4, 16, or 32 worlds per instance; each instance has six random
+features and a directed graph. It varies formula depth, modal-node probability
+(`0`, `.5`, or `1`), and uniform versus independently generated instance
+frames (24 quick cases). Each formula is a seeded recursive recipe: leaves
+are scalar conditions, Boolean nodes are `¬`, `∧`, `∨`, or `→`, and modal
+nodes are `◇`/`□`. SoleData checks every world in every instance;
+Aletheia builds a `SoleDataFamily` and calls batch or scalar `extension`. The
+formula-instance-world agreement gate covered 80 formulas before timing.
+
+The supported follow-up builds the real default `scalarlogiset` path from a
+two-column DataFrame, IA3 interval relations, and its default full/one-step
+memosets. Its 15 cases vary instances, points (the interval-domain input),
+depth, modal-node probability, and three mixed sizes. It compares cold first
+check and warm repeated check with Aletheia batch and scalar callbacks; dataset
+construction and the Aletheia family adapter are outside the timed closures.
+This is narrow protocol evidence, not a general real-data speed headline.
+There is one cold real-dataset loss: 16 instances, 8 points, depth 6, modal
+target `.5`, where SoleData took **0.030 ms** and Aletheia's vectorized
+callback **0.044 ms**. The small-formula callback/setup cost dominates there;
+after memoization the same case was **0.110 ms** for SoleData versus **0.044 ms**
+for Aletheia. The full decision report is
+`data/al-dataset-protocol/report.md`.
+
 ## Bisimulation contraction amortisation
+
+The contraction generator makes a complete all-world relation model with binary
+atom labels chosen to produce the requested quotient size. `C` times
+`bisimulation_contraction`; `P_orig` checks two selected formulas on the
+original model; `P_quot` checks the corresponding formulas on the precomputed
+quotient model. The batch cells check `K` formulas (cycling through eight), and
+the quotient total includes `C`. Each displayed per-formula value is the
+median across the two selected formula cases, with five timing samples per
+case. SoleLogics v0.13.7 has no corresponding contraction API, so it is
+**unsupported here and has no ratio**, rather than being assigned a zero or a
+loss.
 
 The correctness gate ran **96 seeded random labelled models** and 16 random
 modal formulas per model (plus the deterministic differential suite); every
@@ -182,6 +334,56 @@ paid back at about 12 formulas in this run; the measured curve crossed between
 K=8 and K=32. On an already minimal model contraction is pure overhead and
 never pays. This is evidence for a workload-dependent rule, not a universal
 threshold; the `--deep` ratio sweep is the reproducible follow-up.
+
+## What these results tell you
+
+**Where the design wins.** The `isequal` row is the clearest representation
+win: formulas interned in one pool carry pooled integer identity, so equality
+is an integer comparison rather than the incumbent's structural walk. The
+extension rows show the other large mechanism: Aletheia walks the formula DAG
+once into a `BitVector`, whereas the explicitly labelled incumbent equivalent
+repeats a structural check for every world. That is why the 110.04× and
+336.89× values are large, and why their allocation counts differ by orders of
+magnitude. The interval size sweep is a separate win: canonical generated
+interval domains expose arithmetic successor ranges, avoiding the incumbent's
+candidate-world scan. It explains the widening `n=12,24,36` gap, but not every
+possible dimensional frame. The depth-4/6 propositional rows and the modal
+rows also benefit from DAG evaluation and from doing no per-call
+normalisation; modal traversal still makes the graph's world count and density
+matter. The ILP row wins because its repeated hypotheses × interpretations
+score loop reuses that evaluator path.
+
+**Where it loses.** At propositional depth 2, the ratio is **0.92×**: one
+shallow check is too little work to repay Aletheia's model/valuation and DAG
+walk setup, while the incumbent's direct `TruthDict` lookup is cheap. The
+separate compatibility construction-from-recipe evidence reports **1.10×**
+in its Aletheia/native convention (about **0.91×** in this page's
+SoleLogics/Aletheia convention): compatibility wrappers, recipe conversion,
+and repooling are fixed costs even after the allocation-free traversal fix.
+The one cold real-dataset loss above has the same shape: a small formula does
+not repay callback and adapter setup; memoized repeated checks remove that
+fixed-cost disadvantage. These are measured losses with identifiable fixed
+costs, not figures to hide behind a headline average.
+
+**Where a win does not generalise.** Contraction amortisation is workload
+specific: for the highly redundant `q/n≈0.02` model it pays back at about 12
+formulas (the measured curve crosses between `K=8` and `K=32`), while an
+already-minimal model makes contraction pure overhead. The consumer min /
+median / max columns are first-use, steady-state, and fresh-family churn
+phase distributions, not a single speed headline; use the phase matching
+your workload and retain the tails. The interval fast path applies to
+canonical generated domains with their arithmetic provider, not automatically
+to an arbitrary user-supplied frame. Likewise, the extension ratios compare
+an all-world incumbent loop with a named Aletheia extension API and should not
+be read as a claim that both packages expose the same operation.
+
+**What to expect.** If you evaluate many formulas over one finite model, expect
+the extension/BitVector path to matter. If you build and compare formulas
+repeatedly, expect pooled identity and DAG sharing to matter. If you check one
+shallow propositional formula once, expect little difference and possibly the
+0.92× outcome seen here. For a new real-data consumer, first decide whether
+you are measuring cold adapter construction, steady reuse, or fresh-family
+churn; this page provides evidence for each, not a universal product speedup.
 
 ## Correctness and coverage
 
