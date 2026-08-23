@@ -60,10 +60,11 @@ const BoxRelationalConnective = Aletheia.Box{<:Any}
 const DiamondRelationalConnective = Aletheia.Diamond{<:Any}
 const _LegacyConnective = Union{Aletheia.Negation,Aletheia.Conjunction,Aletheia.Disjunction,Aletheia.Implication}
 
-# Truth values are intentionally separate from formulas. Keeping markers for
-# old spellings makes a bad migration fail at the point of use, with a useful
-# explanation, instead of turning a truth value into an atom.
-abstract type Truth end
+# Truth values remain distinct from ordinary pooled DAG atoms. They subtype the
+# compatibility Formula boundary so legacy tableaux can carry truth leaves,
+# while direct Atom construction still fails instead of hiding a truth value in
+# the evaluator's atom valuation path.
+abstract type Truth <: Aletheia.Formula end
 struct BooleanTruth <: Truth
     value::Bool
 end
@@ -76,10 +77,15 @@ istop(truth::BooleanTruth) = truth.value
 isbot(truth::BooleanTruth) = !truth.value
 istop(value) = false
 isbot(value) = false
+syntaxstring(truth::BooleanTruth; kwargs...) = truth.value ? "⊤" : "⊥"
+Base.show(io::IO, truth::BooleanTruth) = print(io, syntaxstring(truth))
 children(::Truth) = ()
 arity(::Truth) = 0
-truths(::Aletheia.Formula) = Truth[]
-truths(::Truth) = _unsupported(:truths, "truth markers are semantic values, not formula truth collections")
+function truths(formula::Aletheia.Formula)
+    [node isa Truth ? node : value(node) for node in formulas(formula) if
+        node isa Truth || ((node isa Atom || node isa Aletheia.Atom) && value(node) isa Truth)]
+end
+truths(value::Truth) = Truth[value]
 collatetruth(args...) = _unsupported(:collatetruth,
     "Aletheia evaluates semantic values through TruthAlgebra and never treats them as formulas")
 
@@ -200,6 +206,9 @@ function (connective::Union{Aletheia.Conjunction,Aletheia.Disjunction,
         Aletheia.Implication})(left::Aletheia.Formula, right::Aletheia.Formula)
     Branch(connective, left, right)
 end
+function (connective::Union{Aletheia.Diamond,Aletheia.Box})(formula::Aletheia.Formula)
+    Branch(connective, formula)
+end
 
 @inline function _hasconnective(signature::Aletheia.Signature, connective)
     for candidate in Aletheia.connectives(signature)
@@ -227,6 +236,8 @@ function _formula_pool_for(connective, formulas::Tuple)
             formula = formulas[i]
             pool = if formula isa _CompatFormula
                 _formula_pool(formula)
+            elseif formula isa Truth
+                continue
             elseif formula isa Aletheia.Formula
                 Aletheia.pool(formula)
             else
@@ -246,6 +257,7 @@ function _merge_formula_pools(connective, formulas::Tuple)
     merged = ()
     for formula in formulas
         formula isa Aletheia.Formula || continue
+        formula isa Truth && continue
         pool = formula isa _CompatFormula ? _formula_pool(formula) : Aletheia.pool(formula)
         for candidate in Aletheia.connectives(Aletheia.signature(pool))
             any(existing -> existing === candidate, merged) || (merged = (merged..., candidate))
@@ -265,6 +277,9 @@ end
         ids = ntuple(i -> _unwrap(_repool(cs[i], target)), N)
         _wrap(Aletheia.branch(target, formula.connective, ids))
     end
+end
+function _repool(formula::Truth, target)
+    _wrap(Aletheia.atom(target, formula))
 end
 function _repool(formula::Aletheia.Formula, target)
     Aletheia.pool(formula) === target && return _wrap(formula)
@@ -353,7 +368,7 @@ Branch(connective::Aletheia.Box, children...) = _compat_branch(connective, child
 const SyntaxBranch = Branch
 
 # Old accessors and tree walks.
-@inline token(formula::Atom) = formula
+@inline token(formula::Atom) = value(formula) isa Truth ? value(formula) : formula
 @inline token(::_CompatBranch{Aletheia.Negation}) = _NOT
 @inline token(::_CompatBranch{Aletheia.Conjunction}) = _AND
 @inline token(::_CompatBranch{Aletheia.Disjunction}) = _OR
@@ -366,7 +381,7 @@ const SyntaxBranch = Branch
     native isa Aletheia.Implication && return _IMP
     native
 end
-token(formula::Aletheia.Atom) = formula
+token(formula::Aletheia.Atom) = value(formula) isa Truth ? value(formula) : formula
 token(formula::Aletheia.Branch) = Aletheia.operator(formula)
 Aletheia.arity(connective::_CompatConnective) = Aletheia.arity(connective.native)
 Aletheia.notation(connective::_CompatConnective) = Aletheia.notation(connective.native)
@@ -456,10 +471,12 @@ function subformulas(formula::Aletheia.Formula; sorted=true)
     sorted ? sort!(result, by=height) : result
 end
 function atoms(formula::Aletheia.Formula)
-    [node for node in formulas(formula) if node isa Atom || node isa Aletheia.Atom]
+    [node for node in formulas(formula) if
+        (node isa Atom || node isa Aletheia.Atom) && !(value(node) isa Truth)]
 end
 function leaves(formula::Aletheia.Formula)
-    atoms(formula)
+    [token(node) for node in formulas(formula) if
+        node isa Truth || node isa Atom || node isa Aletheia.Atom]
 end
 function connectives(formula::Aletheia.Formula)
     [token(node) for node in formulas(formula) if node isa _CompatBranch || node isa Aletheia.Branch]
@@ -467,7 +484,7 @@ end
 operators(formula::Aletheia.Formula) = connectives(formula)
 ntokens(formula::Aletheia.Formula) = length(formulas(formula))
 natoms(formula::Aletheia.Formula) = length(atoms(formula))
-nleaves(formula::Aletheia.Formula) = natoms(formula)
+nleaves(formula::Aletheia.Formula) = length(leaves(formula))
 nconnectives(formula::Aletheia.Formula) = length(connectives(formula))
 noperators(formula::Aletheia.Formula) = nconnectives(formula)
 function height(formula::Aletheia.Formula)::Int
@@ -686,42 +703,225 @@ const LTLFP_P = Aletheia.LESSER
 # A small, explicit nested replacement for SoleLogics.ManyValuedLogics.
 module ManyValuedLogics
 import ...Aletheia
-struct _UnsupportedMV{Name} end
-Base.show(io::IO, ::_UnsupportedMV{Name}) where Name =
-    print(io, "unsupported SoleLogics.ManyValuedLogics.", Name)
-(value::_UnsupportedMV{Name})(args...) where Name =
-    _unsupported(Name, "this many-valued legacy value is a deliberate compatibility gap")
-_unsupported_mv(name::Symbol) = _UnsupportedMV{name}()
-export FiniteTruth, ContinuousTruth, FiniteFLewAlgebra, getdomain
-export GodelAlgebra, LukasiewiczAlgebra, BooleanAlgebra
-export booleanalgebra, precedeq, succeedeq, maximalmembers, minimalmembers
-export α, β
-for name in (:FiniteTruth, :ContinuousTruth, :FiniteFLewAlgebra)
-    @eval abstract type $(name) end
-    @eval (::Type{$(name)})(args...) = _unsupported($(QuoteNode(name)), "Aletheia does not provide Sole's finite tableau type")
+import ..Truth, ..BooleanTruth, ..istop, ..isbot, ..syntaxstring
+import Base: convert
+
+# Sole's finite tableau code keeps the carrier object (including its index) in
+# assertions and StaticArrays.  The core Aletheia evaluator intentionally uses
+# UInt8 indices instead.  This small boundary object preserves the old
+# protocol without putting boxed values back into the evaluator.
+struct FiniteTruth <: Truth
+    index::UInt8
+
+    function FiniteTruth(index::UInt8)
+        index == 0 && error("0 is not a valid index in Julia")
+        new(index)
+    end
 end
-const GodelAlgebra = Aletheia.GodelAlgebra
-const LukasiewiczAlgebra = Aletheia.LukasiewiczAlgebra
-const BooleanAlgebra = Aletheia.BooleanAlgebra
+function FiniteTruth(index::Integer)
+    index == 0 && error("0 is not a valid index in Julia")
+    1 <= index <= typemax(UInt8) ||
+        throw(ArgumentError("finite truth index $index is outside 1:255"))
+    FiniteTruth(UInt8(index))
+end
+
+Base.convert(::Type{FiniteTruth}, value::FiniteTruth) = value
+Base.convert(::Type{FiniteTruth}, value::UInt8) = FiniteTruth(value)
+Base.convert(::Type{FiniteTruth}, value::Integer) = FiniteTruth(value)
+Base.convert(::Type{FiniteTruth}, value::BooleanTruth) = FiniteTruth(istop(value) ? UInt8(1) : UInt8(2))
+Base.convert(::Type{UInt8}, value::FiniteTruth) = value.index
+
+function Base.convert(::Type{FiniteTruth}, value::Char)
+    code = UInt16(value)
+    if 945 <= code < 1198
+        return FiniteTruth(Int(code) - 942)
+    elseif 8868 <= code < 8870
+        return FiniteTruth(Int(code) - 8867)
+    end
+    error("Please, provide a character between α and ҭ, ⊤ and ⊥")
+end
+Base.convert(::Type{FiniteTruth}, value::AbstractString) =
+    length(value) == 1 ? convert(FiniteTruth, only(value)) :
+    error("Please, provide a string of one character")
+
+@inline istop(value::FiniteTruth) = value.index == UInt8(1)
+@inline isbot(value::FiniteTruth) = value.index == UInt8(2)
+function syntaxstring(value::FiniteTruth; kwargs...)
+    value.index < UInt8(3) ? Char(UInt16(8867) + value.index) :
+        Char(UInt16(942) + value.index)
+end
+Base.show(io::IO, value::FiniteTruth) = print(io, syntaxstring(value))
+
+# Convert an old carrier value to the unboxed Aletheia table index only while
+# crossing into the core algebra.  Results are wrapped again at this boundary.
+@inline _index(value::FiniteTruth) = value.index
+@inline _index(value::UInt8) = value
+@inline _index(value::Integer) = convert(FiniteTruth, value).index
+@inline _index(value::BooleanTruth) = convert(FiniteTruth, value).index
+
+struct _FiniteOperation{N}
+    table::Matrix{UInt8}
+end
+@inline function (operation::_FiniteOperation)(left, right)
+    FiniteTruth(operation.table[Int(_index(left)), Int(_index(right))])
+end
+Base.getindex(operation::_FiniteOperation, left, right) =
+    operation.table[Int(_index(left)), Int(_index(right))]
+
+function _operation_table(operation, n::Int, name::AbstractString)
+    source = if operation isa _FiniteOperation
+        operation.table
+    elseif operation isa AbstractMatrix
+        size(operation) == (n, n) || throw(ArgumentError("$name table must have size ($n, $n)"))
+        operation
+    elseif operation isa AbstractVector || operation isa Tuple
+        length(operation) == n * n || throw(ArgumentError("$name table must contain $(n * n) entries"))
+        reshape(collect(operation), n, n)
+    elseif applicable(operation, FiniteTruth(1), FiniteTruth(1))
+        [operation(FiniteTruth(i), FiniteTruth(j)) for i in 1:n, j in 1:n]
+    else
+        throw(ArgumentError("$name must be an N×N table or callable binary operation"))
+    end
+    result = Matrix{UInt8}(undef, n, n)
+    for i in 1:n, j in 1:n
+        result[i, j] = _index(source[i, j])
+    end
+    result
+end
+
+"""A Sole-compatible finite FLew view over an Aletheia integer-table algebra."""
+struct FiniteFLewAlgebra{N}
+    join::_FiniteOperation{N}
+    meet::_FiniteOperation{N}
+    monoid::_FiniteOperation{N}
+    implication::_FiniteOperation{N}
+    bot::FiniteTruth
+    top::FiniteTruth
+    native::Aletheia.FiniteFLewAlgebra{N}
+end
+
+function Base.show(io::IO, algebra::FiniteFLewAlgebra{N}) where N
+    println(io, string(typeof(algebra)))
+    println(io, "Domain: ", getdomain(algebra))
+    println(io, "Bot: ", algebra.bot)
+    println(io, "Top: ", algebra.top)
+    println(io, "Join: ", algebra.join.table)
+    println(io, "Meet: ", algebra.meet.table)
+    println(io, "T-norm: ", algebra.monoid.table)
+    print(io, "Implication: ", algebra.implication.table)
+end
+
+function _wrap_algebra(native::Aletheia.FiniteFLewAlgebra{N}) where N
+    FiniteFLewAlgebra{N}(
+        _FiniteOperation{N}(native.join),
+        _FiniteOperation{N}(native.meet),
+        _FiniteOperation{N}(native.monoid),
+        _FiniteOperation{N}(native.implication),
+        FiniteTruth(native.bot), FiniteTruth(native.top), native)
+end
+FiniteFLewAlgebra(native::Aletheia.FiniteFLewAlgebra) = _wrap_algebra(native)
+
+function FiniteFLewAlgebra{N}(join, meet, monoid, bot, top) where N
+    N isa Integer && 1 <= N <= typemax(UInt8) ||
+        throw(ArgumentError("FiniteFLewAlgebra parameter N must be an integer in 1:255"))
+    n = Int(N)
+    native = Aletheia.FiniteFLewAlgebra(
+        _operation_table(join, n, "join"),
+        _operation_table(meet, n, "meet"),
+        _operation_table(monoid, n, "monoid"),
+        _index(bot), _index(top))
+    _wrap_algebra(native)
+end
+
+function FiniteFLewAlgebra(join, meet, monoid, bot, top)
+    n = if join isa AbstractMatrix
+        size(join, 1) == size(join, 2) || throw(ArgumentError("join table must be square"))
+        size(join, 1)
+    elseif join isa AbstractVector || join isa Tuple
+        r = isqrt(length(join)); r * r == length(join) ||
+            throw(ArgumentError("join table must contain a square number of entries"))
+        r
+    else
+        throw(ArgumentError("use FiniteFLewAlgebra{N} for callable operations"))
+    end
+    FiniteFLewAlgebra{n}(join, meet, monoid, bot, top)
+end
+
+# Sole's order and domain protocol, with the same threshold semantics as its
+# order-utilities.jl implementation.  Values are wrapped on the way out.
+getdomain(algebra::FiniteFLewAlgebra{N}) where N = ntuple(FiniteTruth, N)
+getdomain(algebra::Aletheia.FiniteFLewAlgebra) = getdomain(_wrap_algebra(algebra))
 getdomain(algebra::Aletheia.TruthAlgebra) = Aletheia.domain(algebra)
-getdomain(args...) = _unsupported(:getdomain, "the supplied value is not an Aletheia TruthAlgebra")
+getdomain(args...) = _unsupported(:getdomain, "the supplied value is not a finite algebra")
+
+@inline function precedeq(algebra::FiniteFLewAlgebra, left, right)
+    l, r = convert(FiniteTruth, left), convert(FiniteTruth, right)
+    algebra.meet(l, r) == l
+end
+@inline succeedeq(algebra::FiniteFLewAlgebra, left, right) = precedeq(algebra, right, left)
+@inline function precedes(algebra::FiniteFLewAlgebra, left, right)
+    l, r = convert(FiniteTruth, left), convert(FiniteTruth, right)
+    l != r && precedeq(algebra, l, r)
+end
+@inline succeedes(algebra::FiniteFLewAlgebra, left, right) =
+    precedes(algebra, right, left)
+
+function maximalmembers(algebra::FiniteFLewAlgebra, threshold)
+    threshold = convert(FiniteTruth, threshold)
+    candidates = filter(value -> !succeedeq(algebra, value, threshold), getdomain(algebra))
+    [candidate for candidate in candidates if
+        isempty(filter(value -> succeedes(algebra, value, candidate), candidates))]
+end
+function minimalmembers(algebra::FiniteFLewAlgebra, threshold)
+    threshold = convert(FiniteTruth, threshold)
+    candidates = filter(value -> !precedeq(algebra, value, threshold), getdomain(algebra))
+    [candidate for candidate in candidates if
+        isempty(filter(value -> precedes(algebra, value, candidate), candidates))]
+end
+
 function _unsupported(name::Symbol, detail::AbstractString)
     throw(ArgumentError("SoleLogics.ManyValuedLogics.$name has no faithful Aletheia equivalent: $detail"))
 end
-booleanalgebra(args...) = _unsupported(:booleanalgebra,
-    "Aletheia uses BooleanAlgebra() as an explicit TruthAlgebra")
-precedeq(args...) = _unsupported(:precedeq,
-    "Aletheia's finite chains expose ordered levels rather than Sole order relations")
-succeedeq(args...) = _unsupported(:succeedeq,
-    "Aletheia's chain algebra does not implement Sole's successor protocol")
-maximalmembers(args...) = _unsupported(:maximalmembers, "many-valued tableau order helpers are not in Aletheia")
-minimalmembers(args...) = _unsupported(:minimalmembers, "many-valued tableau order helpers are not in Aletheia")
-const α = _unsupported_mv(:α)
-const β = _unsupported_mv(:β)
-for name in (:G3, :G4, :G5, :G6, :H4, :H6, :H6_1, :H6_2, :H6_3, :H9, :Ł3, :Ł4)
-    @eval const $(name) = _unsupported_mv($(QuoteNode(name)))
+precedeq(args...) = _unsupported(:precedeq, "the first argument must be a finite FLew algebra")
+succeedeq(args...) = _unsupported(:succeedeq, "the first argument must be a finite FLew algebra")
+maximalmembers(args...) = _unsupported(:maximalmembers, "the first argument must be a finite FLew algebra")
+minimalmembers(args...) = _unsupported(:minimalmembers, "the first argument must be a finite FLew algebra")
+
+# Continuous truth remains outside this bridge; finite values are the protocol
+# needed by SoleReasoners' tableaux.
+abstract type ContinuousTruth end
+(::Type{ContinuousTruth})(args...) = _unsupported(:ContinuousTruth,
+    "Aletheia's continuous chains use Float64 values rather than Sole truth objects")
+
+const GodelAlgebra = Aletheia.GodelAlgebra
+const LukasiewiczAlgebra = Aletheia.LukasiewiczAlgebra
+const BooleanAlgebra = Aletheia.BooleanAlgebra
+
+# Aletheia's named algebras are the source of truth.  The compatibility view
+# only supplies the old callable operation/carrier vocabulary at the boundary.
+const booleanalgebra = _wrap_algebra(Aletheia.BooleanFLewAlgebra)
+const G3 = _wrap_algebra(Aletheia.G3)
+const G4 = _wrap_algebra(Aletheia.G4)
+const G5 = _wrap_algebra(Aletheia.G5)
+const G6 = _wrap_algebra(Aletheia.G6)
+const H4 = _wrap_algebra(Aletheia.H4)
+const H6 = _wrap_algebra(Aletheia.H6)
+const H6_1 = _wrap_algebra(Aletheia.H6_1)
+const H6_2 = _wrap_algebra(Aletheia.H6_2)
+const H6_3 = _wrap_algebra(Aletheia.H6_3)
+const H9 = _wrap_algebra(Aletheia.H9)
+const Ł3 = _wrap_algebra(Aletheia.Ł3)
+const Ł4 = _wrap_algebra(Aletheia.Ł4)
+const α = FiniteTruth(3)
+const β = FiniteTruth(4)
+const BASE_MANY_VALUED_CONNECTIVES = [Aletheia.:∨, Aletheia.:∧, Aletheia.:→]
+
+export FiniteTruth, ContinuousTruth, FiniteFLewAlgebra, getdomain
+export GodelAlgebra, LukasiewiczAlgebra, BooleanAlgebra
+export booleanalgebra, precedeq, precedes, succeedeq, succeedes, maximalmembers, minimalmembers
+export α, β, BASE_MANY_VALUED_CONNECTIVES
 end
-end
+
 export Formula, SyntaxStructure, SyntaxTree, SyntaxLeaf, SyntaxBranch, Branch
 export Atom, AbstractAtom, AbstractRelation, Operator, Connective, NamedConnective
 export BoxRelationalConnective, DiamondRelationalConnective
