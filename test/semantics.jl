@@ -136,6 +136,8 @@ end
     p = atom(pool, "p")
     f = Frame((:w1, :w2), Dict(:G => Dict(:w1 => [:w2], :w2 => [:w2])))
     boolmodel = Model(f, BooleanAlgebra(), Dict("p" => Set([:w1])))
+    same_frame_model = Model(f, BooleanAlgebra(), Dict("p" => Set([:w2])))
+    @test boolmodel.cache === same_frame_model.cache
     @test frame(boolmodel) === f && algebra(boolmodel) isa BooleanAlgebra
     @test valuation(boolmodel)["p"] == Set([:w1])
     @test interpret(p, boolmodel, :w1) === true

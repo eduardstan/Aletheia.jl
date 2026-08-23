@@ -1,4 +1,3 @@
-using BenchmarkTools
 using Random
 using Statistics
 using Aletheia
@@ -66,45 +65,82 @@ function evaluate_rules(rules, dataset)
     sum(sum(SoleModels.checkantecedent(rule, dataset)) for rule in rules)
 end
 
+struct TimedSample
+    time::Float64
+    gctime::Float64
+    allocs::Int
+    memory::Int
+end
+
 struct Measurement
     time::Union{Missing,Float64}
+    gctime::Union{Missing,Float64}
     allocs::Union{Missing,Int}
     memory::Union{Missing,Int}
+    minimum::Union{Missing,Float64}
+    maximum::Union{Missing,Float64}
+    max_gctime::Union{Missing,Float64}
+    samples::Int
+end
+Measurement(::Missing, ::Missing, ::Missing) =
+    Measurement(missing, missing, missing, missing, missing, missing, missing, 0)
+
+function timed_sample(f)
+    gc_start = Base.gc_num()
+    start = time_ns()
+    f()
+    elapsed = time_ns() - start
+    diff = Base.GC_Diff(Base.gc_num(), gc_start)
+    allocations = Int(diff.malloc + diff.realloc + diff.poolalloc + diff.bigalloc)
+    TimedSample(Float64(elapsed), Float64(diff.total_time), allocations, Int(diff.allocd))
+end
+
+# BenchmarkTools stores allocations as a minimum over its samples.  Select the
+# sample nearest the median time instead, so the allocation and GC figures below
+# describe the timing figure printed beside them.
+function measure_samples(f; samples=5)
+    measurements = [timed_sample(f) for _ in 1:samples]
+    times = getfield.(measurements, :time)
+    median_time = median(times)
+    paired = measurements[argmin(abs.(times .- median_time))]
+    Measurement(paired.time, paired.gctime, paired.allocs, paired.memory,
+        minimum(times), maximum(times), maximum(getfield.(measurements, :gctime)), samples)
 end
 
 function measure_warm(f; samples=5)
     f() # compile and warm the consumer path before sampling
-    trial = run(@benchmarkable $f() seconds=0.01 samples=samples evals=1)
-    median_trial = median(trial)
-    Measurement(Float64(median_trial.time), median_trial.allocs, median_trial.memory)
+    measure_samples(f; samples=samples)
 end
 
-function measure_cold(datasets, rules; samples=5)
+function measure_first_use(datasets, rules; samples=5)
+    length(datasets) >= samples + 1 || error("first-use measurement needs one compile dataset and samples fresh datasets")
+    evaluate_rules(rules, datasets[1]) # compile before timing fresh datasets
     cursor = Ref(0)
-    next = () -> begin
-        cursor[] = 1 + mod(cursor[] , length(datasets))
-        evaluate_rules(rules, datasets[cursor[]])
-    end
-    compile_dataset = datasets[1]
-    evaluate_rules(rules, compile_dataset) # compile before timing fresh datasets
-    cursor[] = 1
-    trial = run(@benchmarkable $next() samples=samples evals=1)
-    median_trial = median(trial)
-    Measurement(Float64(median_trial.time), median_trial.allocs, median_trial.memory)
+    first_index = length(datasets) - samples + 1
+    measure_samples(() -> begin
+        cursor[] += 1
+        evaluate_rules(rules, datasets[first_index + cursor[] - 1])
+    end; samples=samples)
+end
+
+function measure_churn(datasets, rules)
+    length(datasets) >= 2 || error("churn measurement needs fresh datasets")
+    evaluate_rules(rules, datasets[1]) # compile before timing fresh datasets
+    cursor = Ref(0)
+    measure_samples(() -> begin
+        cursor[] += 1
+        evaluate_rules(rules, datasets[1 + cursor[]])
+    end; samples=length(datasets) - 1)
 end
 
 function measure_adapter(datasets; samples=5)
+    length(datasets) >= samples + 1 || error("adapter measurement needs fresh datasets")
+    SoleModels.stage2_state(datasets[1]) # compile before timing fresh adapter builds
     cursor = Ref(0)
-    next = () -> begin
-        cursor[] = 1 + mod(cursor[] , length(datasets))
-        SoleModels.stage2_state(datasets[cursor[]])
-    end
-    compile_dataset = datasets[1]
-    SoleModels.stage2_state(compile_dataset) # compile before timing fresh adapter builds
-    cursor[] = 0
-    trial = run(@benchmarkable $next() seconds=0.01 samples=samples evals=1)
-    median_trial = median(trial)
-    Measurement(Float64(median_trial.time), median_trial.allocs, median_trial.memory)
+    measure_samples(() -> begin
+        cursor[] += 1
+        SoleModels.stage2_state(datasets[cursor[] + 1])
+    end; samples=samples)
 end
 
 function measure_conversion(dataset, rules; samples=5)
@@ -117,9 +153,7 @@ function measure_conversion(dataset, rules; samples=5)
         length(state.formulas)
     end
     f()
-    trial = run(@benchmarkable $f() seconds=0.01 samples=samples evals=1)
-    median_trial = median(trial)
-    Measurement(Float64(median_trial.time), median_trial.allocs, median_trial.memory)
+    measure_samples(f; samples=samples)
 end
 
 function measure_extensions(dataset, rules; samples=5)
@@ -132,9 +166,7 @@ function measure_extensions(dataset, rules; samples=5)
         sum(BitVector(any(values) for values in Aletheia.extension(formula, state.family)))
     end for rule in rules)
     f()
-    trial = run(@benchmarkable $f() seconds=0.01 samples=samples evals=1)
-    median_trial = median(trial)
-    Measurement(Float64(median_trial.time), median_trial.allocs, median_trial.memory)
+    measure_samples(f; samples=samples)
 end
 
 function parse_gate_shape(s)
@@ -174,7 +206,8 @@ function timing_seed(case)
 end
 
 function emit(m::Measurement)
-    m.time === missing ? "NA,NA,NA" : "$(m.time),$(m.allocs),$(m.memory)"
+    m.time === missing ? "NA,NA,NA,NA,NA,NA,NA,0" :
+        "$(m.time),$(m.gctime),$(m.allocs),$(m.memory),$(m.minimum),$(m.maximum),$(m.max_gctime),$(m.samples)"
 end
 
 function run_timing(cases, side)
@@ -183,20 +216,23 @@ function run_timing(cases, side)
         dataset = consumer_dataset(ninstances, npoints)
         rules = consumer_rules(nrules, depth, modal_probability, shared,
             timing_seed(case))
+        fresh_datasets = [consumer_dataset(ninstances, npoints) for _ in 1:6]
+        # Six fresh identities reproduce the workload that exposed collection
+        # pressure without letting one row consume the worker timeout.
+        churn_datasets = [consumer_dataset(ninstances, npoints) for _ in 1:7]
+        first_use = measure_first_use(fresh_datasets, rules)
+        steady = measure_warm(() -> evaluate_rules(rules, dataset))
+        churn = measure_churn(churn_datasets, rules)
         if side == "baseline"
-            fresh_datasets = [consumer_dataset(ninstances, npoints) for _ in 1:6]
-            cold = measure_cold(fresh_datasets, rules)
-            warm = measure_warm(() -> evaluate_rules(rules, dataset))
-            println(case_index, '\t', emit(cold), '\t', emit(warm), "\tNA,NA,NA\tNA,NA,NA")
+            println(case_index, '\t', emit(first_use), '\t', emit(steady), '\t',
+                emit(churn), "\tNA,NA,NA,NA,NA,NA,NA,0\tNA,NA,NA,NA,NA,NA,NA,0")
         elseif side == "aletheia"
-            fresh_datasets = [consumer_dataset(ninstances, npoints) for _ in 1:6]
-            cold = measure_cold(fresh_datasets, rules)
-            warm = measure_warm(() -> evaluate_rules(rules, dataset))
             adapter = measure_adapter(fresh_datasets)
             conversion = measure_conversion(dataset, rules)
             extension = measure_extensions(dataset, rules)
-            println(case_index, '\t', emit(cold), '\t', emit(warm), '\t',
-                emit(adapter), '\t', emit(conversion), '\t', emit(extension))
+            println(case_index, '\t', emit(first_use), '\t', emit(steady), '\t',
+                emit(churn), '\t', emit(adapter), '\t', emit(conversion), '\t',
+                emit(extension))
         else
             error("unknown side $side")
         end
