@@ -302,6 +302,67 @@ function Base.show(io::IO, algebra::FiniteFLewAlgebra{N}) where N
     print(io, "FiniteFLewAlgebra{$N}(bottom=$(algebra.bot), top=$(algebra.top))")
 end
 
+Base.show(io::IO, ::MIME"text/plain", ::BooleanAlgebra) =
+    print(io, "BooleanAlgebra (carrier Bool: {false, true})")
+
+function Base.show(io::IO, ::MIME"text/plain", alg::GodelAlgebra{N}) where N
+    if N == 0
+        print(io, "GodelAlgebra (unit interval [0.0, 1.0])")
+    else
+        lvls = join(string.(levels(alg)), ", ")
+        print(io, "GodelAlgebra{$N} (chain of $N levels: $lvls)")
+    end
+end
+
+function Base.show(io::IO, ::MIME"text/plain", alg::LukasiewiczAlgebra{N}) where N
+    if N == 0
+        print(io, "LukasiewiczAlgebra (unit interval [0.0, 1.0])")
+    else
+        lvls = join(string.(round.(levels(alg), digits=3)), ", ")
+        print(io, "LukasiewiczAlgebra{$N} (chain of $N levels: $lvls)")
+    end
+end
+
+function _render_table_rows(op_symbol::String, matrix::Matrix{FiniteTruth}, N::Int)
+    lines = String[]
+    hdr = " " * op_symbol * " │ " * join(string.(1:N), " ")
+    push!(lines, hdr)
+    div_line = "───┼" * "─"^(2 * N)
+    push!(lines, div_line)
+    for i in 1:N
+        row_str = " " * string(i) * " │ " * join(string.(matrix[i, :]), " ")
+        push!(lines, row_str)
+    end
+    lines
+end
+
+function Base.show(io::IO, ::MIME"text/plain", algebra::FiniteFLewAlgebra{N}) where N
+    println(io, "FiniteFLewAlgebra{$N} (bottom=$(algebra.bot), top=$(algebra.top))\n")
+    if N <= 10
+        t1 = _render_table_rows("∧", algebra.meet, N)
+        t2 = _render_table_rows("∨", algebra.join, N)
+        t3 = _render_table_rows("→", algebra.implication, N)
+
+        titles = ["  Meet (∧)", "  Join (∨)", "  Implication (→)"]
+        w1 = max(maximum(length, t1), length(titles[1]))
+        w2 = max(maximum(length, t2), length(titles[2]))
+
+        println(io, rpad(titles[1], w1 + 4), rpad(titles[2], w2 + 4), titles[3])
+        for i in 1:length(t1)
+            line1 = rpad(t1[i], w1 + 4)
+            line2 = rpad(t2[i], w2 + 4)
+            line3 = t3[i]
+            if i == length(t1)
+                print(io, line1, line2, line3)
+            else
+                println(io, line1, line2, line3)
+            end
+        end
+    else
+        print(io, "  Carrier: 1:$N")
+    end
+end
+
 # ---------------------------------------------------------------------------
 # SoleLogics' named finite tables.  Every table uses the source order
 # (⊤, ⊥, α, β, …), exactly as in its shipped algebra files.  Only the G/Ł

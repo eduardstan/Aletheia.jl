@@ -246,6 +246,7 @@ include("theory.jl")
 include("compatibility.jl")
 include("vocabulary.jl")
 include("ilp.jl")
+include("presentation.jl")
 include("examples.jl")
 @testset "Aletheia" begin
     Aqua.test_all(Aletheia)
