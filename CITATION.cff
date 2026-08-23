@@ -1,0 +1,7 @@
+cff-version: 1.2.0
+message: "If you use Aletheia, please cite this repository."
+title: "Aletheia.jl"
+authors:
+  - family-names: Stan
+    given-names: "Ionel Eduard"
+repository-code: "https://github.com/eduardstan/Aletheia.jl"
