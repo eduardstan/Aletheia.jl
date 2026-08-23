@@ -99,6 +99,8 @@ end
     finite_formula = CompatibilityClient.:∧(MV.α, CompatibilityClient.Atom("p"))
     @test CompatibilityClient.check(finite_formula, finite_model, 1) == UInt8(3)
     @test CompatibilityClient.check(MV.β, finite_model, 1) == UInt8(4)
+    godel_model = Aletheia.Model(finite_frame, Aletheia.GodelAlgebra(4), Dict("p" => 1.0))
+    @test_throws ArgumentError CompatibilityClient.check(MV.α, godel_model, 1)
     @test CompatibilityClient.TruthDict(Dict("p" => Set([world]))) isa CompatibilityClient.Valuation
     @test CompatibilityClient.worldtype(model) <: CompatibilityClient.Interval
     @test_throws ArgumentError CompatibilityClient.worldtype(world_frame)
@@ -262,6 +264,11 @@ end
     @test CompatibilityClient.:¬(p) isa Aletheia.Formula
     @test CompatibilityClient.:¬(p) === CompatibilityClient.:¬(p)
     @test CompatibilityClient.Branch(CompatibilityClient.:∧, (p, q)) isa Aletheia.Formula
+    @test Aletheia.SoleLogics._compat_branch(Aletheia.:∧, (p, q)) isa Aletheia.Formula
+    modal_connective = Aletheia.Diamond(:coverage)
+    modal_pool = CompatibilityClient.FormulaPool(CompatibilityClient.Signature((Aletheia.:∧, modal_connective)))
+    modal_atom = CompatibilityClient.atom(modal_pool, "modal")
+    @test Aletheia.SoleLogics._compat_branch(modal_connective, modal_atom) isa Aletheia.Formula
     constant_formula = CompatibilityClient.:→(p, CompatibilityClient.⊥)
     @test constant_formula isa Aletheia.Formula
     @test CompatibilityClient.token(first(collect(CompatibilityClient.children(constant_formula)))) isa CompatibilityClient.Atom

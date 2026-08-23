@@ -976,13 +976,9 @@ end
 function _truth_model(model::Aletheia.Model)
     valuation = (atom, world) -> begin
         truth = _truth_payload(atom)
-        if truth !== nothing
+        truth === nothing ?
+            Aletheia._lookup_valuation(Aletheia.valuation(model), atom, world) :
             _truth_carrier(truth, Aletheia.algebra(model))
-        elseif atom isa Aletheia.Atom
-            Aletheia._lookup_atom(Aletheia.valuation(model), atom, world)
-        else
-            Aletheia._lookup_valuation(Aletheia.valuation(model), atom, world)
-        end
     end
     Aletheia.Model(Aletheia.frame(model), Aletheia.algebra(model), valuation)
 end
