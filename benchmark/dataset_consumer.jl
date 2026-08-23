@@ -2,7 +2,6 @@
 # The script builds disposable package copies and removes them on exit.
 import Pkg
 using Printf
-using Statistics
 
 const ROOT = normpath(joinpath(@__DIR__, ".."))
 const SOLEDATA_PATH = get(ENV, "SOLEDATA_PATH", "")
@@ -12,11 +11,18 @@ isdir(SOLEMODELS_PATH) || error("set SOLEMODELS_PATH to a SoleModels checkout")
 
 struct Measurement
     time::Union{Missing,Float64}
+    gctime::Union{Missing,Float64}
     allocs::Union{Missing,Int}
     memory::Union{Missing,Int}
+    minimum::Union{Missing,Float64}
+    maximum::Union{Missing,Float64}
+    max_gctime::Union{Missing,Float64}
+    samples::Int
     note::String
 end
-Measurement(time, allocs, memory) = Measurement(time, allocs, memory, "")
+Measurement(time, gctime, allocs, memory, minimum, maximum, max_gctime, samples;
+            note="") = Measurement(time, gctime, allocs, memory, minimum, maximum,
+                                    max_gctime, samples, note)
 
 function copy_writable(source, destination)
     cp(source, destination; force=true)
@@ -48,7 +54,7 @@ function setup_environment(environment, aletheia_root, consumer_package)
     Pkg.develop(Pkg.PackageSpec(path=aletheia_root); io=devnull)
     Pkg.develop(Pkg.PackageSpec(path=consumer_package); io=devnull)
     Pkg.develop(Pkg.PackageSpec(path=SOLEDATA_PATH); io=devnull)
-    Pkg.add(["BenchmarkTools", "DataFrames", "Graphs", "SoleLogics"]; io=devnull)
+    Pkg.add(["DataFrames", "Graphs", "SoleLogics"]; io=devnull)
     Pkg.instantiate(; io=devnull)
 end
 
@@ -86,10 +92,15 @@ function compare_gate(baseline, routed, shapes)
         shapes=length(shapes))
 end
 
-function parse_measurement(fields, start)
+function parse_measurement(fields, start; note="")
     values = split(fields[start], ',')
-    values[1] == "NA" && return Measurement(missing, missing, missing)
-    Measurement(parse(Float64, values[1]), parse(Int, values[2]), parse(Int, values[3]))
+    values[1] == "NA" && return Measurement(missing, missing, missing, missing,
+        missing, missing, missing, 0; note=note)
+    length(values) == 8 || error("measurement must contain time, GC, paired allocations/bytes, range, and sample count")
+    Measurement(parse(Float64, values[1]), parse(Float64, values[2]),
+        parse(Int, values[3]), parse(Int, values[4]), parse(Float64, values[5]),
+        parse(Float64, values[6]), parse(Float64, values[7]), parse(Int, values[8]);
+        note=note)
 end
 
 function parse_timing(output, ncases, side; note="")
@@ -98,28 +109,32 @@ function parse_timing(output, ncases, side; note="")
         fields = split(line, '\t')
         isempty(fields) && continue
         index = parse(Int, fields[1])
-        cold = parse_measurement(fields, 2)
-        warm = parse_measurement(fields, 3)
+        first_use = parse_measurement(fields, 2; note=note)
+        steady = parse_measurement(fields, 3; note=note)
+        churn = parse_measurement(fields, 4; note=note)
         if side == "baseline"
-            rows[index] = (cold=cold, warm=warm, adapter=missing,
-                conversion=missing, extension=missing)
+            rows[index] = (first_use=first_use, steady=steady, churn=churn,
+                adapter=missing, conversion=missing, extension=missing)
         else
-            rows[index] = (cold=cold, warm=warm,
-                adapter=parse_measurement(fields, 4),
-                conversion=parse_measurement(fields, 5),
-                extension=parse_measurement(fields, 6))
+            rows[index] = (first_use=first_use, steady=steady, churn=churn,
+                adapter=parse_measurement(fields, 5; note=note),
+                conversion=parse_measurement(fields, 6; note=note),
+                extension=parse_measurement(fields, 7; note=note))
         end
     end
-    missing_measurement = Measurement(missing, missing, missing, note)
-    missing_row = (cold=missing_measurement, warm=missing_measurement,
-        adapter=missing_measurement, conversion=missing_measurement,
-        extension=missing_measurement)
+    missing_measurement = Measurement(missing, missing, missing, missing,
+        missing, missing, missing, 0; note=note)
+    missing_row = (first_use=missing_measurement, steady=missing_measurement,
+        churn=missing_measurement, adapter=missing_measurement,
+        conversion=missing_measurement, extension=missing_measurement)
     [get(rows, i, missing_row) for i in 1:ncases]
 end
 
 function fmt_measurement(m)
     m.time === missing && return isempty(m.note) ? "timeout/unavailable" : m.note
-    @sprintf("%.3f ms; %d allocs / %d bytes", m.time / 1e6, m.allocs, m.memory)
+    @sprintf("%.3f ms; GC %.3f ms; %d allocs / %d bytes; sample %.3f–%.3f ms; max GC %.3f ms; n=%d",
+        m.time / 1e6, m.gctime / 1e6, m.allocs, m.memory,
+        m.minimum / 1e6, m.maximum / 1e6, m.max_gctime / 1e6, m.samples)
 end
 
 const GATE_SHAPES = [
@@ -175,11 +190,12 @@ try
     open(result_path, "w") do io
         println(io, "seed=0xDADA_2024")
         println(io, "gate=PASS shapes=$(gate.shapes) rule-instance-masks=$(gate.rule_instance_cases)")
-        println(io, "case | baseline cold | routed cold | baseline warm | routed warm | adapter | formula conversion | extension/mask")
+        println(io, "case | baseline first use | routed first use | baseline steady | routed steady | baseline churn | routed churn | adapter | formula conversion | extension/mask")
         for (index, case) in enumerate(TIMING_CASES)
             b, a = baseline_timing[index], routed_timing[index]
-            println(io, "$(case) | $(fmt_measurement(b.cold)) | $(fmt_measurement(a.cold)) | " *
-                "$(fmt_measurement(b.warm)) | $(fmt_measurement(a.warm)) | " *
+            println(io, "$(case) | $(fmt_measurement(b.first_use)) | $(fmt_measurement(a.first_use)) | " *
+                "$(fmt_measurement(b.steady)) | $(fmt_measurement(a.steady)) | " *
+                "$(fmt_measurement(b.churn)) | $(fmt_measurement(a.churn)) | " *
                 "$(fmt_measurement(a.adapter)) | $(fmt_measurement(a.conversion)) | " *
                 "$(fmt_measurement(a.extension))")
         end

@@ -76,5 +76,12 @@ The script creates baseline and routed SoleModels copies under a temporary
 subdirectory of this checkout, runs a seeded mask gate first, then starts one
 warmed child per side under GNU `timeout`.  Child output and timeout handling
 use files, not pipes; the raw sweep is written to
-`data/al-dataset-consumer/run.txt`.  The temporary copies and environments are
-removed on exit.  No SoleData dependency is added to Aletheia itself.
+`data/al-dataset-consumer/run.txt`.  The timing worker reports three labelled
+phases: first use on genuinely new datasets, steady state after cache
+population, and repeated fresh-dataset churn.  Its allocation and byte fields
+come from the sample nearest the median time, not BenchmarkTools' minimum over
+an unspecified sample set; sample ranges and GC time are retained.  The
+corrected repeated artifacts are under
+`data/al-dataset-consumer/corrected-repetitions/`.  The temporary copies and
+environments are removed on exit.  No SoleData dependency is added to
+Aletheia itself.

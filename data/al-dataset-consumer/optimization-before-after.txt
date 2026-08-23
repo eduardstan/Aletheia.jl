@@ -1,0 +1,11 @@
+# Frame-adjacency sharing check
+# Fixed seed 0xDADA_2024; one rule, 6 points, one instance; warmed child; five paired samples after.
+# Before: route used one Aletheia Frame per model (one measured run).
+first_use_before=4.356 ms; paired=58539 allocs / 6727592 bytes
+steady_before=0.232 ms; paired=3193 allocs / 601384 bytes
+# After: equal world/relation signatures share Frame and its relation cache (five repetitions).
+first_use_after_ms=1.394,1.558,14.554,2.454,1.864; median=1.864
+first_use_after_paired=24067 allocs / 3017992 bytes
+steady_after_ms=0.233,0.326,1.818,0.327,0.395; median=0.327
+steady_after_paired=3193 allocs / 601384 bytes
+mask_gate=PASS; repetitions=5; shapes=6; rule-instance-masks=352 per repetition

@@ -226,6 +226,19 @@ domain(algebra::Union{GodelAlgebra,LukasiewiczAlgebra}) = Tuple(levels(algebra))
 
 abstract type _RelationProvider end
 
+# Relation adjacency is independent of valuation, so models that share a frame
+# can share the lazily-built relation indexes as well.
+struct _RelationAdjacency
+    rows::Vector{Vector{Int}}
+    columns::Vector{BitVector}
+end
+
+mutable struct _ModelEvaluationCache
+    positions::Dict{Any,Int}
+    adjacency::Dict{Any,_RelationAdjacency}
+    lock::ReentrantLock
+end
+
 """
     Frame(worlds, relations; index=false)
 
@@ -242,6 +255,7 @@ struct Frame{W<:Tuple,RS,I} <: AbstractMultiModalFrame{eltype(W)}
     worlds::W
     relations::RS
     index::I
+    cache::_ModelEvaluationCache
 end
 
 function _world_tuple(worlds)
@@ -337,7 +351,12 @@ function Frame(worlds, relations; index=false, world_index=nothing)
     requested = world_index === nothing ? index : world_index
     normalized = _normalize_relations(relations, worldtuple)
     indexed = _world_index(worldtuple, requested)
-    Frame{typeof(worldtuple),typeof(normalized),typeof(indexed)}(worldtuple, normalized, indexed)
+    positions = indexed === nothing ?
+        Dict{Any,Int}(world => position for (position, world) in enumerate(worldtuple)) :
+        Dict{Any,Int}(world => Int(indexed[world]) for world in worldtuple)
+    cache = _ModelEvaluationCache(positions, Dict{Any,_RelationAdjacency}(), ReentrantLock())
+    Frame{typeof(worldtuple),typeof(normalized),typeof(indexed)}(
+        worldtuple, normalized, indexed, cache)
 end
 
 Frame(worlds; index=false, world_index=nothing) = Frame(worlds, Dict(); index=index, world_index=world_index)
@@ -642,23 +661,6 @@ function atom_values(valuation::ValuationCallback, atom::Atom, worlds)
         collect(batch(value(atom), worlds))
 end
 
-struct _RelationAdjacency
-    rows::Vector{Vector{Int}}
-    columns::Vector{BitVector}
-end
-
-mutable struct _ModelEvaluationCache
-    positions::Dict{Any,Int}
-    adjacency::Dict{Any,_RelationAdjacency}
-    lock::ReentrantLock
-end
-
-function _model_positions(frame::Frame)
-    indexed = world_index(frame)
-    indexed === nothing ?
-        Dict{Any,Int}(world => position for (position, world) in enumerate(worlds(frame))) :
-        Dict{Any,Int}(world => Int(indexed[world]) for world in worlds(frame))
-end
 
 """
     Model(frame, algebra, valuation)
@@ -677,8 +679,7 @@ struct Model{T,A<:TruthAlgebra{T},F<:Frame,V}
 end
 
 function Model(frame::Frame, algebra::TruthAlgebra, valuation)
-    cache = _ModelEvaluationCache(_model_positions(frame), Dict{Any,_RelationAdjacency}(), ReentrantLock())
-    Model(frame, algebra, valuation, cache)
+    Model(frame, algebra, valuation, frame.cache)
 end
 
 

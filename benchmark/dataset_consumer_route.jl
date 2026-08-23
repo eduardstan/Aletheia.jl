@@ -11,15 +11,18 @@ Aletheia.instance_count(family::Stage2ConsumerFamily) = SoleData.ninstances(fami
 Aletheia.eachinstance(family::Stage2ConsumerFamily) = Base.OneTo(SoleData.ninstances(family.dataset))
 Aletheia.instance_model(family::Stage2ConsumerFamily, instance) = family.models[instance]
 
-function _stage2_model(dataset, instance)
-    source_frame = SoleLogics.frame(dataset, instance)
+function _stage2_frame(source_frame)
     source_worlds = Tuple(SoleLogics.allworlds(source_frame))
     adjacency = Dict{Any,Any}()
     for (rel, name) in ((SoleLogics.globalrel, :G), (SoleLogics.IA_L, :L))
         adjacency[name] = Dict(world => Tuple(SoleLogics.accessibles(source_frame, world, rel))
                                for world in source_worlds)
     end
-    frame = Aletheia.Frame(source_worlds, adjacency; index=true)
+    Aletheia.Frame(source_worlds, adjacency; index=true),
+    (source_worlds, Tuple((name, adjacency[name]) for name in (:G, :L)))
+end
+
+function _stage2_model(dataset, instance, frame)
     scalar = (condition, world) -> SoleData.checkcondition(condition, dataset, instance, world)
     batch = (condition, worlds) -> BitVector(
         SoleData.checkcondition(condition, dataset, instance, world) for world in worlds)
@@ -28,8 +31,22 @@ function _stage2_model(dataset, instance)
 end
 
 function stage2_family(dataset)
-    Stage2ConsumerFamily(dataset, Any[_stage2_model(dataset, i)
-                                     for i in 1:SoleData.ninstances(dataset)])
+    frames = Any[]
+    signatures = Any[]
+    model_frames = Any[]
+    for instance in 1:SoleData.ninstances(dataset)
+        frame, signature = _stage2_frame(SoleLogics.frame(dataset, instance))
+        position = findfirst(existing -> isequal(existing, signature), signatures)
+        if position === nothing
+            push!(signatures, signature)
+            push!(frames, frame)
+            position = length(frames)
+        end
+        push!(model_frames, frames[position])
+    end
+    models = Any[_stage2_model(dataset, instance, model_frames[instance])
+                 for instance in 1:SoleData.ninstances(dataset)]
+    Stage2ConsumerFamily(dataset, models)
 end
 
 mutable struct Stage2ConsumerState
