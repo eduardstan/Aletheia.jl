@@ -260,19 +260,22 @@ end
     Extension(values, model)
 
 A display view wrapping an extension result vector and world tuple to provide
-a rich REPL display showing which worlds satisfy the formula.
+a rich REPL display showing which worlds satisfy the formula.  The model form
+also keeps the model's algebra, so graded truth values are shown as the
+algebra's elements rather than as its carrier representation.
 """
-struct Extension{T,V<:AbstractVector{T},W<:Tuple}
+struct Extension{T,V<:AbstractVector{T},W<:Tuple,A}
     values::V
     worlds::W
+    algebra::A
 
-    function Extension(values::V, worlds::W) where {T, V<:AbstractVector{T}, W<:Tuple}
-        new{T, V, W}(values, worlds)
+    function Extension(values::V, worlds::W, algebra::A=nothing) where {T, V<:AbstractVector{T}, W<:Tuple, A}
+        new{T, V, W, A}(values, worlds, algebra)
     end
 end
 
 Extension(values::AbstractVector, worlds) = Extension(values, Tuple(worlds))
-Extension(values::AbstractVector, model::Model) = Extension(values, frame(model).worlds)
+Extension(values::AbstractVector, model::Model) = Extension(values, frame(model).worlds, algebra(model))
 
 """
     describe(extension_result, model)
@@ -284,42 +287,35 @@ describe(io::IO, ext::AbstractVector, model::Model) = show(io, MIME("text/plain"
 
 Base.show(io::IO, ext::Extension) = print(io, "Extension(", ext.values, ")")
 
+"""Print one `Label: w1, w2, …` line of an extension, bounded by the IO context."""
+function _display_worlds_line(io::IO, label::AbstractString, worlds)
+    _display_label(io, 2, label)
+    if isempty(worlds)
+        print(io, "(none)")
+        return
+    end
+    shown, elided = _display_bounded(io, worlds, DISPLAY_ITEMS)
+    print(io, join(repr.(shown), ", "))
+    _display_elision(io, elided)
+end
+
 function Base.show(io::IO, ::MIME"text/plain", ext::Extension{Bool})
     n_tot = length(ext.worlds)
     n_sat = count(ext.values)
-    print(io, "Extension ($n_sat of $n_tot world$(n_tot == 1 ? "" : "s") satisfy)")
-    sat_worlds = [ext.worlds[i] for i in 1:n_tot if ext.values[i]]
-    unsat_worlds = [ext.worlds[i] for i in 1:n_tot if !ext.values[i]]
-
-    if n_tot <= 15
-        sat_str = isempty(sat_worlds) ? "(none)" : join(repr.(sat_worlds), ", ")
-        unsat_str = isempty(unsat_worlds) ? "(none)" : join(repr.(unsat_worlds), ", ")
-        print(io, "\n  Satisfied at: ", sat_str)
-        print(io, "\n  Unsatisfied at: ", unsat_str)
-    else
-        if !isempty(sat_worlds)
-            shown = join(repr.(sat_worlds[1:min(5, length(sat_worlds))]), ", ")
-            elided = length(sat_worlds) > 5 ? ", … ($(length(sat_worlds)-5) elided)" : ""
-            print(io, "\n  Satisfied at: ", shown, elided)
-        else
-            print(io, "\n  Satisfied at: (none)")
-        end
-    end
+    _display_header(io, "Extension", "$n_sat of $n_tot world$(n_tot == 1 ? "" : "s") satisfy")
+    _display_worlds_line(io, "Satisfied at", [ext.worlds[i] for i in 1:n_tot if ext.values[i]])
+    _display_worlds_line(io, "Unsatisfied at", [ext.worlds[i] for i in 1:n_tot if !ext.values[i]])
 end
 
-function Base.show(io::IO, ::MIME"text/plain", ext::Extension{T}) where T
+function Base.show(io::IO, ::MIME"text/plain", ext::Extension)
     n_tot = length(ext.worlds)
-    print(io, "Extension ($n_tot world$(n_tot == 1 ? "" : "s"))")
-    if n_tot <= 15
-        for i in 1:n_tot
-            print(io, "\n  ", repr(ext.worlds[i]), " => ", ext.values[i])
-        end
-    else
-        for i in 1:5
-            print(io, "\n  ", repr(ext.worlds[i]), " => ", ext.values[i])
-        end
-        print(io, "\n  … ($(n_tot - 5) elided)")
+    _display_header(io, "Extension", "$n_tot world$(n_tot == 1 ? "" : "s")")
+    shown, elided = _display_bounded(io, 1:n_tot, DISPLAY_ITEMS)
+    for i in shown
+        _display_label(io, 2, repr(ext.worlds[i]), " => ")
+        print(io, _display_truth(ext.algebra, ext.values[i]))
     end
+    _display_elision_line(io, 2, elided)
 end
 
 """

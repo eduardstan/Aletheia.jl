@@ -13,7 +13,7 @@ using Aletheia
     # Large frame
     large_worlds = tuple([Symbol("w", i) for i in 1:20]...)
     f_large = Frame(large_worlds, Dict(:R => Dict()); index=true)
-    @test occursin("15 elided", sprint(show, MIME("text/plain"), f_large))
+    @test occursin("… (10 elided)", sprint(show, MIME("text/plain"), f_large))
 
     # Model
     m1 = Model(f1, BOOLEAN, Dict("p" => Set([:w2]), "q" => Set([:w1, :w2])))
@@ -25,7 +25,7 @@ using Aletheia
 
     # Large model
     m_large = Model(f_large, BOOLEAN, Dict("p" => Set(large_worlds)))
-    @test occursin("15 elided", sprint(show, MIME("text/plain"), m_large))
+    @test occursin("… (10 elided)", sprint(show, MIME("text/plain"), m_large))
 
     # Callable relations / valuation
     f_callable = Frame((:w1, :w2), (w, r) -> (:w2,); index=true)
@@ -120,7 +120,7 @@ using Aletheia
     # Exercise the large Boolean extension's elision branch and its terse form.
     ext_large = Extension(BitVector(ones(Bool, length(large_worlds))), f_large.worlds)
     s_ext_large = sprint(show, MIME("text/plain"), ext_large)
-    @test occursin("Satisfied at: :w1, :w2, :w3, :w4, :w5, … (15 elided)", s_ext_large)
+    @test occursin("Satisfied at: :w1, :w2, :w3, :w4, :w5, :w6, :w7, :w8, :w9, :w10, … (10 elided)", s_ext_large)
     @test sprint(show, ext_large) == "Extension(Bool[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])"
 
     # Valuation summaries accept the supported world/atom dictionary shapes.
@@ -142,19 +142,20 @@ using Aletheia
     m_callable_entry = Model(f_callable_entry, (a, w) -> true, BOOLEAN)
     @test occursin("<callable>", sprint(show, MIME("text/plain"), m_callable_entry))
     ext_g_large = Extension(fill(0.5, length(large_worlds)), large_worlds)
-    @test occursin("… (15 elided)", sprint(show, MIME("text/plain"), ext_g_large))
+    @test occursin("… (10 elided)", sprint(show, MIME("text/plain"), ext_g_large))
 
     # Both terse and rich forms of finite algebras remain distinct.
-    @test sprint(show, H4) == "FiniteFLewAlgebra{4}(bottom=2, top=1)"
+    @test sprint(show, H4) == "FiniteFLewAlgebra{4}(bottom=⊥, top=⊤)"
     @test sprint(show, MIME("text/plain"), H4) isa String
-    @test occursin("Carrier: 1:11", sprint(show, MIME("text/plain"), Aletheia._chain_flew(11, :godel)))
+    @test occursin("Order: ⊥ < α < β < γ < δ < ε < ζ < η < θ < ι < ⊤",
+        sprint(show, MIME("text/plain"), Aletheia._chain_flew(11, :godel)))
 
     # Large quotient output elides classes after the first five.
     worlds_11 = tuple([Symbol("u", i) for i in 1:11]...)
     vals_11 = Dict("p$(i)" => Set([worlds_11[i]]) for i in 1:11)
     f_11 = Frame(worlds_11, Dict(:R => Dict()); index=true)
     q_11 = bisimulation_contraction(Model(f_11, BOOLEAN, vals_11))
-    @test occursin("… (6 elided)", sprint(show, MIME("text/plain"), q_11))
+    @test occursin("… (1 elided)", sprint(show, MIME("text/plain"), q_11))
 
     # Quotients with no collapse and complete collapse.
     q_none = bisimulation_contraction(m1)
@@ -164,7 +165,7 @@ using Aletheia
     m_same = Model(f_same, BOOLEAN, Dict("p" => Set{Symbol}()))
     q_all = bisimulation_contraction(m_same)
     s_q_all = sprint(show, MIME("text/plain"), q_all)
-    @test occursin("BisimulationContraction (2 → 1 worlds, 50% collapse ratio)", s_q_all)
+    @test occursin("BisimulationContraction (2 → 1 world, 50% collapse ratio)", s_q_all)
     @test occursin("Class 1: :a, :b", s_q_all)
     @test sprint(show, q_all) == "BisimulationContraction(2 → 1 worlds)"
 
@@ -180,4 +181,82 @@ using Aletheia
     @test sprint(show, Substitution()) == "Substitution()"
     @test sprint(show, f1) == "Frame(2 worlds)"
     @test sprint(show, m1) == "Model(2 worlds, BooleanAlgebra())"
+
+    # 6. Element-labelled algebra displays.  The carrier is a one-based UInt8
+    # index; no display may present that index as if it were an element.
+    @test sprint(show, MIME("text/plain"), G3) == join([
+        "FiniteFLewAlgebra{3} (3 values, chain, bottom=⊥, top=⊤)",
+        "  Order: ⊥ < α < ⊤",
+        "",
+        "  Meet (∧)      Join (∨)      Implication (→)",
+        " ∧ │ ⊥ α ⊤     ∨ │ ⊥ α ⊤     → │ ⊥ α ⊤",
+        "───┼──────    ───┼──────    ───┼──────",
+        " ⊥ │ ⊥ ⊥ ⊥     ⊥ │ ⊥ α ⊤     ⊥ │ ⊤ ⊤ ⊤",
+        " α │ ⊥ α α     α │ α α ⊤     α │ ⊥ ⊤ ⊤",
+        " ⊤ │ ⊥ α ⊤     ⊤ │ ⊤ ⊤ ⊤     ⊤ │ ⊥ α ⊤",
+    ], "\n")
+
+    # H4 is not a chain, so its display says so instead of implying that the
+    # carrier order ranks its elements.
+    @test sprint(show, MIME("text/plain"), H4) == join([
+        "FiniteFLewAlgebra{4} (4 values, not a chain, bottom=⊥, top=⊤)",
+        "  Elements: ⊥, α, β, ⊤",
+        "",
+        "  Meet (∧)        Join (∨)        Implication (→)",
+        " ∧ │ ⊥ α β ⊤     ∨ │ ⊥ α β ⊤     → │ ⊥ α β ⊤",
+        "───┼────────    ───┼────────    ───┼────────",
+        " ⊥ │ ⊥ ⊥ ⊥ ⊥     ⊥ │ ⊥ α β ⊤     ⊥ │ ⊤ ⊤ ⊤ ⊤",
+        " α │ ⊥ α ⊥ α     α │ α α ⊤ ⊤     α │ β ⊤ β ⊤",
+        " β │ ⊥ ⊥ β β     β │ β ⊤ β ⊤     β │ α α ⊤ ⊤",
+        " ⊤ │ ⊥ α β ⊤     ⊤ │ ⊤ ⊤ ⊤ ⊤     ⊤ │ ⊥ α β ⊤",
+    ], "\n")
+    for algebra in (G3, G4, G5, G6, Ł3, Ł4, H4, H6, H6_1, H6_2, H6_3, H9, BooleanFLewAlgebra)
+        rich = sprint(show, MIME("text/plain"), algebra)
+        @test occursin("bottom=⊥, top=⊤", rich)
+        @test occursin(occursin("not a chain", rich) ? "Elements: ⊥, " : "Order: ⊥ < ", rich)
+    end
+    @test occursin("not a chain", sprint(show, MIME("text/plain"), H9))
+    @test occursin("chain", sprint(show, MIME("text/plain"), G6))
+    @test Aletheia.truthlabel(1) == "⊤" && Aletheia.truthlabel(2) == "⊥" && Aletheia.truthlabel(3) == "α"
+    @test Aletheia.truthlabel(H4, 4) == "β"
+    # A carrier laid out the other way round still labels its own bottom and top.
+    flipped = FiniteFLewAlgebra([1 2; 2 2], [1 1; 1 2], [1 1; 1 2], 1, 2)
+    @test sprint(show, flipped) == "FiniteFLewAlgebra{2}(bottom=⊥, top=⊤)"
+    @test Aletheia.truthlabel(flipped, 1) == "⊥" && Aletheia.truthlabel(flipped, 2) == "⊤"
+    # Values outside the carrier fall back to their plain form rather than throwing.
+    @test Aletheia._display_truth(G3, true) == "true"
+    @test Aletheia._display_truth(nothing, 0.5) == "0.5"
+
+    # Graded models and extensions report elements, not carrier indices.
+    m_finite = Model(f1, G3, Dict("p" => Dict(:w1 => UInt8(3), :w2 => UInt8(1))))
+    @test occursin("p: {:w1 => α, :w2 => ⊤}", sprint(show, MIME("text/plain"), m_finite))
+    s_ext_finite = sprint(show, MIME("text/plain"), Extension(extension(p, m_finite), m_finite))
+    @test occursin(":w1 => α", s_ext_finite)
+    @test occursin(":w2 => ⊤", s_ext_finite)
+    # A bare world tuple has no algebra to consult, so values print plainly.
+    @test occursin(":w1 => 3", sprint(show, MIME("text/plain"), Extension(UInt8[3, 1], f1.worlds)))
+
+    # 7. Colour is emitted only when the IO context reports it.
+    coloured(value) = sprint(io -> show(IOContext(io, :color => true), MIME("text/plain"), value))
+    for value in (G3, H4, f1, m1, ext_view, ext_g_view, q, cs, sub, ee, ie, pe, BOOLEAN, GodelAlgebra(3))
+        @test !occursin('\e', sprint(show, MIME("text/plain"), value))
+        @test occursin('\e', coloured(value))
+    end
+
+    # 8. `:limit => false` in the IO context disables every truncation.
+    unlimited(value) = sprint(io -> show(IOContext(io, :limit => false), MIME("text/plain"), value))
+    @test !occursin("elided", unlimited(f_large)) && occursin(":w20", unlimited(f_large))
+    @test !occursin("elided", unlimited(m_large)) && occursin(":w20", unlimited(m_large))
+    @test !occursin("elided", unlimited(ext_large)) && occursin(":w20", unlimited(ext_large))
+    @test !occursin("elided", unlimited(ext_g_large))
+    @test !occursin("elided", unlimited(q_11)) && occursin("Class 11", unlimited(q_11))
+    @test !occursin("elided", unlimited(clauses_16)) && occursin("p9(z)", unlimited(clauses_16))
+    @test !occursin("elided", unlimited(Aletheia._chain_flew(11, :godel)))
+
+    # 9. Long relation edge lists and valuation world sets stay bounded.
+    edges = Frame(large_worlds, Dict(:R => Dict(w => [w] for w in large_worlds)); index=true)
+    @test occursin("… (10 elided)", sprint(show, MIME("text/plain"), edges))
+    @test occursin(":w10 → :w10, … (10 elided)", sprint(show, MIME("text/plain"), edges))
+    @test occursin("p: {:w1, :w2, :w3, :w4, :w5, :w6, :w7, :w8, :w9, :w10, … (10 elided)}",
+        sprint(show, MIME("text/plain"), m_large))
 end
