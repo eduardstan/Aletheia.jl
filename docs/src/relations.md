@@ -189,19 +189,3 @@ to select one. A frame with no stored relations is not reflexive, transitive,
 symmetric, or serial, whereas `K` is the unconstrained class and always
 satisfies. These predicates inspect finite frames and do not establish a
 correspondence theorem for an infinite or callable relation.
-
-```@docs
-relation_holds
-relation_successors
-inverse
-Point2DRelation
-Interval
-Rectangle
-interval_frame
-rectangle_frame
-point_frame
-FrameClass
-satisfies
-validates
-```
-

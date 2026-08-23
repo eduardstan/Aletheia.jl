@@ -224,12 +224,3 @@ and its parser callback all ran successfully. The `dnf_to_syntaxbranch` path
 could not be attempted because it requires the deliberately unsupported
 leftmost wrappers. The package tests exercise the mapped surface directly in
 `test/compatibility.jl`; they do not add either Sole package as a dependency.
-
-```@docs
-Aletheia.SoleLogics
-```
-
-```@autodocs
-Modules = [Aletheia.SoleLogics]
-Order = [:type, :function, :constant]
-```

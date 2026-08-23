@@ -11,7 +11,7 @@ bibliography = CitationBibliography(joinpath(@__DIR__, "src", "refs.bib"))
 
 makedocs(
     sitename = "Aletheia.jl",
-    checkdocs = :none,
+    checkdocs = :exports,
     modules = [Aletheia, Aletheia.SoleLogics],
     pages = [
         "Home" => "index.md",
@@ -25,7 +25,9 @@ makedocs(
         "Measured results" => "results.md",
         "Development and validation" => "development.md",
         "Migration" => "compatibility.md",
+        "API reference" => "api.md",
     ],
+    format = Documenter.HTML(size_threshold = 300 * 1024, size_threshold_warn = 300 * 1024),
     plugins = [bibliography],
 )
 
