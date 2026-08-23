@@ -9,7 +9,6 @@ model = Model(base_frame, BOOLEAN, Dict("p" => Set([2])))
 translation = standard_translation(formula)
 first_order = first_order_interpretation(model)
 
-println("Model:")
 show(stdout, MIME"text/plain"(), model)
 println()
 modal_value = check(formula, model, 1)

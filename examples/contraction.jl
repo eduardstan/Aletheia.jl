@@ -11,13 +11,10 @@ quotient = bisimulation_contraction(model)
 
 println("world count: ", length(worlds(base_frame)), " -> ",
     length(worlds(frame(quotient))))
-println("Bisimulation quotient:")
 show(stdout, MIME"text/plain"(), quotient)
 println()
-println("Original extension:")
 show(stdout, MIME"text/plain"(), describe(extension(formula, model), model))
 println()
-println("Quotient extension:")
 show(stdout, MIME"text/plain"(), describe(extension(formula, quotient), Aletheia.model(quotient)))
 println()
 preserved = all(check(formula, model, world) == check(formula, quotient, world)
