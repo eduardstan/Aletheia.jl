@@ -116,6 +116,12 @@ end
     @test CompatibilityClient.children(truth_first)[2] == p
     @test CompatibilityClient.SyntaxBranch(CompatibilityClient.:¬,
         CompatibilityClient.⊤) isa Aletheia.Formula
+    @test CompatibilityClient.SyntaxBranch(CompatibilityClient.:¬, CompatibilityClient.⊤) ==
+        CompatibilityClient.SyntaxBranch(CompatibilityClient.:¬, CompatibilityClient.⊤)
+    @test CompatibilityClient.SyntaxBranch(CompatibilityClient.:∧, CompatibilityClient.⊤,
+            CompatibilityClient.⊥) ==
+        CompatibilityClient.SyntaxBranch(CompatibilityClient.:∧, CompatibilityClient.⊤,
+            CompatibilityClient.⊥)
     @test_throws ArgumentError CompatibilityClient.parseformula("⊤"; atom_parser=_ -> CompatibilityClient.⊤)
     @test_throws ArgumentError CompatibilityClient.collatetruth(CompatibilityClient.:∧, (CompatibilityClient.⊤, CompatibilityClient.⊥))
     @test_throws ArgumentError CompatibilityClient.LeftmostConjunctiveForm([p, q])
@@ -174,7 +180,12 @@ end
     @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.succeedeq(1, 2)
     @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.maximalmembers((1, 2))
     @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.minimalmembers((1, 2))
-    @test sprint(show, CompatibilityClient.ManyValuedLogics.G3) != "unsupported SoleLogics.ManyValuedLogics.G3"
+    g3_show = sprint(show, MV.G3)
+    @test occursin("Domain: " * string(MV.getdomain(MV.G3)), g3_show)
+    @test occursin("Bot: " * sprint(show, MV.G3.bot), g3_show)
+    @test occursin("Top: " * sprint(show, MV.G3.top), g3_show)
+    @test occursin("Join: " * string(MV.G3.join.table), g3_show)
+    @test_throws ArgumentError MV.FiniteFLewAlgebra{3}(MV.G4.join, MV.G4.meet, MV.G4.monoid, 2, 1)
 end
 
 

@@ -241,8 +241,8 @@ function _formula_pool_for(connective, formulas::Tuple)
             break
         end
     end
-    if candidate !== nothing && same &&
-            _hasconnective(Aletheia.signature(candidate), connective)
+    candidate === nothing && (candidate = _DEFAULT_POOL)
+    if same && _hasconnective(Aletheia.signature(candidate), connective)
         return candidate
     end
     _merge_formula_pools(connective, formulas)
@@ -765,6 +765,8 @@ Base.getindex(operation::_FiniteOperation, left, right) =
 
 function _operation_table(operation, n::Int, name::AbstractString)
     source = if operation isa _FiniteOperation
+        size(operation.table) == (n, n) ||
+            throw(ArgumentError("$name table must have size ($n, $n)"))
         operation.table
     elseif operation isa AbstractMatrix
         size(operation) == (n, n) || throw(ArgumentError("$name table must have size ($n, $n)"))
