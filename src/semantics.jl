@@ -4,6 +4,19 @@ import Base: join
 # Formula syntax remains in syntax.jl; this file never turns a truth value into a
 # Formula, nor does it evaluate a Branch.
 
+"""Marker for values used as worlds in modal frames."""
+abstract type AbstractWorld end
+"""Abstract accessibility-frame vocabulary used by Sole consumers."""
+abstract type AbstractFrame{W} end
+"""Abstract frame with one implicit accessibility relation."""
+abstract type AbstractUniModalFrame{W} <: AbstractFrame{W} end
+"""Abstract frame with named accessibility relations."""
+abstract type AbstractMultiModalFrame{W} <: AbstractFrame{W} end
+"""The incumbent's world-set dispatch alias."""
+const AbstractWorlds{W} = AbstractVector{W} where {W<:AbstractWorld}
+"""Marker used when a grounded formula is checked without choosing a world."""
+struct AnyWorld end
+
 """
     TruthAlgebra{T}
 
@@ -213,6 +226,19 @@ domain(algebra::Union{GodelAlgebra,LukasiewiczAlgebra}) = Tuple(levels(algebra))
 
 abstract type _RelationProvider end
 
+# Relation adjacency is independent of valuation, so models that share a frame
+# can share the lazily-built relation indexes as well.
+struct _RelationAdjacency
+    rows::Vector{Vector{Int}}
+    columns::Vector{BitVector}
+end
+
+mutable struct _ModelEvaluationCache
+    positions::Dict{Any,Int}
+    adjacency::Dict{Any,_RelationAdjacency}
+    lock::ReentrantLock
+end
+
 """
     Frame(worlds, relations; index=false)
 
@@ -225,10 +251,11 @@ position dictionary for algorithms that use stable positions.  A one-world
 frame uses this same ordinary type; no propositional special case exists.
 See Blackburn, de Rijke, and Venema, *Modal Logic*, §1.3 [blackburn2001](@cite).
 """
-struct Frame{W<:Tuple,RS,I}
+struct Frame{W<:Tuple,RS,I} <: AbstractMultiModalFrame{eltype(W)}
     worlds::W
     relations::RS
     index::I
+    cache::_ModelEvaluationCache
 end
 
 function _world_tuple(worlds)
@@ -324,7 +351,12 @@ function Frame(worlds, relations; index=false, world_index=nothing)
     requested = world_index === nothing ? index : world_index
     normalized = _normalize_relations(relations, worldtuple)
     indexed = _world_index(worldtuple, requested)
-    Frame{typeof(worldtuple),typeof(normalized),typeof(indexed)}(worldtuple, normalized, indexed)
+    positions = indexed === nothing ?
+        Dict{Any,Int}(world => position for (position, world) in enumerate(worldtuple)) :
+        Dict{Any,Int}(world => Int(indexed[world]) for world in worldtuple)
+    cache = _ModelEvaluationCache(positions, Dict{Any,_RelationAdjacency}(), ReentrantLock())
+    Frame{typeof(worldtuple),typeof(normalized),typeof(indexed)}(
+        worldtuple, normalized, indexed, cache)
 end
 
 Frame(worlds; index=false, world_index=nothing) = Frame(worlds, Dict(); index=index, world_index=world_index)
@@ -353,6 +385,13 @@ end
 
 function _relation_targets(frame::Frame, world, relation_name)
     _is_world(frame.worlds, world) || throw(KeyError(world))
+    _stored_relation_targets(frame, world, relation_name)
+end
+
+_has_stored_relation(frame::Frame, relation) =
+    frame.relations isa AbstractDict && haskey(frame.relations, relation)
+
+function _stored_relation_targets(frame::Frame, world, relation_name)
     stored = frame.relations
     if stored isa Function || stored isa _RelationProvider
         if applicable(stored, world, relation_name)
@@ -382,6 +421,69 @@ function accessible(frame::Frame, world, relation_name)
     targets isa AbstractString && return (target for target in (targets,))
     targets isa Nothing && throw(ArgumentError("accessibility must return an iterable"))
     (target for target in targets)
+end
+
+"""Return the lazy worlds accessible from `world` via `relation`."""
+accessibles(frame::Frame, world, relation_name) = accessible(frame, world, relation_name)
+
+# A lazy de-duplicating view.  The `seen` set is allocated per iteration pass,
+# so the returned object stays re-iterable like any other lazy iterator.
+struct _DistinctWorlds{S}
+    source::S
+end
+Base.IteratorSize(::Type{<:_DistinctWorlds}) = Base.SizeUnknown()
+Base.IteratorEltype(::Type{<:_DistinctWorlds}) = Base.EltypeUnknown()
+Base.iterate(distinct::_DistinctWorlds) = _next_distinct(distinct, Set{Any}(), ())
+Base.iterate(distinct::_DistinctWorlds, state) = _next_distinct(distinct, state[1], (state[2],))
+
+function _next_distinct(distinct::_DistinctWorlds, seen, inner)
+    while true
+        step = iterate(distinct.source, inner...)
+        step === nothing && return nothing
+        value, inner_state = step
+        inner = (inner_state,)
+        value in seen && continue
+        push!(seen, value)
+        return value, (seen, inner_state)
+    end
+end
+
+"""Return distinct worlds reachable from a world vector, lazily."""
+function accessibles(frame::Frame, world_set::AbstractVector, relation_name)
+    _DistinctWorlds((target for source in world_set for target in accessible(frame, source, relation_name)))
+end
+
+"""Return the worlds satisfying a Boolean connective from child extensions.
+
+The result is a materialised world set, as in the incumbent collation API;
+accessibility itself remains lazy and is only consumed by the modal predicates.
+"""
+function collateworlds(frame::AbstractFrame, connective, truth_sets::Tuple)
+    expected = arity(connective)
+    length(truth_sets) == expected || throw(ArgumentError(
+        "cannot collate $(length(truth_sets)) truth sets for $(typeof(connective)) with arity $expected"))
+    frame_worlds = worlds(frame)
+    if connective isa Conjunction
+        return collect(intersect(truth_sets[1], truth_sets[2]))
+    elseif connective isa Disjunction
+        return collect(union(truth_sets[1], truth_sets[2]))
+    elseif connective isa Implication
+        return collect(union(setdiff(collect(frame_worlds), truth_sets[1]), truth_sets[2]))
+    elseif connective isa Negation
+        return collect(setdiff(collect(frame_worlds), truth_sets[1]))
+    elseif connective isa Diamond
+        relation_name = relation(connective)
+        relation_name isa GlobalRelation && return isempty(truth_sets[1]) ? eltype(frame_worlds)[] : collect(frame_worlds)
+        return [world for world in frame_worlds if any(target -> target in truth_sets[1],
+            accessible(frame, world, relation_name))]
+    elseif connective isa Box
+        relation_name = relation(connective)
+        relation_name isa GlobalRelation && return length(truth_sets[1]) == length(frame_worlds) ?
+            collect(frame_worlds) : eltype(frame_worlds)[]
+        return [world for world in frame_worlds if all(target -> target in truth_sets[1],
+            accessible(frame, world, relation_name))]
+    end
+    throw(ArgumentError("no world collation for connective $(repr(connective))"))
 end
 
 Base.iterate(frame::Frame, state...) = iterate(frame.worlds, state...)
@@ -446,6 +548,25 @@ to sets of worlds (the usual Boolean valuation presentation).
 struct Valuation{V}
     data::V
 end
+
+"""
+    ValuationCallback(scalar; vectorized=nothing)
+
+A valuation callback for models whose atom truth is computed on demand.  The
+`scalar` callback receives `(atom, world)`.  An optional `vectorized` callback
+receives `(atom, worlds)` and returns one value per world; the evaluator uses it
+when computing an extension, while scalar interpretation remains available for
+`check`.
+"""
+struct ValuationCallback{S,B}
+    scalar::S
+    vectorized::B
+end
+
+ValuationCallback(scalar; vectorized=nothing) =
+    ValuationCallback{typeof(scalar),typeof(vectorized)}(scalar, vectorized)
+
+(valuation::ValuationCallback)(atom_value, world) = valuation.scalar(atom_value, world)
 
 function _nested_value(data, world)
     if data isa Function
@@ -522,28 +643,24 @@ function _lookup_atom(data::Valuation, atom::Atom, world)
     _lookup_valuation(data, value(atom), world)
 end
 _lookup_atom(data, atom::Atom, world) = _lookup_valuation(data, value(atom), world)
+_lookup_atom(data::ValuationCallback, atom::Atom, world) = data(value(atom), world)
 
 function (valuation::Valuation)(atom_value, world)
     _lookup_valuation(valuation.data, atom_value, world)
 end
 
-struct _RelationAdjacency
-    rows::Vector{Vector{Int}}
-    columns::Vector{BitVector}
+"""Return atom values in the supplied world order, using a batch callback when available."""
+function atom_values(valuation, atom::Atom, worlds)
+    [ _lookup_atom(valuation, atom, world) for world in worlds ]
 end
 
-mutable struct _ModelEvaluationCache
-    positions::Dict{Any,Int}
-    adjacency::Dict{Any,_RelationAdjacency}
-    lock::ReentrantLock
+function atom_values(valuation::ValuationCallback, atom::Atom, worlds)
+    batch = valuation.vectorized
+    batch === nothing ?
+        [valuation.scalar(value(atom), world) for world in worlds] :
+        collect(batch(value(atom), worlds))
 end
 
-function _model_positions(frame::Frame)
-    indexed = world_index(frame)
-    indexed === nothing ?
-        Dict{Any,Int}(world => position for (position, world) in enumerate(worlds(frame))) :
-        Dict{Any,Int}(world => Int(indexed[world]) for world in worlds(frame))
-end
 
 """
     Model(frame, algebra, valuation)
@@ -562,8 +679,7 @@ struct Model{T,A<:TruthAlgebra{T},F<:Frame,V}
 end
 
 function Model(frame::Frame, algebra::TruthAlgebra, valuation)
-    cache = _ModelEvaluationCache(_model_positions(frame), Dict{Any,_RelationAdjacency}(), ReentrantLock())
-    Model(frame, algebra, valuation, cache)
+    Model(frame, algebra, valuation, frame.cache)
 end
 
 

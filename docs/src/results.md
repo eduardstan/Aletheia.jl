@@ -101,6 +101,57 @@ in the hot call. The same run measured the consumer subsets at n=6: IA3
 Aletheia. All generated edges are checked against their predicates in
 `test/relations.jl`.
 
+## Stage 2a SoleModels consumer (corrected measurement)
+
+The former **12.3× cold / 15.0× warm** and later **14.9× cold / 15.1× warm**
+headlines are retired.  The old cold cell mixed first-use adjacency construction
+with six fresh-dataset identities and BenchmarkTools reported the minimum
+allocation count over a variable sample population.  Those figures were
+misleading, not an unexplained product change.
+
+The corrected experiment uses five fixed-seed repetitions, an exact mask gate
+before each timing, warmed child processes under GNU `timeout`, and file-backed
+output.  It reports three distinct routed phases: first use on five genuinely
+new datasets, steady state after one cache-populating call, and six-dataset
+fresh-family churn.  Every allocation/byte figure is paired with the sample
+nearest the median time; the within-measurement range and maximum GC time are
+retained.  The full corrected distributions and endpoint loads are in
+`data/al-dataset-consumer/report.md`, `data/al-dataset-consumer/corrected-repetitions/`, and `data/al-dataset-consumer/optimization-before-after.txt`.
+
+| representative case | first use min / median / max (ms) | steady min / median / max (ms) | churn min / median / max (ms) |
+| --- | ---: | ---: | ---: |
+| 16 rules, depth 4, 1 instance (row 1) | 1.394 / 1.864 / 14.554 | 0.233 / 0.327 / 1.818 | 1.358 / 1.655 / 2.481 |
+| 16 rules, depth 4, 16 instances (row 6) | 4.047 / 4.251 / 8.988 | 2.379 / 2.573 / 5.515 | 4.012 / 4.176 / 9.335 |
+| 16 rules, depth 4, 64 instances (row 4) | 23.993 / 24.890 / 31.406 | 17.085 / 18.947 / 23.876 | 23.575 / 24.698 / 28.259 |
+
+For row 1, paired routed allocations are **24,067 / 3,017,992 bytes** on
+first use, **3,193 / 601,384** steady state, and **24,067 / 3,017,992** under
+churn.  The largest sampled churn GC was 42.879 ms.  Use the steady number when
+reusing a model family; budget first-use construction for each genuinely new
+family; treat the churn tail as specific to workloads that continually create
+families.  The mask gate passed all five repetitions (six shapes, 352 exact
+rule-instance masks each), outranking every timing result.
+
+The route now shares adjacency indexes across instances only when their world
+and relation signatures are equal.  Aletheia attaches the relation cache to the
+shared frame, safely independent of each model's valuation.  Before sharing,
+the row-1 first-use sample was **4.356 ms, 58,539 allocations / 6,727,592
+bytes**; after sharing the five-run median is **1.864 ms, 24,067 / 3,017,992**.
+Steady-state allocations are unchanged.  This is a measured optimization, not
+warmup that hides first use.  The change in the published numbers is explicitly
+from the corrected phase labels, paired allocation sampler, and this measured
+sharing optimization.
+
+A run-order diagnostic also checked the apparent later-row degradation.  The
+same case occurs at rows 3, 6, 9, 12, 15, and 18; in published order its
+first-use maxima were 4.554, 8.988, 10.097, 7.455, 70.375, and 60.159 ms.  In
+three additional gated repetitions with rows 13–18 run first, the corresponding
+maxima were 4.409, 4.091, 4.473, 4.214, 4.268, and 4.812 ms in that same
+original-row order.  The large tails did not move to the first positions, so
+there is no simple monotonic position effect.  The later observations remain
+published as measured spread; the diagnostic artifacts are in
+`data/al-dataset-consumer/order-diagnostic-late-first/`.
+
 ## Bisimulation contraction amortisation
 
 The correctness gate ran **96 seeded random labelled models** and 16 random

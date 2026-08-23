@@ -101,10 +101,15 @@ end
     @test CompatibilityClient.check(MV.β, finite_model, 1) == UInt8(4)
     godel_model = Aletheia.Model(finite_frame, Aletheia.GodelAlgebra(4), Dict("p" => 1.0))
     @test_throws ArgumentError CompatibilityClient.check(MV.α, godel_model, 1)
+    @test Set(CompatibilityClient.collateworlds(world_frame,
+        CompatibilityClient.token(conjunction), (Set([world]), Set([world])))) == Set([world])
+    grounded = CompatibilityClient.SyntaxBranch(
+        CompatibilityClient.diamond(CompatibilityClient.globalrel), p)
+    @test CompatibilityClient.isgrounded(grounded)
     @test CompatibilityClient.TruthDict(Dict("p" => Set([world]))) isa CompatibilityClient.Valuation
     @test CompatibilityClient.worldtype(model) <: CompatibilityClient.Interval
     @test_throws ArgumentError CompatibilityClient.worldtype(world_frame)
-    @test CompatibilityClient.accessibles(world_frame, world, CompatibilityClient.IA_L) isa Vector
+    @test !(CompatibilityClient.accessibles(world_frame, world, CompatibilityClient.IA_L) isa Vector)
     @test CompatibilityClient.ManyValuedLogics.getdomain(CompatibilityClient.ManyValuedLogics.BooleanAlgebra()) == (false, true)
     @test CompatibilityClient.ManyValuedLogics.getdomain(CompatibilityClient.ManyValuedLogics.G4) ==
         (CompatibilityClient.ManyValuedLogics.FiniteTruth(1),

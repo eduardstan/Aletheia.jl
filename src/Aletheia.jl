@@ -16,6 +16,7 @@ include("relations.jl")
 include("dimensional.jl")
 include("frameclasses.jl")
 include("evaluation.jl")
+include("dataset.jl")
 include("firstorder.jl")
 include("ilp.jl")
 include("normalforms.jl")
@@ -27,7 +28,8 @@ export Signature, Formula, FormulaPool, Atom, Branch, DAGNode
 export atom, branch, children, nchildren, value, operator, head, pool, id
 export isatom, isbranch, dag, subterms, nsubterms, signature, connectives
 export arity, dual, hasconnective, hasdual, precedence, associativity, commutative
-export iscommutative, modality, ismodality, notation, relation, syntaxstring
+export iscommutative, modality, ismodality, ismodal, isunary, isdiamond, isbox
+export isgrounded, notation, relation, syntaxstring, AbstractRelationalConnective
 export Negation, Conjunction, Disjunction, Implication, Diamond, Box
 export NEGATION, CONJUNCTION, DISJUNCTION, IMPLICATION
 export NOT, AND, OR, IMPLIES, ¬, ∧, ∨, →
@@ -36,6 +38,10 @@ export FiniteTruth, FiniteFLewAlgebra, BooleanFLewAlgebra
 export G3, G4, G5, G6, Ł3, Ł4, L3, L4, H4, H6, H6_1, H6_2, H6_3, H9
 export RelationFamily, IntervalRelation, PointRelation, RCCRelation, RectangleRelation
 export relation_holds, relation_successors, inverse, converse, rectangle_relation
+export globalrel, identityrel, GlobalRelation, GlobalRel, IdentityRelation, IdentityRel
+export AtWorldRelation, ToCenterRelation, ToCenterRel, tocenterrel
+export centralworld, emptyworld
+export isgrounding
 export Interval, Rectangle, Interval2D, Point, interval_frame, rectangle_frame, point_frame
 export FullDimensionalFrame, Full1DFrame, Full2DFrame, Full1DPointFrame, Full2DPointFrame
 export BEFORE, MEETS, OVERLAPS, STARTS, DURING, FINISHES, EQUALS
@@ -65,9 +71,14 @@ export implication, negation, implies, negate, levels, isfinitechain
 export lattice_meet, latticemeet, latticejoin, lattice_join, lmeet, join_table, lattice_meet_table, monoid_table, implication_table
 export product, tnorm, monoid, monoid_product, monoid_operation, residuum
 export precedeq, precedes, succeedeq, succeedes, maximalmembers, minimalmembers
-export Frame, worlds, relations, world_index, hasworldindex, world_position, accessible
+export AbstractFrame, AbstractUniModalFrame, AbstractMultiModalFrame
+export AbstractWorld, AbstractWorlds, AnyWorld
+export Frame, worlds, relations, world_index, hasworldindex, world_position, accessible, accessibles
+export collateworlds
 export check, extension, Extension, describe
-export Valuation, Model, frame, algebra, valuation, interpret
+export Valuation, ValuationCallback, atom_values, Model, frame, algebra, valuation, interpret
+export AbstractModelFamily, ModelFamily, instance_count, eachinstance, instance_model
+export instance_frame, uniform_frame, isuniform
 
 export FirstOrderTerm, FirstOrderFormula, FOTerm, FOFormula
 export Variable, Constant, FunctionTerm, CompoundTerm, FOFunction, Predicate, Equality, FONegation, FOConjunction, FODisjunction, FOImplication

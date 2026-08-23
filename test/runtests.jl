@@ -239,10 +239,12 @@ end
 
 include("semantics.jl")
 include("evaluation.jl")
+include("dataset.jl")
 include("algebras.jl")
 include("relations.jl")
 include("theory.jl")
 include("compatibility.jl")
+include("vocabulary.jl")
 include("ilp.jl")
 include("presentation.jl")
 include("examples.jl")
