@@ -11,10 +11,12 @@ quotient = bisimulation_contraction(model)
 
 println("world count: ", length(worlds(base_frame)), " -> ",
     length(worlds(frame(quotient))))
-println("classes: ", classes(quotient))
-original = [check(formula, model, w) for w in worlds(base_frame)]
-via_quotient = [check(formula, quotient, w) for w in worlds(base_frame)]
-println("original values: ", original)
-println("quotient values via world map: ", via_quotient)
-println("preserved: ", original == via_quotient)
-println("Demonstrated: bisimulation contraction removes redundant worlds while preserving checks.")
+show(stdout, MIME"text/plain"(), quotient)
+println()
+show(stdout, MIME"text/plain"(), describe(extension(formula, model), model))
+println()
+show(stdout, MIME"text/plain"(), describe(extension(formula, quotient), Aletheia.model(quotient)))
+println()
+preserved = all(check(formula, model, world) == check(formula, quotient, world)
+    for world in worlds(base_frame))
+println("values preserved through world map: ", preserved)
