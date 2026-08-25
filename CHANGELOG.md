@@ -17,9 +17,11 @@ pre-release (`0.1.0-DEV`), so there is no released version yet.
   differential and performance benchmark harnesses.
 - Fixed the canonical interval fast path for `Topo_DR`, which enumerated some
   targets twice.
-- `inverse(MINIMUM)` and `inverse(MAXIMUM)` now throw instead of returning a
-  relation that is not their converse. Both relate every source to one fixed
-  boundary world, so their converse is not a value this vocabulary names.
+- `inverse(MINIMUM)`, `inverse(MAXIMUM)`, and `inverse(tocenterrel)` now throw
+  an `ArgumentError` explaining why instead of returning a relation that is not
+  their converse. `MINIMUM` and `MAXIMUM` relate every source to one fixed
+  boundary world, so their converse is not a value this vocabulary names, and
+  `tocenterrel` has no source/target predicate at all.
 - Added generated-input relation properties covering the converse law,
   involution, Allen/RCC8 JEPD, fast-path/predicate agreement, and the IA3/IA7
   coarsening unions.

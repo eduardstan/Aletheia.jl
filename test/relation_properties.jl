@@ -61,6 +61,9 @@ const _RECTANGLE_RELATIONS = [rectangle_relation(rand(_RELATION_RNG, ALLEN_RELAT
 #   tocenterrel — it has no source/target predicate at all (the frame defines
 #     its target), so there is no `relation_holds` for a converse to be checked
 #     against. `inverse` refuses for it too.
+#
+# All three refusals are `ArgumentError`s carrying the reason, not bare
+# no-method errors.
 const _NO_CONVERSE = (MINIMUM, MAXIMUM, tocenterrel)
 _has_converse(relation) = !any(excluded -> excluded === relation, _NO_CONVERSE)
 
@@ -91,10 +94,13 @@ _converse_mismatches(relation, ws) =
         for relation in _RECTANGLE_RELATIONS, ws in _RECTANGLE_WORLDS
             @test _converse_mismatches(relation, ws) == []
         end
-        # The excluded relations must refuse, not answer wrongly.
-        @test_throws MethodError inverse(MINIMUM)
-        @test_throws MethodError inverse(MAXIMUM)
-        @test_throws MethodError inverse(tocenterrel)
+        # The excluded relations must refuse, not answer wrongly, and the
+        # refusal must explain itself.
+        for relation in _NO_CONVERSE
+            @test_throws ArgumentError inverse(relation)
+            @test_throws "is undefined" inverse(relation)
+            @test_throws "converse" inverse(relation)
+        end
     end
 
     @testset "inverse is an involution" begin

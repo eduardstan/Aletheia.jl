@@ -204,8 +204,8 @@ end
     @test collect(accessible(points, 20, IDENTITY)) == [20]
     @test inverse(SUCCESSOR) === PREDECESSOR && inverse(GREATER) === LESSER
     # MINIMUM/MAXIMUM have no converse in this vocabulary; see test/relation_properties.jl.
-    @test_throws MethodError inverse(MINIMUM)
-    @test_throws MethodError inverse(MAXIMUM)
+    @test_throws ArgumentError inverse(MINIMUM)
+    @test_throws ArgumentError inverse(MAXIMUM)
     @test relation_holds(SUCCESSOR, 1, 2) && !relation_holds(SUCCESSOR, 1, 3)
     @test relation_holds(PREDECESSOR, 2, 1) && relation_holds(GREATER, 1, 2)
     @test relation_holds(LESSER, 2, 1)

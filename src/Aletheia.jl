@@ -233,7 +233,7 @@ export issatisfiable, isvalid, entails
 
 Every source reaches the same point, so the converse relates that one point to
 every world. That relation is not part of this vocabulary and [`inverse`](@ref)
-therefore throws for `MAXIMUM`.
+therefore throws an `ArgumentError` for `MAXIMUM`.
 """ MAXIMUM
 @doc "Allen interval relation: the first interval ends exactly when the second begins." MEETS
 @doc "Allen interval relation: the first begins exactly when the second ends." MET_BY
@@ -242,7 +242,7 @@ therefore throws for `MAXIMUM`.
 
 Every source reaches the same point, so the converse relates that one point to
 every world. That relation is not part of this vocabulary and [`inverse`](@ref)
-therefore throws for `MINIMUM`.
+therefore throws an `ArgumentError` for `MINIMUM`.
 """ MINIMUM
 @doc "Canonical connective value for negation." NEGATION
 @doc "Alias for [`NTPP`](@ref)." NON_TANGENTIAL_PROPER_PART
