@@ -105,6 +105,8 @@ println("separator values after relabelling: ",
 base = Frame((1, 2, 3), Dict(:R => Dict(1 => [1], 2 => [2], 3 => [3])); index=true)
 model = Model(base, BOOLEAN, Dict("p" => Set([3])))
 quotient = bisimulation_contraction(model)
+show(stdout, MIME"text/plain"(), quotient)
+println()
 formula = branch(pool, Diamond(:R), p)
 original = [check(formula, model, w) for w in worlds(base)]
 reduced = [check(formula, quotient, w) for w in worlds(base)]
@@ -116,6 +118,10 @@ println("values preserved: ", original == reduced)
 
 bisimilar before relabelling: true
 separator values after relabelling: false/true
+BisimulationContraction (3 → 2 worlds, 33% collapse ratio)
+  Classes (2):
+    Class 1: 2, 1
+    Class 2: 3
 contraction world count: 3 -> 2
 values preserved: true
 ```

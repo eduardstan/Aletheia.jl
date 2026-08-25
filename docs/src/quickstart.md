@@ -72,14 +72,26 @@ model = Model(base_frame, BOOLEAN, Dict("p" => Set([:w₂]), "q" => Set([:w₁, 
 println(collect(accessible(base_frame, :w₁, :R)))
 println(interpret(p, model, :w₂))
 println(check(formula, model, :w₁))
-println(extension(formula, model))
+show(stdout, MIME"text/plain"(), model)
+println()
+describe(stdout, extension(formula, model), model)
+println()
 
 # output
 
 [:w₂]
 true
 true
-Bool[1, 1]
+Model (2 worlds, 1 relation, BooleanAlgebra())
+  Worlds (2): :w₁, :w₂
+  Relations:
+    :R: :w₁ → :w₂; :w₂ → :w₂
+  Valuation:
+    p: {:w₂}
+    q: {:w₁, :w₂}
+Extension (2 of 2 worlds satisfy)
+  Satisfied at: :w₁, :w₂
+  Unsatisfied at: (none)
 ```
 
 For a labelled view of that extension in the REPL, use `describe`:
@@ -109,12 +121,15 @@ many = Model(base_frame, GodelAlgebra(), Dict(
     "p" => Dict(:w₁ => 0.0, :w₂ => 0.7),
     "q" => Dict(:w₁ => 0.4, :w₂ => 0.9)))
 println(check(formula, many, :w₁))
-println(extension(formula, many))
+describe(stdout, extension(formula, many), many)
+println()
 
 # output
 
 0.7
-[0.7, 0.7]
+Extension (2 worlds)
+  :w₁ => 0.7
+  :w₂ => 0.7
 ```
 
 The example above used `GodelAlgebra()`, the full unit interval, so any value

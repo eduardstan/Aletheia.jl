@@ -37,17 +37,29 @@ and ⊤.
 using Aletheia
 
 ⊤H, ⊥H, α, β = domain(H4)
+show(stdout, MIME"text/plain"(), H4)
+println()
 println(join(H4, α, β) == ⊤H)
 println(lattice_meet(H4, α, β) == ⊥H)
-println(maximalmembers(H4, [α, β]))
-println(minimalmembers(H4, [α, β]))
+println(Aletheia.truthlabel.(Ref(H4), maximalmembers(H4, [α, β])))
+println(Aletheia.truthlabel.(Ref(H4), minimalmembers(H4, [α, β])))
 
 # output
 
+FiniteFLewAlgebra{4} (4 values, not a chain, bottom=⊥, top=⊤)
+  Elements: ⊥, α, β, ⊤
+
+  Meet (∧)        Join (∨)        Implication (→)
+ ∧ │ ⊥ α β ⊤     ∨ │ ⊥ α β ⊤     → │ ⊥ α β ⊤
+───┼────────    ───┼────────    ───┼────────
+ ⊥ │ ⊥ ⊥ ⊥ ⊥     ⊥ │ ⊥ α β ⊤     ⊥ │ ⊤ ⊤ ⊤ ⊤
+ α │ ⊥ α ⊥ α     α │ α α ⊤ ⊤     α │ β ⊤ β ⊤
+ β │ ⊥ ⊥ β β     β │ β ⊤ β ⊤     β │ α α ⊤ ⊤
+ ⊤ │ ⊥ α β ⊤     ⊤ │ ⊤ ⊤ ⊤ ⊤     ⊤ │ ⊥ α β ⊤
 true
 true
-UInt8[0x03, 0x04]
-UInt8[0x03, 0x04]
+["α", "β"]
+["α", "β"]
 ```
 
 A chain would have to put one of `α`, `β` below the other, changing at least
