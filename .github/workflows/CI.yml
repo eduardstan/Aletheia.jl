@@ -1,6 +1,6 @@
-# Pull requests run the full three-version Linux and Windows matrix, documentation,
-# and coverage checks. Manual dispatch runs the same checks. Main pushes run only the
-# documentation job so publishing does not reintroduce duplicate test runs.
+# Pull requests and manual dispatch run the full three-version Linux and Windows
+# matrix. Main pushes use one Julia version on Ubuntu: the August 2026 CI-minute
+# budget motivated keeping branch protection real without restoring six-way cost.
 
 name: CI
 
@@ -16,15 +16,13 @@ concurrency:
 
 jobs:
   test:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     name: Julia ${{ matrix.julia-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
       fail-fast: false
-      matrix:
-        julia-version: ["1.10", "1.11", "1.12"]
-        os: [ubuntu-latest, windows-latest]
+      matrix: ${{ github.event_name == 'push' && fromJSON('{"julia-version":["1.12"],"os":["ubuntu-latest"]}') || fromJSON('{"julia-version":["1.10","1.11","1.12"],"os":["ubuntu-latest","windows-latest"]}') }}
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
@@ -54,7 +52,7 @@ jobs:
         run: julia --project=docs docs/make.jl
 
   coverage:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     name: Line coverage
     runs-on: ubuntu-latest
     timeout-minutes: 10

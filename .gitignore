@@ -2,3 +2,5 @@ references/*
 !references/README.md
 *.pdf
 docs/build/
+
+Manifest.toml
