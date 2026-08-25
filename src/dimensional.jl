@@ -185,7 +185,11 @@ function _interval_relation_successors(relation, source::Interval, boundaries, w
     elseif relation === RCC_EQ
         return _interval_relation_successors(EQUALS, source, boundaries, worlds)
     elseif relation === Topo_DR
-        return Iterators.flatten((_interval_successors(worlds, n, right, n - 1, right + 1, n, 1),
+        # Mode 1 spans a full k x l block, so it may enter cells with l <= k
+        # once lfirst <= klast; those map back to the preceding interval and
+        # duplicate it. The targets at or after the source's right boundary
+        # are the triangle l > k, which is exactly mode 0.
+        return Iterators.flatten((_interval_successors(worlds, n, right, n - 1, right + 1, n, 0),
             _interval_successors(worlds, n, 1, left - 1, 0, left, 0)))
     elseif relation === Topo_PP
         return _interval_successors(worlds, n, 1, left, right, n, 4)

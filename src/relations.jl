@@ -43,7 +43,15 @@ External relation families need no method here.
 """
 relation_successors(relation, source, worlds) = nothing
 
-"""Return the converse (inverse) of a relation value."""
+"""Return the converse (inverse) of a relation value.
+
+The result is the relation `r'` for which `relation_holds(r', a, b)` agrees
+with `relation_holds(r, b, a)` on every ordered pair. A relation whose converse
+this vocabulary does not name throws an `ArgumentError` explaining why, rather
+than returning a relation that is not its converse; `MINIMUM`, `MAXIMUM`, and
+`tocenterrel` are those values. An unknown relation still throws a `MethodError`
+from the generic fallback.
+"""
 function inverse(relation)
     throw(MethodError(inverse, (relation,)))
 end
@@ -82,6 +90,14 @@ arity(::IdentityRelation) = 2
 syntaxstring(::IdentityRelation; kwargs...) = "="
 arity(::ToCenterRelation) = 2
 syntaxstring(::ToCenterRelation; kwargs...) = "◉"
+# `tocenterrel` has no source/target predicate at all: a frame defines its
+# target through `centralworld`. There is therefore nothing for a converse to
+# be the converse of, and `inverse` says so rather than raising a bare
+# no-method error.
+inverse(::ToCenterRelation) = throw(ArgumentError("`inverse(tocenterrel)` is undefined: \
+    `tocenterrel` has no source/target predicate — a frame defines its target through \
+    `centralworld` — so there is no relation for `inverse` to return. No relation in this \
+    vocabulary is its converse."))
 
 # Incumbent names and Aletheia's established relation protocol use different
 # spellings for identity; retain both as the same singleton value.
@@ -330,8 +346,20 @@ relation_holds(::SuccessorRelation, a::Real, b::Real) = b == a + one(a)
 relation_holds(::PredecessorRelation, a::Real, b::Real) = b == a - one(a)
 relation_holds(::GreaterRelation, a::Real, b::Real) = b > a
 relation_holds(::LesserRelation, a::Real, b::Real) = b < a
-inverse(::MinimumRelation) = MINIMUM
-inverse(::MaximumRelation) = MAXIMUM
+# MINIMUM and MAXIMUM relate every source to one fixed boundary world, so
+# their converse relates that one world to every target: a different relation,
+# and not one this vocabulary names. Returning MINIMUM/MAXIMUM here would break
+# both the converse contract above and `isgrounding`, so `inverse` refuses, and
+# it says why rather than leaving the caller a bare no-method error.
+function _no_converse(name, boundary)
+    throw(ArgumentError("`inverse($name)` is undefined: `$name` relates every source to the \
+        $boundary world of the domain, so its converse relates that one world to every \
+        target. That relation is not part of this vocabulary, and returning `$name` would be \
+        a wrong converse. The point relations that do have one are `SUCCESSOR`/`PREDECESSOR` \
+        and `GREATER`/`LESSER`."))
+end
+inverse(::MinimumRelation) = _no_converse("MINIMUM", "first")
+inverse(::MaximumRelation) = _no_converse("MAXIMUM", "last")
 inverse(::SuccessorRelation) = PREDECESSOR
 inverse(::PredecessorRelation) = SUCCESSOR
 inverse(::GreaterRelation) = LESSER

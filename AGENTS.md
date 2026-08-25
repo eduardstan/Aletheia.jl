@@ -22,6 +22,8 @@ When updating this file, preserve this bar for all agents and keep entries conci
 
 - Relation values and their generic `relation_holds` protocol live in `src/relations.jl`; generated interval/rectangle/point constructors live in `src/dimensional.jl`, and frame-condition traits/axiom schemas live in `src/frameclasses.jl`.
 - Generated interval frames use a private canonical relation provider and direct adjacency construction for `BEFORE`; arbitrary relation families retain the lazy predicate fallback. IA3/IA7 and RCC5 memberships follow SoleLogics' definitions and are exhaustively checked in `test/relations.jl`.
+- `_IntervalSuccessors` (`src/dimensional.jl`) enumerates boundary-index pairs `(k, l)`; modes 1 and 4 span a full `k x l` block and are only valid when `lfirst > klast`, otherwise they enter cells with `l <= k` and emit the preceding interval twice. Mode 0 (triangle from `k + 1`) is the safe choice when the target block overlaps the diagonal.
+- `inverse` is contractually the converse; a relation whose converse this vocabulary does not name throws an `ArgumentError` naming the reason (`MINIMUM`, `MAXIMUM`, `tocenterrel`), while an unknown relation still hits the generic `MethodError` fallback. `test/relation_properties.jl` holds the generated-input relation laws (converse, involution, JEPD, fast path versus predicate, IA3/IA7 unions) and picks up newly exported relation values automatically.
 - Dimensional constructors return the existing `Frame` with a callable accessibility provider; `src/evaluation.jl` recognizes the private interval provider for direct `BEFORE` adjacency while retaining generic fallback. RCC8 and RCC5 are available topological fragments.
 
 ## Presentation layer

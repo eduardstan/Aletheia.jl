@@ -35,7 +35,14 @@ println(collect(accessible(points, 2, SameParity())))
 `inverse` and `converse` provide the relation-level converse. The protocol's
 orientation is `(source, target)`: `relation_holds(r, source, target)` means
 that `target` is accessible from `source` by `r`, the same orientation used by
-`accessible(frame, source, r)`.
+`accessible(frame, source, r)`. The returned value always satisfies
+`relation_holds(inverse(r), a, b) == relation_holds(r, b, a)`; a relation whose
+converse this vocabulary does not name throws an `ArgumentError` explaining why,
+instead of returning a relation which is not its converse. `MINIMUM` and
+`MAXIMUM` are two such values, because each relates every source to one fixed
+boundary world and so has a converse relating that world to every target;
+`tocenterrel` is the third, because a frame rather than a predicate defines its
+target.
 
 !!! warning
     Defining a relation in the opposite order silently changes every modal

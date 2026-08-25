@@ -229,11 +229,21 @@ export issatisfiable, isvalid, entails
 @doc "Point relation selecting lesser points." LESSER
 @doc "Alias for [`LukasiewiczAlgebra`](@ref)." LukasiewiczChain
 @doc "Alias for [`MAXIMUM`](@ref)." MAX
-@doc "Point relation selecting the last point in the ordered domain." MAXIMUM
+@doc """Point relation selecting the last point in the ordered domain.
+
+Every source reaches the same point, so the converse relates that one point to
+every world. That relation is not part of this vocabulary and [`inverse`](@ref)
+therefore throws an `ArgumentError` for `MAXIMUM`.
+""" MAXIMUM
 @doc "Allen interval relation: the first interval ends exactly when the second begins." MEETS
 @doc "Allen interval relation: the first begins exactly when the second ends." MET_BY
 @doc "Alias for [`MINIMUM`](@ref)." MIN
-@doc "Point relation selecting the first point in the ordered domain." MINIMUM
+@doc """Point relation selecting the first point in the ordered domain.
+
+Every source reaches the same point, so the converse relates that one point to
+every world. That relation is not part of this vocabulary and [`inverse`](@ref)
+therefore throws an `ArgumentError` for `MINIMUM`.
+""" MINIMUM
 @doc "Canonical connective value for negation." NEGATION
 @doc "Alias for [`NTPP`](@ref)." NON_TANGENTIAL_PROPER_PART
 @doc "Alias for [`NTPPi`](@ref)." NON_TANGENTIAL_PROPER_PART_INVERSE
