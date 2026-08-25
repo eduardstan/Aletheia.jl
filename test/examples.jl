@@ -4,7 +4,8 @@ const EXPECTED_OUTPUT_RE = r"(?ms)^# BEGIN EXPECTED OUTPUT\n(.*?)^# END EXPECTED
 const ANSI_RE = r"\e\[[0-9;]*m"
 
 function expected_output(script)
-    found = Base.match(EXPECTED_OUTPUT_RE, read(script, String))
+    source = replace(read(script, String), "\r\n" => "\n")
+    found = Base.match(EXPECTED_OUTPUT_RE, source)
     @test found !== nothing
     found === nothing && return ""
     lines = split(found.captures[1], '\n'; keepempty=true)
@@ -27,6 +28,7 @@ end
         close(pipe.in)
         output = read(pipe, String)
         output = replace(output, ANSI_RE => "")
+        output = replace(output, "\r\n" => "\n")
         @test output == expected_output(script)
     end
 end
