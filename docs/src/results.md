@@ -10,35 +10,49 @@ SOLELOGICS_PATH=$PWD/SoleLogics.jl julia --project=benchmark benchmark/run.jl
 
 The numbers on this page were produced with SoleLogics 0.13.7.
 
-`run.jl` prints Julia/CPU, the fixed seed, medians, allocation counts, a
+`run.jl` prints Julia/CPU, the fixed seed, paired medians, allocation counts, a
 correctness gate, and its wall clock. `--deep` expands the size and ratio
 sweeps. Each section runs in a warmed child Julia process; GNU `timeout` kills a
 section at the printed hard bound (120 s quick, 180 s deep). A timeout is
 reported as data, not silently dropped. Cold-load rows are intentionally fresh
-process measurements.
+process measurements. The raw run and provenance are retained in
+[`data/benchmark-run/run.txt`](https://github.com/eduardstan/Aletheia.jl/tree/main/data/benchmark-run).
 
-The quick run below used Julia 1.12.7, `alderlake`, 12 threads, SoleLogics
-0.13.7, seed `0xA1E7_2024` (decimal 2716278820), five samples, and completed in
-**590.2 s (9.8 min)**. The ratio is SoleLogics/Aletheia; allocations are
-`count / bytes`. All cases in a section share one warmed Julia child process,
-so the 590.2 s total does not include a package load per measured cell.
+The corrected quick run used Julia 1.12.7, `alderlake`, SoleLogics 0.13.7,
+seed `0xA1E7_2024` (decimal 2716278820), five paired samples, and completed in
+**495.4 s (8.3 min)**. Its recorded load average was **5.05, 4.54, 4.96**
+(`uptime`, 1/5/15-minute values). The ratio is SoleLogics/Aletheia;
+allocations are `count / bytes`. All cases in a section share one warmed Julia
+child process, so the total does not include a package load per measured cell.
+
+> **Correction notice.** The extension and interval headlines below
+> are retractions of the earlier published values. The extension harness discarded
+> SoleLogics' shared subformula memo once per world (and left normalization on),
+> inflating **110.04× → 4.02×** (8 worlds/depth 3) and **336.89× → 2.38×**
+> (32 worlds/depth 4). The interval harness charged SoleLogics a `findfirst`
+> world-position scan that Aletheia was not charged; with an index on both sides,
+> the corrected deep sweep is **43.7× → 8.75×** (n=24) and **84.6× → 13.81×**
+> (n=36). Finally, the old contraction baseline used too few samples:
+> **K*=11.6 → 46.7** after 2000 paired samples. These are not silent swaps;
+> the causes and run artefacts are retained in `data/benchmark-run/`.
 
 ## How to read a row
 
 The labels describe the inputs to the timed call. Unless a section says
-otherwise, each number is the median of five samples in a warmed child Julia
-process; construction, parsing, printing, checking, and extension setup happen
-inside the timed call when the generator does so. A ratio is always **SoleLogics divided by
+otherwise, each number is the median-time sample among five paired observations
+in a warmed child Julia process; its allocation count and bytes come from that
+same observation. Construction, parsing, printing, checking, and extension setup
+happen inside the timed call when the generator does so. Contraction rows use
+2000 paired observations to stabilize the crossover estimate. A ratio is always **SoleLogics divided by
 Aletheia**: above `1×` means Aletheia took less time, below `1×` means it took
 more time, and `1×` is parity. Allocation cells are ordered the same way:
 **SoleLogics count / bytes ; Aletheia count / bytes**. They are not ratios.
 
 * **Depth** is the number of recursive levels. The ordinary syntax and
   propositional/many-valued rows use a full binary `∧` tree of depth `d`, with
-  `2^d` leaves whose names cycle through eight atoms (`p1`–`p8`). `unshared`
-  constructs each occurrence separately. `shared` passes the same recipe child
-  twice; Aletheia's pool can preserve that shared node, while SoleLogics'
-  builder constructs each occurrence as it recurses. Modal formulas use the
+  `2^d` leaves. `unshared` gives each occurrence a distinct atom name, while
+  `shared` passes the same recipe child twice. Aletheia's pool preserves that
+  shared node; SoleLogics' builder constructs each occurrence as it recurses. Modal formulas use the
   deterministic `modal_formula(d)` generator instead: one recursive connective
   per level (cycling `◇`, `□`, `∧q`, `∨p`) and the indicated atom leaves.
 * **Worlds** is the number of worlds in the finite model. `n` in an interval
@@ -78,12 +92,12 @@ there is no allocation sample for those wall-clock measurements.
 
 | case | SoleLogics | Aletheia | ratio | allocations |
 | --- | ---: | ---: | ---: | ---: |
-| construction, depth 2 (unshared) | 3.55 μs | 1.70 μs | 2.09× | 37 / 1.281 KiB ; 56 / 2.594 KiB |
-| construction, depth 2 (shared) | 3.27 μs | 1.46 μs | 2.24× | 37 / 1.281 KiB ; 50 / 2.203 KiB |
-| parsing, depth 2 | 37.58 μs | 5.52 μs | 6.81× | 275 / 11.672 KiB ; 63 / 3.719 KiB |
-| printing, depth 2 | 6.53 μs | 2.55 μs | 2.56× | 45 / 1.641 KiB ; 19 / 800 B |
-| round-trip, depth 2 | 47.44 μs | 8.94 μs | 5.31× | 320 / 13.312 KiB ; 82 / 4.500 KiB |
-| `isequal`, chain 16 | 2.18 μs | 16.0 ns | 136.00× | 32 / 1.469 KiB ; 0 / 0 B |
+| construction, depth 2 (unshared) | 4.29 μs | 2.00 μs | 2.15× | 37 / 1.281 KiB ; 56 / 2.594 KiB |
+| construction, depth 2 (shared) | 3.60 μs | 1.74 μs | 2.07× | 37 / 1.281 KiB ; 50 / 2.203 KiB |
+| parsing, depth 2 | 61.39 μs | 15.07 μs | 4.07× | 275 / 11.672 KiB ; 63 / 3.719 KiB |
+| printing, depth 2 | 8.75 μs | 2.98 μs | 2.94× | 45 / 1.641 KiB ; 19 / 800 B |
+| round-trip, depth 2 | 63.54 μs | 8.61 μs | 7.38× | 320 / 13.312 KiB ; 82 / 4.500 KiB |
+| `isequal`, chain 16 | 2.56 μs | 14.0 ns | 182.79× | 32 / 1.469 KiB ; 0 / 0 B |
 | cold package load | 722.60 ms | 8.58 ms | 84.17× | n/a |
 | cold time to first result | 2,497.63 ms | 747.12 ms | 3.34× | n/a |
 
@@ -95,14 +109,14 @@ same representation.
 ## Evaluation suites
 
 The propositional rows build an unshared tree and a one-world Boolean model
-with eight atom sets, then call one per-world check on each side (`TruthDict`
-for SoleLogics; indexed `Model` and sets for Aletheia). The extension rows use
-the same unshared formulas and parity-valued eight-atom models over empty
-8-world or 32-world frames. Aletheia calls `extension` once, producing a
-`BitVector`; SoleLogics calls `check` once for every world and collects the
-answers. **This is explicitly not a like-for-like API comparison:** SoleLogics
-v0.13.7 has no `extension` method, so its side is the equivalent all-world
-semantic loop, not a result SoleLogics does not support.
+with one set per distinct leaf atom, then call one per-world check on each side (`TruthDict`
+for SoleLogics; indexed `Model` and sets for Aletheia). The extension rows use the same unshared formulas and parity-valued models over
+empty 8-world or 32-world frames. Aletheia calls `extension` once, producing a
+`BitVector`; SoleLogics calls `check` once for every world, with one shared
+`use_memo` dictionary per timed invocation, and collects the answers. Both calls
+disable normalization. **This is explicitly not a like-for-like API comparison:**
+SoleLogics v0.13.7 has no `extension` method, so its side is the equivalent
+all-world semantic loop, not a result SoleLogics does not support.
 
 For each random-modal row, the formula is the deterministic
 `modal_formula(depth)` shape described above; only the directed graph is
@@ -115,9 +129,10 @@ samples over a fixed formula shape.
 The dimensional rows construct the generated interval frame before timing.
 Adjacency measures all source worlds and the `BEFORE`/`IA_L` successors;
 `interval check` evaluates one diamond at the first world; IA3, IA7, and RCC5
-measure all-source successor counts for their relation sets. Aletheia uses the
-canonical generated provider and its prebuilt world index; SoleLogics uses its
-full dimensional frame and enumerates `accessibles`. The follow-up `n=12,24,36`
+measure all-source successor counts for their relation sets. Aletheia uses the canonical generated provider; SoleLogics uses its full
+dimensional frame and enumerates `accessibles`. Both sides map targets through a
+prebuilt world-position index (the canonical Aletheia `BEFORE` path uses an
+arithmetic range and does not read that index). The follow-up `n=12,24,36`
 sweep is the same adjacency operation.
 
 The finite-valued rows build the same unshared depth-2 tree and one-world
@@ -134,25 +149,25 @@ construction APIs.
 
 | case | SoleLogics | Aletheia | ratio | allocations |
 | --- | ---: | ---: | ---: | ---: |
-| propositional check, depth 2 | 1.92 μs | 2.08 μs | 0.92× | 29 / 752 B ; 48 / 2.422 KiB |
-| propositional check, depth 4 | 10.23 μs | 4.52 μs | 2.26× | 155 / 4.109 KiB ; 91 / 5.188 KiB |
-| propositional check, depth 6 | 42.27 μs | 4.37 μs | 9.67× | 659 / 17.609 KiB ; 99 / 5.641 KiB |
-| extension, 8 worlds / depth 3 | 1.05 ms | 9.54 μs | 110.04× | 12,604 / 479.500 KiB ; 143 / 11.641 KiB |
-| extension, 32 worlds / depth 4 | 12.29 ms | 36.48 μs | 336.89× | 78,436 / 3.120 MiB ; 339 / 80.812 KiB |
-| random modal, 8 worlds / .15 / depth 2 | 7.19 μs | 2.57 μs | 2.80× | 153 / 5.828 KiB ; 64 / 4.438 KiB |
-| random modal, 24 worlds / .15 / depth 2 | 8.25 μs | 5.60 μs | 1.47× | 191 / 8.594 KiB ; 96 / 14.062 KiB |
-| random modal, 8 worlds / .50 / depth 2 | 5.88 μs | 2.73 μs | 2.15× | 153 / 6.000 KiB ; 64 / 4.438 KiB |
-| random modal, 24 worlds / .50 / depth 2 | 7.99 μs | 5.58 μs | 1.43× | 185 / 9.859 KiB ; 96 / 14.062 KiB |
-| random modal, 8 worlds / .15 / depth 4 | 17.37 μs | 2.80 μs | 6.21× | 337 / 11.750 KiB ; 74 / 4.891 KiB |
-| random modal, 24 worlds / .15 / depth 4 | 21.06 μs | 6.34 μs | 3.32× | 409 / 17.703 KiB ; 106 / 14.516 KiB |
-| random modal, 8 worlds / .50 / depth 4 | 18.87 μs | 3.28 μs | 5.75× | 341 / 12.234 KiB ; 74 / 4.891 KiB |
-| random modal, 24 worlds / .50 / depth 4 | 20.19 μs | 7.03 μs | 2.87× | 406 / 20.781 KiB ; 106 / 14.516 KiB |
-| interval adjacency, n=6 | 0.94 μs | 0.84 μs | 1.12× | 103 / 4.141 KiB ; 100 / 3.656 KiB |
-| Allen BEFORE check, n=6 | 14.14 μs | 6.70 μs | 2.11× | 230 / 32.234 KiB ; 176 / 22.109 KiB |
-| finite chain G3 check, depth 2 | 2.32 μs | 1.70 μs | 1.36× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
-| finite chain Ł3 check, depth 2 | 2.23 μs | 2.08 μs | 1.08× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
-| non-chain H4 check, depth 2 | 2.47 μs | 2.07 μs | 1.19× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
-| learning from interpretations, 8 models / 4 hypotheses | 235.70 μs | 71.03 μs | 3.32× | 6,354 / 226.531 KiB ; 1,928 / 115.469 KiB |
+| propositional check, depth 2 | 2.50 μs | 2.52 μs | 0.99× | 29 / 752 B ; 48 / 2.484 KiB |
+| propositional check, depth 4 | 11.15 μs | 7.19 μs | 1.55× | 155 / 4.109 KiB ; 159 / 9.078 KiB |
+| propositional check, depth 6 | 48.10 μs | 32.40 μs | 1.48× | 659 / 17.609 KiB ; 601 / 36.055 KiB |
+| extension, 8 worlds / depth 3 | 42.22 μs | 10.51 μs | 4.02× | 739 / 28.938 KiB ; 143 / 11.641 KiB |
+| extension, 32 worlds / depth 4 | 172.54 μs | 72.42 μs | 2.38× | 2,099 / 89.266 KiB ; 655 / 160.078 KiB |
+| random modal, 8 worlds / .15 / depth 2 | 185.66 μs | 3.50 μs | 52.97× | 153 / 5.828 KiB ; 64 / 4.438 KiB |
+| random modal, 24 worlds / .15 / depth 2 | 175.70 μs | 6.34 μs | 27.71× | 191 / 8.594 KiB ; 96 / 14.062 KiB |
+| random modal, 8 worlds / .50 / depth 2 | 106.50 μs | 2.97 μs | 35.82× | 153 / 6.000 KiB ; 64 / 4.438 KiB |
+| random modal, 24 worlds / .50 / depth 2 | 122.66 μs | 6.86 μs | 17.88× | 185 / 9.859 KiB ; 96 / 14.062 KiB |
+| random modal, 8 worlds / .15 / depth 4 | 55.00 μs | 3.20 μs | 17.20× | 337 / 11.750 KiB ; 74 / 4.891 KiB |
+| random modal, 24 worlds / .15 / depth 4 | 45.96 μs | 6.71 μs | 6.85× | 409 / 17.703 KiB ; 106 / 14.516 KiB |
+| random modal, 8 worlds / .50 / depth 4 | 37.59 μs | 3.63 μs | 10.37× | 341 / 12.234 KiB ; 74 / 4.891 KiB |
+| random modal, 24 worlds / .50 / depth 4 | 45.38 μs | 6.60 μs | 6.87× | 406 / 20.781 KiB ; 106 / 14.516 KiB |
+| interval adjacency, n=6 | 3.26 μs | 826.0 ns | 3.95× | 107 / 5.094 KiB ; 100 / 3.656 KiB |
+| Allen BEFORE check, n=6 | 15.66 μs | 7.17 μs | 2.18× | 230 / 32.234 KiB ; 176 / 22.109 KiB |
+| finite chain G3 check, depth 2 | 3.21 μs | 2.21 μs | 1.45× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
+| finite chain Ł3 check, depth 2 | 2.13 μs | 2.08 μs | 1.02× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
+| non-chain H4 check, depth 2 | 3.00 μs | 2.11 μs | 1.42× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
+| learning from interpretations, 8 models / 4 hypotheses | 3.37 ms | 73.81 μs | 45.70× | 6,354 / 226.531 KiB ; 1,928 / 118.344 KiB |
 
 The extension comparison is explicitly an equivalent all-world check loop on
 SoleLogics because it has no `extension` API; it is not labelled as a win over
@@ -161,12 +176,14 @@ disable normalization to isolate evaluation. The ILP row constructs
 `learning_from_interpretations` examples and scores hypotheses over all
 interpretations through the check/eval loop.
 
-The largest evaluation ratios are attributable to allocation shape: the
-SoleLogics all-world extension loop allocates a fresh structural evaluation per
-world (12,604 and 78,436 allocations), while Aletheia evaluates the formula DAG
-once into a BitVector (143 and 339). The random modal ratios shrink with larger
-world counts because both sides then pay relation traversal; this is measured
-allocation/time behavior.
+The corrected extension ratios reflect allocation shape: Aletheia evaluates the
+formula DAG once into a `BitVector`, while the equivalent SoleLogics all-world
+loop still performs one shared-memo evaluation per invocation. The old allocation
+headline (12,604 and 78,436) is retracted because it came from discarding that
+memo once per world. Aletheia's relation adjacency is cached on the reused
+`Model` after its first check, while SoleLogics rebuilds its structural memo per
+call. Thus the modal rows are warm repeated-model measurements, not first-call
+comparisons; the asymmetry is intentional and labelled.
 
 ### Why interval adjacency scales
 
@@ -174,23 +191,25 @@ A naive implementation compares every candidate world against the source
 (`target.x > source.y`), which is an O(|W|) scan per source. Aletheia's
 generated interval frames instead expose the successor set as an arithmetic
 range, while `accessible` stays lazy. The effect grows with the domain size
-(same warmed benchmark child, five samples):
+(the quick n=6 row uses five samples; the deep-only sweep uses 15 samples):
 
-| n | SoleLogics | Aletheia | allocations (SoleLogics ; Aletheia) |
-| ---: | ---: | ---: | ---: |
-| 6 | 0.94 μs | 0.84 μs | 103 / 4.141 KiB ; 100 / 3.656 KiB |
-| 12 | 19.12 μs | 2.89 μs | 442 / 33.484 KiB ; 373 / 19.563 KiB |
-| 24 | 1.01 ms | 23.12 μs | 2,036 / 394.969 KiB ; 1,462 / 161.477 KiB |
-| 36 | 10.43 ms | 123.36 μs | 5,054 / 1.598 MiB ; 3,358 / 693.648 KiB |
+| n | SoleLogics | Aletheia | ratio | allocations (SoleLogics ; Aletheia) |
+| ---: | ---: | ---: | ---: | ---: |
+| 6 | 3.26 μs | 826.0 ns | 3.95× | 107 / 5.094 KiB ; 100 / 3.656 KiB |
+| 12 | 29.45 μs | 5.24 μs | 5.62× | 447 / 36.820 KiB ; 373 / 19.562 KiB |
+| 24 | 208.65 μs | 23.86 μs | 8.75× | 2,048 / 457.773 KiB ; 1,462 / 161.477 KiB |
+| 36 | 2.36 ms | 170.83 μs | 13.81× | 5,066 / 1.721 MiB ; 3,358 / 693.648 KiB |
 
-The superlinear SoleLogics curve confirms that traversal, not fixed call
-overhead, dominates. The interval adjacency row above reuses the frame's
-prebuilt world index; the index is part of Aletheia's generated-frame evaluator
-cache and is not rebuilt in the hot call. The same run measured the consumer
-subsets at n=6: IA3 50.03 μs vs 4.69 μs (3,048 vs 211 allocations), IA7 37.81 μs vs 10.65 μs
-(2,484 vs 407), and RCC5 71.00 μs vs 38.22 μs (4,104 vs 999), SoleLogics vs
-Aletheia. All generated edges are checked against their predicates in
-`test/relations.jl`.
+The earlier n=12/24/36 values are retracted: `findfirst` was a harness-added
+linear position scan on the SoleLogics side only. The corrected run uses a
+prebuilt position dictionary for both loops; its remaining difference is the
+canonical Aletheia arithmetic range versus SoleLogics' `accessibles` traversal,
+not a hidden scan. The deep sweep was measured separately at load average
+5.59, 5.23, 5.15; its raw values are in `data/benchmark-run/interval-deep.txt`.
+The same corrected quick run measured the consumer subsets at n=6: IA3 57.80 μs
+vs 8.87 μs (3,048 vs 273 allocations), IA7 43.78 μs vs 23.09 μs (2,484 vs 717),
+and RCC5 83.75 μs vs 48.77 μs (4,104 vs 1,121), SoleLogics vs Aletheia. All
+generated edges are checked against their predicates in `test/relations.jl`.
 
 ## Checking formulas over real SoleData datasets
 
@@ -214,7 +233,12 @@ depth, modal-node probability, and three mixed sizes. It compares cold first
 check and warm repeated check with Aletheia batch and scalar callbacks; dataset
 construction and the Aletheia family adapter are outside the timed closures.
 This is narrow protocol evidence, not a general real-data speed claim.
-There is one cold real-dataset loss: 16 instances, 8 points, depth 6, modal
+The protocol workers now use the same median-time/allocation pairing as the
+consumer worker. A fresh SoleData checkout was unavailable in this measurement
+environment, so the numeric SoleData table below is retained from the prior run
+and is explicitly not presented as a new measurement; rerun the two protocol
+scripts with `SOLEDATA_PATH` before updating those cells. There is one cold
+real-dataset loss: 16 instances, 8 points, depth 6, modal
 target `.5`, where SoleData took **0.030 ms** and Aletheia's vectorized
 callback **0.044 ms**. Both figures are microsecond-scale differences at the
 edge of what this harness resolves; the point is the direction, not the
@@ -290,9 +314,9 @@ atom labels chosen to produce the requested quotient size. `C` times
 `bisimulation_contraction`; `P_orig` checks two selected formulas on the
 original model; `P_quot` checks the corresponding formulas on the precomputed
 quotient model. The batch cells check `K` formulas (cycling through eight), and
-the quotient total includes `C`. Each displayed per-formula value is the
-median across the two selected formula cases, with five timing samples per
-case. SoleLogics v0.13.7 has no corresponding contraction API, so it is
+the quotient total includes `C`. Each displayed per-formula value is the median-time sample among 2000 paired
+observations for each selected formula case; allocations are taken from that
+same observation. SoleLogics v0.13.7 has no corresponding contraction API, so it is
 **unsupported here and has no ratio**, rather than being assigned a zero or a
 loss.
 
@@ -308,8 +332,8 @@ contraction pays for itself.
 
 | original n | quotient q | q/n | C | P_orig | P_quot | K* |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 48 | 1 | 0.021 | 622.55 μs | 69.67 μs | 16.08 μs | 11.6 |
-| 48 | 48 | 1.000 | 1.31 ms | 6.33 μs | 28.49 μs | ∞ |
+| 48 | 1 | 0.021 | 232.16 μs | 6.24 μs | 1.26 μs | 46.7 |
+| 48 | 48 | 1.000 | 1.68 ms | 6.20 μs | 34.38 μs | ∞ |
 
 `K* = C / (P_orig − P_quot)`; infinity means the quotient is slower per
 formula or there is no positive saving. Measured total crossover (raw original
@@ -317,34 +341,35 @@ batch / contraction plus quotient batch) was:
 
 | q/n | K=1 | K=8 | K=32 |
 | ---: | ---: | ---: | ---: |
-| 0.021 | 0.114 ms / 0.671 ms | 0.858 ms / 0.779 ms | 3.126 ms / 1.808 ms |
-| 1.000 (already minimal) | 0.006 ms / 1.347 ms | 0.057 ms / 1.600 ms | 0.282 ms / 2.438 ms |
+| 0.021 | 0.006 ms / 0.233 ms | 0.057 ms / 0.249 ms | 0.322 ms / 0.359 ms |
+| 1.000 (already minimal) | 0.007 ms / 1.710 ms | 0.061 ms / 2.002 ms | 0.409 ms / 13.124 ms |
 
-The measured rule is: for a highly redundant model (q/n≈0.02), contraction
-paid back at about 12 formulas in this run; the measured curve crossed between
-K=8 and K=32. On an already minimal model contraction is pure overhead and
-never pays. This is evidence for a workload-dependent rule, not a universal
-threshold; the `--deep` ratio sweep is the reproducible follow-up.
+The earlier `K*=11.6` is retracted: its five-sample `P_orig` was not stable.
+With 2000 paired observations, contraction pays back at **K*=46.7** for this
+q/n≈0.02 model. The displayed batch curve has not crossed by K=32 (the new
+estimate predicts a crossing near K=47). On an already minimal model contraction
+is pure overhead and never pays. This is evidence for a workload-dependent rule,
+not a universal threshold.
 
 ## What these results tell you
 
 **Where the design wins.** The `isequal` row is the clearest representation
 win: formulas interned in one pool carry pooled integer identity, so equality
 is an integer comparison rather than SoleLogics' structural walk. The
-extension rows show the other large mechanism: Aletheia walks the formula DAG
-once into a `BitVector`, whereas the explicitly labelled SoleLogics equivalent
-repeats a structural check for every world. That is why the 110.04× and
-336.89× values are large, and why their allocation counts differ by orders of
-magnitude. The interval size sweep is a separate win: canonical generated
-interval domains expose arithmetic successor ranges, avoiding SoleLogics'
-candidate-world scan. It explains the widening `n=12,24,36` gap, but not every
+The corrected extension rows show a smaller but still measurable mechanism:
+Aletheia walks the formula DAG once into a `BitVector`, while the explicitly
+labelled SoleLogics equivalent performs an all-world check loop. The earlier
+110.04× and 336.89× headlines were retracted because that loop discarded its
+shared memo once per world. The interval size sweep is a separate win: canonical generated interval domains
+expose arithmetic successor ranges. The corrected comparison charges both sides
+for position lookup; it explains the remaining n=12/24/36 gap, but not every
 possible dimensional frame. The depth-4/6 propositional rows and the modal
 rows also benefit from DAG evaluation and from doing no per-call
 normalisation; modal traversal still makes the graph's world count and density
 matter. The ILP row wins because its repeated hypotheses × interpretations
 score loop reuses that evaluator path.
 
-**Where it loses.** At propositional depth 2, the ratio is **0.92×**: one
+**Where it loses.** At propositional depth 2, the ratio is **0.99×**: one
 shallow check is too little work to repay Aletheia's model/valuation and DAG
 walk setup, while SoleLogics' direct `TruthDict` lookup is cheap. The
 separate compatibility construction-from-recipe evidence reports **1.10×**
@@ -356,10 +381,9 @@ not repay callback and adapter setup; memoized repeated checks remove that
 fixed-cost disadvantage. These are measured losses with identifiable fixed
 costs.
 
-**Where a win does not generalise.** Contraction amortisation is workload
-specific: for the highly redundant `q/n≈0.02` model it pays back at about 12
-formulas (the measured curve crosses between `K=8` and `K=32`), while an
-already-minimal model makes contraction pure overhead. The consumer min /
+**Where a win does not generalise.** Contraction amortisation is workload specific: for the highly redundant
+`q/n≈0.02` model the corrected 2000-sample estimate pays back at about 47
+formulas, while an already-minimal model makes contraction pure overhead. The consumer min /
 median / max columns are first-use, steady-state, and fresh-family churn phase
 distributions; use the phase matching your workload and retain the tails. The interval fast path applies to
 canonical generated domains with their arithmetic provider, not automatically
@@ -371,7 +395,7 @@ not be read as a claim that both packages expose the same operation.
 the extension/BitVector path to matter. If you build and compare formulas
 repeatedly, expect pooled identity and DAG sharing to matter. If you check one
 shallow propositional formula once, expect little difference and possibly the
-0.92× outcome seen here. For a new real-data consumer, first decide whether
+0.99× outcome seen here. For a new real-data consumer, first decide whether
 you are measuring cold adapter construction, steady reuse, or fresh-family
 churn; this page provides evidence for each, not a universal speedup.
 

@@ -2,10 +2,9 @@ include(joinpath(@__DIR__, "common.jl"))
 function run_case(mode, kind, side, argument)
     parts = split(argument, ':')
 
-function execute(f)
+function execute(f; samples=BENCH_SAMPLES)
     if mode == "benchmark"
-        trial = run(@benchmarkable $f() seconds=BENCH_SECONDS samples=BENCH_SAMPLES evals=1)
-        m = median(trial)
+        m = measure_samples(f; samples=samples)
         println(m.time, " ", m.allocs, " ", m.memory)
     else
         start = time_ns(); f(); println((time_ns() - start) / 1_000_000)
@@ -35,22 +34,27 @@ elseif kind == "equality"
 elseif kind == "prop_check"
     depth = parse(Int, argument); r = unshared(depth)
     if side == "incumbent"
-        f = build_s(r); td = SoleLogics.TruthDict(Dict("p$(i)" => isodd(i) for i in 1:8))
+        f = build_s(r); td = SoleLogics.TruthDict(Dict(name => isodd(i) for (i, name) in enumerate(recipe_atoms(r))))
         execute(() -> SoleLogics.check(f, td))
     else
         p = pool_a(); f = build_a(r, p); m = Aletheia.Model(Aletheia.Frame((1,); index=true), Aletheia.BOOLEAN,
-            Dict("p$(i)" => (isodd(i) ? Set([1]) : Set{Int}()) for i in 1:8))
+            Dict(name => (isodd(i) ? Set([1]) : Set{Int}()) for (i, name) in enumerate(recipe_atoms(r))))
         execute(() -> Aletheia.check(f, m, 1))
     end
 elseif kind == "prop_extension"
     n, depth = parse.(Int, parts); r = unshared(depth)
     if side == "incumbent"
-        f = build_s(r); ws = SoleLogics.World.(1:n); td = Dict(w => SoleLogics.TruthDict(Dict("p$(i)" => ((i + w.name) % 2 == 0) for i in 1:8)) for w in ws)
+        f = build_s(r); ws = SoleLogics.World.(1:n); names = recipe_atoms(r); td = Dict(w => SoleLogics.TruthDict(Dict(name => ((i + w.name) % 2 == 0) for (i, name) in enumerate(names))) for w in ws)
         k = SoleLogics.KripkeStructure(SoleLogics.SimpleModalFrame(ws, SoleLogics.Graphs.SimpleDiGraph(n)), td)
-        execute(() -> [SoleLogics.check(f, k, w) for w in ws])
+        # SoleLogics computes an extension internally; retain that memo across
+        # the all-world loop so it is not rebuilt once per world.
+        execute(() -> begin
+            memo = Dict{SoleLogics.SyntaxTree,Vector{SoleLogics.World{Int}}}()
+            [SoleLogics.check(f, k, w; use_memo=memo, perform_normalization=false) for w in ws]
+        end)
     else
         p = pool_a(); f = build_a(r, p); m = Aletheia.Model(Aletheia.Frame(Tuple(1:n); index=true), Aletheia.BOOLEAN,
-            Dict("p$(i)" => Set(w for w in 1:n if ((i + w) % 2 == 0)) for i in 1:8))
+            Dict(name => Set(w for w in 1:n if ((i + w) % 2 == 0)) for (i, name) in enumerate(recipe_atoms(r))))
         execute(() -> Aletheia.extension(f, m))
     end
 elseif kind == "modal_check"
@@ -118,16 +122,16 @@ elseif kind in ("contraction_cost", "contraction_orig", "contraction_quot", "con
     n, q = parse.(Int, parts[1:2]); count = length(parts) >= 3 ? parse(Int, parts[3]) : 8; k = length(parts) >= 4 ? parse(Int, parts[4]) : count
     model, atoms = contraction_model(n, q); pool = Aletheia.FormulaPool(Aletheia.Signature((Aletheia.Diamond(:R), Aletheia.Box(:R)))); fs = contraction_formulas(pool, atoms, max(count, k))
     if kind == "contraction_cost"
-        execute(() -> Aletheia.bisimulation_contraction(model; atoms=atoms, relations=[:R]))
+        execute(() -> Aletheia.bisimulation_contraction(model; atoms=atoms, relations=[:R]); samples=2000)
     elseif kind == "contraction_orig"
-        i = min(count, length(fs)); execute(() -> Aletheia.check(fs[i], model, 1))
+        i = min(count, length(fs)); execute(() -> Aletheia.check(fs[i], model, 1); samples=2000)
     elseif kind == "contraction_quot"
-        qmodel = Aletheia.bisimulation_contraction(model; atoms=atoms, relations=[:R]); qw = Aletheia.contraction_world(qmodel, 1); i = min(count, length(fs)); execute(() -> Aletheia.check(fs[i], Aletheia.model(qmodel), qw))
+        qmodel = Aletheia.bisimulation_contraction(model; atoms=atoms, relations=[:R]); qw = Aletheia.contraction_world(qmodel, 1); i = min(count, length(fs)); execute(() -> Aletheia.check(fs[i], Aletheia.model(qmodel), qw); samples=2000)
     elseif kind == "contraction_batch_orig"
-        execute(() -> begin for i in 1:k; Aletheia.check(fs[1 + mod(i - 1, length(fs))], model, 1); end; nothing end)
+        execute(() -> begin for i in 1:k; Aletheia.check(fs[1 + mod(i - 1, length(fs))], model, 1); end; nothing end; samples=2000)
     else
         qmodel = Aletheia.bisimulation_contraction(model; atoms=atoms, relations=[:R]); qm = Aletheia.model(qmodel); qw = Aletheia.contraction_world(qmodel, 1)
-        execute(() -> begin for i in 1:k; Aletheia.check(fs[1 + mod(i - 1, length(fs))], qm, qw); end; nothing end)
+        execute(() -> begin for i in 1:k; Aletheia.check(fs[1 + mod(i - 1, length(fs))], qm, qw); end; nothing end; samples=2000)
     end
 else
     error("unknown warm-up case: $kind")
@@ -143,7 +147,7 @@ function main()
             run_case("benchmark", kind, side, argument)
         end
     else
-        mode, kind, side, argument = ARGS
+        mode, kind, side, argument = ARGS[1:4]
         run_case(mode, kind, side, argument)
     end
 end

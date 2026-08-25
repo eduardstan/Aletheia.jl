@@ -7,6 +7,7 @@ using SoleLogics
 using Graphs
 using DataFrames
 
+include(joinpath(@__DIR__, "paired_measure.jl"))
 include(joinpath(@__DIR__, "dataset_protocol_adapter.jl"))
 
 const DATASET_SEED = 0xDADA_2024
@@ -143,7 +144,6 @@ function parse_case(argument)
 end
 
 function measure(f)
-    trial = run(@benchmarkable $f() seconds=0.01 samples=5 evals=1)
-    m = median(trial)
-    println(Float64(m.time), " ", m.allocs, " ", m.memory)
+    m = paired_measure(f; samples=5)
+    println(m.time, " ", m.allocs, " ", m.memory)
 end
