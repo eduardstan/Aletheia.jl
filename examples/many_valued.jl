@@ -21,3 +21,25 @@ println("p ∧ q under Łukasiewicz: ", check(conjunction, lukasiewicz, :w))
 boxp = branch(pool, Box(:R), p)
 diamondp = branch(pool, Diamond(:R), p)
 println("dead-end Gödel Box/Diamond: ", check(boxp, godel, :w), "/", check(diamondp, godel, :w))
+# BEGIN EXPECTED OUTPUT
+# Gödel model:
+# Model (1 world, 1 relation, Aletheia.GodelAlgebra{0}())
+#   Worlds (1): :w
+#   Relations:
+#     :R: (none)
+#   Valuation:
+#     p: {:w => 0.4}
+#     q: {:w => 0.8}
+# Łukasiewicz model:
+# Model (1 world, 1 relation, Aletheia.LukasiewiczAlgebra{0}())
+#   Worlds (1): :w
+#   Relations:
+#     :R: (none)
+#   Valuation:
+#     p: {:w => 0.4}
+#     q: {:w => 0.8}
+# p ∧ q under Gödel: 0.4
+# p ∧ q under Łukasiewicz: 0.20000000000000018
+# dead-end Gödel Box/Diamond: 1.0/0.0
+#
+# END EXPECTED OUTPUT

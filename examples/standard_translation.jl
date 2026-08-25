@@ -17,3 +17,16 @@ println("modal formula: ", syntaxstring(formula))
 println("standard translation: ", translation)
 println("direct / translated at world 1: ", modal_value, " / ", translated_value)
 println("agree: ", modal_value == translated_value)
+# BEGIN EXPECTED OUTPUT
+# Model (2 worlds, 1 relation, Aletheia.BooleanAlgebra())
+#   Worlds (2): 1, 2
+#   Relations:
+#     :R: 1 → 2; 2 → 2
+#   Valuation:
+#     p: {2}
+# modal formula: ⟨R⟩p
+# standard translation: ∃x_1. R(x, x_1) ∧ p(x_1)
+# direct / translated at world 1: true / true
+# agree: true
+#
+# END EXPECTED OUTPUT

@@ -24,3 +24,21 @@ println("target valuation: ", target)
 println("check ⟨MEETS⟩p at (1,2): ", check(formula, model, Interval(1, 2)))
 println("relation predicate agrees: ",
     relation_holds(MEETS, Interval(1, 2), target))
+# BEGIN EXPECTED OUTPUT
+# Interval frame:
+# Frame (6 worlds, 1 relation)
+#   Worlds (6): (1−2), (1−3), (1−4), (2−3), (2−4), (3−4)
+#   Relations: <callable>
+# Model with p at the target interval:
+# Model (6 worlds, 1 relation, Aletheia.BooleanAlgebra())
+#   Worlds (6): (1−2), (1−3), (1−4), (2−3), (2−4), (3−4)
+#   Relations: <callable>
+#   Valuation:
+#     p: {(2−3)}
+# worlds: Aletheia.Interval{Int64}[(1−2), (1−3), (1−4), (2−3), (2−4), (3−4)]
+# MEETS successors of (1,2): Aletheia.Interval{Int64}[(2−3), (2−4)]
+# target valuation: (2−3)
+# check ⟨MEETS⟩p at (1,2): true
+# relation predicate agrees: true
+#
+# END EXPECTED OUTPUT

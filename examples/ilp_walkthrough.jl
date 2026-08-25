@@ -23,3 +23,18 @@ println("Learning example:")
 show(stdout, MIME"text/plain"(), example)
 println()
 println("accessible(w₁,R): ", collect(accessible(base_frame, :w₁, :R)))
+# BEGIN EXPECTED OUTPUT
+# General and specific clauses:
+# ClauseSet (2 clauses)
+#   father(:a) :- parent(:a)
+#   father(X) :- parent(X)
+# general subsumes specific: true
+# reverse subsumption: false
+# One downward refinement:
+# ClauseSet (1 clause)
+#   p(X) ∨ q(X)
+# Learning example:
+# InterpretationExample (+): Model(2 worlds, Aletheia.BooleanAlgebra())
+# accessible(w₁,R): [:w₂]
+#
+# END EXPECTED OUTPUT
