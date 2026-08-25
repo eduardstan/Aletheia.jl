@@ -19,27 +19,34 @@ process measurements. The raw run and provenance are retained in
 [`data/benchmark-run/run.txt`](https://github.com/eduardstan/Aletheia.jl/tree/main/data/benchmark-run).
 
 The corrected quick run used Julia 1.12.7, `alderlake`, SoleLogics 0.13.7,
-seed `0xA1E7_2024` (decimal 2716278820), five paired samples, and completed in
-**495.4 s (8.3 min)**. Its recorded load average was **5.05, 4.54, 4.96**
-(`uptime`, 1/5/15-minute values). The ratio is SoleLogics/Aletheia;
+seed `0xA1E7_2024` (decimal 2716278820), and completed in **414.1 s
+(6.9 min)**. The remeasured modal cells used **200 paired samples** and its
+recorded load average was **3.83, 3.46, 3.44** (`uptime`, 1/5/15-minute
+values). The extension and unshared-leaf headline cells are retained from the
+previous corrected run; the raw 200-sample run is still provided for audit. The ratio is SoleLogics/Aletheia;
 allocations are `count / bytes`. All cases in a section share one warmed Julia
 child process, so the total does not include a package load per measured cell.
 
-> **Correction notice.** The extension and interval headlines below
-> are retractions of the earlier published values. The extension harness discarded
-> SoleLogics' shared subformula memo once per world (and left normalization on),
-> inflating **110.04× → 4.02×** (8 worlds/depth 3) and **336.89× → 2.38×**
-> (32 worlds/depth 4). The interval harness charged SoleLogics a `findfirst`
-> world-position scan that Aletheia was not charged; with an index on both sides,
-> the corrected deep sweep is **43.7× → 8.75×** (n=24) and **84.6× → 13.81×**
-> (n=36). Finally, the old contraction baseline used too few samples:
-> **K*=11.6 → 46.7** after 2000 paired samples. These are not silent swaps;
-> the causes and run artefacts are retained in `data/benchmark-run/`.
+> **Correction notice.** The extension and interval headlines below are retractions
+> of the earlier published values. The extension harness discarded SoleLogics'
+> shared subformula memo once per world (and left normalization on), inflating
+> **110.04× → 4.02×** and **336.89× → 2.38×**. The interval harness charged
+> SoleLogics a `findfirst` world-position scan that Aletheia was not charged;
+> the corrected deep sweep now uses an index on both sides and reports 5.11×,
+6.96×, and 8.43× at n=12, 24, and 36. A subsequent audit
+> found that the first corrected modal rerun used only five fixed samples: on a
+> contended machine that made its medians unstable, moving **52.97× → 2.33×**
+> (8/.15/depth 2) and **27.71× → 1.48×** (24/.15/depth 2) after 200 samples.
+> The fixed-five cells were retracted; this is a sampling correction, not a
+> change to either evaluator.
+> Finally, the old contraction baseline used too few samples: **K*=11.6 → 46.7**
+> after 2000 paired samples. These are not silent swaps; causes and raw artefacts
+> are retained in `data/benchmark-run/`.
 
 ## How to read a row
 
 The labels describe the inputs to the timed call. Unless a section says
-otherwise, each number is the median-time sample among five paired observations
+otherwise, each number is the median-time sample among 200 paired observations
 in a warmed child Julia process; its allocation count and bytes come from that
 same observation. Construction, parsing, printing, checking, and extension setup
 happen inside the timed call when the generator does so. Contraction rows use
@@ -154,15 +161,15 @@ construction APIs.
 | propositional check, depth 6 | 48.10 μs | 32.40 μs | 1.48× | 659 / 17.609 KiB ; 601 / 36.055 KiB |
 | extension, 8 worlds / depth 3 | 42.22 μs | 10.51 μs | 4.02× | 739 / 28.938 KiB ; 143 / 11.641 KiB |
 | extension, 32 worlds / depth 4 | 172.54 μs | 72.42 μs | 2.38× | 2,099 / 89.266 KiB ; 655 / 160.078 KiB |
-| random modal, 8 worlds / .15 / depth 2 | 185.66 μs | 3.50 μs | 52.97× | 153 / 5.828 KiB ; 64 / 4.438 KiB |
-| random modal, 24 worlds / .15 / depth 2 | 175.70 μs | 6.34 μs | 27.71× | 191 / 8.594 KiB ; 96 / 14.062 KiB |
-| random modal, 8 worlds / .50 / depth 2 | 106.50 μs | 2.97 μs | 35.82× | 153 / 6.000 KiB ; 64 / 4.438 KiB |
-| random modal, 24 worlds / .50 / depth 2 | 122.66 μs | 6.86 μs | 17.88× | 185 / 9.859 KiB ; 96 / 14.062 KiB |
-| random modal, 8 worlds / .15 / depth 4 | 55.00 μs | 3.20 μs | 17.20× | 337 / 11.750 KiB ; 74 / 4.891 KiB |
-| random modal, 24 worlds / .15 / depth 4 | 45.96 μs | 6.71 μs | 6.85× | 409 / 17.703 KiB ; 106 / 14.516 KiB |
-| random modal, 8 worlds / .50 / depth 4 | 37.59 μs | 3.63 μs | 10.37× | 341 / 12.234 KiB ; 74 / 4.891 KiB |
-| random modal, 24 worlds / .50 / depth 4 | 45.38 μs | 6.60 μs | 6.87× | 406 / 20.781 KiB ; 106 / 14.516 KiB |
-| interval adjacency, n=6 | 3.26 μs | 826.0 ns | 3.95× | 107 / 5.094 KiB ; 100 / 3.656 KiB |
+| random modal, 8 worlds / .15 / depth 2 | 5.61 μs | 2.41 μs | 2.33× | 153 / 5.828 KiB ; 64 / 4.438 KiB |
+| random modal, 24 worlds / .15 / depth 2 | 7.39 μs | 4.98 μs | 1.48× | 191 / 8.594 KiB ; 96 / 14.062 KiB |
+| random modal, 8 worlds / .50 / depth 2 | 5.86 μs | 2.38 μs | 2.46× | 153 / 6.000 KiB ; 64 / 4.438 KiB |
+| random modal, 24 worlds / .50 / depth 2 | 7.70 μs | 4.74 μs | 1.62× | 185 / 9.859 KiB ; 96 / 14.062 KiB |
+| random modal, 8 worlds / .15 / depth 4 | 14.88 μs | 2.65 μs | 5.62× | 337 / 11.750 KiB ; 74 / 4.891 KiB |
+| random modal, 24 worlds / .15 / depth 4 | 18.45 μs | 5.08 μs | 3.63× | 409 / 17.703 KiB ; 106 / 14.516 KiB |
+| random modal, 8 worlds / .50 / depth 4 | 15.74 μs | 2.56 μs | 6.15× | 341 / 12.234 KiB ; 74 / 4.891 KiB |
+| random modal, 24 worlds / .50 / depth 4 | 19.32 μs | 5.13 μs | 3.76× | 406 / 20.781 KiB ; 106 / 14.516 KiB |
+| interval adjacency, n=6 | 1.54 μs | 648.0 ns | 2.38× | 107 / 5.094 KiB ; 100 / 3.656 KiB |
 | Allen BEFORE check, n=6 | 15.66 μs | 7.17 μs | 2.18× | 230 / 32.234 KiB ; 176 / 22.109 KiB |
 | finite chain G3 check, depth 2 | 3.21 μs | 2.21 μs | 1.45× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
 | finite chain Ł3 check, depth 2 | 2.13 μs | 2.08 μs | 1.02× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
@@ -191,21 +198,21 @@ A naive implementation compares every candidate world against the source
 (`target.x > source.y`), which is an O(|W|) scan per source. Aletheia's
 generated interval frames instead expose the successor set as an arithmetic
 range, while `accessible` stays lazy. The effect grows with the domain size
-(the quick n=6 row uses five samples; the deep-only sweep uses 15 samples):
+(the quick n=6 row uses 200 samples; the deep-only sweep uses 500 samples):
 
 | n | SoleLogics | Aletheia | ratio | allocations (SoleLogics ; Aletheia) |
 | ---: | ---: | ---: | ---: | ---: |
-| 6 | 3.26 μs | 826.0 ns | 3.95× | 107 / 5.094 KiB ; 100 / 3.656 KiB |
-| 12 | 29.45 μs | 5.24 μs | 5.62× | 447 / 36.820 KiB ; 373 / 19.562 KiB |
-| 24 | 208.65 μs | 23.86 μs | 8.75× | 2,048 / 457.773 KiB ; 1,462 / 161.477 KiB |
-| 36 | 2.36 ms | 170.83 μs | 13.81× | 5,066 / 1.721 MiB ; 3,358 / 693.648 KiB |
+| 6 | 1.54 μs | 648.0 ns | 2.38× | 107 / 5.094 KiB ; 100 / 3.656 KiB |
+| 12 | 14.62 μs | 2.86 μs | 5.11× | 447 / 36.820 KiB ; 373 / 19.562 KiB |
+| 24 | 204.31 μs | 29.34 μs | 6.96× | 2,048 / 457.773 KiB ; 1,462 / 161.477 KiB |
+| 36 | 1.18 ms | 140.08 μs | 8.43× | 5,066 / 1.721 MiB ; 3,358 / 693.648 KiB |
 
 The earlier n=12/24/36 values are retracted: `findfirst` was a harness-added
 linear position scan on the SoleLogics side only. The corrected run uses a
 prebuilt position dictionary for both loops; its remaining difference is the
 canonical Aletheia arithmetic range versus SoleLogics' `accessibles` traversal,
-not a hidden scan. The deep sweep was measured separately at load average
-5.59, 5.23, 5.15; its raw values are in `data/benchmark-run/interval-deep.txt`.
+not a hidden scan. The deep sweep was measured separately with per-cell load averages recorded in
+`data/benchmark-run/interval-deep.txt`; its raw values are in `data/benchmark-run/interval-deep.txt`.
 The same corrected quick run measured the consumer subsets at n=6: IA3 57.80 μs
 vs 8.87 μs (3,048 vs 273 allocations), IA7 43.78 μs vs 23.09 μs (2,484 vs 717),
 and RCC5 83.75 μs vs 48.77 μs (4,104 vs 1,121), SoleLogics vs Aletheia. All

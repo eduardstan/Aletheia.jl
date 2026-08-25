@@ -10,7 +10,7 @@ include(joinpath(@__DIR__, "paired_measure.jl"))
 const DEEP = "--deep" in ARGS
 const SEED = 0xA1E7_2024
 const BENCH_SECONDS = DEEP ? 0.05 : 0.01
-const BENCH_SAMPLES = DEEP ? 15 : 5
+const BENCH_SAMPLES = DEEP ? 500 : 200
 const CASE_TIMEOUT = DEEP ? 180 : 120
 const SIGNATURE = Aletheia.Signature((Aletheia.NEGATION, Aletheia.CONJUNCTION,
     Aletheia.DISJUNCTION, Aletheia.IMPLICATION))

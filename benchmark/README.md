@@ -13,7 +13,7 @@ From a fresh checkout, set the incumbent checkout and run one command:
 SOLELOGICS_PATH=/path/to/SoleLogics.jl julia --project=benchmark benchmark/run.jl
 ```
 
-The default quick run uses fixed seed `0xA1E7_2024` and five paired samples;
+The default quick run uses fixed seed `0xA1E7_2024` and 200 paired samples;
 `--deep` expands formula/model/ratio sweeps. Each section and side runs all its
 cases in one warmed Julia child; GNU `timeout` kills the section at the printed
 hard bound, and timeout/unavailable cells remain visible in the report. Every
