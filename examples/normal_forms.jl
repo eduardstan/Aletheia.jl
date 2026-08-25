@@ -22,7 +22,7 @@ println("extensions agree: ", extension(formula, model) == extension(cnf, model)
 # formula: (p ∨ q) ∧ (r ∨ s ∧ t)
 # CNF: (p ∨ q) ∧ (r ∨ s) ∧ (r ∨ t) (true)
 # DNF: p ∧ r ∨ p ∧ s ∧ t ∨ q ∧ r ∨ q ∧ s ∧ t (true)
-# Model (4 worlds, 0 relations, Aletheia.BooleanAlgebra())
+# Model (4 worlds, 0 relations, BooleanAlgebra())
 #   Worlds (4): :a, :b, :c, :d
 #   Valuation:
 #     p: {:a, :d}

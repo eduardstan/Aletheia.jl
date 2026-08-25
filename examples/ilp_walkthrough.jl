@@ -34,7 +34,7 @@ println("accessible(w₁,R): ", collect(accessible(base_frame, :w₁, :R)))
 # ClauseSet (1 clause)
 #   p(X) ∨ q(X)
 # Learning example:
-# InterpretationExample (+): Model(2 worlds, Aletheia.BooleanAlgebra())
+# InterpretationExample (+): Model(2 worlds, BooleanAlgebra())
 # accessible(w₁,R): [:w₂]
 #
 # END EXPECTED OUTPUT

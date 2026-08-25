@@ -146,12 +146,26 @@ function _classes_for_model(model::Model, atoms, relations)
             push!(get!(groups, key, Any[]), world)
         end
         next_blocks = [Set(group) for group in values(groups)]
+        # Dict and Set iteration is hash-order dependent. Class order follows
+        # stable frame enumeration; members use total order when available,
+        # with frame order as the documented fallback.
         sort!(next_blocks, by=block -> findfirst(world -> world in block, worlds_list))
         length(next_blocks) == length(blocks) &&
             all(any(next_block == block for next_block in next_blocks) for block in blocks) && break
         blocks = next_blocks
     end
-    [BisimulationClass(tuple(block...)) for block in blocks]
+    classes = BisimulationClass[]
+    for block in blocks
+        members = collect(block)
+        try
+            sort!(members)
+        catch error
+            error isa MethodError || rethrow()
+            sort!(members, by=world -> findfirst(candidate -> isequal(candidate, world), worlds_list))
+        end
+        push!(classes, BisimulationClass(tuple(members...)))
+    end
+    classes
 end
 
 """Return the largest auto-bisimulation quotient of a finite model.

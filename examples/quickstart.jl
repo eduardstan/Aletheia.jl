@@ -23,7 +23,7 @@ println()
 # BEGIN EXPECTED OUTPUT
 # formula: ⟨R⟩p ∧ [R]q
 # parse round-trip: true
-# Model (2 worlds, 1 relation, Aletheia.BooleanAlgebra())
+# Model (2 worlds, 1 relation, BooleanAlgebra())
 #   Worlds (2): :w₁, :w₂
 #   Relations:
 #     :R: :w₁ → :w₂; :w₂ → :w₂
