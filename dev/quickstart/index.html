@@ -29,14 +29,26 @@ model = Model(base_frame, BOOLEAN, Dict(&quot;p&quot; =&gt; Set([:w₂]), &quot;
 println(collect(accessible(base_frame, :w₁, :R)))
 println(interpret(p, model, :w₂))
 println(check(formula, model, :w₁))
-println(extension(formula, model))
+show(stdout, MIME&quot;text/plain&quot;(), model)
+println()
+describe(stdout, extension(formula, model), model)
+println()
 
 # output
 
 [:w₂]
 true
 true
-Bool[1, 1]</code></pre><p>For a labelled view of that extension in the REPL, use <code>describe</code>:</p><pre><code class="language-julia hljs">describe(stdout, extension(formula, model), model)
+Model (2 worlds, 1 relation, BooleanAlgebra())
+  Worlds (2): :w₁, :w₂
+  Relations:
+    :R: :w₁ → :w₂; :w₂ → :w₂
+  Valuation:
+    p: {:w₂}
+    q: {:w₁, :w₂}
+Extension (2 of 2 worlds satisfy)
+  Satisfied at: :w₁, :w₂
+  Unsatisfied at: (none)</code></pre><p>For a labelled view of that extension in the REPL, use <code>describe</code>:</p><pre><code class="language-julia hljs">describe(stdout, extension(formula, model), model)
 
 # output
 
@@ -46,9 +58,12 @@ Extension (2 of 2 worlds satisfy)
     &quot;p&quot; =&gt; Dict(:w₁ =&gt; 0.0, :w₂ =&gt; 0.7),
     &quot;q&quot; =&gt; Dict(:w₁ =&gt; 0.4, :w₂ =&gt; 0.9)))
 println(check(formula, many, :w₁))
-println(extension(formula, many))
+describe(stdout, extension(formula, many), many)
+println()
 
 # output
 
 0.7
-[0.7, 0.7]</code></pre><p>The example above used <code>GodelAlgebra()</code>, the full unit interval, so any value in <code>[0, 1]</code> is legal. A finite chain such as <code>GodelAlgebra(3)</code> admits only its own levels — <code>0.0</code>, <code>0.5</code>, <code>1.0</code> — and rejects anything else.</p><p>Each idea in this guide also exists as a runnable script under <a href="https://github.com/eduardstan/Aletheia.jl/tree/main/examples"><code>examples/</code></a>; run one with <code>julia --project=. examples/quickstart.jl</code>.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><a class="docs-footer-nextpage" href="../design/">Syntax and design »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Sunday 23 August 2026 22:57">Sunday 23 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+Extension (2 worlds)
+  :w₁ =&gt; 0.7
+  :w₂ =&gt; 0.7</code></pre><p>The example above used <code>GodelAlgebra()</code>, the full unit interval, so any value in <code>[0, 1]</code> is legal. A finite chain such as <code>GodelAlgebra(3)</code> admits only its own levels — <code>0.0</code>, <code>0.5</code>, <code>1.0</code> — and rejects anything else.</p><p>Each idea in this guide also exists as a runnable script under <a href="https://github.com/eduardstan/Aletheia.jl/tree/main/examples"><code>examples/</code></a>; run one with <code>julia --project=. examples/quickstart.jl</code>.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><a class="docs-footer-nextpage" href="../design/">Syntax and design »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Tuesday 25 August 2026 22:20">Tuesday 25 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

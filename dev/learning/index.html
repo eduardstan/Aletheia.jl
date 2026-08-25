@@ -3,6 +3,8 @@
 base_frame = Frame((:w₁, :w₂), Dict(:R =&gt; Dict(:w₁ =&gt; [:w₂], :w₂ =&gt; [])); index=true)
 model = Model(base_frame, BOOLEAN, Dict(&quot;p&quot; =&gt; Set([:w₁])))
 example = interpretation_example(model; positive=true)
+show(stdout, MIME&quot;text/plain&quot;(), example)
+println()
 
 println(example.interpretation === model)
 println(example.positive)
@@ -11,6 +13,7 @@ println(interpret(atom(FormulaPool(Signature((¬,))), &quot;p&quot;), model, :w�
 
 # output
 
+InterpretationExample (+): Model(2 worlds, BooleanAlgebra())
 true
 true
 [:w₂]
@@ -19,18 +22,42 @@ X = Variable(:X)
 a = Constant(:a)
 general = HornClause(Predicate(:father, X), Predicate(:parent, X))
 specific = Clause(Predicate(:father, a), Literal(Predicate(:parent, a), false))
+show(stdout, MIME&quot;text/plain&quot;(), general)
+println()
+show(stdout, MIME&quot;text/plain&quot;(), ClauseSet([general, specific]))
+println()
+show(stdout, MIME&quot;text/plain&quot;(), Substitution(X =&gt; a))
+println()
 println(subsumes(general, specific))
 
 # output
 
-true</code></pre><p>θ-subsumption is a generality <strong>quasi-order</strong>, not logical implication. Mutual subsumption can hold for distinct clauses after variables are identified, and the recursive implication counterexample in §5.5.2 (pp. 648–649) is why this layer exposes no implication test [<a href="../references/#muggleton1994" id="muggleton1994-cite-3">5</a>, §5.5.2, pp. 648–649].</p><h2 id="Refinement-is-lazy-and-bounded-by-the-bias"><a class="docs-heading-anchor" href="#Refinement-is-lazy-and-bounded-by-the-bias">Refinement is lazy and bounded by the bias</a><a id="Refinement-is-lazy-and-bounded-by-the-bias-1"></a><a class="docs-heading-anchor-permalink" href="#Refinement-is-lazy-and-bounded-by-the-bias" title="Permalink"></a></h2><p><code>downward_refinements</code> and <code>upward_refinements</code> return iterators. A supplied finite vocabulary and finite term/substitution bounds make candidate production locally finite; they do not make the operators complete or optimal. The unrestricted upward case has infinite chains, and a general complete operator cannot be claimed. See Muggleton and De Raedt, §5.2.2, Definition 5.4 (pp. 644–645) [<a href="../references/#muggleton1994" id="muggleton1994-cite-4">5</a>, §5.2.2, Definition 5.4, pp. 644–645] and the bounded refinement-operator definitions in Tamaddoni-Nezhad and Muggleton, “A Note on Refinement Operators for IE-Based ILP Systems”, pp. 297–314 of the ILP 2008 proceedings [<a href="../references/#zelezny2008" id="zelezny2008-cite-1">6</a>, pp. 297–314].</p><pre><code class="language-julia hljs">using Aletheia
+father(X) :- parent(X)
+ClauseSet (2 clauses)
+  father(:a) :- parent(:a)
+  father(X) :- parent(X)
+Substitution: {X ↦ :a}
+true</code></pre><p>The other learning-setting wrappers have the same compact display:</p><pre><code class="language-julia hljs">using Aletheia
+X = Variable(:X)
+general = HornClause(Predicate(:father, X), Predicate(:parent, X))
+show(stdout, MIME&quot;text/plain&quot;(), learning_from_entailment(general))
+println()
+show(stdout, MIME&quot;text/plain&quot;(), learning_from_proofs(:proof))
+println()
+
+# output
+
+EntailmentExample (+): father(X) :- parent(X)
+ProofExample (+): proof</code></pre><p>θ-subsumption is a generality <strong>quasi-order</strong>, not logical implication. Mutual subsumption can hold for distinct clauses after variables are identified, and the recursive implication counterexample in §5.5.2 (pp. 648–649) is why this layer exposes no implication test [<a href="../references/#muggleton1994" id="muggleton1994-cite-3">5</a>, §5.5.2, pp. 648–649].</p><h2 id="Refinement-is-lazy-and-bounded-by-the-bias"><a class="docs-heading-anchor" href="#Refinement-is-lazy-and-bounded-by-the-bias">Refinement is lazy and bounded by the bias</a><a id="Refinement-is-lazy-and-bounded-by-the-bias-1"></a><a class="docs-heading-anchor-permalink" href="#Refinement-is-lazy-and-bounded-by-the-bias" title="Permalink"></a></h2><p><code>downward_refinements</code> and <code>upward_refinements</code> return iterators. A supplied finite vocabulary and finite term/substitution bounds make candidate production locally finite; they do not make the operators complete or optimal. The unrestricted upward case has infinite chains, and a general complete operator cannot be claimed. See Muggleton and De Raedt, §5.2.2, Definition 5.4 (pp. 644–645) [<a href="../references/#muggleton1994" id="muggleton1994-cite-4">5</a>, §5.2.2, Definition 5.4, pp. 644–645] and the bounded refinement-operator definitions in Tamaddoni-Nezhad and Muggleton, “A Note on Refinement Operators for IE-Based ILP Systems”, pp. 297–314 of the ILP 2008 proceedings [<a href="../references/#zelezny2008" id="zelezny2008-cite-1">6</a>, pp. 297–314].</p><pre><code class="language-julia hljs">using Aletheia
 X = Variable(:X)
 base = Clause(Predicate(:p, X))
 candidates = downward_refinements(base; literals=[Predicate(:q, X)])
 println(Base.IteratorSize(typeof(candidates)))
-println(collect(candidates))
+show(stdout, MIME&quot;text/plain&quot;(), ClauseSet(collect(candidates)))
+println()
 
 # output
 
 Base.SizeUnknown()
-Any[p(X) ∨ q(X)]</code></pre><p>Horn-clause refinements preserve the <code>HornClause</code> type and reject an added positive literal when it would create a second head. <code>max_literals</code> bounds every emitted candidate, including substitution-only candidates; it must be <code>nothing</code> or a non-negative integer. The implementation is therefore a foundation for a learner, not a learner, prover, or least-Herbrand-model evaluator.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../theory/">« Theory utilities</a><a class="docs-footer-nextpage" href="../results/">Measured results »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Sunday 23 August 2026 22:57">Sunday 23 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ClauseSet (1 clause)
+  p(X) ∨ q(X)</code></pre><p>Horn-clause refinements preserve the <code>HornClause</code> type and reject an added positive literal when it would create a second head. <code>max_literals</code> bounds every emitted candidate, including substitution-only candidates; it must be <code>nothing</code> or a non-negative integer. The implementation is therefore a foundation for a learner, not a learner, prover, or least-Herbrand-model evaluator.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../theory/">« Theory utilities</a><a class="docs-footer-nextpage" href="../results/">Measured results »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Tuesday 25 August 2026 22:20">Tuesday 25 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
