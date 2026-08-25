@@ -16,14 +16,15 @@ interval or a finite chain.
 using Aletheia
 
 for algebra in (BOOLEAN, GodelAlgebra(3), LukasiewiczAlgebra(4))
-    println((typeof(algebra), domain(algebra), truth_type(algebra)))
+    show(stdout, MIME"text/plain"(), algebra)
+    println()
 end
 
 # output
 
-(BooleanAlgebra, (false, true), Bool)
-(GodelAlgebra{3}, (0.0, 0.5, 1.0), Float64)
-(LukasiewiczAlgebra{4}, (0.0, 0.3333333333333333, 0.6666666666666666, 1.0), Float64)
+BooleanAlgebra (carrier Bool: {false, true})
+GodelAlgebra{3} (chain of 3 levels: 0.0, 0.5, 1.0)
+LukasiewiczAlgebra{4} (chain of 4 levels: 0.0, 0.333, 0.667, 1.0)
 ```
 
 `meet`, `join`, `implication`, and `negation` are methods on the algebra, not
@@ -65,12 +66,15 @@ p, q = atom(pool, "p"), atom(pool, "q")
 formula = branch(pool, ∧, branch(pool, Diamond(:R), p), branch(pool, Box(:R), q))
 base_frame = Frame((:a, :b, :c), Dict(:R => Dict(:a => [:b, :c], :b => [:b], :c => [])); index=true)
 model = Model(base_frame, BOOLEAN, Dict("p" => Set([:b]), "q" => Set([:a, :b])))
-println(extension(formula, model))
+describe(stdout, extension(formula, model), model)
+println()
 println(check(formula, model, :a))
 
 # output
 
-Bool[0, 1, 0]
+Extension (1 of 3 worlds satisfy)
+  Satisfied at: :b
+  Unsatisfied at: :a, :c
 false
 ```
 

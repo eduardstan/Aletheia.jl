@@ -28,13 +28,25 @@ family = ModelFamily([
 ])
 
 println(instance_count(family))
-println(extension(formula, family))
+for i in 1:instance_count(family)
+    println("Instance $i:")
+    instance = instance_model(family, i)
+    describe(stdout, extension(formula, instance), instance)
+    println()
+end
 println(check(formula, family, 1, :w₁))
 
 # output
 
 2
-BitVector[[1, 1], [0, 0]]
+Instance 1:
+Extension (2 of 2 worlds satisfy)
+  Satisfied at: :w₁, :w₂
+  Unsatisfied at: (none)
+Instance 2:
+Extension (0 of 2 worlds satisfy)
+  Satisfied at: (none)
+  Unsatisfied at: :w₁, :w₂
 true
 ```
 

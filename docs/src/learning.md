@@ -31,6 +31,8 @@ using Aletheia
 base_frame = Frame((:w₁, :w₂), Dict(:R => Dict(:w₁ => [:w₂], :w₂ => [])); index=true)
 model = Model(base_frame, BOOLEAN, Dict("p" => Set([:w₁])))
 example = interpretation_example(model; positive=true)
+show(stdout, MIME"text/plain"(), example)
+println()
 
 println(example.interpretation === model)
 println(example.positive)
@@ -39,6 +41,7 @@ println(interpret(atom(FormulaPool(Signature((¬,))), "p"), model, :w₁))
 
 # output
 
+InterpretationExample (+): Model(2 worlds, BooleanAlgebra())
 true
 true
 [:w₂]
@@ -67,11 +70,39 @@ X = Variable(:X)
 a = Constant(:a)
 general = HornClause(Predicate(:father, X), Predicate(:parent, X))
 specific = Clause(Predicate(:father, a), Literal(Predicate(:parent, a), false))
+show(stdout, MIME"text/plain"(), general)
+println()
+show(stdout, MIME"text/plain"(), ClauseSet([general, specific]))
+println()
+show(stdout, MIME"text/plain"(), Substitution(X => a))
+println()
 println(subsumes(general, specific))
 
 # output
 
+father(X) :- parent(X)
+ClauseSet (2 clauses)
+  father(:a) :- parent(:a)
+  father(X) :- parent(X)
+Substitution: {X ↦ :a}
 true
+```
+
+The other learning-setting wrappers have the same compact display:
+
+```jldoctest learning_wrappers
+using Aletheia
+X = Variable(:X)
+general = HornClause(Predicate(:father, X), Predicate(:parent, X))
+show(stdout, MIME"text/plain"(), learning_from_entailment(general))
+println()
+show(stdout, MIME"text/plain"(), learning_from_proofs(:proof))
+println()
+
+# output
+
+EntailmentExample (+): father(X) :- parent(X)
+ProofExample (+): proof
 ```
 
 θ-subsumption is a generality **quasi-order**, not logical implication. Mutual
@@ -97,12 +128,14 @@ X = Variable(:X)
 base = Clause(Predicate(:p, X))
 candidates = downward_refinements(base; literals=[Predicate(:q, X)])
 println(Base.IteratorSize(typeof(candidates)))
-println(collect(candidates))
+show(stdout, MIME"text/plain"(), ClauseSet(collect(candidates)))
+println()
 
 # output
 
 Base.SizeUnknown()
-Any[p(X) ∨ q(X)]
+ClauseSet (1 clause)
+  p(X) ∨ q(X)
 ```
 
 Horn-clause refinements preserve the `HornClause` type and reject an added

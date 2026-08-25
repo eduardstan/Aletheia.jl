@@ -96,14 +96,17 @@ p = atom(pool, "p")
 formula = branch(pool, Diamond(MEETS), p)
 target = Interval(2, 3)
 model = Model(intervals, BOOLEAN, Dict("p" => Set([target])))
-println(collect(worlds(intervals)))
+show(stdout, MIME"text/plain"(), intervals)
+println()
 println(collect(accessible(intervals, Interval(1, 2), MEETS)))
 println(check(formula, model, Interval(1, 2)))
 println(relation_holds(MEETS, Interval(1, 2), target))
 
 # output
 
-Interval{Int64}[(1−2), (1−3), (1−4), (2−3), (2−4), (3−4)]
+Frame (6 worlds, 1 relation)
+  Worlds (6): (1−2), (1−3), (1−4), (2−3), (2−4), (3−4)
+  Relations: <callable>
 Interval{Int64}[(2−3), (2−4)]
 true
 true
