@@ -43,7 +43,14 @@ External relation families need no method here.
 """
 relation_successors(relation, source, worlds) = nothing
 
-"""Return the converse (inverse) of a relation value."""
+"""Return the converse (inverse) of a relation value.
+
+The result is the relation `r'` for which `relation_holds(r', a, b)` agrees
+with `relation_holds(r, b, a)` on every ordered pair. A relation whose converse
+this vocabulary does not name throws a `MethodError` rather than returning a
+relation that is not its converse; `MINIMUM` and `MAXIMUM` are the two such
+values.
+"""
 function inverse(relation)
     throw(MethodError(inverse, (relation,)))
 end
@@ -330,8 +337,12 @@ relation_holds(::SuccessorRelation, a::Real, b::Real) = b == a + one(a)
 relation_holds(::PredecessorRelation, a::Real, b::Real) = b == a - one(a)
 relation_holds(::GreaterRelation, a::Real, b::Real) = b > a
 relation_holds(::LesserRelation, a::Real, b::Real) = b < a
-inverse(::MinimumRelation) = MINIMUM
-inverse(::MaximumRelation) = MAXIMUM
+# MINIMUM and MAXIMUM relate every source to one fixed boundary world, so
+# their converse relates that one world to every target: a different relation,
+# and not one this vocabulary names. Returning MINIMUM/MAXIMUM here would break
+# both the converse contract above and `isgrounding`, so `inverse` refuses.
+inverse(relation::MinimumRelation) = throw(MethodError(inverse, (relation,)))
+inverse(relation::MaximumRelation) = throw(MethodError(inverse, (relation,)))
 inverse(::SuccessorRelation) = PREDECESSOR
 inverse(::PredecessorRelation) = SUCCESSOR
 inverse(::GreaterRelation) = LESSER
