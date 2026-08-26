@@ -120,7 +120,7 @@ bisimilar before relabelling: true
 separator values after relabelling: false/true
 BisimulationContraction (3 → 2 worlds, 33% collapse ratio)
   Classes (2):
-    Class 1: 2, 1
+    Class 1: 1, 2
     Class 2: 3
 contraction world count: 3 -> 2
 values preserved: true

@@ -1,13 +1,24 @@
 using Test
 
+const EXPECTED_OUTPUT_RE = r"(?ms)^# BEGIN EXPECTED OUTPUT\n(.*?)^# END EXPECTED OUTPUT\n?"
+const ANSI_RE = r"\e\[[0-9;]*m"
+
+function expected_output(script)
+    source = replace(read(script, String), "\r\n" => "\n")
+    found = Base.match(EXPECTED_OUTPUT_RE, source)
+    @test found !== nothing
+    found === nothing && return ""
+    lines = split(found.captures[1], '\n'; keepempty=true)
+    !isempty(lines) && isempty(lines[end]) && pop!(lines)
+    lines = map(lines) do line
+        startswith(line, "# ") ? line[3:end] : (line == "#" ? "" : line)
+    end
+    return join(lines, '\n')
+end
+
 @testset "runnable examples" begin
     root = dirname(@__DIR__)
     module_for_examples = Module(:AletheiaExamples)
-    quickstart_markers = (
-        "formula: ⟨R⟩p ∧ [R]q\nparse round-trip: true",
-        "successors of w₁: [:w₂]\ncheck at w₁: true",
-        "Extension (2 of 2 worlds satisfy)\n  Satisfied at: :w₁, :w₂\n  Unsatisfied at: (none)",
-    )
     for name in sort(filter(endswith(".jl"), readdir(joinpath(root, "examples"))))
         script = joinpath(root, "examples", name)
         pipe = Pipe()
@@ -16,12 +27,8 @@ using Test
         end
         close(pipe.in)
         output = read(pipe, String)
-        if name == "quickstart.jl"
-            for marker in quickstart_markers
-                @test occursin(marker, output)
-            end
-        else
-            @test true # reaching this point means the complete script executed
-        end
+        output = replace(output, ANSI_RE => "")
+        output = replace(output, "\r\n" => "\n")
+        @test output == expected_output(script)
     end
 end

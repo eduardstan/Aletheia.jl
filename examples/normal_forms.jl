@@ -18,3 +18,21 @@ println()
 show(stdout, MIME"text/plain"(), describe(extension(formula, model), model))
 println()
 println("extensions agree: ", extension(formula, model) == extension(cnf, model) == extension(dnf, model))
+# BEGIN EXPECTED OUTPUT
+# formula: (p ∨ q) ∧ (r ∨ s ∧ t)
+# CNF: (p ∨ q) ∧ (r ∨ s) ∧ (r ∨ t) (true)
+# DNF: p ∧ r ∨ p ∧ s ∧ t ∨ q ∧ r ∨ q ∧ s ∧ t (true)
+# Model (4 worlds, 0 relations, BooleanAlgebra())
+#   Worlds (4): :a, :b, :c, :d
+#   Valuation:
+#     p: {:a, :d}
+#     q: {:b}
+#     r: {:b}
+#     s: {:a, :d}
+#     t: {:a}
+# Extension (2 of 4 worlds satisfy)
+#   Satisfied at: :a, :b
+#   Unsatisfied at: :c, :d
+# extensions agree: true
+#
+# END EXPECTED OUTPUT

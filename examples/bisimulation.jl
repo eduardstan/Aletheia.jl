@@ -22,3 +22,24 @@ println("separator: ", syntaxstring(separator))
 println("unperturbed values: ", check(separator, m₁, :r), "/", check(separator, m₂, :s))
 println("after labelling t=p: ", bisimilar(m₁, :r, m₂_bad, :s))
 println("separating values: ", check(separator, m₁, :r), "/", check(separator, m₂_bad, :s))
+# BEGIN EXPECTED OUTPUT
+# m₁ (unlabelled root):
+# Model (1 world, 1 relation, BooleanAlgebra())
+#   Worlds (1): :r
+#   Relations:
+#     :R: :r → :r
+#   Valuation:
+# m₂ after labelling t with p:
+# Model (2 worlds, 1 relation, BooleanAlgebra())
+#   Worlds (2): :s, :t
+#   Relations:
+#     :R: :s → :t; :t → :t
+#   Valuation:
+#     p: {:t}
+# unperturbed roots bisimilar: true
+# separator: ⟨R⟩p
+# unperturbed values: false/false
+# after labelling t=p: false
+# separating values: false/true
+#
+# END EXPECTED OUTPUT

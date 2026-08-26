@@ -1,7 +1,7 @@
 # Runnable examples
 
 Run any example from the repository root with `julia --project=. examples/<name>.jl`.
-Each example is a small, self-contained lesson and uses Aletheia's rich terminal displays for its models, extensions, and other domain objects.
+Each example is a small, self-contained lesson and uses Aletheia's rich terminal displays for its models, extensions, and other domain objects. Every file carries an expected-output block, and the test suite runs each example and enforces its complete output.
 
 - `quickstart.jl` — Parse a modal formula, build a two-world model, and inspect its satisfying worlds.
 - `bisimulation.jl` — See how changing an atom label lets `◇p` distinguish otherwise bisimilar roots.

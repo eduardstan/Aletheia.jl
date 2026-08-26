@@ -20,3 +20,20 @@ println("successors of w₁: ", collect(accessible(base_frame, :w₁, :R)))
 println("check at w₁: ", check(formula, model, :w₁))
 show(stdout, MIME"text/plain"(), describe(extension(formula, model), model))
 println()
+# BEGIN EXPECTED OUTPUT
+# formula: ⟨R⟩p ∧ [R]q
+# parse round-trip: true
+# Model (2 worlds, 1 relation, BooleanAlgebra())
+#   Worlds (2): :w₁, :w₂
+#   Relations:
+#     :R: :w₁ → :w₂; :w₂ → :w₂
+#   Valuation:
+#     p: {:w₂}
+#     q: {:w₁, :w₂}
+# successors of w₁: [:w₂]
+# check at w₁: true
+# Extension (2 of 2 worlds satisfy)
+#   Satisfied at: :w₁, :w₂
+#   Unsatisfied at: (none)
+#
+# END EXPECTED OUTPUT
