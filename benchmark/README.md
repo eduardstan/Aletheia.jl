@@ -13,12 +13,13 @@ From a fresh checkout, set the incumbent checkout and run one command:
 SOLELOGICS_PATH=/path/to/SoleLogics.jl julia --project=benchmark benchmark/run.jl
 ```
 
-The default quick run uses fixed seed `0xA1E7_2024`, five median samples, and
-bounded sweeps. `--deep` expands formula/model/ratio sweeps. Each section and
-side runs all its cases in one warmed Julia child; GNU `timeout` kills the
-section at the printed hard bound, and timeout/unavailable cells remain visible
-in the report. The process writes no benchmark result files: copy the terminal
-table to `docs/src/results.md` when publishing a run.
+The default quick run uses fixed seed `0xA1E7_2024` and 200 paired samples;
+`--deep` expands formula/model/ratio sweeps. Each section and side runs all its
+cases in one warmed Julia child; GNU `timeout` kills the section at the printed
+hard bound, and timeout/unavailable cells remain visible in the report. Every
+sample pairs its allocation count with the sample nearest the median time.
+The process writes raw values and provenance (Julia/CPU, load average, mode,
+seed, and per-cell sample counts) to `data/benchmark-run/run.txt`.
 
 `benchmark/differential.jl` is the deterministic correctness comparison:
 
@@ -31,7 +32,9 @@ world against its quotient. The incumbent has no contraction API and is
 reported unsupported rather than assigned a ratio. The extension row compares
 Aletheia's BitVector extension with SoleLogics' equivalent all-world check loop,
 which is the same semantic question even though the incumbent has no named
-`extension` method.
+`extension` method. The SoleLogics loop shares one subformula memo per timed
+invocation and disables normalization; allocations are paired with median-time
+samples.
 
 ## SoleData dataset-protocol stage 1
 

@@ -5,10 +5,12 @@ using Statistics
 using Aletheia
 using SoleLogics
 
+include(joinpath(@__DIR__, "paired_measure.jl"))
+
 const DEEP = "--deep" in ARGS
 const SEED = 0xA1E7_2024
 const BENCH_SECONDS = DEEP ? 0.05 : 0.01
-const BENCH_SAMPLES = DEEP ? 15 : 5
+const BENCH_SAMPLES = DEEP ? 500 : 200
 const CASE_TIMEOUT = DEEP ? 180 : 120
 const SIGNATURE = Aletheia.Signature((Aletheia.NEGATION, Aletheia.CONJUNCTION,
     Aletheia.DISJUNCTION, Aletheia.IMPLICATION))
@@ -32,11 +34,17 @@ atomrecipe(name) = Recipe(:atom, (), String(name))
 recipe(op, children...) = Recipe(op, children, nothing)
 
 function unshared(depth, counter = Ref(0))
+    # Every leaf occurrence gets a distinct atom.  This is intentionally a
+    # tree-shaped recipe; `shared` below is the contrasting DAG recipe.
     depth == 0 && begin
         counter[] += 1
-        return atomrecipe("p$(1 + mod(counter[] - 1, 8))")
+        return atomrecipe("p$(counter[])")
     end
     recipe(:and, unshared(depth - 1, counter), unshared(depth - 1, counter))
+end
+
+function recipe_atoms(r::Recipe)
+    r.op === :atom ? [r.atom] : vcat((recipe_atoms(c) for c in r.children)...)
 end
 function shared(depth)
     depth == 0 && return atomrecipe("p")
@@ -98,6 +106,14 @@ struct Measurement
 end
 Measurement(time, allocs, memory) = Measurement(time, allocs, memory, "")
 
+
+# BenchmarkTools stores allocations and memory as minima over its samples.
+# Pair those fields explicitly with the sample nearest the median time.
+function measure_samples(f; samples=BENCH_SAMPLES)
+    paired = paired_measure(f; samples=samples)
+    Measurement(paired.time, paired.allocs, paired.memory)
+end
+
 # A call is measured in a child Julia process.  Unlike BenchmarkTools' seconds
 # sampling budget, GNU timeout kills a non-yielding call at CASE_TIMEOUT.
 function guarded_measure(label, kind, side, argument, f=nothing; timeout=CASE_TIMEOUT)
@@ -106,7 +122,9 @@ function guarded_measure(label, kind, side, argument, f=nothing; timeout=CASE_TI
     project = @__DIR__
     julia = Base.julia_cmd()
     helper = joinpath(@__DIR__, "warmup.jl")
-    command = `timeout -k 1s $(timeout)s $julia --startup-file=no --project=$project $helper benchmark $kind $side $argument`
+    command = DEEP ?
+        `timeout -k 1s $(timeout)s $julia --startup-file=no --project=$project $helper benchmark $kind $side $argument --deep` :
+        `timeout -k 1s $(timeout)s $julia --startup-file=no --project=$project $helper benchmark $kind $side $argument`
     path, io = mktemp(); close(io)
     process = run(pipeline(command, stdout=path, stderr=devnull); wait=false)
     wait(process)
@@ -124,7 +142,9 @@ function section_measure(label, cases, side; timeout=CASE_TIMEOUT)
     println("[section] ", label, " / ", side); flush(stdout)
     project = @__DIR__; julia = Base.julia_cmd(); helper = joinpath(@__DIR__, "warmup.jl")
     encoded = join((string(kind, "=", argument) for (kind, argument) in cases), ";")
-    command = `timeout -k 1s $(timeout)s $julia --startup-file=no --project=$project $helper section $side $encoded`
+    command = DEEP ?
+        `timeout -k 1s $(timeout)s $julia --startup-file=no --project=$project $helper section $side $encoded --deep` :
+        `timeout -k 1s $(timeout)s $julia --startup-file=no --project=$project $helper section $side $encoded`
     path, io = mktemp(); close(io)
     process = run(pipeline(command, stdout=path, stderr=devnull); wait=false)
     wait(process)
@@ -150,9 +170,9 @@ function section_measure(label, cases, side; timeout=CASE_TIMEOUT)
 end
 
 function measure(f; seconds=BENCH_SECONDS, samples=BENCH_SAMPLES)
-    trial = run(@benchmarkable $f() seconds=seconds samples=samples evals=1)
-    m = median(trial)
-    Measurement(Float64(m.time), Int(m.allocs), Int(m.memory))
+    # `seconds` is retained for command-line compatibility; samples govern the
+    # run so a slow case cannot silently collapse to one observation.
+    measure_samples(f; samples=samples)
 end
 function fmt_time(x)
     x === missing && return "empty"
@@ -176,7 +196,7 @@ function print_report()
             println("$(row.suite) | unsupported/$(fmt_measure(row.incumbent)) | $(fmt_measure(row.aletheia)) | — | — | $(row.note)")
         else
             inc, ale = row.incumbent, row.aletheia
-            alloc = row.allocations ? "$(fmt_alloc(inc))/$(fmt_alloc(ale))" : "—/—"
+            alloc = row.allocations ? "$(fmt_alloc(inc)) ; $(fmt_alloc(ale))" : "—/—"
             println("$(row.suite) | $(fmt_measure(inc)) | $(fmt_measure(ale)) | $(row.ratio === missing ? "—" : @sprintf("%.2fx", row.ratio)) | $alloc | $(row.note)")
         end
     end
@@ -216,12 +236,13 @@ function interval_adjacency_a(frame, relation_name, frame_worlds)
 end
 function interval_adjacency_s(frame, frame_worlds)
     world_count = length(frame_worlds)
+    positions = Dict(world => position for (position, world) in enumerate(frame_worlds))
     rows = Vector{Vector{Int}}(undef, world_count)
     columns = [falses(world_count) for _ in 1:world_count]
     for (source_position, source) in enumerate(frame_worlds)
         targets = Int[]
         for target in SoleLogics.accessibles(frame, source, SoleLogics.IA_L)
-            target_position = findfirst(==(target), frame_worlds)
+            target_position = positions[target]
             push!(targets, target_position); columns[target_position][source_position] = true
         end
         rows[source_position] = targets
@@ -268,11 +289,11 @@ function mv_setup(side, algebra_name, depth)
         pool = mv_pool_a(); f = build_a(r, pool)
         algebra = algebra_name == "godel" ? Aletheia.G3 : algebra_name == "lukasiewicz" ? Aletheia.Ł3 : Aletheia.H4
         n = algebra_name == "h4" ? 4 : 3
-        values = Dict(("p$(i)", 1) => finite_truth_value(1 + mod(i, n)) for i in 1:8)
+        values = Dict((name, 1) => finite_truth_value(1 + mod(i, n)) for (i, name) in enumerate(recipe_atoms(r)))
         return f, Aletheia.Model(Aletheia.Frame((1,); index=true), algebra, values), algebra
     end
     f = build_s(r); n = algebra_name == "h4" ? 4 : 3
-    values = Dict("p$(i)" => finite_truth(1 + mod(i, n)) for i in 1:8)
+    values = Dict(name => finite_truth(1 + mod(i, n)) for (i, name) in enumerate(recipe_atoms(r)))
     alg = algebra_name == "godel" ? SoleLogics.ManyValuedLogics.G3 : algebra_name == "lukasiewicz" ? SoleLogics.ManyValuedLogics.Ł3 : SoleLogics.ManyValuedLogics.H4
     f, SoleLogics.TruthDict(values), alg
 end

@@ -11,8 +11,8 @@ println("Julia: ", VERSION)
 println("CPU: ", Sys.CPU_NAME, " (", Sys.CPU_THREADS, " threads)")
 println("SoleLogics checkout: ", sole_path)
 println("mode: ", DEEP ? "deep" : "quick", "; seed: ", SEED)
-println("samples: ", BENCH_SAMPLES, "; sampling budget: ", BENCH_SECONDS,
-    " s; hard per-call timeout: ", CASE_TIMEOUT, " s")
+println("samples: ", BENCH_SAMPLES, "; fixed-sample timing (legacy budget: ", BENCH_SECONDS,
+    " s); hard per-call timeout: ", CASE_TIMEOUT, " s")
 println()
 
 println("[correctness gate: differential semantic cases]")
@@ -123,11 +123,14 @@ for n in contraction_models, q in (DEEP ? (1, 4, 16, n) : (1, n))
     push!(contraction_ranges, (n=n, q=q, c=cindex, orig=orig_indices, quot=quot_indices, curve_orig=curve_orig, curve_quot=curve_quot))
 end
 contraction_measurements = section_measure("contraction", contraction_cases, "aletheia"; timeout=DEEP ? 180 : 120)
+contraction_records = NamedTuple[]
 for entry in contraction_ranges
     c = contraction_measurements[entry.c]; po = parse_ratio_measurements(contraction_measurements[entry.orig]); pq = parse_ratio_measurements(contraction_measurements[entry.quot])
     ratio = entry.q / entry.n; delta = po.time === missing || pq.time === missing ? missing : po.time - pq.time
     kstar = delta === missing || delta <= 0 ? Inf : c.time / delta
-    println("$(entry.n) | $(entry.q) | $(@sprintf("%.3f", ratio)) | $(fmt_measure(c)) | $(fmt_measure(po)) | $(fmt_measure(pq)) | $(isfinite(kstar) ? @sprintf("%.1f", kstar) : "∞") | ")
+    kstar_text = isfinite(kstar) ? @sprintf("%.1f", kstar) : "∞"
+    println("$(entry.n) | $(entry.q) | $(@sprintf("%.3f", ratio)) | $(fmt_measure(c)) | $(fmt_measure(po)) | $(fmt_measure(pq)) | $kstar_text | ")
+    push!(contraction_records, (n=entry.n, q=entry.q, c=c, po=po, pq=pq, kstar=kstar))
     for (k, oi, qi) in zip(contraction_curve, entry.curve_orig, entry.curve_quot)
         bo, bq = contraction_measurements[oi], contraction_measurements[qi]
         println("  K=$k: $(bo.time === missing ? "timeout" : @sprintf("%.3f", bo.time / 1e6)) ms / $(bq.time === missing || c.time === missing ? "timeout" : @sprintf("%.3f", (c.time + bq.time) / 1e6)) ms (quotient includes C)")
@@ -142,4 +145,43 @@ cold_measure(x, i) = x === nothing ? Measurement(missing, missing, missing, "una
 addrow!("cold package load", cold_measure(ls, 1), cold_measure(la, 1); allocations=false)
 addrow!("cold time-to-first-result", cold_measure(ls, 2), cold_measure(la, 2); allocations=false)
 
-println(); print_report(); println("benchmark wall clock: ", @sprintf("%.1f s", (time_ns() - RUN_START_NS) / 1e9))
+wall_clock = (time_ns() - RUN_START_NS) / 1e9
+println(); print_report(); println("benchmark wall clock: ", @sprintf("%.1f s", wall_clock))
+
+# Preserve the exact run provenance and values beside the published page.  The
+# successful child measurements use a fixed count (not a time budget), while
+# contraction checks deliberately use 2000 paired samples for a stable K*.
+artifact = joinpath(normpath(joinpath(@__DIR__, "..")), "data", "benchmark-run", "run.txt")
+mkpath(dirname(artifact))
+load_average = try readchomp(`uptime`) catch; "unavailable" end
+open(artifact, "w") do io
+    println(io, "julia=$(VERSION)")
+    println(io, "cpu=$(Sys.CPU_NAME)")
+    println(io, "cpu_threads=$(Sys.CPU_THREADS)")
+    println(io, "load_average=$(load_average)")
+    println(io, "mode=$(DEEP ? "deep" : "quick")")
+    println(io, "seed=$(SEED)")
+    println(io, "default_samples=$(BENCH_SAMPLES)")
+    println(io, "contraction_samples=2000")
+    println(io, "cold_load_repetitions=$(DEEP ? 2 : 1)")
+    println(io, "wall_clock_seconds=$(wall_clock)")
+    println(io, "suite | SoleLogics | Aletheia | ratio | allocations | samples")
+    for row in rows
+        samples = occursin("cold", row.suite) ? (DEEP ? 2 : 1) : BENCH_SAMPLES
+        println(io, row.suite, " | ", fmt_measure(row.incumbent), " | ",
+            fmt_measure(row.aletheia), " | ",
+            row.ratio === missing ? "—" : @sprintf("%.2fx", row.ratio), " | ",
+            row.allocations ? fmt_alloc(row.incumbent) * " ; " * fmt_alloc(row.aletheia) : "—/—",
+            " | ", samples)
+    end
+    for (entry, record) in zip(contraction_ranges, contraction_records)
+        c, po, pq = record.c, record.po, record.pq
+        println(io, "contraction n=$(record.n) q=$(record.q) | C=$(fmt_measure(c)) | P_orig=$(fmt_measure(po)) | P_quot=$(fmt_measure(pq)) | K*=$(isfinite(record.kstar) ? @sprintf("%.1f", record.kstar) : "∞") | samples=2000")
+        for (k, oi, qi) in zip(contraction_curve, entry.curve_orig, entry.curve_quot)
+            bo, bq = contraction_measurements[oi], contraction_measurements[qi]
+            total = bq.time === missing || c.time === missing ? "timeout" : fmt_time(c.time + bq.time)
+            println(io, "contraction_batch n=$(record.n) q=$(record.q) K=$k | original=$(fmt_measure(bo)) | quotient_total=$total | samples=2000")
+        end
+    end
+end
+println("raw provenance written to ", artifact)

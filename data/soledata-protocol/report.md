@@ -14,6 +14,14 @@ The fair comparison still supports the direction, but the earlier bare-logiset
 77x headline must be retired.  Against the real default path, Aletheia's
 vectorized evaluator has a median advantage of **38.7x cold** and **21.2x warm**.
 
+## Measurement-status note
+
+The benchmark workers now pair allocation and memory with the sample nearest the
+median time. This checkout did not contain a SoleData installation, so the
+existing numeric tables above remain the prior run's values rather than being
+quietly relabelled as corrected measurements. Re-run `dataset_protocol.jl` and
+`dataset_protocol_supported.jl` with `SOLEDATA_PATH` before changing those cells.
+
 ## Agreement gates: PASS
 
 The original explicit-logiset gate remains clean: installed SoleData 0.16.9

@@ -1,0 +1,11 @@
+julia=julia version 1.12.7
+cpu=alderlake
+mode=deep-targeted
+samples=500
+suite | side | n | time_ns | allocs | bytes | load_average
+interval_adjacency | SoleLogics | 12 | 14615.0 447 37704 | 2.67, 2.92, 3.18
+interval_adjacency | Aletheia | 12 | 2862.0 373 20032 | 2.41, 2.82, 3.13
+interval_adjacency | SoleLogics | 24 | 204309.0 2048 468760 | 2.30, 2.86, 3.19
+interval_adjacency | Aletheia | 24 | 29343.0 1462 165352 | 2.30, 2.86, 3.19
+interval_adjacency | SoleLogics | 36 | 1180456.0 5066 1804608 | 2.30, 2.86, 3.19
+interval_adjacency | Aletheia | 36 | 140078.0 3358 710296 | 2.30, 2.86, 3.19

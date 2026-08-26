@@ -9,17 +9,18 @@ using Graphs
 include(joinpath(@__DIR__, "dataset_protocol_shared.jl"))
 
 function measure_supported_cold(base, conditions, relations, formula_s, ninstances)
-    trial = run(@benchmarkable begin
-        sum(length(sole_check_all($formula_s, supported, i)) for i in 1:$ninstances)
-    end setup=(supported = SoleData.SupportedLogiset(
-        $base;
-        conditions=$conditions,
-        relations=$relations,
+    supported = Ref{Any}()
+    setup = () -> (supported[] = SoleData.SupportedLogiset(
+        base;
+        conditions=conditions,
+        relations=relations,
         onestep_precompute_globmemoset=true,
         onestep_precompute_relmemoset=false,
-    )) seconds=0.01 samples=5 evals=1)
-    m = median(trial)
-    println(Float64(m.time), " ", m.allocs, " ", m.memory)
+    ))
+    f = () -> sum(length(sole_check_all(formula_s, supported[], i)) for i in 1:ninstances)
+    setup()
+    m = paired_measure(f; samples=5, before=setup)
+    println(m.time, " ", m.allocs, " ", m.memory)
 end
 
 side = ARGS[1]

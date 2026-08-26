@@ -44,34 +44,17 @@ local `docs/Manifest.toml`; that machine-specific file is not committed.
 
 ## Benchmarks
 
-Start with the smoke run. It exercises the harness and prints a table in about
-a minute, skipping the slowest SoleLogics comparisons:
+The benchmark is a human-run comparison against a local SoleLogics checkout. Run
+its quick suite with:
 
 ```sh
-julia --project=benchmark benchmark/run.jl --smoke
+SOLELOGICS_PATH=/path/to/SoleLogics.jl julia --project=benchmark benchmark/run.jl
 ```
 
-The final lines include:
-
-```text
-benchmark smoke: PASS
-suite | SoleLogics median | Aletheia median
-```
-
-The first smoke run took **1m13s** (including a cold benchmark environment
-setup); the next run took 45s on the same checkout. These timings depend
-heavily on Julia precompile state. The smoke run deliberately skips interval,
-theory, and cold-subprocess rows, which remain in the full run. For the
-complete measurement harness, use:
-
-```sh
-julia --project=benchmark benchmark/run.jl
-```
-
-The full run prints `[case] …` before each case and always prints its table,
-even when a SoleLogics case times out and is recorded as `>10s (not sampled)`.
-Expect tens of minutes; the per-case progress lines let you tell a slow case
-from a hang. Use `--deep` only for a deliberately slower diagnostic run.
+Use `--deep` for the expanded, slower sweeps. The run writes raw values and
+provenance (including load average and per-cell sample counts) to
+`data/benchmark-run/run.txt`; timeout/unavailable cells remain visible in the
+terminal report. Expect tens of minutes for the complete measurement harness.
 
 ## Differential correctness
 
