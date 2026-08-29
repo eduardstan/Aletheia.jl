@@ -193,6 +193,8 @@ end
     @test !invoke_trait(isbranch, p) && invoke_trait(isbranch, t)
     @test Base.invokelatest(Atom, pool, "new") == atom(pool, "new")
     @test Base.invokelatest(Branch, pool, ∧, (p, q)) == branch(pool, ∧, p, q)
+    @test :_TrustedFormulaHandle ∉ names(Aletheia, all=false)
+    @test :_trusted_formula_handle ∉ names(Aletheia, all=false)
     @test Base.invokelatest(Branch, pool, ∧, p, q) == branch(pool, ∧, p, q)
     @test invoke_trait3(isequal, t, t)
     @test !invoke_trait3(isequal, p, t) && !invoke_trait3(isequal, t, p)

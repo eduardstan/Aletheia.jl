@@ -279,7 +279,11 @@ const _trusted_formula_handle = _TrustedFormulaHandle()
 Intern `value` as an atom in `pool`.  Atoms are immutable concrete formulas;
 their integer id is stable for the lifetime of the pool.  The payload must be
 immutable, including values nested in an immutable wrapper, so its hash cannot
-change after interning.
+change after interning.  Documented and exported construction paths validate
+that the pool record exists and matches the supplied fields, so they cannot
+forge a handle.  Internal reconstruction from an already-validated pool node
+uses a private trusted path for performance; it is an implementation detail,
+not an external trust boundary.
 """
 struct Atom{V,P<:FormulaPool} <: Formula
     pool::P
@@ -317,7 +321,11 @@ the connective's declared arity.  A branch stores only pool-local child ids;
 [`children`](@ref) reconstructs immutable handles when they are requested.
 The connective payload must be immutable, including values nested in an
 immutable wrapper.  Children must have been made by the same pool, which keeps
-ids local and makes equality an integer comparison.
+ids local and makes equality an integer comparison.  Documented and exported
+construction paths validate that the pool record exists and matches the
+supplied fields, so they cannot forge a handle.  Internal reconstruction from
+an already-validated pool node uses a private trusted path for performance; it
+is an implementation detail, not an external trust boundary.
 """
 struct Branch{C,N,P<:FormulaPool} <: Formula
     pool::P
@@ -475,8 +483,8 @@ function atom(pool::FormulaPool, value)
     Atom(pool, atom_id, value, _trusted_formula_handle)
 end
 
-# This method makes the type constructor spelling useful without exposing an
-# unsafe constructor that can fabricate a formula id.
+# This method makes the type constructor spelling useful; the full-field
+# constructor above validates any externally supplied pool record and payload.
 Atom(pool::FormulaPool, value) = atom(pool, value)
 
 function _branch_children(pool::FormulaPool, childtuple::Tuple)
