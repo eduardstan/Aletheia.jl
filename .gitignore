@@ -3,7 +3,4 @@ references/*
 *.pdf
 docs/build/
 
-/Manifest.toml
-/docs/Manifest.toml
-/test/Manifest.toml
-/benchmark/Manifest.toml
+Manifest.toml
