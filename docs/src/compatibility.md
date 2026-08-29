@@ -25,9 +25,12 @@ only that import line and left both consumer checkouts otherwise untouched.
 | `children`, `value`, `token`, `tree` | `children`/`value` are direct; `token` returns the atom itself for a leaf and `operator` for a branch; `tree` is identity. |
 | `syntaxstring`, `arity`, `nchildren`, `height`, `atoms`, `leaves`, `operators`, `ntokens`, `natoms`, `nleaves`, `nconnectives`, `noperators` | Tree-walk adapters over ordinary Aletheia formulas. Display-only Sole keywords are accepted and ignored. |
 | `parseformula` | Parses through an explicit compatibility pool; `atom_parser` callbacks returning a compatibility `Atom` are unwrapped to their payload. |
-| `dnf`, `cnf` | Aletheia's classical normal forms, returning ordinary pooled formulas. |
+| `dnf`, `cnf` | Aletheia's classical normal forms, returned in SoleLogics' `DNF`/`CNF` leftmost containers of `Literal`s. `tree` folds one back into an ordinary pooled formula. |
+| `LeftmostLinearForm`, `LeftmostConjunctiveForm`, `LeftmostDisjunctiveForm`, `DNF`, `CNF`, `Literal`, `ispos`, `grandchildren`, `ngrandchildren`, `connective`, `pushconjunct!` | Module-local containers over ordinary Aletheia formulas: a connective in the type parameter and a flat `grandchildren` vector. Nothing is interned in a pool; `tree` folds a container into binary branches, and `check` goes through that fold. |
+| `AbstractAlphabet`, `ExplicitAlphabet`, `UnionAlphabet`, `atoms`, `natoms`, `subalphabets`, `randatom` | Alphabets of Aletheia atoms, with SoleLogics' accessor protocol. |
+| `randformula` | SoleLogics' generator over Aletheia formulas; `mode`, `basecase`, `opweights`, `atompicker`, `maxmodaldepth` and `earlystoppingtreshold` keep their meaning. The caller supplies the generator, since Aletheia has no dependency to build one from a seed. |
 | `dual`, `hasdual`, `arity`, `relation` | Direct for Aletheia connective values (`¬`, `∧`, `∨`, `→`, `Diamond`, `Box`). |
-| `∧`, `∨`, `¬`, `→`, `NamedConnective`, `Operator` | Aletheia values remain the underlying operators; compatibility connective wrappers provide `NamedConnective{:symbol}` dispatch for migrated consumers. |
+| `∧`, `∨`, `¬`, `→`, `NamedConnective`, `Operator`, `Connective` | Aletheia values remain the underlying operators; compatibility connective wrappers provide `NamedConnective{:symbol}` dispatch, and `NamedConnective{:∧}()` constructs the wrapper for the four base connectives. `Operator`/`Connective` are the union of those wrappers with Aletheia's own connective values, so `Vector{Connective}` and `x isa Operator` behave as consumers expect. |
 | `Interval`, `Interval2D`, `Point`, `Point1D`, `Point2D`, `FullDimensionalFrame`, `IA_*`, `IARelations` | Data-level aliases to Aletheia's dimensional and Allen APIs. `IARelations` keeps Sole's 12-value order and excludes `EQUALS`. |
 | `CL_*` | Direct aliases of Aletheia's Compass 2D point relations (`CL_N`, `CL_S`, `CL_E`, `CL_W`, `CL_NE`, `CL_NW`, `CL_SE`, `CL_SW`). |
 | `diamond`, `box`, `TruthDict`, `KripkeStructure`, `allworlds`, `accessible`, `accessibles` | Small adapters to `Diamond`/`Box`, `Valuation`/Boolean `Model`, and lazy frame access; callers collect explicitly when they need storage. |
@@ -57,20 +60,20 @@ remain the core API.
   Aletheia atoms. Direct `Atom(⊤)` construction and parsing a truth leaf still
   raise an `ArgumentError`; finite tableau leaves are handled by the nested
   `ManyValuedLogics` boundary adapter below.
-* `LeftmostLinearForm`, `LeftmostConjunctiveForm`,
-  `LeftmostDisjunctiveForm`, `Literal`, `DNF`, and `CNF` have no faithful
-  wrapper. Aletheia uses ordinary binary branches in a hash-consed DAG;
-  container construction and `ispos` therefore raise explicit errors. The
-  helper names `grandchildren`, `conjuncts`, `disjuncts`, and `nconjuncts`
-  remain useful shallow/flattened views over ordinary formulas, and `dnf`/`cnf`
-  are available with their Aletheia representation.
-* `NamedConnective{:symbol}` dispatch, `BoxRelationalConnective`/
-  `DiamondRelationalConnective` type-parameter dispatch, and the old
-  `collatetruth` protocol have no Aletheia counterpart. Connectives are values
-  with extensible traits, and semantic operations belong to `TruthAlgebra`.
-* `AbstractInterpretationSet`, `alphabet`, `feature`, `condition`, `threshold`,
-  and `normalize` are SoleData/SoleModels concepts. They raise clear errors;
-  they are not approximated by syntax payload inspection.
+* `BoxRelationalConnective`/`DiamondRelationalConnective` type-parameter
+  dispatch and the old `collatetruth` protocol have no Aletheia counterpart.
+  Connectives are values with extensible traits, and semantic operations belong
+  to `TruthAlgebra`.
+* `normalize` is not reproduced. SoleLogics' rewriting profiles
+  (`allow_atom_flipping`, `prefer_implications`, and the rest) are a different
+  normalization semantics from Aletheia's; conversion here is explicit through
+  `cnf` and `dnf`.
+* `AbstractInterpretationSet`, `LogicalInstance`, `feature`, `condition` and
+  `threshold` are SoleData/SoleModels concepts. They raise clear errors; they
+  are not approximated by syntax payload inspection. `alphabet` answers for an
+  alphabet or a vector of atoms and still raises for a dataset, because the
+  alphabets a learner actually builds are SoleData objects over
+  `ScalarCondition` payloads.
 * `RCC5Relations`, `IA3Relations`, and `IA7Relations` map directly to
   Aletheia's RCC5 and coarser Allen relation values. Compass `CL_*` names map
   directly to Aletheia's 2D point relation values. Every unsupported marker
@@ -146,6 +149,41 @@ maximalmembers  minimalmembers  booleanalgebra  G3  G4  G5  G6
 H4  H6  H6_1  H6_2  H6_3  H9  Ł3  Ł4  α  β  BASE_MANY_VALUED_CONNECTIVES
 ```
 
+## Where the remaining gaps are
+
+The four consumers below were scanned for every name they take from
+SoleLogics, and each name was checked against this module. What is left is not
+one list but three different kinds of thing.
+
+### Genuinely SoleLogics, and now covered
+
+Leftmost containers and `Literal`, `NamedConnective{:sym}()` construction,
+alphabets, `randatom` and `randformula`. These are syntax-level concepts, so
+this module can supply them over ordinary Aletheia formulas without the core
+learning about them.
+
+### SoleData or SoleModels concepts reached through SoleLogics
+
+`AbstractInterpretationSet`, `LogicalInstance`, `feature`, `condition`,
+`threshold`, and the alphabets a learner actually builds — `UnionAlphabet`s of
+`Atom{ScalarCondition}` produced by `alphabet(::AbstractLogiset)`. The names
+resolve here, but the values do not come from a logic library.
+`ModalDecisionLists` imports `AbstractAlphabet`, `UnionAlphabet` and
+`alphabet` from **SoleData**, not from SoleLogics, and
+`ModalDecisionTrees` takes `OneWorld` and `Worlds` from SoleData as well.
+Substituting under the learners is therefore a SoleData/SoleModels question,
+not a question about this module.
+
+### Left to the maintainer
+
+`collatetruth` and the `normalize` rewriting profiles. Both are semantics, not
+vocabulary: `collatetruth` asks for truth values that are formulas, and
+`normalize` asks for a rewriting calculus that differs from Aletheia's. Either
+would change the core, so both stay documented gaps above.
+
+`SoleReasoners` uses no name outside the first group: its only absent symbol
+was `randformula`.
+
 ## Many-valued tableau bridge
 
 The nested `ManyValuedLogics` namespace maps SoleLogics' finite tableau
@@ -206,10 +244,10 @@ A local copy of `SolePostHoc/src/shared_utils.jl` was loaded in a small module
 with SoleData/SoleModels test doubles and `using Aletheia.SoleLogics`; the
 SolePostHoc checkout itself was not modified. The loaded consumer functions
 `_element_to_string`, its `Atom`/`SyntaxBranch` traversal, and its parser
-callback all ran successfully. The `dnf_to_syntaxbranch` path could not be
-attempted because it requires the deliberately unsupported leftmost wrappers.
-The mapped surface is exercised directly by `test/compatibility.jl`, which adds
-neither Sole package as a dependency.
+callback all ran successfully. Its `dnf_to_syntaxbranch` chain — `dnf`, then
+`.grandchildren`, `.ispos`/`.atom`, and `SyntaxBranch(NamedConnective{:∨}(),
+…)` — now runs as well; `test/compatibility.jl` keeps that chain verbatim in
+shape. The tests add neither Sole package as a dependency.
 
 ## Where the compatibility layer spent its time
 

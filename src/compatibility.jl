@@ -44,6 +44,7 @@ const _DEFAULT_POOL = Aletheia.FormulaPool(_DEFAULT_SIGNATURE)
 """The Aletheia formula interface used in place of SoleLogics.Formula."""
 const Formula = Aletheia.Formula
 const SyntaxStructure = Aletheia.Formula
+const AbstractSyntaxStructure = Aletheia.Formula
 const SyntaxTree = Aletheia.Formula
 abstract type NamedConnective{Name} end
 struct _CompatConnective{Name,C} <: NamedConnective{Name}
@@ -53,8 +54,17 @@ const _NOT = _CompatConnective{:¬,Aletheia.Negation}(Aletheia.:¬)
 const _AND = _CompatConnective{:∧,Aletheia.Conjunction}(Aletheia.:∧)
 const _OR = _CompatConnective{:∨,Aletheia.Disjunction}(Aletheia.:∨)
 const _IMP = _CompatConnective{:→,Aletheia.Implication}(Aletheia.:→)
-const Operator = NamedConnective
-const Connective = Operator
+const _AnyConnective = Union{NamedConnective,Aletheia.Negation,Aletheia.Conjunction,
+    Aletheia.Disjunction,Aletheia.Implication,Aletheia.AbstractRelationalConnective}
+_named_connective(::Val{name}) where {name} = _unsupported(:NamedConnective,
+    "Aletheia has no connective spelled $(name)")
+_named_connective(::Val{:¬}) = _NOT
+_named_connective(::Val{:∧}) = _AND
+_named_connective(::Val{:∨}) = _OR
+_named_connective(::Val{:→}) = _IMP
+(::Type{NamedConnective{name}})() where {name} = _named_connective(Val(name))
+const Operator = _AnyConnective
+const Connective = _AnyConnective
 const AbstractRelation = Aletheia.RelationFamily
 const BoxRelationalConnective = Aletheia.Box{<:Any}
 const DiamondRelationalConnective = Aletheia.Diamond{<:Any}
@@ -363,6 +373,7 @@ Branch(connective::_LegacyConnective, children::Tuple{F,G}) where {F<:_CompatFor
     Aletheia.arity(connective) == 2 ? _compat_branch(connective, children[1], children[2]) :
         _compat_branch(connective, children)
 Branch(connective::_LegacyConnective, children...) = Branch(connective, children)
+Branch(connective::_CompatConnective, children...) = Branch(connective.native, children...)
 Branch(connective::Aletheia.Diamond, children...) = _compat_branch(connective, children)
 Branch(connective::Aletheia.Box, children...) = _compat_branch(connective, children)
 const SyntaxBranch = Branch
@@ -615,27 +626,261 @@ isbox = Aletheia.isbox
 isgrounding = Aletheia.isgrounding
 isgrounded(formula::Aletheia.Formula) = Aletheia.isgrounded(_unwrap(formula))
 
-# Legacy formula containers are deliberately not aliases: Aletheia's ordinary
-# Formula is a pool-local DAG, and cannot honestly promise grandchildren or
-# leftmost linear-form invariants.
-abstract type LeftmostLinearForm end
-const LeftmostConjunctiveForm = LeftmostLinearForm
-const LeftmostDisjunctiveForm = LeftmostLinearForm
-const DNF = LeftmostLinearForm
-const CNF = LeftmostLinearForm
-struct Literal
-    function Literal(args...)
-        _legacy_container(:Literal, args...)
+# Sole's leftmost linear forms are containers, not DAG nodes: a connective in
+# the type parameter and a flat vector of operands.  They live entirely in this
+# module.  Nothing here is ever interned in a FormulaPool; every operation that
+# needs a real Aletheia formula goes through `tree`, which folds the container
+# into ordinary binary branches.  That keeps the container shape available to
+# migrating consumers without making it a core representation.
+struct LeftmostLinearForm{C,SS} <: Aletheia.Formula
+    grandchildren::Vector{SS}
+
+    function LeftmostLinearForm{C,SS}(grandchildren::AbstractVector,
+            allow_empty::Bool=false) where {C,SS}
+        n = length(grandchildren)
+        if !allow_empty
+            n > 0 || throw(ArgumentError(
+                "cannot instantiate LeftmostLinearForm{$C} with no grandchildren"))
+            a = Aletheia.arity(C())
+            if a == 1
+                n == 1 || throw(ArgumentError(
+                    "mismatching number of grandchildren ($n) and connective's arity ($a)"))
+            else
+                h = (n - 1) / (a - 1)
+                (isinteger(h) && h >= 0) || throw(ArgumentError(
+                    "mismatching number of grandchildren ($n) and connective's arity ($a)"))
+            end
+        end
+        new{C,SS}(convert(Vector{SS}, grandchildren))
     end
 end
+const LeftmostConjunctiveForm{SS} = LeftmostLinearForm{Aletheia.Conjunction,SS}
+const LeftmostDisjunctiveForm{SS} = LeftmostLinearForm{Aletheia.Disjunction,SS}
+const CNF{SS} = LeftmostConjunctiveForm{LeftmostDisjunctiveForm{SS}}
+const DNF{SS} = LeftmostDisjunctiveForm{LeftmostConjunctiveForm{SS}}
 const AbstractInterpretationSet = _unsupported_name(:AbstractInterpretationSet)
-function _legacy_container(name, args...)
-    _unsupported(name, "Aletheia has ordinary Formula DAGs, not Sole leftmost/interpretation-set containers")
+
+function _element_type(grandchildren::AbstractVector)
+    element = eltype(grandchildren)
+    isconcretetype(element) && return element
+    isempty(grandchildren) && return Aletheia.Formula
+    reduce(typejoin, map(typeof, grandchildren))
 end
-LeftmostLinearForm(args...) = _legacy_container(:LeftmostLinearForm, args...)
-function ispos(args...)
-    _unsupported(:ispos, "Aletheia has no Literal wrapper; use an explicit negation branch")
+LeftmostLinearForm{C}(grandchildren::AbstractVector, args...) where {C} =
+    LeftmostLinearForm{C,_element_type(grandchildren)}(grandchildren, args...)
+LeftmostLinearForm(connective::_AnyConnective, grandchildren::AbstractVector, args...) =
+    LeftmostLinearForm{typeof(_native_operator(connective))}(grandchildren, args...)
+
+# Sole also builds a container by flattening a syntax tree over one connective.
+function LeftmostLinearForm(formula::Aletheia.Formula, connective=nothing, args...)
+    formula isa LeftmostLinearForm && return LeftmostLinearForm(tree(formula), connective, args...)
+    native = connective === nothing ? nothing : _native_operator(connective)
+    if native === nothing
+        (formula isa _CompatBranch || formula isa Aletheia.Branch) || _unsupported(:LeftmostLinearForm,
+            "a leaf cannot be flattened without an explicit connective")
+        native = _native_connective(formula)
+    end
+    LeftmostLinearForm(native, _flatten(_wrap(formula), typeof(native)), args...)
 end
+LeftmostLinearForm{C}(formula::Aletheia.Formula, args...) where {C} =
+    LeftmostLinearForm(formula, C(), args...)
+
+@inline _native_operator(connective::_CompatConnective) = connective.native
+@inline _native_operator(connective) = connective
+@inline _compat_operator(native::Aletheia.Negation) = _NOT
+@inline _compat_operator(native::Aletheia.Conjunction) = _AND
+@inline _compat_operator(native::Aletheia.Disjunction) = _OR
+@inline _compat_operator(native::Aletheia.Implication) = _IMP
+@inline _compat_operator(native) = native
+
+grandchildren(form::LeftmostLinearForm) = form.grandchildren
+ngrandchildren(form::LeftmostLinearForm) = length(form.grandchildren)
+ngrandchildren(formula::Aletheia.Formula) = length(grandchildren(formula))
+children(form::LeftmostLinearForm) = form.grandchildren
+nchildren(form::LeftmostLinearForm) = length(form.grandchildren)
+connective(::LeftmostLinearForm{C}) where {C} = C()
+connective(formula::Union{_CompatBranch,Aletheia.Branch}) = _native_connective(formula)
+token(form::LeftmostLinearForm) = _compat_operator(connective(form))
+Base.getindex(form::LeftmostLinearForm, index::Integer) = form.grandchildren[index]
+Base.getindex(form::LeftmostLinearForm{C}, indices::AbstractVector) where {C} =
+    LeftmostLinearForm{C}(form.grandchildren[indices])
+Base.length(form::LeftmostLinearForm) = length(form.grandchildren)
+Base.iterate(form::LeftmostLinearForm, state...) = iterate(form.grandchildren, state...)
+Base.push!(form::LeftmostLinearForm, element) = push!(form.grandchildren, element)
+pushconjunct!(form::LeftmostLinearForm, element) = push!(form.grandchildren, element)
+Base.:(==)(left::LeftmostLinearForm{C}, right::LeftmostLinearForm{C}) where {C} =
+    left.grandchildren == right.grandchildren
+
+# A literal is an atom or its negation.  Sole consumers read `.ispos`/`.atom`
+# directly, so the field names are part of the contract.
+struct Literal{T} <: Aletheia.Formula
+    ispos::Bool
+    atom::T
+end
+Literal(formula::Union{Atom,Aletheia.Atom,Truth}, flag::Bool=true) =
+    Literal{typeof(formula)}(flag, formula)
+function Literal(formula::Union{_CompatBranch,Aletheia.Branch}, flag::Bool=true)
+    _native_connective(formula) isa Aletheia.Negation || _unsupported(:Literal,
+        "cannot construct a Literal from $(syntaxstring(formula))")
+    Literal(_wrap(children(formula)[1]), !flag)
+end
+ispos(literal::Literal) = literal.ispos
+atom(literal::Literal) = literal.atom
+children(::Literal) = ()
+nchildren(::Literal) = 0
+Base.:(==)(left::Literal, right::Literal) =
+    left.ispos == right.ispos && left.atom == right.atom
+hasdual(::Literal) = true
+dual(literal::Literal) = Literal(!literal.ispos, literal.atom)
+
+# Folding back into Aletheia's representation.  Sole unwinds leftmost, so the
+# fold is right-nested for a binary connective: c(φ1, c(φ2, φ3)).
+tree(literal::Literal) = literal.ispos ? tree(literal.atom) :
+    Branch(Aletheia.:¬, tree(literal.atom))
+function tree(form::LeftmostLinearForm{C}) where {C}
+    c = C()
+    subtrees = [tree(child) for child in form.grandchildren]
+    length(subtrees) == 1 && return Aletheia.arity(c) == 1 ? Branch(c, subtrees[1]) : subtrees[1]
+    foldr((left, right) -> Branch(c, left, right), subtrees)
+end
+@inline _unwrap(form::LeftmostLinearForm) = _unwrap(tree(form))
+@inline _unwrap(literal::Literal) = _unwrap(tree(literal))
+_repool(form::Union{LeftmostLinearForm,Literal}, target) = _repool(tree(form), target)
+height(form::Union{LeftmostLinearForm,Literal}) = height(tree(form))
+conjuncts(form::LeftmostLinearForm{Aletheia.Conjunction}) = form.grandchildren
+disjuncts(form::LeftmostLinearForm{Aletheia.Disjunction}) = form.grandchildren
+nconjuncts(form::LeftmostLinearForm{Aletheia.Conjunction}) = length(form.grandchildren)
+
+function syntaxstring(form::LeftmostLinearForm{C}; kwargs...) where {C}
+    separator = " " * Aletheia.notation(C()) * " "
+    join((_bracket(child; kwargs...) for child in form.grandchildren), separator)
+end
+syntaxstring(literal::Literal; kwargs...) = syntaxstring(tree(literal); kwargs...)
+function _bracket(child; kwargs...)
+    text = syntaxstring(child; kwargs...)
+    occursin(' ', text) ? "(" * text * ")" : text
+end
+Base.show(io::IO, form::LeftmostLinearForm) = print(io, syntaxstring(form))
+Base.show(io::IO, literal::Literal) = print(io, syntaxstring(literal))
+
+check(form::Union{LeftmostLinearForm,Literal}, model::Aletheia.Model, args...) =
+    check(tree(form), model, args...)
+interpret(form::Union{LeftmostLinearForm,Literal}, model::Aletheia.Model, args...) =
+    interpret(tree(form), model, args...)
+
+# Sole alphabets are collections of atoms.  The vocabulary is kept here because
+# it is what `randformula`/`randatom` consume; the alphabets that a learner
+# actually builds are SoleData objects and remain out of this module's reach.
+abstract type AbstractAlphabet{V} end
+struct ExplicitAlphabet{V} <: AbstractAlphabet{V}
+    atoms::Vector{V}
+
+    ExplicitAlphabet(atoms::Vector{V}) where {V<:Aletheia.Formula} = new{V}(atoms)
+    ExplicitAlphabet(values) = ExplicitAlphabet(
+        [value isa Aletheia.Formula ? value : Atom(value) for value in values])
+end
+struct UnionAlphabet{A<:AbstractAlphabet} <: AbstractAlphabet{Any}
+    subalphabets::Vector{A}
+end
+UnionAlphabet(subalphabets) = UnionAlphabet(collect(subalphabets))
+atoms(alphabet::ExplicitAlphabet) = alphabet.atoms
+atoms(alphabet::UnionAlphabet) = reduce(vcat, atoms.(alphabet.subalphabets);
+    init=Aletheia.Formula[])
+subalphabets(alphabet::UnionAlphabet) = alphabet.subalphabets
+subalphabets(alphabet::AbstractAlphabet) = [alphabet]
+natoms(alphabet::AbstractAlphabet) = length(atoms(alphabet))
+Base.in(formula::Aletheia.Formula, alphabet::AbstractAlphabet) = formula in atoms(alphabet)
+Base.isfinite(::Type{<:AbstractAlphabet}) = true
+Base.isfinite(alphabet::AbstractAlphabet) = isfinite(typeof(alphabet))
+Base.eltype(alphabet::AbstractAlphabet) = eltype(atoms(alphabet))
+alphabet(value::AbstractAlphabet) = value
+alphabet(values::AbstractVector) = ExplicitAlphabet(values)
+
+# Random generation.  Aletheia has no dependencies, so no random-number
+# generator is constructed here: the caller supplies one, or Base's default is
+# used.  Integer seeds are the one Sole spelling this cannot honour, because
+# building a seeded generator would require Random.
+@inline _atom_domain(alphabet::AbstractAlphabet) = atoms(alphabet)
+@inline _atom_domain(values::AbstractVector) = values
+@inline _rand(::Nothing, args...) = rand(args...)
+@inline _rand(rng, args...) = rand(rng, args...)
+function _rng(rng)
+    rng isa Integer && _unsupported(:randformula,
+        "an integer seed needs Random; pass an AbstractRNG instead")
+    rng
+end
+function _weighted_pick(rng, items, weights)
+    weights === nothing && return _rand(rng, items)
+    total = sum(weights)
+    total > 0 || throw(ArgumentError("sampling weights must sum to a positive value"))
+    target = _rand(rng, Float64) * total
+    accumulated = zero(total)
+    for index in eachindex(items)
+        accumulated += weights[index]
+        accumulated >= target && return items[index]
+    end
+    items[end]
+end
+randatom(rng, alphabet) = _rand(_rng(rng), _atom_domain(alphabet))
+randatom(alphabet) = randatom(nothing, alphabet)
+
+"""
+    randformula([rng], maxheight, alphabet, operators; kwargs...)
+
+Sole's random formula generator, reproduced over Aletheia formulas. `mode`,
+`basecase`, `opweights`, `atompicker`, `maxmodaldepth` and
+`earlystoppingtreshold` keep SoleLogics' meaning.
+"""
+function randformula(rng, maxheight::Integer, alphabet, operators::AbstractVector;
+        maxmodaldepth::Integer=maxheight,
+        atompicker=randatom,
+        opweights=nothing,
+        basecase=nothing,
+        mode::Symbol=:maxheight,
+        earlystoppingtreshold::AbstractFloat=0.5,
+        kwargs...)
+    isempty(kwargs) || _unsupported(:randformula,
+        "unsupported keyword(s) $(join(string.(keys(kwargs)), ", "))")
+    rng = _rng(rng)
+    domain = _atom_domain(alphabet)
+    isempty(domain) && basecase === nothing && throw(ArgumentError(
+        "cannot generate formulas from an empty alphabet"))
+    picker = if atompicker isa Function
+        atompicker
+    elseif atompicker === nothing
+        (generator, source) -> _rand(generator, _atom_domain(source))
+    else
+        weights = collect(atompicker)
+        length(weights) == length(domain) || throw(ArgumentError(
+            "mismatching numbers of atoms ($(length(domain))) and atompicker ($(length(weights)))"))
+        (generator, source) -> _weighted_pick(generator, _atom_domain(source), weights)
+    end
+    weights = opweights === nothing ? nothing : collect(opweights)
+    weights === nothing || length(weights) == length(operators) || throw(ArgumentError(
+        "mismatching numbers of operators ($(length(operators))) and opweights ($(length(weights)))"))
+    natives = [_native_operator(op) for op in operators]
+    nonmodal = [index for index in eachindex(natives) if !Aletheia.ismodal(natives[index])]
+    isempty(nonmodal) && maxmodaldepth < maxheight && throw(ArgumentError(
+        "no non-modal operator is available below the modal depth limit"))
+    function generate(height::Integer, modaldepth::Integer, must_honor::Bool)
+        if height == 0 || (mode != :full && !must_honor &&
+                _rand(rng, Float64) < earlystoppingtreshold)
+            return basecase === nothing ? picker(rng, alphabet) : basecase(rng)
+        end
+        candidates, candidate_weights = modaldepth > 0 ? (natives, weights) :
+            (natives[nonmodal], weights === nothing ? nothing : weights[nonmodal])
+        operator = _weighted_pick(rng, candidates, candidate_weights)
+        n = Aletheia.arity(operator)
+        honored = must_honor && mode != :maxheight ? _rand(rng, 1:n) : 0
+        subformulas = [generate(height - 1,
+            modaldepth - (Aletheia.ismodal(operator) ? 1 : 0),
+            must_honor && index == honored) for index in 1:n]
+        Branch(operator, subformulas...)
+    end
+    generate(maxheight, maxmodaldepth, mode != :maxheight)
+end
+randformula(maxheight::Integer, alphabet, operators::AbstractVector; kwargs...) =
+    randformula(nothing, maxheight, alphabet, operators; kwargs...)
 
 # Modal and dimensional spellings with a direct data-level equivalent.
 const Interval = Aletheia.Interval
@@ -1043,6 +1288,8 @@ export IA_A, IA_L, IA_B, IA_E, IA_D, IA_O, IA_Ai, IA_Li, IA_Bi, IA_Ei, IA_Di, IA
 export token, op, tree, children, value, nchildren, arity, syntaxstring, hasdual, dual, relation
 export formulas, subformulas, atoms, leaves, connectives, operators, ntokens, natoms, nleaves
 export nconnectives, noperators, height, conjuncts, disjuncts, grandchildren, nconjuncts
+export AbstractSyntaxStructure, ngrandchildren, connective, pushconjunct!
+export AbstractAlphabet, ExplicitAlphabet, UnionAlphabet, subalphabets, randatom, randformula
 export parseformula, check, interpret, frame, algebra, domain, top, bot, worlds, allworlds
 export accessible, accessibles, collateworlds, worldtype
 export AbstractFrame, AbstractUniModalFrame, AbstractMultiModalFrame
@@ -1067,8 +1314,33 @@ for name in (:CL_N, :CL_S, :CL_E, :CL_W, :CL_NE, :CL_NW, :CL_SE, :CL_SW,
     @eval export $(name)
 end
 
-dnf(formula::Aletheia.Formula) = _wrap(Aletheia.dnf(_unwrap(formula)))
-cnf(formula::Aletheia.Formula) = _wrap(Aletheia.cnf(_unwrap(formula)))
+# Sole's dnf/cnf return leftmost containers of literals, and consumers dispatch
+# on that shape.  The normal form itself is Aletheia's; only the container is
+# rebuilt here.
+function _literal(formula, literaltype::Type)
+    literaltype === Literal || _unsupported(:dnf,
+        "literal type $(literaltype) is not supported; use Literal")
+    if (formula isa _CompatBranch || formula isa Aletheia.Branch) &&
+            _native_connective(formula) isa Aletheia.Negation
+        return Literal(false, _wrap(children(formula)[1]))
+    end
+    Literal(true, _wrap(formula))
+end
+function _normal_form(formula::Aletheia.Formula, native, outer, inner, literaltype)
+    terms = _flatten(_wrap(native(_unwrap(formula))), outer)
+    LeftmostLinearForm(outer(), [LeftmostLinearForm(inner(),
+        [_literal(literal, literaltype) for literal in _flatten(term, inner)]) for term in terms])
+end
+function dnf(formula::Aletheia.Formula, literaltype::Type=Literal; kwargs...)
+    isempty(kwargs) || _unsupported(:dnf,
+        "Aletheia's normal forms take no normalization keyword(s)")
+    _normal_form(formula, Aletheia.dnf, Aletheia.Disjunction, Aletheia.Conjunction, literaltype)
+end
+function cnf(formula::Aletheia.Formula, literaltype::Type=Literal; kwargs...)
+    isempty(kwargs) || _unsupported(:cnf,
+        "Aletheia's normal forms take no normalization keyword(s)")
+    _normal_form(formula, Aletheia.cnf, Aletheia.Conjunction, Aletheia.Disjunction, literaltype)
+end
 
 # Aletheia names useful to a consumer that is being migrated incrementally.
 const FormulaPool = Aletheia.FormulaPool

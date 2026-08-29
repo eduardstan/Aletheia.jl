@@ -45,6 +45,8 @@ When updating this file, preserve this bar for all agents and keep entries conci
 
 - `src/compatibility.jl` defines the nested opt-in `Aletheia.SoleLogics` vocabulary; the derived consumer inventory, mappings, deliberate gaps, and consumer-trial evidence live in `docs/src/compatibility.md`.
 - `SoleLogics.ManyValuedLogics` finite tableau names are boundary adapters there: `FiniteTruth` retains the incumbent indexed object while `FiniteFLewAlgebra` delegates tables to Aletheia's unboxed `UInt8` algebras.
+- Leftmost containers, `Literal`, alphabets and `randformula` live only in `src/compatibility.jl`: they subtype `Aletheia.Formula` (as `Truth` already did) but are never interned in a pool, and every semantic operation goes through `tree`. Random generation deliberately takes the caller's RNG, because adding `Random` would end the core's zero-dependency property.
+- `docs/src/compatibility.md` classifies the remaining consumer gaps into SoleLogics surface, SoleData/SoleModels concerns, and maintainer decisions; check it before adding a name a learner appears to need.
 
 ## ILP foundations
 
