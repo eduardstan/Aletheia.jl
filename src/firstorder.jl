@@ -283,7 +283,9 @@ function first_order_interpretation(model::Model; atoms=nothing, relations=nothi
     atom_names = atoms === nothing ? _valuation_atoms(model) : collect(atoms)
     relation_names = relations === nothing ? _model_relation_names(frame(model)) : collect(relations)
     raw_valuation = valuation(model)
-    opaque_valuation = raw_valuation isa Function || (raw_valuation isa Valuation && raw_valuation.data isa Function)
+    opaque_valuation = raw_valuation isa Function || raw_valuation isa ValuationCallback ||
+        (raw_valuation isa Valuation &&
+         (raw_valuation.data isa Function || raw_valuation.data isa ValuationCallback))
     if atoms === nothing && isempty(atom_names) && !(raw_valuation isa AbstractDict || raw_valuation isa Valuation{<:AbstractDict}) && opaque_valuation
         throw(ArgumentError("callable valuations require an explicit atoms keyword"))
     end

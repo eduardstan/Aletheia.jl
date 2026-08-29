@@ -1,11 +1,13 @@
 # Bisimulation and finite bisimulation contraction, following BDV §2.2.
 
 function _model_relation_names(frame::Frame)
-    frame.relations isa AbstractDict ? collect(keys(frame.relations)) : Any[]
+    frame.relations isa AbstractDict ? collect(keys(frame.relations)) :
+        frame.relations isa _IntervalRelationMap ? collect(ALLEN_RELATIONS) : Any[]
 end
 function _opaque_valuation(model::Model)
     data = valuation(model)
-    data isa Function || (data isa Valuation && data.data isa Function)
+    data isa Function || data isa ValuationCallback ||
+        (data isa Valuation && (data.data isa Function || data.data isa ValuationCallback))
 end
 function _valuation_atoms(model::Model)
     data = valuation(model)
@@ -48,8 +50,9 @@ refinement pass is O(n₁n₂r d₁d₂) time and O(n₁n₂) space; because thi
 straightforward implementation can make at most n₁n₂ passes, its worst-case time is
 O((n₁n₂)²r d₁d₂).  Definitions and invariance are those of BDV §2.2
 [blackburn2001](@cite).
-When omitted, `atoms` and `relations` are inferred from dictionary-backed
-models and frames; pass them explicitly for callable valuations/relations.
+When omitted, `atoms` are inferred from dictionary-backed models and `relations`
+from dictionary-backed frames and generated interval frames; pass them explicitly
+for callable valuations or callable accessibility.
 Dictionary valuation keys that overlap the frame's worlds are ambiguous, so
 those models also require an explicit `atoms` keyword.
 """
@@ -179,9 +182,10 @@ selects the quotient world corresponding to an original world, while `check`
 and `extension` delegate normally.  For n worlds, r relations, and maximum
 out-degree d, partition refinement costs O(n²rd log d) worst-case time and
 O(nrd + n) working space; quotient construction adds O(nrd) time and storage.
-Relation functions must be accompanied by `relations`; dictionary-backed frames
-infer relation names. Dictionary valuation keys that overlap frame worlds are
-ambiguous and require an explicit `atoms` keyword.
+Callable relation providers must be accompanied by `relations`, except for
+built-in generated interval frames, whose Allen relation names are inferred.
+Dictionary-backed frames infer relation names. Dictionary valuation keys that
+overlap frame worlds are ambiguous and require an explicit `atoms` keyword.
 """
 function bisimulation_contraction(model::Model; atoms=nothing, relations=nothing)
     atoms === nothing && _opaque_valuation(model) &&

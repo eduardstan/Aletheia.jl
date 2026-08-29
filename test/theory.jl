@@ -100,6 +100,17 @@ end
     @test !bisimilar(m1, 1, bad, :a; atoms=["p"], relations=[:R])
     @test_throws ArgumentError bisimilar(Model(f1, BOOLEAN, (a, w) -> false), 1, m1, 1)
 
+    callback_model = Model(Frame((1, 2), Dict(); index=true), BOOLEAN,
+        ValuationCallback((a, world) -> a == "p" && world == 2))
+    @test_throws ArgumentError bisimilar(callback_model, 1, callback_model, 2)
+    @test_throws ArgumentError bisimulation_contraction(callback_model)
+    @test_throws ArgumentError first_order_interpretation(callback_model)
+    callback_quotient = bisimulation_contraction(callback_model; atoms=["p"])
+    @test length(classes(callback_quotient)) == 2
+    @test [check(p, callback_model, world) for world in worlds(frame(callback_model))] ==
+        [check(p, callback_quotient, contraction_world(callback_quotient, world))
+         for world in worlds(frame(callback_model))]
+
     # A dictionary atom key that is also a world is ambiguous without an
     # explicit namespace; inference must not silently erase its labels.
     ambiguous_frame = Frame((1, 2), Dict(); index=true)
@@ -115,6 +126,16 @@ end
     ambiguous_fo = first_order_interpretation(ambiguous_model; atoms=[1])
     @test evaluate(standard_translation(ambiguous_atom), ambiguous_fo, Dict(:x => 1))
     @test !evaluate(standard_translation(ambiguous_atom), ambiguous_fo, Dict(:x => 2))
+
+    # Generated interval frames use a relation provider rather than a relation
+    # dictionary; relation inference must still include their Allen relations.
+    interval = interval_frame(3)
+    interval_model = Model(interval, BOOLEAN, Dict())
+    interval_worlds = worlds(interval)
+    @test !bisimilar(interval_model, interval_worlds[1], interval_model, interval_worlds[2])
+    @test !bisimilar(interval_model, interval_worlds[1], interval_model, interval_worlds[2]; relations=[BEFORE])
+    interval_quotient = bisimulation_contraction(interval_model)
+    @test length(classes(interval_quotient)) > 1
 
     redundant = Frame((1, 2, 3), Dict(:R => Dict(1 => [2, 3], 2 => [2, 3], 3 => [2, 3])); index=true)
     redundant_model = Model(redundant, BOOLEAN, Dict("p" => Set([1, 2, 3])))
