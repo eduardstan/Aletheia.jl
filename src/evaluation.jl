@@ -95,7 +95,7 @@ function _evaluation_plan(nodes::Vector{_EvaluationNode}, model::Model)
 end
 
 @inline function _node_atom(formula::Formula, node::_EvaluationNode)
-    Atom(pool(formula), node.id, node.payload)
+    Atom(pool(formula), node.id, node.payload, _trusted_formula_handle)
 end
 
 function _atom_extension(node::_EvaluationNode, formula::Formula, model::Model{T}, positions, ::Type{Vector{T}})::Vector{T} where T

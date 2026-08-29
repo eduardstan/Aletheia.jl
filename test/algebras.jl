@@ -24,7 +24,8 @@
         @test truth_type(a) === UInt8 && carrier(a) === UInt8
         @test top(a) == UInt8(1) && bottom(a) == UInt8(2)
         @test domain(a) == Tuple(UInt8.(1:size(a.join, 1)))
-        @test levels(a) == domain(a) && !isfinitechain(a)
+        expected_chain = any(a === chain for chain in (G3, G4, G5, G6, Ł3, Ł4))
+        @test levels(a) == domain(a) && isfinitechain(a) == expected_chain
         @test length(a) == size(a.join, 1)
         for x in domain(a), y in domain(a), z in domain(a)
             @test implication(a, x, y) == residuum(a, x, y)
@@ -64,6 +65,13 @@
     @test Aletheia._finite_subset(H4, 2) == UInt8[2]
     flat = FiniteFLewAlgebra([1, 1, 1, 2], [1, 2, 2, 2], [1, 2, 2, 2], 2, 1)
     @test flat isa FiniteFLewAlgebra{2} && flat.join == UInt8[1 1; 1 2]
+    general_chain = FiniteFLewAlgebra([1 2; 2 2], [1 1; 1 2], [1 1; 1 2], 1, 2)
+    @test isfinitechain(general_chain)
+    @test isfinitechain(BooleanFLewAlgebra)
+    forged_tables = ones(FiniteTruth, 2, 2)
+    @test_throws MethodError FiniteFLewAlgebra{2}(
+        forged_tables, forged_tables, forged_tables, forged_tables,
+        FiniteTruth(1), FiniteTruth(2), Val(:validated))
     @test_throws ArgumentError FiniteFLewAlgebra([1, 2, 3], [1, 2, 3], [1, 2, 3], 2, 1)
     @test_throws ArgumentError FiniteFLewAlgebra{2}(:bad, [1 2; 2 2], [1 2; 2 2], 2, 1)
     @test_throws ArgumentError FiniteFLewAlgebra{2}([1 1; 1 2], :bad, [1 2; 2 2], 2, 1)

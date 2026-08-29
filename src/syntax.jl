@@ -208,6 +208,27 @@ function hasconnective(signature::Signature, connective)
     any(c -> isequal(c, connective), signature.connectives)
 end
 
+# Hash-consed payloads must not be mutable.  The check is recursive so an
+# immutable wrapper around a mutable value (for example, `Diamond([:R])`) is
+# rejected as well.  Strings and symbols are immutable at the language level
+# even though Julia represents their types as mutable reference types.
+function _payload_is_immutable(value, seen=IdDict{Any,Nothing}())
+    (value isa String || value isa Symbol || value isa Type) && return true
+    value isa Ptr && return false
+    T = typeof(value)
+    isbitstype(T) && !isstructtype(T) && return true
+    ismutabletype(T) && return false
+    haskey(seen, value) && return true
+    seen[value] = nothing
+    all(_payload_is_immutable(getfield(value, i), seen) for i in 1:fieldcount(T))
+end
+
+function _require_immutable_payload(value, role::AbstractString)
+    _payload_is_immutable(value) ||
+        throw(ArgumentError("$role must be immutable; mutable payloads cannot be interned"))
+    value
+end
+
 # Internal pool records use ids in their key; no formula tree is ever used as a
 # dictionary key.  This is the important difference from structural tree hashing.
 struct _PoolNode
@@ -246,16 +267,50 @@ contains no truth values, semantic state, or evaluator hooks.
 """
 abstract type Formula end
 
+# Pool nodes are trusted after interning.  This private tag selects the
+# allocation-only constructors used when rebuilding handles from those nodes;
+# callers supplying formula fields still go through the validating methods.
+struct _TrustedFormulaHandle end
+const _trusted_formula_handle = _TrustedFormulaHandle()
+
 """
     Atom(pool, value)
 
 Intern `value` as an atom in `pool`.  Atoms are immutable concrete formulas;
-their integer id is stable for the lifetime of the pool.
+their integer id is stable for the lifetime of the pool.  The payload must be
+immutable, including values nested in an immutable wrapper, so its hash cannot
+change after interning.  Documented and exported construction paths validate
+that the pool record exists and matches the supplied fields, so they cannot
+forge a handle.  Internal reconstruction from an already-validated pool node
+uses a private trusted path for performance; it is an implementation detail,
+not an external trust boundary.
 """
 struct Atom{V,P<:FormulaPool} <: Formula
     pool::P
     id::Int
     value::V
+
+    # Internal reconstruction from an already-validated pool node.
+    function Atom(pool::P, id::Int, value::V, ::_TrustedFormulaHandle) where {V,P<:FormulaPool}
+        new{V,P}(pool, id, value)
+    end
+
+    function Atom(pool::P, id::Int, value::V) where {V,P<:FormulaPool}
+        _require_immutable_payload(value, "atom payload")
+        lock(pool.lock)
+        try
+            1 <= id <= length(pool.nodes) ||
+                throw(ArgumentError("atom id $id is not present in its FormulaPool"))
+            node = pool.nodes[id]
+            node.kind == 0x01 ||
+                throw(ArgumentError("formula id $id is not an atom"))
+            isequal(node.payload, value) ||
+                throw(ArgumentError("atom payload does not match formula id $id"))
+        finally
+            unlock(pool.lock)
+        end
+        new{V,P}(pool, id, value)
+    end
 end
 
 """
@@ -264,14 +319,45 @@ end
 Intern a connective application in `pool`.  The number of children must equal
 the connective's declared arity.  A branch stores only pool-local child ids;
 [`children`](@ref) reconstructs immutable handles when they are requested.
-Children must have been made by the same pool, which keeps ids local and makes
-equality an integer comparison.
+The connective payload must be immutable, including values nested in an
+immutable wrapper.  Children must have been made by the same pool, which keeps
+ids local and makes equality an integer comparison.  Documented and exported
+construction paths validate that the pool record exists and matches the
+supplied fields, so they cannot forge a handle.  Internal reconstruction from
+an already-validated pool node uses a private trusted path for performance; it
+is an implementation detail, not an external trust boundary.
 """
 struct Branch{C,N,P<:FormulaPool} <: Formula
     pool::P
     id::Int
     connective::C
     children::NTuple{N,Int}
+
+    # Internal reconstruction from an already-validated pool node.
+    function Branch(pool::P, id::Int, connective::C, children::NTuple{N,Int}, ::_TrustedFormulaHandle) where {C,N,P<:FormulaPool}
+        new{C,N,P}(pool, id, connective, children)
+    end
+
+    function Branch(pool::P, id::Int, connective::C, children::NTuple{N,Int}) where {C,N,P<:FormulaPool}
+        _require_immutable_payload(connective, "branch connective")
+        lock(pool.lock)
+        try
+            1 <= id <= length(pool.nodes) ||
+                throw(ArgumentError("branch id $id is not present in its FormulaPool"))
+            node = pool.nodes[id]
+            node.kind == 0x02 ||
+                throw(ArgumentError("formula id $id is not a branch"))
+            isequal(node.payload, connective) ||
+                throw(ArgumentError("branch connective does not match formula id $id"))
+            node.children == children ||
+                throw(ArgumentError("branch children do not match formula id $id"))
+            all(1 <= child <= length(pool.nodes) for child in children) ||
+                throw(ArgumentError("branch id $id contains an invalid child id"))
+        finally
+            unlock(pool.lock)
+        end
+        new{C,N,P}(pool, id, connective, children)
+    end
 end
 
 """Return the signature of an atom."""
@@ -317,13 +403,13 @@ arity(formula::Branch) = nchildren(formula)
 
 function _branch_from_ids(pool::FormulaPool, id::Int, connective, ids, ::Val{N}) where N
     typed_ids = ntuple(i -> ids[i], N)
-    Branch(pool, id, connective, typed_ids)
+    Branch(pool, id, connective, typed_ids, _trusted_formula_handle)
 end
 
 function _formula_unlocked(pool::FormulaPool, id::Int)
     node = pool.nodes[id]
     if node.kind == 0x01
-        Atom(pool, id, node.payload)
+        Atom(pool, id, node.payload, _trusted_formula_handle)
     else
         _branch_from_ids(pool, id, node.payload, node.children, Val(length(node.children)))
     end
@@ -375,6 +461,8 @@ function isgrounded(formula::Formula)
 end
 
 function _intern!(pool::FormulaPool, kind::UInt8, payload, childids::Tuple{Vararg{Int}})
+    role = kind == 0x01 ? "atom payload" : "branch connective"
+    _require_immutable_payload(payload, role)
     key = kind == 0x01 ? (:atom, payload) : (:branch, payload, childids)
     lock(pool.lock)
     try
@@ -392,11 +480,11 @@ end
 """Intern an atom, returning the canonical atom value for this pool and payload."""
 function atom(pool::FormulaPool, value)
     atom_id = _intern!(pool, 0x01, value, ())
-    Atom(pool, atom_id, value)
+    Atom(pool, atom_id, value, _trusted_formula_handle)
 end
 
-# This method makes the type constructor spelling useful without exposing an
-# unsafe constructor that can fabricate a formula id.
+# This method makes the type constructor spelling useful; the full-field
+# constructor above validates any externally supplied pool record and payload.
 Atom(pool::FormulaPool, value) = atom(pool, value)
 
 function _branch_children(pool::FormulaPool, childtuple::Tuple)
