@@ -170,10 +170,7 @@ it is not itself an RCC8 value.
 
 Finite frames expose `isreflexive`, `istransitive`, `issymmetric`, and
 `isserial`; `satisfies(frame, T, relation)` composes those traits into named
-classes. The standard correspondence vocabulary is discussed in Blackburn et
-al., §3.1 (Definitions 3.1–3.5 and Example 3.6, pp. 125–129)
-[blackburn2001; §3.1, Definitions 3.1–3.5 and Example 3.6, pp. 125–129](@cite)
-and Schwarz, §§3.3–3.4 (pp. 53–60) [schwarz2024; §§3.3–3.4, pp. 53–60](@cite).
+classes.
 
 ```jldoctest relations_classes
 using Aletheia
@@ -188,7 +185,9 @@ true
 ```
 
 Correspondence theory pairs a frame condition with an axiom schema:
-reflexivity with `T`, transitivity with `4`. `axioms(pool, S4; relation=:R)`
+reflexivity with `T`, transitivity with `4` [blackburn2001; §3.1, Definitions
+3.1–3.5 and Example 3.6, pp. 125–129](@cite), as discussed also by Schwarz,
+§§3.3–3.4 (pp. 53–60) [schwarz2024; §§3.3–3.4, pp. 53–60](@cite). `axioms(pool, S4; relation=:R)`
 builds those schemas as formulas in your pool, and `validates` checks one on
 every world of a model — so you can confirm empirically that a finite frame
 validates what its class predicts. The schema generator requires the

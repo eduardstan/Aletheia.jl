@@ -82,7 +82,7 @@ negate(algebra::TruthAlgebra, value) = negation(algebra, value)
 The two-element Boolean algebra, with carrier `Bool`: `top` is `true`,
 `bottom` is `false`, meet/join are `&`/`|`, implication is `(!left) || right`,
 and negation is `!value`.  These are the standard Boolean operations; see
-Goranko, *Logic as a Tool* [goranko2016](@cite).
+Goranko, *Logic as a Tool*, §§1.1.2–1.1.5 (pp. 3–6) [goranko2016](@cite).
 """
 struct BooleanAlgebra <: TruthAlgebra{Bool} end
 
@@ -122,8 +122,12 @@ A Gödel chain with carrier `Float64`.  With no argument this is the standard
 unit interval; `GodelAlgebra(n)` restricts values to the `n` equally spaced
 members of that interval (`n ≥ 2`).  `top = 1`, `bottom = 0`, meet/join are `min`/`max`,
 implication is `1` when `left ≤ right` and `right` otherwise,
-and negation is `1` at `0` and `0` elsewhere.  This is the Gödel residuated
-chain operation; see Goranko, *Logic as a Tool* [goranko2016](@cite).
+and negation is `1` at `0` and `0` elsewhere.  Structurally, this is an
+FL-algebra/residuated-lattice instance in the framework defined by Galatos et al.,
+§2.2 (printed pp. 91–94), with the residuation law stated in the Introduction
+(printed p. 2) [galatos2007](@cite). Galatos et al. explicitly leave specific
+many-valued logics outside the book's scope (Introduction, printed p. 7)
+[galatos2007](@cite), so this named Gödel table awaits a dedicated source.
 """
 struct GodelAlgebra{N} <: TruthAlgebra{Float64}
     function GodelAlgebra{N}() where N
@@ -146,8 +150,13 @@ An Łukasiewicz chain with carrier `Float64`.  With no argument this is the
 standard unit interval; `LukasiewiczAlgebra(n)` restricts values to the `n`
 equally spaced members (`n ≥ 2`).  `top = 1`, `bottom = 0`, meet is the Łukasiewicz t-norm
 `max(0, left + right - 1)`, join is `max`, implication is
-`min(1, 1 - left + right)`, and negation is `1 - value`.  These are the standard Łukasiewicz operations; see Goranko,
-*Logic as a Tool* [goranko2016](@cite).
+`min(1, 1 - left + right)`, and negation is `1 - value`.  Structurally, this is
+an FL-algebra/residuated-lattice instance in the framework defined by Galatos
+et al., §2.2 (printed pp. 91–94), with the residuation law stated in the
+Introduction (printed p. 2) [galatos2007](@cite). Galatos et al. explicitly leave
+specific many-valued logics
+outside the book's scope (Introduction, printed p. 7) [galatos2007](@cite), so
+this named Łukasiewicz table awaits a dedicated source.
 """
 struct LukasiewiczAlgebra{N} <: TruthAlgebra{Float64}
     function LukasiewiczAlgebra{N}() where N

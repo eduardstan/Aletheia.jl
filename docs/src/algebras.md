@@ -74,4 +74,5 @@ walk for these algebras as for Boolean and chain models; finite models return
 `UInt8` vectors, including for modal `Diamond` and `Box` formulas.
 
 The bounded-residuated-lattice and FLew terminology follows Galatos et al.'s
-algebraic treatment of substructural logics [galatos2007](@cite).
+algebraic treatment of substructural logics, §2.2 (printed pp. 91–94)
+[galatos2007; §2.2, pp. 91–94](@cite).

@@ -44,7 +44,8 @@ refines that partition using the forth and back conditions for every named
 relation.  With nᵢ = |Wᵢ|, r named relations, and dᵢ maximum out-degree, one
 refinement pass is O(n₁n₂r d₁d₂) time and O(n₁n₂) space; because this
 straightforward implementation can make at most n₁n₂ passes, its worst-case time is
-O((n₁n₂)²r d₁d₂).  Definitions and invariance are those of BDV §2.2
+O((n₁n₂)²r d₁d₂). These are derived implementation bounds, not bounds stated
+by the cited literature. Definitions and invariance are those of BDV §2.2
 [blackburn2001](@cite).
 When omitted, `atoms` and `relations` are inferred from dictionary-backed
 models and frames; pass them explicitly for callable valuations/relations.
@@ -173,8 +174,10 @@ end
 The result is a `BisimulationContraction` wrapper.  `contraction_world(q, w)`
 selects the quotient world corresponding to an original world, while `check`
 and `extension` delegate normally.  For n worlds, r relations, and maximum
-out-degree d, partition refinement costs O(n²rd log d) worst-case time and
-O(nrd + n) working space; quotient construction adds O(nrd) time and storage.
+out-degree d, this implementation's partition refinement costs O(n²rd log d)
+worst-case time and O(nrd + n) working
+space; quotient construction adds O(nrd) time and storage. These are derived
+implementation bounds, not bounds stated by the cited literature.
 Relation functions must be accompanied by `relations`; dictionary-backed frames
 infer relation names.
 """
