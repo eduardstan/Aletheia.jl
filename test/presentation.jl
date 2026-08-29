@@ -259,4 +259,77 @@ using Aletheia
     @test occursin(":w10 → :w10, … (10 elided)", sprint(show, MIME("text/plain"), edges))
     @test occursin("p: {:w1, :w2, :w3, :w4, :w5, :w6, :w7, :w8, :w9, :w10, … (10 elided)}",
         sprint(show, MIME("text/plain"), m_large))
+
+    # 6. Display edge cases: singular forms, empty relations, and elision.
+    f_single = Frame((:w1,), Dict(:R => Dict(:w1 => Symbol[])); index=true)
+    @test sprint(show, f_single) == "Frame(1 world)"
+    s_f_single = sprint(show, MIME("text/plain"), f_single)
+    @test occursin("Frame (1 world, 1 relation)", s_f_single)
+    @test occursin("(none)", s_f_single)
+
+    f_multi_rel = Frame((:w1, :w2), Dict(:R => Dict(:w1 => [:w2]), :S => Dict(:w2 => [:w1])); index=true)
+    @test occursin("Frame (2 worlds, 2 relations)", sprint(show, MIME("text/plain"), f_multi_rel))
+
+    w20 = tuple([Symbol("w", i) for i in 1:20]...)
+    f20 = Frame(w20, Dict(:R => Dict(:w1 => [:w2])); index=true)
+    s_f20 = sprint(show, MIME("text/plain"), f20)
+    @test occursin("Worlds (20): :w1, :w2, :w3, :w4, :w5, :w6, :w7, :w8, :w9, :w10, … (10 elided)", s_f20)
+    @test occursin("Relations:\n    :R: :w1 → :w2", s_f20)
+
+    m_single = Model(f_single, BOOLEAN, Dict("p" => Set([:w1])))
+    @test occursin("Model (1 world, 1 relation, BooleanAlgebra())", sprint(show, MIME("text/plain"), m_single))
+    m20 = Model(f20, BOOLEAN, Dict("p" => Set([:w1])))
+    s_m20 = sprint(show, MIME("text/plain"), m20)
+    @test occursin("Model (20 worlds, 1 relation, BooleanAlgebra())", s_m20)
+    @test occursin("Valuation:\n    p: {:w1}", s_m20)
+    m20_fn = Model(f20, (a, w) -> true, BOOLEAN)
+    @test occursin("Valuation: <function>", sprint(show, MIME("text/plain"), m20_fn))
+
+    ext_empty = Extension(BitVector([0, 0]), f1.worlds)
+    s_ext_empty = sprint(show, MIME("text/plain"), ext_empty)
+    @test occursin("Extension (0 of 2 worlds satisfy)", s_ext_empty)
+    @test occursin("Satisfied at: (none)", s_ext_empty)
+    @test occursin("Unsatisfied at: :w1, :w2", s_ext_empty)
+    ext_full = Extension(BitVector([1, 1]), f1.worlds)
+    s_ext_full = sprint(show, MIME("text/plain"), ext_full)
+    @test occursin("Extension (2 of 2 worlds satisfy)", s_ext_full)
+    @test occursin("Satisfied at: :w1, :w2", s_ext_full)
+    @test occursin("Unsatisfied at: (none)", s_ext_full)
+    ext_single = Extension(BitVector([1]), f_single.worlds)
+    @test occursin("Extension (1 of 1 world satisfy)", sprint(show, MIME("text/plain"), ext_single))
+    ext20_sat10 = Extension(BitVector([i <= 10 for i in 1:20]), w20)
+    s_ext20_sat10 = sprint(show, MIME("text/plain"), ext20_sat10)
+    @test occursin("Extension (10 of 20 worlds satisfy)", s_ext20_sat10)
+    @test occursin("Satisfied at: :w1, :w2, :w3, :w4, :w5, :w6, :w7, :w8, :w9, :w10", s_ext20_sat10)
+    ext20_sat0 = Extension(BitVector([0 for _ in 1:20]), w20)
+    @test occursin("Satisfied at: (none)", sprint(show, MIME("text/plain"), ext20_sat0))
+
+    ext_g_single = Extension(Float64[0.5], f_single.worlds)
+    s_ext_g_single = sprint(show, MIME("text/plain"), ext_g_single)
+    @test occursin("Extension (1 world)", s_ext_g_single)
+    @test occursin(":w1 => 0.5", s_ext_g_single)
+    ext_g20 = Extension(fill(0.7, 20), w20)
+    s_ext_g20 = sprint(show, MIME("text/plain"), ext_g20)
+    @test occursin("Extension (20 worlds)", s_ext_g20)
+    @test occursin("… (10 elided)", s_ext_g20)
+
+
+    # Quotient and ILP displays also handle complete/partial collapse and elision.
+    q_0 = bisimulation_contraction(m1)
+    @test occursin("0% collapse ratio", sprint(show, MIME("text/plain"), q_0))
+    f_coll = Frame((:w1, :w2), Dict(:R => Dict()); index=true)
+    m_coll = Model(f_coll, BOOLEAN, Dict("p" => Set([:w1, :w2])))
+    @test occursin("50% collapse ratio", sprint(show, MIME("text/plain"), bisimulation_contraction(m_coll)))
+    m20_diff = Model(f20, BOOLEAN, Dict("p$i" => Set([Symbol("w", i)]) for i in 1:20))
+    @test occursin("Classes (20):", sprint(show, MIME("text/plain"), bisimulation_contraction(m20_diff)))
+    @test occursin("… (10 elided)", sprint(show, MIME("text/plain"), bisimulation_contraction(m20_diff)))
+
+    @test sprint(show, Substitution()) == "Substitution()"
+    @test sprint(show, MIME("text/plain"), Substitution()) == "Substitution: {}"
+    @test occursin("ClauseSet (1 clause)", sprint(show, MIME("text/plain"), ClauseSet([hc1])))
+    hc_list = [HornClause(Predicate(Symbol("p", i), (x,))) for i in 1:20]
+    s_cs20 = sprint(show, MIME("text/plain"), ClauseSet(hc_list))
+    @test occursin("ClauseSet (20 clauses)", s_cs20)
+    @test occursin("… (10 elided)", s_cs20)
+
 end
