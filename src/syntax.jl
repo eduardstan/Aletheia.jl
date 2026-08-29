@@ -267,6 +267,12 @@ contains no truth values, semantic state, or evaluator hooks.
 """
 abstract type Formula end
 
+# Pool nodes are trusted after interning.  This private tag selects the
+# allocation-only constructors used when rebuilding handles from those nodes;
+# callers supplying formula fields still go through the validating methods.
+struct _TrustedFormulaHandle end
+const _trusted_formula_handle = _TrustedFormulaHandle()
+
 """
     Atom(pool, value)
 
@@ -279,6 +285,11 @@ struct Atom{V,P<:FormulaPool} <: Formula
     pool::P
     id::Int
     value::V
+
+    # Internal reconstruction from an already-validated pool node.
+    function Atom(pool::P, id::Int, value::V, ::_TrustedFormulaHandle) where {V,P<:FormulaPool}
+        new{V,P}(pool, id, value)
+    end
 
     function Atom(pool::P, id::Int, value::V) where {V,P<:FormulaPool}
         _require_immutable_payload(value, "atom payload")
@@ -313,6 +324,11 @@ struct Branch{C,N,P<:FormulaPool} <: Formula
     id::Int
     connective::C
     children::NTuple{N,Int}
+
+    # Internal reconstruction from an already-validated pool node.
+    function Branch(pool::P, id::Int, connective::C, children::NTuple{N,Int}, ::_TrustedFormulaHandle) where {C,N,P<:FormulaPool}
+        new{C,N,P}(pool, id, connective, children)
+    end
 
     function Branch(pool::P, id::Int, connective::C, children::NTuple{N,Int}) where {C,N,P<:FormulaPool}
         _require_immutable_payload(connective, "branch connective")
@@ -379,13 +395,13 @@ arity(formula::Branch) = nchildren(formula)
 
 function _branch_from_ids(pool::FormulaPool, id::Int, connective, ids, ::Val{N}) where N
     typed_ids = ntuple(i -> ids[i], N)
-    Branch(pool, id, connective, typed_ids)
+    Branch(pool, id, connective, typed_ids, _trusted_formula_handle)
 end
 
 function _formula_unlocked(pool::FormulaPool, id::Int)
     node = pool.nodes[id]
     if node.kind == 0x01
-        Atom(pool, id, node.payload)
+        Atom(pool, id, node.payload, _trusted_formula_handle)
     else
         _branch_from_ids(pool, id, node.payload, node.children, Val(length(node.children)))
     end
@@ -456,7 +472,7 @@ end
 """Intern an atom, returning the canonical atom value for this pool and payload."""
 function atom(pool::FormulaPool, value)
     atom_id = _intern!(pool, 0x01, value, ())
-    Atom(pool, atom_id, value)
+    Atom(pool, atom_id, value, _trusted_formula_handle)
 end
 
 # This method makes the type constructor spelling useful without exposing an
