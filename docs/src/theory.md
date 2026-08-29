@@ -73,9 +73,10 @@ Definition 2.16 and Theorem 2.20, pp. 64–67)
 `contraction_world` maps an original world to its quotient class before a
 caller evaluates on the quotient.
 
-Write `n₁`, `n₂` for the world counts of the two models, `r` for the number of
-relations, and `d₁`, `d₂` for their maximum out-degrees. The direct game check
-costs `O(n₁ n₂ r d₁ d₂)` per refinement pass and may make
+The following are derived implementation bounds for Aletheia, not bounds stated
+by the cited literature. Write `n₁`, `n₂` for the world counts of the two models,
+`r` for the number of relations, and `d₁`, `d₂` for their maximum out-degrees.
+The direct game check costs `O(n₁ n₂ r d₁ d₂)` per refinement pass and may make
 `n₁ n₂` passes; the implementation's straightforward worst-case bound is
 `O((n₁ n₂)² r d₁ d₂)` time and `O(n₁ n₂)` space. Auto-contraction is
 `O(n² r d log d)` worst-case with `O(n r d + n)` working space, followed by

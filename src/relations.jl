@@ -3,7 +3,7 @@
 
 """A relation family marker. User-defined relation values need not subtype it."""
 abstract type RelationFamily end
-"""Allen/Halpern–Shoham interval relations."""
+"""Allen interval relations."""
 abstract type IntervalRelation <: RelationFamily end
 """Point relations on a bounded linear order."""
 abstract type PointRelation <: RelationFamily end

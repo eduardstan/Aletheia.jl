@@ -54,7 +54,8 @@ refines that partition using the forth and back conditions for every named
 relation.  With nᵢ = |Wᵢ|, r named relations, and dᵢ maximum out-degree, one
 refinement pass is O(n₁n₂r d₁d₂) time and O(n₁n₂) space; because this
 straightforward implementation can make at most n₁n₂ passes, its worst-case time is
-O((n₁n₂)²r d₁d₂).  Definitions and invariance are those of BDV §2.2
+O((n₁n₂)²r d₁d₂). These are derived implementation bounds, not bounds stated
+by the cited literature. Definitions and invariance are those of BDV §2.2
 [blackburn2001](@cite).
 When omitted, `atoms` are inferred from dictionary-backed models and `relations`
 from dictionary-backed frames and generated interval frames; pass them explicitly
@@ -187,13 +188,15 @@ end
 The result is a `BisimulationContraction` wrapper.  `contraction_world(q, w)`
 selects the quotient world corresponding to an original world, while `check`
 and `extension` delegate normally.  For n worlds, r relations, and maximum
-out-degree d, partition refinement costs O(n²rd log d) worst-case time and
-O(nrd + n) working space; quotient construction adds O(nrd) time and storage.
-Callable relation providers must be accompanied by `relations`, except for
-built-in generated interval frames, whose Allen relation names are inferred.
-Dictionary-backed frames infer relation names. Dictionary valuation keys that
-overlap frame worlds are ambiguous and require an explicit `atoms` keyword.
-Unrecognised valuation representations require explicit `atoms` as well.
+out-degree d, this implementation's partition refinement costs O(n²rd log d)
+worst-case time and O(nrd + n) working space; quotient construction adds O(nrd)
+time and storage. These are derived implementation bounds, not bounds stated by
+the cited literature. Callable relation providers must be accompanied by
+`relations`, except for built-in generated interval frames, whose Allen relation
+names are inferred. Dictionary-backed frames infer relation names. Dictionary
+valuation keys that overlap frame worlds are ambiguous and require an explicit
+`atoms` keyword. Unrecognised valuation representations require explicit `atoms`
+as well.
 """
 function bisimulation_contraction(model::Model; atoms=nothing, relations=nothing)
     atoms === nothing && _opaque_valuation(model) &&

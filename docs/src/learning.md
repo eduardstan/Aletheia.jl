@@ -106,9 +106,10 @@ ProofExample (+): proof
 ```
 
 θ-subsumption is a generality **quasi-order**, not logical implication. Mutual
-subsumption can hold for distinct clauses after variables are identified, and
-the recursive implication counterexample in §5.5.2 (pp. 648–649) is why this
-layer exposes no implication test [muggleton1994; §5.5.2, pp. 648–649](@cite).
+subsumption can hold for distinct clauses after variables are identified. The
+recursive implication counterexample first appears in §5.2.1 (p. 643) and is
+revisited in §5.5 (p. 648), which is why this layer exposes no implication test
+[muggleton1994; §5.2.1, p. 643; §5.5, p. 648](@cite).
 
 ## Refinement is lazy and bounded by the bias
 
@@ -120,7 +121,7 @@ complete operator cannot be claimed. See Muggleton and De Raedt, §5.2.2,
 Definition 5.4 (pp. 644–645) [muggleton1994; §5.2.2, Definition 5.4, pp. 644–645](@cite)
 and the bounded refinement-operator definitions in Tamaddoni-Nezhad and
 Muggleton, “A Note on Refinement Operators for IE-Based ILP Systems”, pp.
-297–314 of the ILP 2008 proceedings [zelezny2008; pp. 297–314](@cite).
+297–314 [tamaddoni2008; pp. 297–314](@cite).
 
 ```jldoctest learning_refinement
 using Aletheia
