@@ -100,6 +100,22 @@ end
     @test !bisimilar(m1, 1, bad, :a; atoms=["p"], relations=[:R])
     @test_throws ArgumentError bisimilar(Model(f1, BOOLEAN, (a, w) -> false), 1, m1, 1)
 
+    # A dictionary atom key that is also a world is ambiguous without an
+    # explicit namespace; inference must not silently erase its labels.
+    ambiguous_frame = Frame((1, 2), Dict(); index=true)
+    ambiguous_model = Model(ambiguous_frame, BOOLEAN, Dict(1 => Set([1])))
+    ambiguous_pool = FormulaPool(Signature((¬,)))
+    ambiguous_atom = atom(ambiguous_pool, 1)
+    @test [interpret(ambiguous_atom, ambiguous_model, world) for world in worlds(ambiguous_frame)] == [true, false]
+    @test_throws ArgumentError bisimilar(ambiguous_model, 1, ambiguous_model, 2)
+    @test_throws ArgumentError bisimulation_contraction(ambiguous_model)
+    @test_throws ArgumentError first_order_interpretation(ambiguous_model)
+    ambiguous_quotient = bisimulation_contraction(ambiguous_model; atoms=[1])
+    @test length(classes(ambiguous_quotient)) == 2
+    ambiguous_fo = first_order_interpretation(ambiguous_model; atoms=[1])
+    @test evaluate(standard_translation(ambiguous_atom), ambiguous_fo, Dict(:x => 1))
+    @test !evaluate(standard_translation(ambiguous_atom), ambiguous_fo, Dict(:x => 2))
+
     redundant = Frame((1, 2, 3), Dict(:R => Dict(1 => [2, 3], 2 => [2, 3], 3 => [2, 3])); index=true)
     redundant_model = Model(redundant, BOOLEAN, Dict("p" => Set([1, 2, 3])))
     quotient = bisimulation_contraction(redundant_model; atoms=["p"], relations=[:R])
@@ -276,7 +292,7 @@ end
     pair_frame = Frame((1, 2), Dict(); index=true)
     pair_model = Model(pair_frame, BOOLEAN, Dict((pair_atom, 1) => true, (2, pair_atom) => false,
         1 => Dict("q" => true)))
-    @test !isempty(Aletheia._valuation_atoms(pair_model))
+    @test_throws ArgumentError Aletheia._valuation_atoms(pair_model)
     @test sprint(show, first(classes(bisimulation_contraction(Model(frame, BOOLEAN,
         Dict("p" => Set([1]))); atoms=["p"], relations=[:R])))) isa String
     split_frame = Frame((1, 2), Dict(:R => Dict(1 => [1], 2 => [])); index=true)

@@ -11,16 +11,18 @@ function _valuation_atoms(model::Model)
     data = valuation(model)
     data isa Valuation && (data = data.data)
     data isa AbstractDict || return Any[]
+    frame_worlds = worlds(frame(model))
+    is_world(value) = any(world -> isequal(world, value), frame_worlds)
     result = Any[]
     for key in keys(data)
         if key isa Tuple && length(key) == 2
-            first_world = any(world -> isequal(world, key[1]), worlds(frame(model)))
-            second_world = any(world -> isequal(world, key[2]), worlds(frame(model)))
-            candidate = first_world ? key[2] : second_world ? key[1] : nothing
-            candidate === nothing || push!(result, candidate)
-        elseif any(world -> isequal(world, key), worlds(frame(model)))
-            nested = data[key]
-            nested isa AbstractDict && append!(result, keys(nested))
+            first_world, second_world = is_world(key[1]), is_world(key[2])
+            first_world && second_world && throw(ArgumentError(
+                "dictionary valuation keys $(repr(key)) are ambiguous between atom and world; pass an explicit atoms keyword"))
+            first_world ? push!(result, key[2]) : second_world && push!(result, key[1])
+        elseif is_world(key)
+            throw(ArgumentError(
+                "dictionary valuation key $(repr(key)) is also a frame world; pass an explicit atoms keyword"))
         else
             push!(result, key)
         end
@@ -48,6 +50,8 @@ O((n₁n₂)²r d₁d₂).  Definitions and invariance are those of BDV §2.2
 [blackburn2001](@cite).
 When omitted, `atoms` and `relations` are inferred from dictionary-backed
 models and frames; pass them explicitly for callable valuations/relations.
+Dictionary valuation keys that overlap the frame's worlds are ambiguous, so
+those models also require an explicit `atoms` keyword.
 """
 function bisimilar(m1::Model, w1, m2::Model, w2; atoms=nothing, relations=nothing)
     _check_world(frame(m1), w1); _check_world(frame(m2), w2)
@@ -176,7 +180,8 @@ and `extension` delegate normally.  For n worlds, r relations, and maximum
 out-degree d, partition refinement costs O(n²rd log d) worst-case time and
 O(nrd + n) working space; quotient construction adds O(nrd) time and storage.
 Relation functions must be accompanied by `relations`; dictionary-backed frames
-infer relation names.
+infer relation names. Dictionary valuation keys that overlap frame worlds are
+ambiguous and require an explicit `atoms` keyword.
 """
 function bisimulation_contraction(model::Model; atoms=nothing, relations=nothing)
     atoms === nothing && _opaque_valuation(model) &&
