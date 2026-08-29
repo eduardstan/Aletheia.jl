@@ -5,6 +5,8 @@ Aletheia.notation(::TheoryXor) = "⊻"
 struct TheoryUnknownTerm <: FirstOrderTerm end
 struct TheoryUnknownFO <: FirstOrderFormula end
 struct TheoryDummyProver <: AbstractProver end
+struct TheoryUnknownProvider <: Aletheia._RelationProvider end
+struct TheoryUnknownValuation end
 
 function theory_random_formula(pool, p, q, rng, depth)
     depth == 0 && return rand(rng, (p, q))
@@ -110,6 +112,18 @@ end
     @test [check(p, callback_model, world) for world in worlds(frame(callback_model))] ==
         [check(p, callback_quotient, contraction_world(callback_quotient, world))
          for world in worlds(frame(callback_model))]
+
+    unknown_provider_frame = Frame((1,), TheoryUnknownProvider())
+    provider_error = try
+        Aletheia._model_relation_names(unknown_provider_frame)
+    catch error
+        error
+    end
+    @test provider_error isa ArgumentError
+    @test occursin("TheoryUnknownProvider", sprint(showerror, provider_error))
+    unknown_valuation_model = Model(Frame((1,); index=true), BOOLEAN, TheoryUnknownValuation())
+    @test_throws ArgumentError Aletheia._valuation_atoms(unknown_valuation_model)
+    @test_throws ArgumentError bisimulation_contraction(unknown_valuation_model)
 
     # A dictionary atom key that is also a world is ambiguous without an
     # explicit namespace; inference must not silently erase its labels.

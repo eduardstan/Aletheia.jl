@@ -276,7 +276,8 @@ const translate = standard_translation
 """Build the first-order interpretation corresponding to a Boolean modal model.
 
 Dictionary valuation keys that overlap frame worlds are ambiguous and require
-an explicit `atoms` keyword; callable valuations require it as well."""
+an explicit `atoms` keyword; callable and otherwise unrecognised valuations
+require it as well."""
 function first_order_interpretation(model::Model; atoms=nothing, relations=nothing,
                                     atom_predicate=identity, relation_predicate=identity)
     algebra(model) isa BooleanAlgebra || throw(ArgumentError("standard translation interpretations are Boolean"))

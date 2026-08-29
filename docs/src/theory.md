@@ -52,9 +52,10 @@ not a many-valued first-order semantics.
     valuations and named frame relations are inferred, but callable valuations
     require `atoms=[...]` and callable accessibility requires `relations=[...]`.
     Dictionary valuation keys that overlap frame worlds are ambiguous, so those
-    models also require an explicit `atoms=[...]` namespace. An atom handle may
-    be supplied in `atoms` when the valuation is keyed by `Atom`; a string or
-    other atom value is also accepted. First-order
+    models also require an explicit `atoms=[...]` namespace. Other valuation
+    representations are not inferred and require an explicit `atoms=[...]` too.
+    An atom handle may be supplied in `atoms` when the valuation is keyed by
+    `Atom`; a string or other atom value is also accepted. First-order
     assignments are looked up by `Symbol` (for example `Dict(:x => world)`),
     and each assigned world must belong to the interpretation domain. The
     translation only has clauses for the built-in Boolean connectives and

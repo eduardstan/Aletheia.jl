@@ -1,8 +1,12 @@
 # Bisimulation and finite bisimulation contraction, following BDV §2.2.
 
 function _model_relation_names(frame::Frame)
-    frame.relations isa AbstractDict ? collect(keys(frame.relations)) :
-        frame.relations isa _IntervalRelationMap ? collect(ALLEN_RELATIONS) : Any[]
+    stored = frame.relations
+    stored isa AbstractDict && return collect(keys(stored))
+    stored isa _IntervalRelationMap && return collect(ALLEN_RELATIONS)
+    stored isa _RelationProvider && throw(ArgumentError(
+        "unrecognised relation provider $(typeof(stored)); pass an explicit relations keyword"))
+    Any[]
 end
 function _opaque_valuation(model::Model)
     data = valuation(model)
@@ -12,6 +16,8 @@ end
 function _valuation_atoms(model::Model)
     data = valuation(model)
     data isa Valuation && (data = data.data)
+    (data isa AbstractDict || data isa Function || data isa ValuationCallback) || throw(ArgumentError(
+        "unrecognised valuation representation $(typeof(data)); pass an explicit atoms keyword"))
     data isa AbstractDict || return Any[]
     frame_worlds = worlds(frame(model))
     is_world(value) = any(world -> isequal(world, value), frame_worlds)
@@ -54,7 +60,8 @@ When omitted, `atoms` are inferred from dictionary-backed models and `relations`
 from dictionary-backed frames and generated interval frames; pass them explicitly
 for callable valuations or callable accessibility.
 Dictionary valuation keys that overlap the frame's worlds are ambiguous, so
-those models also require an explicit `atoms` keyword.
+those models also require an explicit `atoms` keyword. Unrecognised valuation
+representations likewise require an explicit atom namespace.
 """
 function bisimilar(m1::Model, w1, m2::Model, w2; atoms=nothing, relations=nothing)
     _check_world(frame(m1), w1); _check_world(frame(m2), w2)
@@ -186,6 +193,7 @@ Callable relation providers must be accompanied by `relations`, except for
 built-in generated interval frames, whose Allen relation names are inferred.
 Dictionary-backed frames infer relation names. Dictionary valuation keys that
 overlap frame worlds are ambiguous and require an explicit `atoms` keyword.
+Unrecognised valuation representations require explicit `atoms` as well.
 """
 function bisimulation_contraction(model::Model; atoms=nothing, relations=nothing)
     atoms === nothing && _opaque_valuation(model) &&
