@@ -1,26 +1,36 @@
 # Bisimulation and finite bisimulation contraction, following BDV §2.2.
 
 function _model_relation_names(frame::Frame)
-    frame.relations isa AbstractDict ? collect(keys(frame.relations)) : Any[]
+    stored = frame.relations
+    stored isa AbstractDict && return collect(keys(stored))
+    stored isa _IntervalRelationMap && return collect(ALLEN_RELATIONS)
+    stored isa _RelationProvider && throw(ArgumentError(
+        "unrecognised relation provider $(typeof(stored)); pass an explicit relations keyword"))
+    Any[]
 end
 function _opaque_valuation(model::Model)
     data = valuation(model)
-    data isa Function || (data isa Valuation && data.data isa Function)
+    data isa Function || data isa ValuationCallback ||
+        (data isa Valuation && (data.data isa Function || data.data isa ValuationCallback))
 end
 function _valuation_atoms(model::Model)
     data = valuation(model)
     data isa Valuation && (data = data.data)
+    (data isa AbstractDict || data isa Function || data isa ValuationCallback) || throw(ArgumentError(
+        "unrecognised valuation representation $(typeof(data)); pass an explicit atoms keyword"))
     data isa AbstractDict || return Any[]
+    frame_worlds = worlds(frame(model))
+    is_world(value) = any(world -> isequal(world, value), frame_worlds)
     result = Any[]
     for key in keys(data)
         if key isa Tuple && length(key) == 2
-            first_world = any(world -> isequal(world, key[1]), worlds(frame(model)))
-            second_world = any(world -> isequal(world, key[2]), worlds(frame(model)))
-            candidate = first_world ? key[2] : second_world ? key[1] : nothing
-            candidate === nothing || push!(result, candidate)
-        elseif any(world -> isequal(world, key), worlds(frame(model)))
-            nested = data[key]
-            nested isa AbstractDict && append!(result, keys(nested))
+            first_world, second_world = is_world(key[1]), is_world(key[2])
+            first_world && second_world && throw(ArgumentError(
+                "dictionary valuation keys $(repr(key)) are ambiguous between atom and world; pass an explicit atoms keyword"))
+            first_world ? push!(result, key[2]) : second_world && push!(result, key[1])
+        elseif is_world(key)
+            throw(ArgumentError(
+                "dictionary valuation key $(repr(key)) is also a frame world; pass an explicit atoms keyword"))
         else
             push!(result, key)
         end
@@ -47,8 +57,12 @@ straightforward implementation can make at most n₁n₂ passes, its worst-case 
 O((n₁n₂)²r d₁d₂). These are derived implementation bounds, not bounds stated
 by the cited literature. Definitions and invariance are those of BDV §2.2
 [blackburn2001](@cite).
-When omitted, `atoms` and `relations` are inferred from dictionary-backed
-models and frames; pass them explicitly for callable valuations/relations.
+When omitted, `atoms` are inferred from dictionary-backed models and `relations`
+from dictionary-backed frames and generated interval frames; pass them explicitly
+for callable valuations or callable accessibility.
+Dictionary valuation keys that overlap the frame's worlds are ambiguous, so
+those models also require an explicit `atoms` keyword. Unrecognised valuation
+representations likewise require an explicit atom namespace.
 """
 function bisimilar(m1::Model, w1, m2::Model, w2; atoms=nothing, relations=nothing)
     _check_world(frame(m1), w1); _check_world(frame(m2), w2)
@@ -175,11 +189,14 @@ The result is a `BisimulationContraction` wrapper.  `contraction_world(q, w)`
 selects the quotient world corresponding to an original world, while `check`
 and `extension` delegate normally.  For n worlds, r relations, and maximum
 out-degree d, this implementation's partition refinement costs O(n²rd log d)
-worst-case time and O(nrd + n) working
-space; quotient construction adds O(nrd) time and storage. These are derived
-implementation bounds, not bounds stated by the cited literature.
-Relation functions must be accompanied by `relations`; dictionary-backed frames
-infer relation names.
+worst-case time and O(nrd + n) working space; quotient construction adds O(nrd)
+time and storage. These are derived implementation bounds, not bounds stated by
+the cited literature. Callable relation providers must be accompanied by
+`relations`, except for built-in generated interval frames, whose Allen relation
+names are inferred. Dictionary-backed frames infer relation names. Dictionary
+valuation keys that overlap frame worlds are ambiguous and require an explicit
+`atoms` keyword. Unrecognised valuation representations require explicit `atoms`
+as well.
 """
 function bisimulation_contraction(model::Model; atoms=nothing, relations=nothing)
     atoms === nothing && _opaque_valuation(model) &&

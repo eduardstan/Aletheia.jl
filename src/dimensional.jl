@@ -384,13 +384,16 @@ function relation_successors(relation::RCCRelation, source::Rectangle, worlds)
     (target for target in worlds if relation_holds(relation, source, target))
 end
 
-function _rectangle_relation_successors(relation::RectangleRelation, source, xb, yb, xworlds, yworlds)
+function _rectangle_relation_successors(relation::RectangleRelation, source, xb, yb, xworlds, yworlds;
+                                         worlds=nothing)
     xsuccessors = _interval_relation_successors(relation.x, source.x, xb, xworlds)
     xsuccessors === nothing && (xsuccessors = relation_successors(relation.x, source.x, xworlds))
     ysuccessors = _interval_relation_successors(relation.y, source.y, yb, yworlds)
     ysuccessors === nothing && (ysuccessors = relation_successors(relation.y, source.y, yworlds))
     (xsuccessors === nothing || ysuccessors === nothing) && return nothing
-    Iterators.flatten(((Rectangle(x, y) for y in ysuccessors) for x in xsuccessors))
+    candidates = Iterators.flatten(((Rectangle(x, y) for y in ysuccessors) for x in xsuccessors))
+    worlds === nothing ? candidates :
+        (target for target in candidates if target in worlds)
 end
 function relation_successors(relation::RectangleRelation, source::Rectangle, worlds)
     world_values = _world_values(worlds)
@@ -398,7 +401,7 @@ function relation_successors(relation::RectangleRelation, source::Rectangle, wor
     yvalues = tuple((world.y for world in world_values)...)
     xb, yb = _interval_boundaries(xvalues), _interval_boundaries(yvalues)
     _rectangle_relation_successors(relation, source, xb, yb, collect(_interval_worlds(xb)),
-        collect(_interval_worlds(yb)))
+        collect(_interval_worlds(yb)); worlds=Set(world_values))
 end
 
 struct _IntervalRelationMap{B,W,T} <: _RelationProvider

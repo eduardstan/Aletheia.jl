@@ -140,7 +140,9 @@ ClauseSet (1 clause)
 ```
 
 Horn-clause refinements preserve the `HornClause` type and reject an added
-positive literal when it would create a second head. `max_literals` bounds every
-emitted candidate, including substitution-only candidates; it must be `nothing`
-or a non-negative integer. The implementation is therefore a foundation for a
-learner, not a learner, prover, or least-Herbrand-model evaluator.
+positive literal when it would create a second head. Supplied substitutions are
+applied to both the base clause and each appended literal template. `max_literals`
+bounds every emitted candidate, including substitution-only candidates; it must
+be `nothing` or a non-negative integer. The implementation is therefore a
+foundation for a learner, not a learner, prover, or least-Herbrand-model
+evaluator.

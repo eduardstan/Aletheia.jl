@@ -170,6 +170,17 @@ _converse_mismatches(relation, ws) =
         end
     end
 
+    @testset "rectangle successors stay within sparse domains" begin
+        sparse_worlds = [Rectangle((1, 5), (1, 2)), Rectangle((1, 5), (2, 3))]
+        source = Rectangle((1, 5), (4, 5))
+        relation = rectangle_relation(EQUALS, AFTER)
+        expected = Set(target for target in sparse_worlds if relation_holds(relation, source, target))
+        successors = collect(relation_successors(relation, source, sparse_worlds))
+        @test Set(successors) == expected
+        @test all(target in sparse_worlds for target in successors)
+        @test Rectangle((1, 5), (1, 3)) ∉ successors
+    end
+
     @testset "IA3 and IA7 composites are exactly their unions" begin
         composites = ((IA_AorO, IA72IARelations(IA_AorO)), (IA_DorBorE, IA72IARelations(IA_DorBorE)),
             (IA_AiorOi, IA72IARelations(IA_AiorOi)), (IA_DiorBiorEi, IA72IARelations(IA_DiorBiorEi)),

@@ -74,6 +74,8 @@ validclass(frame::Frame, class::FrameClass, relation=nothing) = satisfies(frame,
 # The standard correspondence axioms (Blackburn–de Rijke–Venema, Ch. 3;
 # Schwarz, Logic 2). `axioms` returns the individual schemas so callers can
 # inspect or test each condition; `axiom` conjoins them when ∧ is available.
+# An empty custom class has no axiom schema: `axioms` returns `()`, while the
+# singular `axiom` API rejects it with an ArgumentError.
 function _require_connective(pool::FormulaPool, connective)
     hasconnective(signature(pool), connective) ||
         throw(ArgumentError("the pool signature must contain $(repr(connective)) to construct a frame axiom"))
@@ -119,6 +121,8 @@ function axioms(pool::FormulaPool, class::FrameClass; relation=:R, atom_value="p
 end
 function axiom(pool::FormulaPool, class::FrameClass; relation=:R, atom_value="p")
     forms = axioms(pool, class; relation=relation, atom_value=atom_value)
+    isempty(forms) && throw(ArgumentError(
+        "frame class $(class.name) has no axiom schema; use axioms for its empty schema set"))
     length(forms) == 1 && return forms[1]
     _require_connective(pool, CONJUNCTION)
     result = forms[1]

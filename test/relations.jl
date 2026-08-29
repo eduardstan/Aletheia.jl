@@ -440,6 +440,10 @@ end
     @test !satisfies(generated, T, BEFORE)
     @test !satisfies(generated, FrameClass(:unknown, (:unknown_condition,)), BEFORE)
 
+    empty_custom = FrameClass(:custom, ())
+    @test axioms(FormulaPool(Signature((∧,))), empty_custom) == ()
+    @test_throws ArgumentError axiom(FormulaPool(Signature((∧,))), empty_custom)
+
     sig = Signature((Implication(), Conjunction(), Diamond(:R), Box(:R)))
     pool = FormulaPool(sig)
     t_axiom = axiom(pool, T; relation=:R)

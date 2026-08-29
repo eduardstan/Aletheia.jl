@@ -195,7 +195,9 @@ connectives it uses to be present in the formula signature:
 `K` needs `Box` and `→`, while non-`K` classes also need `Diamond` for the
 serial/symmetric schemas; `axiom` additionally needs `∧` when a class has more
 than one condition. These constructors return formulas in the supplied pool,
-not a theorem-prover result. `validates` is a model check and compares each
+not a theorem-prover result. An empty custom `FrameClass` has no axiom schema:
+`axioms` returns `()`, while `axiom` throws `ArgumentError` because there is no
+single formula to return. `validates` is a model check and compares each
 world's value with that algebra's `top`.
 
 With no relation argument, a frame trait checks every named relation stored by

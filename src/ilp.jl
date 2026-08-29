@@ -405,9 +405,12 @@ end
 
 The one-step operator applies supplied substitutions and/or adds one supplied
 literal template, exactly the two operations described in Muggleton & De Raedt
-(1994), §5.2.2. Finite `literals`/`predicates` and a finite substitution set
-make this one-step space locally finite; iterable vocabularies are consumed
-lazily, so an unbounded language can be sampled without materialization. A
+(1994), §5.2.2. Each supplied substitution is applied to both the base clause
+and the appended literal template; templates therefore do not retain
+uninstantiated variables that the substitution binds. Finite
+`literals`/`predicates` and a finite substitution set make this one-step space
+locally finite; iterable vocabularies are consumed lazily, so an unbounded
+language can be sampled without materialization. A
 `max_literals` bound applies to every emitted candidate, including substitutions;
 it must be `nothing` or a non-negative integer. Refining a `HornClause` returns
 `HornClause` values and rejects additions that would create a second positive
@@ -443,7 +446,8 @@ function downward_refinements(clause::Union{Clause,HornClause}; literals=nothing
              if within_limit(candidate)) : ()
         per_template = can_add ?
             ((_refinement_candidate(clause, candidate) for candidate in
-              (Clause((substitute(base, substitution).literals..., template)) for substitution in substitutions_source)
+              (Clause((substitute(base, substitution).literals..., substitute(template, substitution)))
+               for substitution in substitutions_source)
               if within_limit(candidate)) for template in templates) : ()
         source = Iterators.flatten((base_candidates, Iterators.flatten(per_template)))
     else
@@ -458,7 +462,7 @@ function downward_refinements(clause::Union{Clause,HornClause}; literals=nothing
                      (substitute(base, substitution),) if within_limit(candidate)) : (),
                 can_add ?
                     (_refinement_candidate(clause, candidate) for candidate in
-                     (Clause((substitute(base, substitution).literals..., template)) for template in templates)
+                     (Clause((substitute(base, substitution).literals..., substitute(template, substitution))) for template in templates)
                      if within_limit(candidate)) : ()
             )) for substitution in substitutions_source)
         source = Iterators.flatten(per_substitution)
@@ -476,15 +480,18 @@ chains (Muggleton & De Raedt (1994), §5.2.2).
 """
 function upward_refinements(clause::Union{Clause,HornClause})
     base = clause isa HornClause ? clause.clause : clause
-    deletions = (Clause(tuple((base.literals[j] for j in eachindex(base.literals) if j != i)...)) for i in eachindex(base.literals))
+    deletions = (_refinement_candidate(clause,
+        Clause(tuple((base.literals[j] for j in eachindex(base.literals) if j != i)...)))
+        for i in eachindex(base.literals))
     terms = Any[]
     for literal in base
         for term in _clause_terms(literal.atom)
             term isa Variable || any(existing -> isequal(existing, term), terms) || push!(terms, term)
         end
     end
-    generalizations = (Clause(tuple((_replace_term(literal, term, _fresh_variable(base, i))
-                                   for literal in base)...)) for (i, term) in enumerate(terms))
+    generalizations = (_refinement_candidate(clause,
+        Clause(tuple((_replace_term(literal, term, _fresh_variable(base, i))
+                     for literal in base)...))) for (i, term) in enumerate(terms))
     _UniqueIterator(Iterators.filter(candidate -> _proper_generalization(base, candidate),
         Iterators.flatten((deletions, generalizations))))
 end

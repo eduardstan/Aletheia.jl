@@ -135,11 +135,17 @@ end
     @test_throws ArgumentError collect(downward_refinements(base; predicates=[:malformed]))
     @test_throws ArgumentError collect(downward_refinements(base; substitutions=[Dict(:X => :bad)]))
     @test !isempty(collect(downward_refinements(base; literals=[Predicate(:q, X)], substitutions=Dict(:X => Constant(:a)))))
+    templated = collect(downward_refinements(Clause(Predicate(:p, Constant(:a)));
+        literals=[Predicate(:q, X)], substitutions=Substitution(:X => Constant(:b))))
+    @test templated == [Clause(Predicate(:p, Constant(:a)), Predicate(:q, Constant(:b)))]
     horn = HornClause(Predicate(:head, X), Literal(Predicate(:body, X), false))
     horn_negative = collect(downward_refinements(horn; literals=[Literal(Predicate(:newbody, X), false)]))
     @test !isempty(horn_negative) && all(candidate isa HornClause && ishorn(candidate) for candidate in horn_negative)
     @test all(subsumes(horn, candidate) && !subsumes(candidate, horn) for candidate in horn_negative)
     @test all(candidate isa HornClause for candidate in collect(downward_refinements(horn; substitutions=[Substitution(:X => Constant(:a))])))
+    upward_horn = HornClause(Predicate(:head, FunctionTerm(:f, X)), Literal(Predicate(:body, X), false))
+    upward_horn_candidates = collect(upward_refinements(upward_horn))
+    @test !isempty(upward_horn_candidates) && all(candidate isa HornClause for candidate in upward_horn_candidates)
     @test_throws ArgumentError collect(downward_refinements(horn; literals=[Predicate(:newhead, X)]))
     substitution = Substitution(:X => Constant(:a))
     @test isempty(collect(downward_refinements(base; substitutions=[substitution], max_literals=0)))

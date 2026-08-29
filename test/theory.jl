@@ -5,6 +5,8 @@ Aletheia.notation(::TheoryXor) = "⊻"
 struct TheoryUnknownTerm <: FirstOrderTerm end
 struct TheoryUnknownFO <: FirstOrderFormula end
 struct TheoryDummyProver <: AbstractProver end
+struct TheoryUnknownProvider <: Aletheia._RelationProvider end
+struct TheoryUnknownValuation end
 
 function theory_random_formula(pool, p, q, rng, depth)
     depth == 0 && return rand(rng, (p, q))
@@ -99,6 +101,55 @@ end
                 Dict("p" => Set([:a])))
     @test !bisimilar(m1, 1, bad, :a; atoms=["p"], relations=[:R])
     @test_throws ArgumentError bisimilar(Model(f1, BOOLEAN, (a, w) -> false), 1, m1, 1)
+
+    callback_model = Model(Frame((1, 2), Dict(); index=true), BOOLEAN,
+        ValuationCallback((a, world) -> a == "p" && world == 2))
+    @test_throws ArgumentError bisimilar(callback_model, 1, callback_model, 2)
+    @test_throws ArgumentError bisimulation_contraction(callback_model)
+    @test_throws ArgumentError first_order_interpretation(callback_model)
+    callback_quotient = bisimulation_contraction(callback_model; atoms=["p"])
+    @test length(classes(callback_quotient)) == 2
+    @test [check(p, callback_model, world) for world in worlds(frame(callback_model))] ==
+        [check(p, callback_quotient, contraction_world(callback_quotient, world))
+         for world in worlds(frame(callback_model))]
+
+    unknown_provider_frame = Frame((1,), TheoryUnknownProvider())
+    provider_error = try
+        Aletheia._model_relation_names(unknown_provider_frame)
+    catch error
+        error
+    end
+    @test provider_error isa ArgumentError
+    @test occursin("TheoryUnknownProvider", sprint(showerror, provider_error))
+    unknown_valuation_model = Model(Frame((1,); index=true), BOOLEAN, TheoryUnknownValuation())
+    @test_throws ArgumentError Aletheia._valuation_atoms(unknown_valuation_model)
+    @test_throws ArgumentError bisimulation_contraction(unknown_valuation_model)
+
+    # A dictionary atom key that is also a world is ambiguous without an
+    # explicit namespace; inference must not silently erase its labels.
+    ambiguous_frame = Frame((1, 2), Dict(); index=true)
+    ambiguous_model = Model(ambiguous_frame, BOOLEAN, Dict(1 => Set([1])))
+    ambiguous_pool = FormulaPool(Signature((¬,)))
+    ambiguous_atom = atom(ambiguous_pool, 1)
+    @test [interpret(ambiguous_atom, ambiguous_model, world) for world in worlds(ambiguous_frame)] == [true, false]
+    @test_throws ArgumentError bisimilar(ambiguous_model, 1, ambiguous_model, 2)
+    @test_throws ArgumentError bisimulation_contraction(ambiguous_model)
+    @test_throws ArgumentError first_order_interpretation(ambiguous_model)
+    ambiguous_quotient = bisimulation_contraction(ambiguous_model; atoms=[1])
+    @test length(classes(ambiguous_quotient)) == 2
+    ambiguous_fo = first_order_interpretation(ambiguous_model; atoms=[1])
+    @test evaluate(standard_translation(ambiguous_atom), ambiguous_fo, Dict(:x => 1))
+    @test !evaluate(standard_translation(ambiguous_atom), ambiguous_fo, Dict(:x => 2))
+
+    # Generated interval frames use a relation provider rather than a relation
+    # dictionary; relation inference must still include their Allen relations.
+    interval = interval_frame(3)
+    interval_model = Model(interval, BOOLEAN, Dict())
+    interval_worlds = worlds(interval)
+    @test !bisimilar(interval_model, interval_worlds[1], interval_model, interval_worlds[2])
+    @test !bisimilar(interval_model, interval_worlds[1], interval_model, interval_worlds[2]; relations=[BEFORE])
+    interval_quotient = bisimulation_contraction(interval_model)
+    @test length(classes(interval_quotient)) > 1
 
     redundant = Frame((1, 2, 3), Dict(:R => Dict(1 => [2, 3], 2 => [2, 3], 3 => [2, 3])); index=true)
     redundant_model = Model(redundant, BOOLEAN, Dict("p" => Set([1, 2, 3])))
@@ -276,7 +327,7 @@ end
     pair_frame = Frame((1, 2), Dict(); index=true)
     pair_model = Model(pair_frame, BOOLEAN, Dict((pair_atom, 1) => true, (2, pair_atom) => false,
         1 => Dict("q" => true)))
-    @test !isempty(Aletheia._valuation_atoms(pair_model))
+    @test_throws ArgumentError Aletheia._valuation_atoms(pair_model)
     @test sprint(show, first(classes(bisimulation_contraction(Model(frame, BOOLEAN,
         Dict("p" => Set([1]))); atoms=["p"], relations=[:R])))) isa String
     split_frame = Frame((1, 2), Dict(:R => Dict(1 => [1], 2 => [])); index=true)
