@@ -208,6 +208,27 @@ function hasconnective(signature::Signature, connective)
     any(c -> isequal(c, connective), signature.connectives)
 end
 
+# Hash-consed payloads must not be mutable.  The check is recursive so an
+# immutable wrapper around a mutable value (for example, `Diamond([:R])`) is
+# rejected as well.  Strings and symbols are immutable at the language level
+# even though Julia represents their types as mutable reference types.
+function _payload_is_immutable(value, seen=IdDict{Any,Nothing}())
+    (value isa String || value isa Symbol || value isa Type) && return true
+    value isa Ptr && return false
+    T = typeof(value)
+    isbitstype(T) && !isstructtype(T) && return true
+    ismutabletype(T) && return false
+    haskey(seen, value) && return true
+    seen[value] = nothing
+    all(_payload_is_immutable(getfield(value, i), seen) for i in 1:fieldcount(T))
+end
+
+function _require_immutable_payload(value, role::AbstractString)
+    _payload_is_immutable(value) ||
+        throw(ArgumentError("$role must be immutable; mutable payloads cannot be interned"))
+    value
+end
+
 # Internal pool records use ids in their key; no formula tree is ever used as a
 # dictionary key.  This is the important difference from structural tree hashing.
 struct _PoolNode
@@ -250,12 +271,31 @@ abstract type Formula end
     Atom(pool, value)
 
 Intern `value` as an atom in `pool`.  Atoms are immutable concrete formulas;
-their integer id is stable for the lifetime of the pool.
+their integer id is stable for the lifetime of the pool.  The payload must be
+immutable, including values nested in an immutable wrapper, so its hash cannot
+change after interning.
 """
 struct Atom{V,P<:FormulaPool} <: Formula
     pool::P
     id::Int
     value::V
+
+    function Atom(pool::P, id::Int, value::V) where {V,P<:FormulaPool}
+        _require_immutable_payload(value, "atom payload")
+        lock(pool.lock)
+        try
+            1 <= id <= length(pool.nodes) ||
+                throw(ArgumentError("atom id $id is not present in its FormulaPool"))
+            node = pool.nodes[id]
+            node.kind == 0x01 ||
+                throw(ArgumentError("formula id $id is not an atom"))
+            isequal(node.payload, value) ||
+                throw(ArgumentError("atom payload does not match formula id $id"))
+        finally
+            unlock(pool.lock)
+        end
+        new{V,P}(pool, id, value)
+    end
 end
 
 """
@@ -264,14 +304,36 @@ end
 Intern a connective application in `pool`.  The number of children must equal
 the connective's declared arity.  A branch stores only pool-local child ids;
 [`children`](@ref) reconstructs immutable handles when they are requested.
-Children must have been made by the same pool, which keeps ids local and makes
-equality an integer comparison.
+The connective payload must be immutable, including values nested in an
+immutable wrapper.  Children must have been made by the same pool, which keeps
+ids local and makes equality an integer comparison.
 """
 struct Branch{C,N,P<:FormulaPool} <: Formula
     pool::P
     id::Int
     connective::C
     children::NTuple{N,Int}
+
+    function Branch(pool::P, id::Int, connective::C, children::NTuple{N,Int}) where {C,N,P<:FormulaPool}
+        _require_immutable_payload(connective, "branch connective")
+        lock(pool.lock)
+        try
+            1 <= id <= length(pool.nodes) ||
+                throw(ArgumentError("branch id $id is not present in its FormulaPool"))
+            node = pool.nodes[id]
+            node.kind == 0x02 ||
+                throw(ArgumentError("formula id $id is not a branch"))
+            isequal(node.payload, connective) ||
+                throw(ArgumentError("branch connective does not match formula id $id"))
+            node.children == children ||
+                throw(ArgumentError("branch children do not match formula id $id"))
+            all(1 <= child <= length(pool.nodes) for child in children) ||
+                throw(ArgumentError("branch id $id contains an invalid child id"))
+        finally
+            unlock(pool.lock)
+        end
+        new{C,N,P}(pool, id, connective, children)
+    end
 end
 
 """Return the signature of an atom."""
@@ -375,6 +437,8 @@ function isgrounded(formula::Formula)
 end
 
 function _intern!(pool::FormulaPool, kind::UInt8, payload, childids::Tuple{Vararg{Int}})
+    role = kind == 0x01 ? "atom payload" : "branch connective"
+    _require_immutable_payload(payload, role)
     key = kind == 0x01 ? (:atom, payload) : (:branch, payload, childids)
     lock(pool.lock)
     try

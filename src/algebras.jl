@@ -9,6 +9,9 @@
 """The integer carrier used by [`FiniteFLewAlgebra`](@ref)."""
 const FiniteTruth = UInt8
 
+struct _ValidatedFiniteFLew end
+const _validated_flew = _ValidatedFiniteFLew()
+
 """
     FiniteFLewAlgebra{N}
 
@@ -35,7 +38,7 @@ struct FiniteFLewAlgebra{N} <: TruthAlgebra{FiniteTruth}
     function FiniteFLewAlgebra{N}(
         join::Matrix{FiniteTruth}, meet::Matrix{FiniteTruth},
         monoid::Matrix{FiniteTruth}, implication::Matrix{FiniteTruth},
-        bot::FiniteTruth, top::FiniteTruth, ::Val{:validated}
+        bot::FiniteTruth, top::FiniteTruth, ::_ValidatedFiniteFLew
     ) where N
         new{N}(join, meet, monoid, implication, bot, top)
     end
@@ -163,7 +166,7 @@ function _make_flew(join_table, meet_table, monoid_table, bot, top, n::Int)
     _validate_lattice(join, lattice_meet, b, t, n)
     _validate_monoid(monoid, lattice_meet, t, n)
     implication = _derive_implication(join, lattice_meet, monoid, b, t, n)
-    FiniteFLewAlgebra{n}(join, lattice_meet, monoid, implication, b, t, Val(:validated))
+    FiniteFLewAlgebra{n}(join, lattice_meet, monoid, implication, b, t, _validated_flew)
 end
 
 function FiniteFLewAlgebra(join_table, meet_table, monoid_table, bot, top)
@@ -200,7 +203,10 @@ end
 """Return the finite carrier indices in table order."""
 domain(::FiniteFLewAlgebra{N}) where N = Tuple(FiniteTruth(i) for i in 1:N)
 levels(algebra::FiniteFLewAlgebra) = domain(algebra)
-isfinitechain(::FiniteFLewAlgebra) = false
+function isfinitechain(algebra::FiniteFLewAlgebra)
+    values = domain(algebra)
+    all(x -> all(y -> precedeq(algebra, x, y) || precedeq(algebra, y, x), values), values)
+end
 Base.length(::FiniteFLewAlgebra{N}) where N = N
 
 """Return the lattice meet (as opposed to the monoid conjunction)."""

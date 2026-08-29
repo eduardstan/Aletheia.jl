@@ -149,6 +149,17 @@ end
 
     @test Aletheia._formula(pool, id(p)) == p
     @test Aletheia._formula(pool, id(t)) == t
+    @test Atom(pool, id(p), "p") == p
+    @test_throws ArgumentError Atom(pool, id(p), "evil")
+    @test_throws ArgumentError Atom(pool, 999, "q")
+    @test_throws ArgumentError Branch(pool, id(p), ¬, (id(p),))
+    @test_throws ArgumentError Branch(pool, id(t), ¬, (id(p),))
+    mutable_atom_payload = [1]
+    @test_throws ArgumentError atom(pool, mutable_atom_payload)
+    mutable_relation = [:R]
+    mutable_pool = FormulaPool(Signature((Diamond(mutable_relation),)))
+    mutable_p = atom(mutable_pool, "p")
+    @test_throws ArgumentError branch(mutable_pool, Diamond(mutable_relation), mutable_p)
     @test_throws BoundsError Aletheia._formula(pool, 0)
     @test dag(pool) isa Vector{DAGNode}
     @test dag(pool, id(t)).id == id(t)
