@@ -44,11 +44,16 @@ function run_gate()
             formula_count += 1
             for i_instance in Aletheia.eachinstance(family)
                 expected = sole_check_all(formula_s, dataset, i_instance)
-                extension_a[i_instance] == expected || error("agreement disagreement in extension")
+                extension_a[i_instance] == expected || error(
+                    "agreement disagreement: formula=$(Aletheia.syntaxstring(formula_a)), " *
+                    "instance=$i_instance, Aletheia=$(extension_a[i_instance]), SoleData=$expected")
                 for (slot, world) in enumerate(SoleLogics.allworlds(
                     SoleLogics.frame(dataset, i_instance)))
-                    Aletheia.check(formula_a, family, i_instance, world) == expected[slot] ||
-                        error("agreement disagreement at instance=$i_instance world=$world")
+                    actual = Aletheia.check(formula_a, family, i_instance, world)
+                    actual == expected[slot] || error(
+                        "agreement disagreement: formula=$(Aletheia.syntaxstring(formula_a)), " *
+                        "instance=$i_instance, world=$world, Aletheia=$actual, " *
+                        "SoleData=$(expected[slot])")
                     formula_world_cases += 1
                 end
             end

@@ -43,6 +43,35 @@ a full memoset.  It uses a real two-variable DataFrame of per-instance vectors,
 with interval frames and IA3 relations.  The fair gate covered 80 formulas and
 **4,860 formula-instance-world cases**, exact in both cold and repeated checks.
 
+## Package adapter and seam result
+
+The adapter now lives in `ext/AletheiaSoleDataExt.jl` and is enabled only when
+SoleData is loaded. It defines `Aletheia.SoleDataFamily <: AbstractModelFamily`.
+For each instance it reads `SoleData.frame(X, i)`, converts that frame's worlds
+and accessibility to an Aletheia `Frame`, and installs a
+`ValuationCallback((condition, world) -> SoleData.checkcondition(condition, X, i, world))`.
+The optional vectorized callback evaluates the same condition once per world
+for Aletheia's `BitVector` extension. `uniform_frame` is computed from the
+converted per-instance frames; the adapter does not assume uniformity.
+
+Runs through this package extension used SoleData 0.16.9 and passed both
+sides of the differential gate: 80 formulas, every instance, and every world,
+with no disagreement. The explicit-logiset gate covered 1,540
+formula-instance-world cases; the default `scalarlogiset`/`SupportedLogiset`
+gate covered 4,860. The final supported gate was made under Julia 1.12.7 with
+this recorded load: `09:41:39 up 16:09, 1 user, load average: 3.07, 4.79, 4.59`.
+
+This proves the small correctness seam: one Aletheia satisfaction/evaluation
+implementation can serve the logiset path when SoleData supplies instance
+count, per-instance frame data, and atom valuation. It does not prove that the
+larger optimization seam can be removed. The adapter deliberately does not
+cross SoleData's `featchannel`/`readfeature`/`featvalue` operations,
+`representatives`, `featchannel_onestep_aggregation`, or one-step/full memo
+get/set operations. Those are the exact hooks SoleData's optimized `check`
+uses; omitting them means the Aletheia path computes atom values through the
+callback and traverses all accessible worlds, so it cannot preserve
+representative selection, one-step aggregation, or SoleData memo reuse.
+
 ## Post-rebase measurements
 
 Both sweeps were rerun after rebasing on current main commit `d8629b7` (the

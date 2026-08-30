@@ -10,6 +10,7 @@ JET = "0.9, 0.10, 0.11, 0.12"
 Random = "1"
 Test = "1"
 julia = "1.10"
+SoleData = "0.16"
 
 [extras]
 Coverage = "a2441757-f6aa-5fb2-8edb-039e3f45d037"
@@ -20,3 +21,9 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Aqua", "Coverage", "JET", "Random", "Test"]
+
+[weakdeps]
+SoleData = "123f1ae1-6307-4526-ab5b-aab3a92a2b8c"
+
+[extensions]
+AletheiaSoleDataExt = "SoleData"
