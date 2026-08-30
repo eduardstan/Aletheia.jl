@@ -30,3 +30,47 @@ normalized_occurs(needle, haystack) = occursin(normalize_eol(needle), normalize_
     theory = read(joinpath(@__DIR__, "..", "docs", "src", "theory.md"), String)
     @test normalized_occurs("derived implementation bounds", theory)
 end
+
+@testset "published claim integrity" begin
+    root = joinpath(@__DIR__, "..")
+    readme = read(joinpath(root, "README.md"), String)
+    results = read(joinpath(root, "docs", "src", "results.md"), String)
+    index = read(joinpath(root, "docs", "src", "index.md"), String)
+    compatibility = read(joinpath(root, "docs", "src", "compatibility.md"), String)
+    families = read(joinpath(root, "docs", "src", "families.md"), String)
+    quickstart = read(joinpath(root, "docs", "src", "quickstart.md"), String)
+    semantics = read(joinpath(root, "docs", "src", "semantics.md"), String)
+    algebras = read(joinpath(root, "docs", "src", "algebras.md"), String)
+    docs_sources = join(read.(filter(p -> endswith(p, ".md"), readdir(joinpath(root, "docs", "src"); join=true)), String))
+
+    for retracted in ("6" * ".81×", "9" * ".67×", "0" * ".92×", "45" * ".70×")
+        @test !normalized_occurs(retracted, readme)
+        @test !normalized_occurs(retracted, docs_sources)
+    end
+    @test normalized_occurs("4.07×", readme)
+    @test normalized_occurs("1.48×", readme)
+    @test normalized_occurs("0.99×", readme)
+    @test normalized_occurs("3.29×", results)
+    @test normalized_occurs("data/benchmark-run/run.txt", results)
+    @test normalized_occurs("scores four hypotheses against eight seeded models", results)
+
+    @test !normalized_occurs("changing one import line", index)
+    @test normalized_occurs("selected\nSoleLogics consumers", index)
+    @test normalized_occurs("107 of 142", compatibility)
+    for name in ("AbstractAssignment", "AbstractDimensionalFrame", "AbstractInterpretation",
+                 "AbstractKripkeStructure", "CONJUNCTION", "CheckAlgorithm", "Full0DFrame",
+                 "Full1DFrame", "Full2DFrame", "LogicalInstance", "OneWorld", "Point3D",
+                 "SyntaxToken", "X", "Y", "Z", "composeformulas", "frametype",
+                 "intervals2D_in", "intervals_in", "ndisjuncts", "nparameters", "nworlds",
+                 "short_intervals_in", "valuetype")
+        @test normalized_occurs(name, compatibility)
+    end
+    @test normalized_occurs("Extension results are not cached across instances", families)
+    @test normalized_occurs("relation adjacency\non a shared `Frame` may be cached and reused", families)
+    @test !normalized_occurs("one or more named accessibility relations", quickstart)
+    @test !normalized_occurs("one or more\nnamed accessibility relations", semantics)
+    @test normalized_occurs("zero or more", quickstart)
+    @test normalized_occurs("zero or more", semantics)
+    @test normalized_occurs("square integer matrix", algebras)
+    @test normalized_occurs("Flat\ninteger vectors or tuples", algebras)
+end

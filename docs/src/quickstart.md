@@ -59,8 +59,9 @@ true
 
 ## Build a frame and model
 
-A [`Frame`](@ref) contains nonempty, ordered worlds and named accessibility
-relations. A [`Model`](@ref) adds a valuation and a [`TruthAlgebra`](@ref).
+A [`Frame`](@ref) contains nonempty, ordered worlds and zero or more named
+accessibility relations. A [`Model`](@ref) adds a valuation and a
+[`TruthAlgebra`](@ref).
 This is the frame/model split used in Blackburn et al., Definitions 1.19–1.20
 (pp. 16–18) [blackburn2001; Definitions 1.19–1.20, pp. 16–18](@cite).
 

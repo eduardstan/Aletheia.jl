@@ -9,7 +9,9 @@ constructor is:
 FiniteFLewAlgebra(join_table, lattice_meet_table, monoid_table, bottom, top)
 ```
 
-where each table is a square `UInt8` matrix over the carrier indices.
+where each table is a square integer matrix over the carrier indices. Flat
+integer vectors or tuples of length `N*N` are also accepted and normalized to
+`UInt8` matrices.
 
 The constructor validates the bounded-lattice and commutative-monoid axioms,
 monotonicity of the monoid, and residuation. It derives `x → z` as the
