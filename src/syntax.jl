@@ -218,7 +218,39 @@ end
 # immutable wrapper around a mutable value (for example, `Diamond([:R])`) is
 # rejected as well.  Strings and symbols are immutable at the language level
 # even though Julia represents their types as mutable reference types.
-function _payload_is_immutable(value, seen=IdDict{Any,Nothing}())
+#
+# Most syntax payload types are closed immutable structs.  Classify those at
+# compile time so the common guard does not allocate a cycle-detection table.
+# A field with an abstract type (including `Any`) remains value-dependent and
+# uses the original recursive walk, which is still required for mutable values
+# hidden behind immutable wrappers and for cycles.
+function _payload_static_immutability(T, active=Set{Any}())
+    (T === String || T === Symbol || T <: Type) && return true
+    T <: Ptr && return false
+    if T isa Union
+        statuses = map(U -> _payload_static_immutability(U, active), Base.uniontypes(T))
+        all(status -> status === true, statuses) && return true
+        all(status -> status === false, statuses) && return false
+        return nothing
+    end
+    isconcretetype(T) || return nothing
+    isbitstype(T) && !isstructtype(T) && return true
+    ismutabletype(T) && return false
+    fieldcount(T) == 0 && return true
+    T in active && return nothing
+    push!(active, T)
+    try
+        for i in 1:fieldcount(T)
+            status = _payload_static_immutability(fieldtype(T, i), active)
+            status === true || return status
+        end
+        true
+    finally
+        delete!(active, T)
+    end
+end
+
+function _payload_is_immutable_dynamic(value, seen)
     (value isa String || value isa Symbol || value isa Type) && return true
     value isa Ptr && return false
     T = typeof(value)
@@ -226,7 +258,22 @@ function _payload_is_immutable(value, seen=IdDict{Any,Nothing}())
     ismutabletype(T) && return false
     haskey(seen, value) && return true
     seen[value] = nothing
-    all(_payload_is_immutable(getfield(value, i), seen) for i in 1:fieldcount(T))
+    for i in 1:fieldcount(T)
+        _payload_is_immutable_dynamic(getfield(value, i), seen) || return false
+    end
+    true
+end
+
+# Retain the explicit-seen form for internal callers that need to share a
+# cycle detector; the one-argument form below takes the allocation-free path
+# whenever the payload type is statically closed.
+_payload_is_immutable(value, seen) = _payload_is_immutable_dynamic(value, seen)
+
+@generated function _payload_is_immutable(value::T) where T
+    status = _payload_static_immutability(T)
+    status === true && return :(true)
+    status === false && return :(false)
+    :(_payload_is_immutable_dynamic(value, IdDict{Any,Nothing}()))
 end
 
 function _require_immutable_payload(value, role::AbstractString)
