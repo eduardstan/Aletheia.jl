@@ -147,8 +147,8 @@ for entry in contraction_ranges
     finite_k = [r.kstar for r in seed_records if isfinite(r.kstar)]
     kstar = isempty(finite_k) ? Inf : median(finite_k)
     kstats = stats(finite_k)
-    kmarker = length(finite_k) > 1 && (minimum(finite_k) < kstats.mean - kstats.std || maximum(finite_k) > kstats.mean + kstats.std) ? " [UNSTABLE]" : ""
-    ktext = isempty(finite_k) ? "∞" : @sprintf("%.1f (mean %.1f ± %.1f)%s", kstats.median, kstats.mean, kstats.std, kmarker)
+    ktext = isempty(finite_k) ? "∞" : @sprintf("%.1f (mean %.1f ± %.1f, range %.1f-%.1f)", kstats.median, kstats.mean, kstats.std,
+        minimum(finite_k), maximum(finite_k))
     println("$(entry.n) | $(entry.q) | $(@sprintf("%.3f", entry.q / entry.n)) | $(time_summary([r.c for r in seed_records])) | $(time_summary([r.po for r in seed_records])) | $(time_summary([r.pq for r in seed_records])) | $ktext | ")
     push!(contraction_records, (n=entry.n, q=entry.q, c=c, po=po, pq=pq, kstar=kstar, ktext=ktext, seeds=seed_records))
     for (k, oi, qi) in zip(contraction_curve, entry.curve_orig, entry.curve_quot)

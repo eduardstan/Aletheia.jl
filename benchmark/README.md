@@ -26,9 +26,8 @@ seed set, uptime at start and end, and per-cell sample counts) to `data/benchmar
 A three-seed pilot showed material ratio spread in several rows, so the default
 uses five seeds. The five-seed quick run is expected to take about 7.7 minutes on
 this machine, versus 6.9 minutes for the retired single-seed run. This is still
-minutes rather than hours, but it exceeds the old quick-run budget. The final
-ILP ratio ranged from 4.09× to 7.83× and propositional depth 2 from 0.68× to
-1.37×, so the published rows expose that instability. Per-row samples are not
+minutes rather than hours, but it exceeds the old quick-run budget. Published rows
+expose the observed per-seed spread. Per-row samples are not
 reduced; future runs may parallelize independent seed workers on a dedicated
 machine instead. The first five-seed pass was sequential and took 38.7 minutes
 with load rising from 3.00 to 6.28; it was discarded. The published pass

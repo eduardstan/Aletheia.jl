@@ -257,17 +257,17 @@ function time_summary(measurements)
 end
 function ratio_summary(row)
     s = stats(row.ratios); s.mean === missing && return "—"
-    marker = row.unstable ? " [UNSTABLE]" : ""
+    marker = s.mean - s.std <= 1.0 <= s.mean + s.std ? " [no clear winner]" : ""
     count_note = length(row.ratios) == length(row.incumbent_seeds) ? "" : " [$(length(row.ratios))/$(length(row.incumbent_seeds)) seeds]"
-    @sprintf("%.2fx (mean %.2fx ± %.2fx)%s%s", s.median, s.mean, s.std, marker, count_note)
+    @sprintf("%.2fx (mean %.2fx ± %.2fx, range %.2f-%.2fx)%s%s", s.median, s.mean, s.std,
+        minimum(row.ratios), maximum(row.ratios), marker, count_note)
 end
 function addrow!(suite, incumbents, aletheias; allocations=true, note="")
     inc = aggregate_measurements(incumbents); ale = aggregate_measurements(aletheias)
     ratios = [i.time / a.time for (i, a) in zip(incumbents, aletheias) if i.time !== missing && a.time !== missing]
     rs = stats(ratios)
-    unstable = !isempty(ratios) && (minimum(ratios) < rs.mean - rs.std || maximum(ratios) > rs.mean + rs.std)
     push!(rows, (suite=suite, incumbent=inc, aletheia=ale, ratio=rs.median, ratios=ratios,
-        ratio_mean=rs.mean, ratio_std=rs.std, unstable=unstable, allocations=allocations, note=note,
+        ratio_mean=rs.mean, ratio_std=rs.std, allocations=allocations, note=note,
         incumbent_seeds=incumbents, aletheia_seeds=aletheias))
 end
 function print_report()
