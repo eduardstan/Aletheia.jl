@@ -138,7 +138,7 @@ const Extension = Aletheia.Extension
     @test sprint(show, Extension(BitVector([0, 0]), m1)) == "Extension(Bool[0, 0])"
 
     # Exercise the large Boolean extension's elision branch and its terse form.
-    ext_large = Extension(BitVector(ones(Bool, length(large_worlds))), f_large.worlds)
+    ext_large = Extension(BitVector(ones(Bool, length(large_worlds))), f_large.worlds, BOOLEAN)
     s_ext_large = sprint(show, MIME("text/plain"), ext_large)
     @test occursin("Satisfied at: :w1, :w2, :w3, :w4, :w5, :w6, :w7, :w8, :w9, :w10, … (10 elided)", s_ext_large)
     @test sprint(show, ext_large) == "Extension(Bool[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])"
@@ -163,7 +163,7 @@ const Extension = Aletheia.Extension
     @test occursin("<callable>", sprint(show, MIME("text/plain"), f_callable_entry))
     m_callable_entry = Model(f_callable_entry, (a, w) -> true, BOOLEAN)
     @test occursin("<callable>", sprint(show, MIME("text/plain"), m_callable_entry))
-    ext_g_large = Extension(fill(0.5, length(large_worlds)), large_worlds)
+    ext_g_large = Extension(fill(0.5, length(large_worlds)), large_worlds, GodelAlgebra())
     @test occursin("… (10 elided)", sprint(show, MIME("text/plain"), ext_g_large))
 
     # Both terse and rich forms of finite algebras remain distinct.
@@ -255,8 +255,13 @@ const Extension = Aletheia.Extension
     s_ext_finite = sprint(show, MIME("text/plain"), Extension(extension(p, m_finite), m_finite))
     @test occursin(":w1 => α", s_ext_finite)
     @test occursin(":w2 => ⊤", s_ext_finite)
-    # A bare world tuple has no algebra to consult, so values print plainly.
-    @test occursin(":w1 => 3", sprint(show, MIME("text/plain"), Extension(UInt8[3, 1], f1.worlds)))
+    @test occursin(":w1 => α", sprint(show, MIME("text/plain"), Extension(UInt8[3, 1], f1.worlds, G3)))
+    @test_throws MethodError Extension(UInt8[3, 1], f1.worlds)
+
+    # Directly supplied algebras also label non-chain lattice values.
+    s_ext_lattice = sprint(show, MIME("text/plain"), Extension(UInt8[1, 4], f1.worlds, H4))
+    @test occursin(":w1 => ⊤", s_ext_lattice)
+    @test occursin(":w2 => β", s_ext_lattice)
 
     # 7. Colour is emitted only when the IO context reports it.
     coloured(value) = sprint(io -> show(IOContext(io, :color => true), MIME("text/plain"), value))
@@ -307,30 +312,30 @@ const Extension = Aletheia.Extension
     m20_fn = Model(f20, (a, w) -> true, BOOLEAN)
     @test occursin("Valuation: <function>", sprint(show, MIME("text/plain"), m20_fn))
 
-    ext_empty = Extension(BitVector([0, 0]), f1.worlds)
+    ext_empty = Extension(BitVector([0, 0]), f1.worlds, BOOLEAN)
     s_ext_empty = sprint(show, MIME("text/plain"), ext_empty)
     @test occursin("Extension (0 of 2 worlds satisfy)", s_ext_empty)
     @test occursin("Satisfied at: (none)", s_ext_empty)
     @test occursin("Unsatisfied at: :w1, :w2", s_ext_empty)
-    ext_full = Extension(BitVector([1, 1]), f1.worlds)
+    ext_full = Extension(BitVector([1, 1]), f1.worlds, BOOLEAN)
     s_ext_full = sprint(show, MIME("text/plain"), ext_full)
     @test occursin("Extension (2 of 2 worlds satisfy)", s_ext_full)
     @test occursin("Satisfied at: :w1, :w2", s_ext_full)
     @test occursin("Unsatisfied at: (none)", s_ext_full)
-    ext_single = Extension(BitVector([1]), f_single.worlds)
+    ext_single = Extension(BitVector([1]), f_single.worlds, BOOLEAN)
     @test occursin("Extension (1 of 1 world satisfy)", sprint(show, MIME("text/plain"), ext_single))
-    ext20_sat10 = Extension(BitVector([i <= 10 for i in 1:20]), w20)
+    ext20_sat10 = Extension(BitVector([i <= 10 for i in 1:20]), w20, BOOLEAN)
     s_ext20_sat10 = sprint(show, MIME("text/plain"), ext20_sat10)
     @test occursin("Extension (10 of 20 worlds satisfy)", s_ext20_sat10)
     @test occursin("Satisfied at: :w1, :w2, :w3, :w4, :w5, :w6, :w7, :w8, :w9, :w10", s_ext20_sat10)
-    ext20_sat0 = Extension(BitVector([0 for _ in 1:20]), w20)
+    ext20_sat0 = Extension(BitVector([0 for _ in 1:20]), w20, BOOLEAN)
     @test occursin("Satisfied at: (none)", sprint(show, MIME("text/plain"), ext20_sat0))
 
-    ext_g_single = Extension(Float64[0.5], f_single.worlds)
+    ext_g_single = Extension(Float64[0.5], f_single.worlds, GodelAlgebra())
     s_ext_g_single = sprint(show, MIME("text/plain"), ext_g_single)
     @test occursin("Extension (1 world)", s_ext_g_single)
     @test occursin(":w1 => 0.5", s_ext_g_single)
-    ext_g20 = Extension(fill(0.7, 20), w20)
+    ext_g20 = Extension(fill(0.7, 20), w20, GodelAlgebra())
     s_ext_g20 = sprint(show, MIME("text/plain"), ext_g20)
     @test occursin("Extension (20 worlds)", s_ext_g20)
     @test occursin("… (10 elided)", s_ext_g20)
