@@ -82,9 +82,9 @@ println(subsumes(general, specific))
 
 father(X) :- parent(X)
 ClauseSet (2 clauses)
-  father(:a) :- parent(:a)
   father(X) :- parent(X)
-Substitution: {X ↦ :a}
+  father(a) :- parent(a)
+Substitution: {X ↦ a}
 true
 ```
 

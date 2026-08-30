@@ -262,7 +262,7 @@ end
 
 
 @testset "theory edge cases" begin
-    @test string(Constant(:c)) == ":c"
+    @test string(Constant(:c)) == "c"
     @test string(Equality(Variable(:x), Constant(1))) == "x = 1"
     @test string(FONot(FOAnd(Predicate(:p, Variable(:x)), Predicate(:q, Variable(:x))))) == "¬(p(x) ∧ q(x))"
     @test string(FOImplies(Predicate(:p, Variable(:x)), Predicate(:q, Variable(:x)))) == "p(x) → q(x)"

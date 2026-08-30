@@ -14,14 +14,17 @@ m₂_bad = Model(two, BOOLEAN, Dict("p" => Set([:t])))
 println("m₁ (unlabelled root):")
 show(stdout, MIME"text/plain"(), m₁)
 println()
-println("m₂ after labelling t with p:")
+println("m₂ (unlabelled root):")
+show(stdout, MIME"text/plain"(), m₂)
+println()
+println("m₂_bad (after labelling t with p):")
 show(stdout, MIME"text/plain"(), m₂_bad)
 println()
 println("unperturbed roots bisimilar: ", bisimilar(m₁, :r, m₂, :s))
 println("separator: ", syntaxstring(separator))
-println("unperturbed values: ", check(separator, m₁, :r), "/", check(separator, m₂, :s))
+println("unperturbed values (m₁/m₂): ", check(separator, m₁, :r), "/", check(separator, m₂, :s))
 println("after labelling t=p: ", bisimilar(m₁, :r, m₂_bad, :s))
-println("separating values: ", check(separator, m₁, :r), "/", check(separator, m₂_bad, :s))
+println("separating values (m₁/m₂_bad): ", check(separator, m₁, :r), "/", check(separator, m₂_bad, :s))
 # BEGIN EXPECTED OUTPUT
 # m₁ (unlabelled root):
 # Model (1 world, 1 relation, BooleanAlgebra())
@@ -30,7 +33,14 @@ println("separating values: ", check(separator, m₁, :r), "/", check(separator,
 #     :R: :r → :r
 #   Valuation:
 #     p: {}
-# m₂ after labelling t with p:
+# m₂ (unlabelled root):
+# Model (2 worlds, 1 relation, BooleanAlgebra())
+#   Worlds (2): :s, :t
+#   Relations:
+#     :R: :s → :t; :t → :t
+#   Valuation:
+#     p: {}
+# m₂_bad (after labelling t with p):
 # Model (2 worlds, 1 relation, BooleanAlgebra())
 #   Worlds (2): :s, :t
 #   Relations:
@@ -39,8 +49,8 @@ println("separating values: ", check(separator, m₁, :r), "/", check(separator,
 #     p: {:t}
 # unperturbed roots bisimilar: true
 # separator: ⟨R⟩p
-# unperturbed values: false/false
+# unperturbed values (m₁/m₂): false/false
 # after labelling t=p: false
-# separating values: false/true
+# separating values (m₁/m₂_bad): false/true
 #
 # END EXPECTED OUTPUT

@@ -75,8 +75,7 @@ println(interpret(p, model, :w₂))
 println(check(formula, model, :w₁))
 show(stdout, MIME"text/plain"(), model)
 println()
-describe(stdout, extension(formula, model), model)
-println()
+println(extension(formula, model))
 
 # output
 
@@ -90,9 +89,7 @@ Model (2 worlds, 1 relation, BooleanAlgebra())
   Valuation:
     p: {:w₂}
     q: {:w₁, :w₂}
-Extension (2 of 2 worlds satisfy)
-  Satisfied at: :w₁, :w₂
-  Unsatisfied at: (none)
+Bool[1, 1]
 ```
 
 For a labelled view of that extension in the REPL, use `describe`:

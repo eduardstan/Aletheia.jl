@@ -743,6 +743,10 @@ end
 Base.show(io::IO, model::Model) =
     print(io, "Model(", length(frame(model).worlds), " world", length(frame(model).worlds) == 1 ? "" : "s", ", ", algebra(model), ")")
 
+# Rich model headers use a reader-facing algebra description rather than
+# exposing implementation parameters such as the unit-interval sentinel.
+_model_algebra_summary(algebra) = sprint(show, algebra)
+
 function _format_valuation_summary(val_data, worlds_tuple, fmt=string, limit::Int=typemax(Int))
     lines = String[]
     if val_data isa AbstractDict
@@ -819,7 +823,7 @@ function Base.show(io::IO, ::MIME"text/plain", model::Model)
     else
         "relations supplied on demand"
     end
-    _display_header(io, "Model", "$nw world$(nw == 1 ? "" : "s"), $relation_summary, $alg")
+    _display_header(io, "Model", "$nw world$(nw == 1 ? "" : "s"), $relation_summary, $(_model_algebra_summary(alg))")
     _display_worlds(io, f)
     _display_relations(io, f)
 

@@ -11,3 +11,4 @@ Each example is a small, self-contained lesson and uses Aletheia's rich terminal
 - `many_valued.jl` — Compare Gödel and Łukasiewicz values and see primitive modal folds at a dead end.
 - `normal_forms.jl` — Convert a classical formula to CNF and DNF and check semantic preservation.
 - `standard_translation.jl` — Compare direct modal evaluation with first-order standard translation.
+- `model_family.jl` — Evaluate one formula across a family of models sharing a frame.

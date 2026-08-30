@@ -23,6 +23,14 @@ using Aletheia
     @test occursin("p: {:w2}", s_m1)
     @test occursin("q: {:w1, :w2}", s_m1)
 
+    # Model headers describe chain carriers without exposing type parameters.
+    m_unit_godel = Model(f1, GodelAlgebra(), Dict("p" => Dict(:w1 => 0.5, :w2 => 1.0)))
+    m_unit_lukasiewicz = Model(f1, LukasiewiczAlgebra(), Dict("p" => Dict(:w1 => 0.5, :w2 => 1.0)))
+    @test occursin("GodelAlgebra (unit interval [0.0, 1.0])", sprint(show, MIME("text/plain"), m_unit_godel))
+    @test occursin("LukasiewiczAlgebra (unit interval [0.0, 1.0])", sprint(show, MIME("text/plain"), m_unit_lukasiewicz))
+    @test !occursin("{0}", sprint(show, MIME("text/plain"), m_unit_godel))
+    @test !occursin("{0}", sprint(show, MIME("text/plain"), m_unit_lukasiewicz))
+
     # Large model
     m_large = Model(f_large, BOOLEAN, Dict("p" => Set(large_worlds)))
     @test occursin("… (10 elided)", sprint(show, MIME("text/plain"), m_large))
@@ -104,6 +112,9 @@ using Aletheia
     s_cs = sprint(show, MIME("text/plain"), cs)
     @test occursin("ClauseSet (2 clauses)", s_cs)
     @test occursin("p(x) :- q(y)", s_cs)
+    @test sprint(show, MIME("text/plain"),
+        HornClause(Predicate(:father, Constant(:a)), Predicate(:parent, Constant(:a)))) ==
+        "father(a) :- parent(a)"
 
     sub = Substitution(x => Constant("a"))
     @test sprint(show, sub) == "Substitution(x => \"a\")"
