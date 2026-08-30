@@ -178,3 +178,17 @@ end
 
 """Parse with the pool as the second argument; a convenience spelling for [`parse`](@ref)."""
 parse(source::AbstractString, pool::FormulaPool; kwargs...) = parse(pool, source; kwargs...)
+
+"""
+    parse(Formula, source; atom_parser=identity)
+
+Parse a formula over [`DEFAULT_SIGNATURE`](@ref) into [`DEFAULT_POOL`](@ref).
+Equivalent to `parse(DEFAULT_POOL, source)`.
+
+The type argument is not decoration.  `parse` here is `Base.parse`, so a
+one-argument `parse(::AbstractString)` method would be type piracy: it would
+change what `parse("...")` means for every package loaded alongside Aletheia.
+Dispatching on `Formula` keeps the method Aletheia's own and follows Base's
+own `parse(T, string)` convention.
+"""
+parse(::Type{<:Formula}, source::AbstractString; kwargs...) = parse(DEFAULT_POOL, source; kwargs...)

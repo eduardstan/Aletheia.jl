@@ -5,6 +5,13 @@ pre-release (`0.1.0-DEV`), so there is no released version yet.
 
 ## Unreleased
 
+- Added an implicit default-pool path. `atom(value)`,
+  `branch(connective, children...)`, and `parse(Formula, source)` use
+  `DEFAULT_POOL`, a single pool over `DEFAULT_SIGNATURE` (`¬`, `∧`, `⊗`, `∨`,
+  `→`), and connective values are callable on pooled formulas so `p ∧ q` and
+  `¬p` form branches directly. Both are opt-in per call site; the explicit
+  `Signature`/`FormulaPool` path is unchanged, and connectives outside the
+  default signature or children from another pool raise an `ArgumentError`.
 - Added syntax-first pooled formulas, parsing, printing, and connective traits.
 - Added truth algebras and finite FLew algebras, including non-chain families.
 - Added relational frames, models, compound evaluation, Compass and RCC

@@ -43,6 +43,81 @@ println(nsubterms(formula))
 5
 ```
 
+## Two ways to name the pool
+
+The pool above is written out because that formula uses a modal signature. For
+the ordinary propositional connectives there is nothing to declare, and the
+pool argument can be dropped: `atom`, `branch`, and `parse` then use
+[`DEFAULT_POOL`](@ref), a single pool over [`DEFAULT_SIGNATURE`](@ref)
+(`¬`, `∧`, `⊗`, `∨`, `→`). Connective values are callable, so the formation
+rule reads as it is written:
+
+```jldoctest quickstart
+r = atom("r")
+s = atom("s")
+println(syntaxstring(¬(r ∧ s) → r))
+println(syntaxstring(parse(Formula, "r ∧ s → r")))
+println(Aletheia.pool(r ∧ s) === Aletheia.DEFAULT_POOL)
+
+# output
+
+¬(r ∧ s) → r
+r ∧ s → r
+true
+```
+
+This is opt-in per call site, not a mode: a call that names no pool is a call
+on `DEFAULT_POOL`, and one that names a pool is unaffected. Callable
+connectives take the pool from their operands, so the explicit path keeps
+working the same way:
+
+```jldoctest quickstart
+println(Aletheia.pool(Diamond(:R)(p)) === pool)
+println(Diamond(:R)(p) == branch(pool, Diamond(:R), p))
+
+# output
+
+true
+true
+```
+
+Use the explicit path when you need control, and expect it in three cases:
+
+  * **Any connective outside `DEFAULT_SIGNATURE`.** Modal and user-defined
+    connectives are not in the default signature, so they need a signature of
+    their own. This is also the textbook order, in which a modal similarity
+    type is declared before its formulas are formed.
+  * **Long-running processes that intern unboundedly many distinct formulas.**
+    `DEFAULT_POOL` is a `const`: it lives for the whole process and is never
+    released. An explicit `FormulaPool` is an ordinary object and is collected
+    once it goes out of scope.
+  * **Keeping unrelated languages apart.** Formulas from different pools are
+    never equal, and mixing them in one branch is an `ArgumentError`.
+
+Both paths are otherwise the same object: the same interning, the same
+constant-time equality, and the same allocation profile. `FormulaPool` guards
+its table with a lock, and `DEFAULT_POOL` is an ordinary pool, so concurrent
+construction through either path is safe.
+
+```jldoctest quickstart
+other = FormulaPool(Signature((∧,)))
+try
+    atom(other, "r") ∧ atom("s")
+catch error
+    println(error isa ArgumentError)
+end
+try
+    branch(Diamond(:R), atom("r"))
+catch error
+    println(error isa ArgumentError)
+end
+
+# output
+
+true
+true
+```
+
 Parsing uses the same pool and signature, and printing is canonical and
 parseable:
 

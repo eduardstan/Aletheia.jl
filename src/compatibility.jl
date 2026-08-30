@@ -223,6 +223,10 @@ end
 
 # Sole treats connective values as constructors.  Keep Aletheia's values (and
 # thus their type-level dispatch identity) while adding the opt-in call form.
+# These stay on the wider `Aletheia.Formula` so compatibility wrappers, truth
+# values, and leftmost forms all reach them; native `Atom`/`Branch` operands
+# are claimed by the strictly more specific methods at the end of `syntax.jl`,
+# which return native pooled formulas instead of compatibility wrappers.
 function (connective::Aletheia.Negation)(formula::Aletheia.Formula)
     Branch(connective, formula)
 end

@@ -26,6 +26,7 @@ include("prover.jl")
 include("compatibility.jl")
 
 export Signature, Formula, FormulaPool, Atom, Branch
+export DEFAULT_SIGNATURE, DEFAULT_POOL
 export atom, branch, children, nchildren, value, operator, head, pool, id
 export isatom, isbranch, dag, subterms, nsubterms, signature, connectives
 export arity, dual, hasconnective, hasdual, precedence, associativity
