@@ -220,7 +220,7 @@ generated edges are checked against their predicates in `test/relations.jl`.
 
 ## Checking formulas over real SoleData datasets
 
-This benchmark-only suite is separate from the synthetic tables above. The
+This real-dataset suite is separate from the synthetic tables above. The
 explicit sweep builds seeded `ExplicitModalLogiset` datasets with 1, 8, or 32
 instances and 4, 16, or 32 worlds per instance; each instance has six random
 features and a directed graph. It varies formula depth, modal-node probability
@@ -228,10 +228,11 @@ features and a directed graph. It varies formula depth, modal-node probability
 frames (24 quick cases). Each formula is a seeded recursive recipe: leaves
 are scalar conditions, Boolean nodes are `¬`, `∧`, `∨`, or `→`, and modal
 nodes are `◇`/`□`. SoleData checks every world in every instance; Aletheia
-wraps the dataset in an [`AbstractModelFamily`](@ref) (the adapter used here
-lives in `benchmark/dataset_protocol_adapter.jl`) and calls batch or scalar
-`extension`. The formula-instance-world agreement gate covered 80 formulas
-before timing.
+wraps the dataset in `Aletheia.SoleDataFamily`, supplied by the optional
+SoleData package extension,
+and calls batch or scalar `extension`. The formula-instance-world agreement
+gate covered 80 formulas before timing, including uniform and non-uniform
+instance frames.
 
 The supported follow-up builds the real default `scalarlogiset` path from a
 two-column DataFrame, IA3 interval relations, and its default full/one-step

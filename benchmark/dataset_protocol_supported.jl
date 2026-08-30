@@ -42,17 +42,24 @@ function run_gate()
             formula_count += 1
             for i_instance in Aletheia.eachinstance(family)
                 expected = sole_check_all(formula_s, dataset, i_instance)
-                extension_a[i_instance] == expected || error("cold agreement disagreement")
+                extension_a[i_instance] == expected || error(
+                    "cold agreement disagreement: formula=$(Aletheia.syntaxstring(formula_a)), " *
+                    "instance=$i_instance, Aletheia=$(extension_a[i_instance]), SoleData=$expected")
                 for (slot, world) in enumerate(SoleLogics.allworlds(
                     SoleLogics.frame(dataset, i_instance)))
-                    Aletheia.check(formula_a, family, i_instance, world) == expected[slot] ||
-                        error("cold agreement disagreement at instance=$i_instance world=$world")
+                    actual = Aletheia.check(formula_a, family, i_instance, world)
+                    actual == expected[slot] || error(
+                        "cold agreement disagreement: formula=$(Aletheia.syntaxstring(formula_a)), " *
+                        "instance=$i_instance, world=$world, Aletheia=$actual, " *
+                        "SoleData=$(expected[slot])")
                     formula_world_cases += 1
                 end
                 # The same formula is checked again after SupportedLogiset's full
                 # memo has been populated; its answer must remain exact.
                 warm = sole_check_all(formula_s, dataset, i_instance)
-                warm == expected || error("warm agreement disagreement")
+                warm == expected || error(
+                    "warm agreement disagreement: formula=$(Aletheia.syntaxstring(formula_a)), " *
+                    "instance=$i_instance, Aletheia=$warm, SoleData=$expected")
             end
         end
     end

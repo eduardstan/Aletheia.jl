@@ -89,7 +89,17 @@ Aletheia.instance_count(d::MyDataset) = length(d.rows)
 Aletheia.instance_model(d::MyDataset, i) = Model(frame_for(d.rows[i]), BOOLEAN, valuation_for(d.rows[i]))
 ```
 
-The SoleData adapter used by the benchmark is exactly this, and lives in
-`benchmark/dataset_protocol_adapter.jl`; it is benchmark-only and not part of
-the package. The [measured results](results.md) chapter reports what routing a
-real dataset through this protocol costs.
+SoleData is supported through an optional package extension. With SoleData
+loaded, `Aletheia.SoleDataFamily(dataset)` adapts any
+`SoleData.AbstractModalLogiset`; it builds one Aletheia `Model` per instance,
+uses `SoleData.frame(dataset, i)` for its worlds and accessibility, and supplies
+`SoleData.checkcondition` as the atom valuation callback. The converted frame
+exposes the selected SoleData relation as `:R`, so an Aletheia formula can use
+`Diamond(:R)` or `Box(:R)`. Pass `relation=...` for a multimodal SoleData frame;
+leave it as `nothing` for a unimodal frame. The optional `vectorized=false`
+selects the scalar callback instead of the default batch callback.
+
+The extension does not cross SoleData's feature/channel, representative,
+one-step aggregation, or memo interfaces. Those hooks remain available to
+SoleData's own optimized `check` path. The [measured results](results.md)
+chapter reports the differential agreement and the cost of this boundary.

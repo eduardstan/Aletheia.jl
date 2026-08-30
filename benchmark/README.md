@@ -38,10 +38,10 @@ samples.
 
 ## SoleData dataset-protocol stage 1
 
-The real-dataset experiment is deliberately benchmark-only: it creates a
-temporary Julia environment, develops the local Aletheia checkout and the
-read-only SoleData checkout into that environment, and leaves the core
-`Project.toml` unchanged.
+The experiment is benchmark-only, but it exercises the production optional
+SoleData extension: it creates a temporary Julia environment, develops the
+local Aletheia checkout and the read-only SoleData checkout into that
+environment, and loads `AletheiaSoleDataExt` only when SoleData is present.
 
 ```sh
 SOLEDATA_PATH=/path/to/SoleData julia --startup-file=no benchmark/dataset_protocol.jl
