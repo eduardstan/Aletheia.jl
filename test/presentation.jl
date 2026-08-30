@@ -30,8 +30,15 @@ using Aletheia
     # Callable relations / valuation
     f_callable = Frame((:w1, :w2), (w, r) -> (:w2,); index=true)
     m_callable = Model(f_callable, (a, w) -> true, BOOLEAN)
+    @test occursin("relations supplied on demand", sprint(show, MIME("text/plain"), f_callable))
+    @test occursin("relations supplied on demand", sprint(show, MIME("text/plain"), m_callable))
     @test occursin("<callable>", sprint(show, MIME("text/plain"), f_callable))
     @test occursin("<function>", sprint(show, MIME("text/plain"), m_callable))
+
+    generated = interval_frame(3)
+    generated_display = sprint(show, MIME("text/plain"), generated)
+    @test occursin("Frame (6 worlds, relations supplied on demand)", generated_display)
+    @test !occursin("1 relation", generated_display)
 
     # 2. Algebras
     @test sprint(show, MIME("text/plain"), BOOLEAN) == "BooleanAlgebra (carrier Bool: {false, true})"
@@ -133,6 +140,8 @@ using Aletheia
     s_atom_map = sprint(show, MIME("text/plain"), m_atom_map)
     @test occursin("empty: {}", s_atom_map)
     @test occursin("p: {:w1}", s_atom_map)
+    m_empty_set = Model(f1, BOOLEAN, Dict("empty" => Set{Symbol}()))
+    @test occursin("empty: {}", sprint(show, MIME("text/plain"), m_empty_set))
     m_constant = Model(f1, BOOLEAN, Dict("p" => true))
     @test occursin("p: {}", sprint(show, MIME("text/plain"), m_constant))
 

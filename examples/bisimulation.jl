@@ -29,6 +29,7 @@ println("separating values: ", check(separator, m₁, :r), "/", check(separator,
 #   Relations:
 #     :R: :r → :r
 #   Valuation:
+#     p: {}
 # m₂ after labelling t with p:
 # Model (2 worlds, 1 relation, BooleanAlgebra())
 #   Worlds (2): :s, :t

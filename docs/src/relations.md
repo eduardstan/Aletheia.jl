@@ -111,7 +111,7 @@ println(relation_holds(MEETS, Interval(1, 2), target))
 
 # output
 
-Frame (6 worlds, 1 relation)
+Frame (6 worlds, relations supplied on demand)
   Worlds (6): (1−2), (1−3), (1−4), (2−3), (2−4), (3−4)
   Relations: <callable>
 Interval{Int64}[(2−3), (2−4)]

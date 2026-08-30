@@ -542,9 +542,13 @@ end
 
 function Base.show(io::IO, ::MIME"text/plain", frame::Frame)
     nw = length(frame.worlds)
-    nrel = frame.relations isa AbstractDict ? length(frame.relations) : 1
-    _display_header(io, "Frame",
-        "$nw world$(nw == 1 ? "" : "s"), $nrel relation$(nrel == 1 ? "" : "s")")
+    relation_summary = if frame.relations isa AbstractDict
+        nrel = length(frame.relations)
+        "$nrel relation$(nrel == 1 ? "" : "s")"
+    else
+        "relations supplied on demand"
+    end
+    _display_header(io, "Frame", "$nw world$(nw == 1 ? "" : "s"), $relation_summary")
     _display_worlds(io, frame)
     _display_relations(io, frame)
 end
@@ -763,16 +767,17 @@ function _format_valuation_summary(val_data, worlds_tuple, fmt=string, limit::In
                 end
             else
                 a = k
+                worlds_for_atom = get!(atom_map, a, Dict{Any,Any}())
                 if v isa AbstractSet || v isa AbstractVector || v isa Tuple
                     for w in v
-                        get!(atom_map, a, Dict{Any,Any}())[w] = true
+                        worlds_for_atom[w] = true
                     end
                 elseif v isa AbstractDict
                     for (w, val) in v
-                        get!(atom_map, a, Dict{Any,Any}())[w] = val
+                        worlds_for_atom[w] = val
                     end
                 else
-                    get!(atom_map, a, Dict{Any,Any}())[:all] = v
+                    worlds_for_atom[:all] = v
                 end
             end
         end
@@ -808,9 +813,13 @@ function Base.show(io::IO, ::MIME"text/plain", model::Model)
     f = frame(model)
     nw = length(f.worlds)
     alg = algebra(model)
-    nrel = f.relations isa AbstractDict ? length(f.relations) : 1
-    _display_header(io, "Model",
-        "$nw world$(nw == 1 ? "" : "s"), $nrel relation$(nrel == 1 ? "" : "s"), $alg")
+    relation_summary = if f.relations isa AbstractDict
+        nrel = length(f.relations)
+        "$nrel relation$(nrel == 1 ? "" : "s")"
+    else
+        "relations supplied on demand"
+    end
+    _display_header(io, "Model", "$nw world$(nw == 1 ? "" : "s"), $relation_summary, $alg")
     _display_worlds(io, f)
     _display_relations(io, f)
 
