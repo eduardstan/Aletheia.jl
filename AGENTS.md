@@ -40,6 +40,7 @@ When updating this file, preserve this bar for all agents and keep entries conci
 
 - Theory APIs live in `src/firstorder.jl`, `src/bisimulation.jl`, `src/normalforms.jl`, and `src/prover.jl`; `test/theory.jl` covers their Boolean/classical boundaries. The first-order bridge and normal forms deliberately do not implement a prover or many-valued classical equivalence.
 - The human benchmark's theory row is in `benchmark/run.jl`; its output records whether quotient construction amortizes, rather than assuming contraction wins.
+- The human benchmark's default is a five-seed sweep with 200 paired samples per seed; `data/benchmark-run/run.txt` is the provenance for the published `docs/src/results.md` rows.
 
 ## Migration layer
 

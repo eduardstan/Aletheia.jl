@@ -4,13 +4,17 @@ sole_path = get(ENV, "SOLELOGICS_PATH", "../SoleLogics.jl")
 isdir(sole_path) || error("SoleLogics checkout not found at $sole_path; set SOLELOGICS_PATH")
 Pkg.develop(Pkg.PackageSpec(path=sole_path)); Pkg.instantiate()
 include(joinpath(@__DIR__, "common.jl"))
+const SEEDS = let raw = get(ENV, "BENCHMARK_SEEDS", "")
+    isempty(strip(raw)) ? DEFAULT_SEEDS : Tuple(parse_seed.(split(raw, ",")))
+end
 const RUN_START_NS = time_ns()
+const RUN_START_UPTIME = try readchomp(`uptime`) catch; "unavailable" end
 
 println("Aletheia vs SoleLogics evaluation benchmark")
 println("Julia: ", VERSION)
 println("CPU: ", Sys.CPU_NAME, " (", Sys.CPU_THREADS, " threads)")
 println("SoleLogics checkout: ", sole_path)
-println("mode: ", DEEP ? "deep" : "quick", "; seed: ", SEED)
+println("mode: ", DEEP ? "deep" : "quick", "; seeds: ", join(string.(SEEDS), ", "))
 println("samples: ", BENCH_SAMPLES, "; fixed-sample timing (legacy budget: ", BENCH_SECONDS,
     " s); hard per-call timeout: ", CASE_TIMEOUT, " s")
 println()
@@ -23,7 +27,8 @@ for depth in (2, 4, 6)
     am = a_boolean_model(1, Tuple{Int,Int}[]); sm = s_boolean_model(1, Tuple{Int,Int}[])
     @assert Aletheia.check(a, am, 1) == SoleLogics.check(s, sm, first(SoleLogics.allworlds(SoleLogics.frame(sm))); perform_normalization=false)
 end
-rng_gate = MersenneTwister(SEED)
+for seed in SEEDS
+    rng_gate = MersenneTwister(seed)
 for trial in 1:(DEEP ? 192 : 96)
     n = rand(rng_gate, 2:10); density = rand(rng_gate); edges = edge_data(n, density, rand(rng_gate, 1:typemax(Int)))
     sets = Dict("p$(i)" => Set(w for w in 1:n if rand(rng_gate, Bool)) for i in 1:6)
@@ -38,15 +43,18 @@ for trial in 1:(DEEP ? 192 : 96)
         end
     end
 end
-println("semantic differential: PASS; seed=$(SEED)")
-println("contraction gate: PASS; models=$(DEEP ? 192 : 96)")
+end
+println("semantic differential: PASS; seeds=$(join(string.(SEEDS), ","))")
+println("contraction gate: PASS; models=$(length(SEEDS) * (DEEP ? 192 : 96))")
 
 println("[syntax]")
 function add_section_rows!(section, labels, cases; note="")
-    incumbent = section_measure(section, cases, "incumbent")
-    aletheia = section_measure(section, cases, "aletheia")
+    # section_measure interleaves the rotated seed order for every case while
+    # retaining one warmed child per side.
+    incumbent = section_measure(section, cases, "incumbent"; seeds=SEEDS)
+    aletheia = section_measure(section, cases, "aletheia"; seeds=SEEDS)
     for i in eachindex(labels)
-        addrow!(labels[i], incumbent[i], aletheia[i]; note=note)
+        addrow!(labels[i], [x[i] for x in incumbent], [x[i] for x in aletheia]; note=note)
     end
 end
 syntax_cases = Tuple{String,String}[]; syntax_labels = String[]
@@ -70,10 +78,10 @@ ext_cases = [("prop_extension", "$n:$depth") for (n, depth) in (DEEP ? ((8, 3), 
 add_section_rows!("extension", ["extension finite model worlds=$(split(arg, ':')[1]) depth=$(split(arg, ':')[2])" for (_, arg) in ext_cases], ext_cases;
     note="SoleLogics has no extension API; incumbent cell is the equivalent all-world check loop")
 
-println("[random modal check; seed=$(SEED)]")
+println("[random modal check; seeds=$(join(string.(SEEDS), ","))]")
 modal_cases = [("modal_check", "$n:$density:$depth") for n in (DEEP ? (8, 24, 64) : (8, 24)), density in (0.15, 0.50), depth in (DEEP ? (2, 4, 6) : (2, 4))]
 add_section_rows!("random modal check", ["random modal check worlds=$(split(arg, ':')[1]) density=$(split(arg, ':')[2]) depth=$(split(arg, ':')[3])" for (_, arg) in modal_cases], modal_cases;
-    note="fixed seed $(SEED); normalization disabled to isolate evaluator")
+    note="seed sweep; normalization disabled to isolate evaluator")
 
 println("[interval / dimensional check]")
 interval_cases = Tuple{String,String}[]; interval_labels = String[]
@@ -122,45 +130,64 @@ for n in contraction_models, q in (DEEP ? (1, 4, 16, n) : (1, n))
     end
     push!(contraction_ranges, (n=n, q=q, c=cindex, orig=orig_indices, quot=quot_indices, curve_orig=curve_orig, curve_quot=curve_quot))
 end
-contraction_measurements = section_measure("contraction", contraction_cases, "aletheia"; timeout=DEEP ? 180 : 120)
+contraction_measurements = section_measure("contraction", contraction_cases, "aletheia";
+    timeout=DEEP ? 180 : 120, seeds=SEEDS)
 contraction_records = NamedTuple[]
 for entry in contraction_ranges
-    c = contraction_measurements[entry.c]; po = parse_ratio_measurements(contraction_measurements[entry.orig]); pq = parse_ratio_measurements(contraction_measurements[entry.quot])
-    ratio = entry.q / entry.n; delta = po.time === missing || pq.time === missing ? missing : po.time - pq.time
-    kstar = delta === missing || delta <= 0 ? Inf : c.time / delta
-    kstar_text = isfinite(kstar) ? @sprintf("%.1f", kstar) : "∞"
-    println("$(entry.n) | $(entry.q) | $(@sprintf("%.3f", ratio)) | $(fmt_measure(c)) | $(fmt_measure(po)) | $(fmt_measure(pq)) | $kstar_text | ")
-    push!(contraction_records, (n=entry.n, q=entry.q, c=c, po=po, pq=pq, kstar=kstar))
+    seed_records = NamedTuple[]
+    for measurements in contraction_measurements
+        c = measurements[entry.c]
+        po = parse_ratio_measurements(measurements[entry.orig])
+        pq = parse_ratio_measurements(measurements[entry.quot])
+        delta = po.time === missing || pq.time === missing ? missing : po.time - pq.time
+        kstar = delta === missing || delta <= 0 || c.time === missing ? Inf : c.time / delta
+        push!(seed_records, (c=c, po=po, pq=pq, kstar=kstar))
+    end
+    c = aggregate_measurements([r.c for r in seed_records]); po = aggregate_measurements([r.po for r in seed_records]); pq = aggregate_measurements([r.pq for r in seed_records])
+    finite_k = [r.kstar for r in seed_records if isfinite(r.kstar)]
+    kstar = isempty(finite_k) ? Inf : median(finite_k)
+    kstats = stats(finite_k)
+    kmarker = length(finite_k) > 1 && (minimum(finite_k) < kstats.mean - kstats.std || maximum(finite_k) > kstats.mean + kstats.std) ? " [UNSTABLE]" : ""
+    ktext = isempty(finite_k) ? "∞" : @sprintf("%.1f (mean %.1f ± %.1f)%s", kstats.median, kstats.mean, kstats.std, kmarker)
+    println("$(entry.n) | $(entry.q) | $(@sprintf("%.3f", entry.q / entry.n)) | $(time_summary([r.c for r in seed_records])) | $(time_summary([r.po for r in seed_records])) | $(time_summary([r.pq for r in seed_records])) | $ktext | ")
+    push!(contraction_records, (n=entry.n, q=entry.q, c=c, po=po, pq=pq, kstar=kstar, ktext=ktext, seeds=seed_records))
     for (k, oi, qi) in zip(contraction_curve, entry.curve_orig, entry.curve_quot)
-        bo, bq = contraction_measurements[oi], contraction_measurements[qi]
-        println("  K=$k: $(bo.time === missing ? "timeout" : @sprintf("%.3f", bo.time / 1e6)) ms / $(bq.time === missing || c.time === missing ? "timeout" : @sprintf("%.3f", (c.time + bq.time) / 1e6)) ms (quotient includes C)")
+        bos = [measurements[oi] for measurements in contraction_measurements]
+        bqs = [measurements[qi] for measurements in contraction_measurements]
+        cs = [r.c for r in seed_records]
+        totals = [bq.time === missing || cc.time === missing ? missing : cc.time + bq.time for (bq, cc) in zip(bqs, cs)]
+        println("  K=$k: $(time_summary(bos)) / $(isempty(filter(x -> x !== missing, totals)) ? "timeout" : time_summary([Measurement(t, missing, missing) for t in totals]))")
     end
 end
 
 println("[cold package load]")
 load_a = raw"""t0=time_ns(); using Aletheia; t1=time_ns(); s=Aletheia.Signature((Aletheia.NEGATION,Aletheia.CONJUNCTION,Aletheia.DISJUNCTION,Aletheia.IMPLICATION)); p=Aletheia.FormulaPool(s); Aletheia.syntaxstring(Aletheia.parse(p, "p")); t2=time_ns(); println((t1-t0)/1e6, " ", (t2-t0)/1e6)"""
 load_s = raw"""t0=time_ns(); using SoleLogics; t1=time_ns(); SoleLogics.syntaxstring(SoleLogics.parseformula(SoleLogics.SyntaxTree, "p")); t2=time_ns(); println((t1-t0)/1e6, " ", (t2-t0)/1e6)"""
-la = external_measure(load_a); ls = external_measure(load_s)
+load_values = [(external_measure(load_a), external_measure(load_s)) for _ in SEEDS]
 cold_measure(x, i) = x === nothing ? Measurement(missing, missing, missing, "unavailable") : Measurement(x[i] * 1e6, missing, missing)
-addrow!("cold package load", cold_measure(ls, 1), cold_measure(la, 1); allocations=false)
-addrow!("cold time-to-first-result", cold_measure(ls, 2), cold_measure(la, 2); allocations=false)
+addrow!("cold package load", [cold_measure(x[2], 1) for x in load_values], [cold_measure(x[1], 1) for x in load_values]; allocations=false)
+addrow!("cold time-to-first-result", [cold_measure(x[2], 2) for x in load_values], [cold_measure(x[1], 2) for x in load_values]; allocations=false)
 
 wall_clock = (time_ns() - RUN_START_NS) / 1e9
 println(); print_report(); println("benchmark wall clock: ", @sprintf("%.1f s", wall_clock))
 
 # Preserve the exact run provenance and values beside the published page.  The
 # successful child measurements use a fixed count (not a time budget), while
-# contraction checks deliberately use 2000 paired samples for a stable K*.
+# contraction checks deliberately use 2000 paired samples per seed for K*.
 artifact = joinpath(normpath(joinpath(@__DIR__, "..")), "data", "benchmark-run", "run.txt")
 mkpath(dirname(artifact))
 load_average = try readchomp(`uptime`) catch; "unavailable" end
+run_end_uptime = load_average
 open(artifact, "w") do io
     println(io, "julia=$(VERSION)")
     println(io, "cpu=$(Sys.CPU_NAME)")
     println(io, "cpu_threads=$(Sys.CPU_THREADS)")
     println(io, "load_average=$(load_average)")
     println(io, "mode=$(DEEP ? "deep" : "quick")")
-    println(io, "seed=$(SEED)")
+    println(io, "seeds=$(join(string.(SEEDS), ","))")
+    println(io, "seed_count=$(length(SEEDS))")
+    println(io, "uptime_start=$(RUN_START_UPTIME)")
+    println(io, "uptime_end=$(run_end_uptime)")
     println(io, "default_samples=$(BENCH_SAMPLES)")
     println(io, "contraction_samples=2000")
     println(io, "cold_load_repetitions=$(DEEP ? 2 : 1)")
@@ -168,19 +195,21 @@ open(artifact, "w") do io
     println(io, "suite | SoleLogics | Aletheia | ratio | allocations | samples")
     for row in rows
         samples = occursin("cold", row.suite) ? (DEEP ? 2 : 1) : BENCH_SAMPLES
-        println(io, row.suite, " | ", fmt_measure(row.incumbent), " | ",
-            fmt_measure(row.aletheia), " | ",
-            row.ratio === missing ? "—" : @sprintf("%.2fx", row.ratio), " | ",
+        println(io, row.suite, " | ", time_summary(row.incumbent_seeds), " | ",
+            time_summary(row.aletheia_seeds), " | ", ratio_summary(row), " | ",
             row.allocations ? fmt_alloc(row.incumbent) * " ; " * fmt_alloc(row.aletheia) : "—/—",
-            " | ", samples)
+            " | samples=", samples, " per seed; seed_ratios=", join([@sprintf("%.6f", x) for x in row.ratios], ","),
+            "; seed_loads=", join(["$(i.load === missing ? "missing" : @sprintf("%.2f", i.load))/$(a.load === missing ? "missing" : @sprintf("%.2f", a.load))" for (i, a) in zip(row.incumbent_seeds, row.aletheia_seeds)], ","))
     end
     for (entry, record) in zip(contraction_ranges, contraction_records)
         c, po, pq = record.c, record.po, record.pq
-        println(io, "contraction n=$(record.n) q=$(record.q) | C=$(fmt_measure(c)) | P_orig=$(fmt_measure(po)) | P_quot=$(fmt_measure(pq)) | K*=$(isfinite(record.kstar) ? @sprintf("%.1f", record.kstar) : "∞") | samples=2000")
+        println(io, "contraction n=$(record.n) q=$(record.q) | C=$(time_summary([r.c for r in record.seeds])) | P_orig=$(time_summary([r.po for r in record.seeds])) | P_quot=$(time_summary([r.pq for r in record.seeds])) | K*=$(record.ktext) | samples=2000 per seed | seed_kstars=$(join([isfinite(r.kstar) ? @sprintf("%.6f", r.kstar) : "Inf" for r in record.seeds], ",")) | seed_loads=$(join([r.c.load === missing ? "missing" : @sprintf("%.2f", r.c.load) for r in record.seeds], ","))")
         for (k, oi, qi) in zip(contraction_curve, entry.curve_orig, entry.curve_quot)
-            bo, bq = contraction_measurements[oi], contraction_measurements[qi]
-            total = bq.time === missing || c.time === missing ? "timeout" : fmt_time(c.time + bq.time)
-            println(io, "contraction_batch n=$(record.n) q=$(record.q) K=$k | original=$(fmt_measure(bo)) | quotient_total=$total | samples=2000")
+            bos = [measurements[oi] for measurements in contraction_measurements]
+            bqs = [measurements[qi] for measurements in contraction_measurements]
+            totals = [r.c.time === missing || bq.time === missing ? missing : r.c.time + bq.time for (r, bq) in zip(record.seeds, bqs)]
+            total_text = isempty(filter(x -> x !== missing, totals)) ? "timeout" : time_summary([Measurement(t, missing, missing) for t in totals])
+            println(io, "contraction_batch n=$(record.n) q=$(record.q) K=$k | original=$(time_summary(bos)) | quotient_total=$total_text | samples=2000 per seed")
         end
     end
 end
