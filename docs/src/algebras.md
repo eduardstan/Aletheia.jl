@@ -15,8 +15,9 @@ integer vectors or tuples of length `N*N` are also accepted and normalized to
 
 The constructor validates the bounded-lattice and commutative-monoid axioms,
 monotonicity of fusion, and residuation. It derives `x → z` as the
-largest `y` such that `x ⊗ y ≤ z`; implication is never accepted as an
-independent hand-written table. `meet(algebra, x, y)` is the lattice infimum, while
+largest `y` such that `x ⊗ y ≤ z`; this is the residuum construction described by
+Hájek [hajek1998; §2.1, Definitions 2.1.1–2.1.5 and Lemma 2.1.4, pp. 27–29](@cite).
+Implication is never accepted as an independent hand-written table. `meet(algebra, x, y)` is the lattice infimum, while
 `fusion(algebra, x, y)` is the monoid operation used for strong conjunction.
 The syntax `⊗` denotes fusion and `∧` denotes the lattice meet.
 
