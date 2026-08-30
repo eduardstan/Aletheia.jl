@@ -13,6 +13,13 @@ From a fresh checkout, set the incumbent checkout and run one command:
 SOLELOGICS_PATH=/path/to/SoleLogics.jl julia --project=benchmark benchmark/run.jl
 ```
 
+The harness pins BLAS to one thread and records that setting. At the end it
+compares the maximum recorded load (including `seed_loads`) and the load rise
+against midpoints derived from the recorded quiet and contaminated runs. A
+failed gate writes a prominent refusal marker, exits non-zero, and must not be
+published. For a local inspection only, use `--allow-contended`; it still
+stamps the artefact non-publishable.
+
 The default quick run sweeps five seeds (`0xA1E7_2024`, `0x5EED_2025`,
 `0xC0FF_EE42`, `0x1234_5678`, and `0x9ABC_DEF0`) and keeps 200 paired
 samples per seed;

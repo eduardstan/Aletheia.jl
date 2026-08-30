@@ -1,13 +1,24 @@
+# Keep cold child imports from selecting the host's default BLAS pool.
+ENV["OPENBLAS_NUM_THREADS"] = "1"
+ENV["OMP_NUM_THREADS"] = "1"
+ENV["MKL_NUM_THREADS"] = "1"
 using BenchmarkTools
+using LinearAlgebra
 using Printf
 using Random
 using Statistics
 using Aletheia
 using SoleLogics
 
+# Pin every timed Julia process to one BLAS thread before any measurements.
+LinearAlgebra.BLAS.set_num_threads(1)
+const BLAS_THREADS = LinearAlgebra.BLAS.get_num_threads()
+
+include(joinpath(@__DIR__, "load_gate.jl"))
 include(joinpath(@__DIR__, "paired_measure.jl"))
 
 const DEEP = "--deep" in ARGS
+const ALLOW_CONTENDED = "--allow-contended" in ARGS
 const DEFAULT_SEEDS = (UInt64(0xA1E7_2024), UInt64(0x5EED_2025),
     UInt64(0xC0FF_EE42), UInt64(0x1234_5678), UInt64(0x9ABC_DEF0))
 function parse_seed(text)
