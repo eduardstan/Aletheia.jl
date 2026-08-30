@@ -1,6 +1,6 @@
 name = "Aletheia"
 uuid = "e607e82d-a9f6-4003-a879-d63c15235362"
-version = "0.1.0-DEV"
+version = "0.1.0"
 authors = ["Ionel Eduard STAN"]
 
 [compat]

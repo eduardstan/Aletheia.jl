@@ -58,7 +58,7 @@ export satisfies, axioms, axiom, validates
 export BOOLEAN, truth_type, carrier, top, bottom, bot, meet, join, fusion
 export domain
 export implication, negation, levels, isfinitechain
-export precedeq, precedes, succeedeq, succeedes, maximalmembers, minimalmembers
+export precedeq, precedes, succeedeq, succeeds, maximalmembers, minimalmembers
 export AbstractFrame, AbstractUniModalFrame, AbstractMultiModalFrame
 export AbstractWorld, AbstractWorlds, AnyWorld
 export Frame, worlds, relations, hasworldindex, world_position, accessible
@@ -232,7 +232,7 @@ therefore throws an `ArgumentError` for `MINIMUM`.
 @doc "Test whether a frame relation is serial." serial
 @doc "Alias for [`downward_refinements`](@ref)." specializations
 @doc "Test non-strict successor order of finite truth values." succeedeq
-@doc "Test strict successor order of finite truth values." succeedes
+@doc "Test strict successor order of finite truth values." succeeds
 @doc "Test whether a frame relation is symmetric." symmetric
 @doc "Singleton to-center relation value of [`ToCenterRelation`](@ref)." tocenterrel
 @doc "Test whether a frame relation is transitive." transitive

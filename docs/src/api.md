@@ -117,7 +117,7 @@ isfinitechain
 precedeq
 precedes
 succeedeq
-succeedes
+succeeds
 maximalmembers
 minimalmembers
 ```
