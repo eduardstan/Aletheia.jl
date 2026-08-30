@@ -26,11 +26,11 @@ println("relation predicate agrees: ",
     relation_holds(MEETS, Interval(1, 2), target))
 # BEGIN EXPECTED OUTPUT
 # Interval frame:
-# Frame (6 worlds, 1 relation)
+# Frame (6 worlds, relations supplied on demand)
 #   Worlds (6): (1−2), (1−3), (1−4), (2−3), (2−4), (3−4)
 #   Relations: <callable>
 # Model with p at the target interval:
-# Model (6 worlds, 1 relation, BooleanAlgebra())
+# Model (6 worlds, relations supplied on demand, BooleanAlgebra())
 #   Worlds (6): (1−2), (1−3), (1−4), (2−3), (2−4), (3−4)
 #   Relations: <callable>
 #   Valuation:
