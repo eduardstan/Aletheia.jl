@@ -9,7 +9,7 @@ connective only need to add a method for their own value or type.
 function arity(connective)
     if connective isa Negation
         1
-    elseif connective isa Conjunction || connective isa Disjunction || connective isa Implication
+    elseif connective isa Conjunction || connective isa Fusion || connective isa Disjunction || connective isa Implication
         2
     elseif connective isa Diamond || connective isa Box
         1
@@ -29,6 +29,8 @@ function dual(connective)
         NEGATION
     elseif connective isa Conjunction
         DISJUNCTION
+    elseif connective isa Fusion
+        throw(ArgumentError("no dual is declared for Fusion"))
     elseif connective isa Disjunction
         CONJUNCTION
     elseif connective isa Diamond
@@ -64,6 +66,8 @@ function precedence(connective)
         90
     elseif connective isa Conjunction
         30
+    elseif connective isa Fusion
+        35
     elseif connective isa Disjunction
         20
     elseif connective isa Implication
@@ -82,7 +86,7 @@ Return `:left`, `:right`, or `:none` for a connective.  The default is
 function associativity(connective)
     if connective isa Negation || connective isa Diamond || connective isa Box
         :right
-    elseif connective isa Conjunction || connective isa Disjunction
+    elseif connective isa Conjunction || connective isa Fusion || connective isa Disjunction
         :left
     elseif connective isa Implication
         :right
@@ -98,7 +102,7 @@ Return whether a connective is commutative.  Commutativity is recorded as a
 trait for later normalization stages; it never changes syntax or equality.
 """
 function commutative(connective)
-    connective isa Conjunction || connective isa Disjunction
+    connective isa Conjunction || connective isa Fusion || connective isa Disjunction
 end
 
 """
@@ -122,6 +126,8 @@ function notation(connective)
         "¬"
     elseif connective isa Conjunction
         "∧"
+    elseif connective isa Fusion
+        "⊗"
     elseif connective isa Disjunction
         "∨"
     elseif connective isa Implication
@@ -135,7 +141,7 @@ function notation(connective)
     end
 end
 
-"""Alias for [`commutative`](@ref), retained as a readable predicate."""
+"""Readable predicate alias for the internal `commutative` trait."""
 iscommutative(connective) = commutative(connective)
 
 """Alias for [`modality`](@ref)."""
@@ -648,6 +654,8 @@ Base.hash(a::Branch, h::UInt) = hash(objectid(a.pool), hash(a.id, h))
 # modal values carry their relation as data rather than encoding it in a type.
 struct Negation end
 struct Conjunction end
+"""Stateless syntax marker for multiplicative conjunction (fusion)."""
+struct Fusion end
 struct Disjunction end
 struct Implication end
 
@@ -692,6 +700,7 @@ isdiamond(connective::AbstractRelationalConnective) = isdiamond(typeof(connectiv
 
 const NEGATION = Negation()
 const CONJUNCTION = Conjunction()
+const FUSION = Fusion()
 const DISJUNCTION = Disjunction()
 const IMPLICATION = Implication()
 const NOT = NEGATION
@@ -700,6 +709,7 @@ const OR = DISJUNCTION
 const IMPLIES = IMPLICATION
 const ¬ = NEGATION
 const ∧ = CONJUNCTION
+const ⊗ = FUSION
 const ∨ = DISJUNCTION
 const → = IMPLICATION
 
@@ -778,6 +788,7 @@ Base.string(formula::Branch) = syntaxstring(formula)
 """Return a compact text representation of a connective."""
 Base.show(io::IO, connective::Negation) = print(io, notation(connective))
 Base.show(io::IO, connective::Conjunction) = print(io, notation(connective))
+Base.show(io::IO, connective::Fusion) = print(io, notation(connective))
 Base.show(io::IO, connective::Disjunction) = print(io, notation(connective))
 Base.show(io::IO, connective::Implication) = print(io, notation(connective))
 Base.show(io::IO, connective::Diamond) = print(io, notation(connective))

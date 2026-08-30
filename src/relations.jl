@@ -388,13 +388,6 @@ const RCC_EQ = RCCEqualsRelation()
 const RCC8_RELATIONS = (DC, EC, PO, TPP, TPPi, NTPP, NTPPi, RCC_EQ)
 const RCC8Relations = RCC8_RELATIONS
 const RCC8_BASICS = (DC, EC, PO, TPP, TPPi, NTPP, NTPPi)
-const Topo_DC = DC
-const Topo_EC = EC
-const Topo_PO = PO
-const Topo_TPP = TPPi
-const Topo_TPPi = TPP
-const Topo_NTPP = NTPPi
-const Topo_NTPPi = NTPP
 
 _relation_name(::MinimumRelation) = "min"
 _relation_name(::MaximumRelation) = "max"
@@ -460,20 +453,19 @@ struct RCC5DisjointRelation <: RCCRelation end
 struct RCC5ProperPartRelation <: RCCRelation end
 struct RCC5ProperPartInverseRelation <: RCCRelation end
 
-const Topo_DR = RCC5DisjointRelation()
-const Topo_PP = RCC5ProperPartRelation()
-const Topo_PPi = RCC5ProperPartInverseRelation()
-const RCC5_RELATIONS = (Topo_DR, PO, Topo_PP, Topo_PPi)
-const RCC5Relations = RCC5_RELATIONS
+const DR = RCC5DisjointRelation()
+const PP = RCC5ProperPartRelation()
+const PPi = RCC5ProperPartInverseRelation()
+const RCC5_RELATIONS = (DR, PO, PP, PPi)
 const RCC5Relation = Union{RCC5DisjointRelation, typeof(PO), RCC5ProperPartRelation,
     RCC5ProperPartInverseRelation}
 
 relation_holds(::RCC5DisjointRelation, a, b) = relation_holds(DC, a, b) || relation_holds(EC, a, b)
 relation_holds(::RCC5ProperPartRelation, a, b) = relation_holds(TPP, a, b) || relation_holds(NTPP, a, b)
 relation_holds(::RCC5ProperPartInverseRelation, a, b) = relation_holds(TPPi, a, b) || relation_holds(NTPPi, a, b)
-inverse(::RCC5DisjointRelation) = Topo_DR
-inverse(::RCC5ProperPartRelation) = Topo_PPi
-inverse(::RCC5ProperPartInverseRelation) = Topo_PP
+inverse(::RCC5DisjointRelation) = DR
+inverse(::RCC5ProperPartRelation) = PPi
+inverse(::RCC5ProperPartInverseRelation) = PP
 
 _relation_name(::RCC5DisjointRelation) = "dr"
 _relation_name(::RCC5ProperPartRelation) = "pp"
@@ -538,6 +530,3 @@ relation_holds(::ClosestNorthEastRelation, a, b) = _px(b) > _px(a) && _py(b) > _
 relation_holds(::ClosestNorthWestRelation, a, b) = _px(b) < _px(a) && _py(b) > _py(a)
 relation_holds(::ClosestSouthEastRelation, a, b) = _px(b) > _px(a) && _py(b) < _py(a)
 relation_holds(::ClosestSouthWestRelation, a, b) = _px(b) < _px(a) && _py(b) < _py(a)
-
-export Point2DRelation, CL_N, CL_S, CL_E, CL_W, CL_NE, CL_NW, CL_SE, CL_SW, POINT2D_RELATIONS, Point2DRelations
-

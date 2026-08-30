@@ -10,7 +10,9 @@ CurrentModule = Aletheia
 [`BooleanAlgebra`](@ref), [`GodelAlgebra`](@ref), and
 [`LukasiewiczAlgebra`](@ref); `BOOLEAN` is the Boolean singleton. A chain's
 carrier is `Float64`, while its algebra type records whether it is the unit
-interval or a finite chain.
+interval or a finite chain. `carrier(algebra)` enumerates finite carrier values;
+for a continuous unit-interval algebra it returns the `(bottom, top)` bounds
+representation, since the full carrier is not enumerable.
 
 ```jldoctest semantics
 using Aletheia
@@ -27,7 +29,7 @@ GodelAlgebra{3} (chain of 3 levels: 0.0, 0.5, 1.0)
 LukasiewiczAlgebra{4} (chain of 4 levels: 0.0, 0.333, 0.667, 1.0)
 ```
 
-`meet`, `join`, `implication`, and `negation` are methods on the algebra, not
+lattice `meet`, `join`, `fusion`, `implication`, and `negation` are methods on the algebra, not
 methods on formulas. This keeps the semantic carrier visible to Julia's type
 inference and lets the same model/evaluation API support custom carriers. Atom
 values for finite chains are validated at `interpret`, so lazy valuations and
@@ -79,7 +81,7 @@ false
 ```
 
 Diamond is the algebraic join of successor values, so a dead end gives
-`bottom`. Box is the algebraic meet, so a dead end gives `top`. In Boolean
+`bottom`. Box is the lattice meet (infimum), so a dead end gives `top`. In Boolean
 models this reproduces the familiar existential/universal clauses; in
 many-valued models it is the corresponding algebra fold.
 

@@ -73,7 +73,8 @@ than silently reinterpreting them as atoms. See
 ## Why many-valued logic is a parameter
 
 Boolean, Gödel, and Łukasiewicz models share one evaluator. Their algebras
-implement `top`, `bottom`, `meet`, `join`, `implication`, and `negation`; the
+implement `top`, `bottom`, lattice `meet`, `join`, `fusion`, `implication`, and
+`negation`; the
 DAG walk calls those operations and stores either a `BitVector` or a
 `Vector{T}`. This avoids three nearly-identical propositional/modal
 implementations and makes a new finite chain an algebra value, not a new syntax
@@ -96,7 +97,7 @@ Boolean dual equation the operation used for its box.
 
 Aletheia therefore keeps `Box(relation)` as a primitive syntactic connective.
 During evaluation, diamond folds successor values with algebraic `join`, while
-box folds them with algebraic `meet`. An empty successor set gives `bottom` for
+box folds them with the lattice `meet` (infimum). An empty successor set gives `bottom` for
 diamond and `top` for box. The implementation expresses the frame semantics
 directly (Blackburn et al., §1.3, pp. 17–18) [blackburn2001; §1.3, pp. 17–18](@cite),
 then lets each algebra supply its operations. In Boolean models the expected

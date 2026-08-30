@@ -16,19 +16,19 @@ const _validated_flew = _ValidatedFiniteFLew()
     FiniteFLewAlgebra{N}
 
 A finite FLew algebra over the carrier `UInt8(1):UInt8(N)`.  `join` and
-`meet` are the bounded-lattice tables, `monoid` is the commutative monoid
-(table used for logical conjunction), and `implication` is derived at
+`meet` are the bounded-lattice tables, `fusion` is the commutative monoid
+(table used for multiplicative conjunction), and `implication` is derived at
 construction as the greatest element satisfying residuation.  `bot` and
 `top` are designated carrier indices.
 
-Use `FiniteFLewAlgebra(join, meet, monoid, bot, top)` to construct one.  All
+Use `FiniteFLewAlgebra(join, meet, fusion, bot, top)` to construct one.  All
 three input tables are explicit `N × N` integer-indexed tables; a malformed
 or non-FLew presentation is rejected before an object is returned.
 """
 struct FiniteFLewAlgebra{N} <: TruthAlgebra{FiniteTruth}
     join::Matrix{FiniteTruth}
     meet::Matrix{FiniteTruth}
-    monoid::Matrix{FiniteTruth}
+    fusion::Matrix{FiniteTruth}
     implication::Matrix{FiniteTruth}
     bot::FiniteTruth
     top::FiniteTruth
@@ -37,10 +37,10 @@ struct FiniteFLewAlgebra{N} <: TruthAlgebra{FiniteTruth}
     # public constructors below always normalize and validate their input.
     function FiniteFLewAlgebra{N}(
         join::Matrix{FiniteTruth}, meet::Matrix{FiniteTruth},
-        monoid::Matrix{FiniteTruth}, implication::Matrix{FiniteTruth},
+        fusion::Matrix{FiniteTruth}, implication::Matrix{FiniteTruth},
         bot::FiniteTruth, top::FiniteTruth, ::_ValidatedFiniteFLew
     ) where N
-        new{N}(join, meet, monoid, implication, bot, top)
+        new{N}(join, meet, fusion, implication, bot, top)
     end
 end
 
@@ -107,69 +107,69 @@ function _validate_lattice(join_table, meet_table, bot, top, n)
     end
 end
 
-function _validate_monoid(monoid, meet_table, top, n)
+function _validate_fusion(fusion, meet_table, top, n)
     for x in 1:n, y in 1:n
-        monoid[x, y] == monoid[y, x] ||
-            _invalid_flew("monoid commutativity", (x, y))
-        monoid[Int(top), x] == x && monoid[x, Int(top)] == x ||
-            _invalid_flew("monoid neutral top", (top, x), "⊤ is not the monoid identity")
+        fusion[x, y] == fusion[y, x] ||
+            _invalid_flew("fusion commutativity", (x, y))
+        fusion[Int(top), x] == x && fusion[x, Int(top)] == x ||
+            _invalid_flew("fusion neutral top", (top, x), "⊤ is not the fusion identity")
     end
     for x in 1:n, y in 1:n, z in 1:n
-        monoid[x, monoid[y, z]] == monoid[monoid[x, y], z] ||
-            _invalid_flew("monoid associativity", (x, y, z))
+        fusion[x, fusion[y, z]] == fusion[fusion[x, y], z] ||
+            _invalid_flew("fusion associativity", (x, y, z))
     end
     # Monotonicity is checked in both arguments even though commutativity was
     # checked above; this gives a useful witnessing triple for either defect.
     for x in 1:n, y in 1:n, z in 1:n
         if _finite_leq(meet_table, FiniteTruth(x), FiniteTruth(y))
-            monoid[x, z] == monoid[y, z] || _finite_leq(meet_table, monoid[x, z], monoid[y, z]) ||
-                _invalid_flew("monoid monotonicity (left)", (x, y, z))
-            monoid[z, x] == monoid[z, y] || _finite_leq(meet_table, monoid[z, x], monoid[z, y]) ||
-                _invalid_flew("monoid monotonicity (right)", (z, x, y))
+            fusion[x, z] == fusion[y, z] || _finite_leq(meet_table, fusion[x, z], fusion[y, z]) ||
+                _invalid_flew("fusion monotonicity (left)", (x, y, z))
+            fusion[z, x] == fusion[z, y] || _finite_leq(meet_table, fusion[z, x], fusion[z, y]) ||
+                _invalid_flew("fusion monotonicity (right)", (z, x, y))
         end
     end
 end
 
-function _derive_implication(join_table, meet_table, monoid, bot, top, n)
+function _derive_implication(join_table, meet_table, fusion, bot, top, n)
     implication = Matrix{FiniteTruth}(undef, n, n)
     for x in 1:n, z in 1:n
         candidates = FiniteTruth[]
         for y in 1:n
-            _finite_leq(meet_table, monoid[x, y], FiniteTruth(z)) && push!(candidates, FiniteTruth(y))
+            _finite_leq(meet_table, fusion[x, y], FiniteTruth(z)) && push!(candidates, FiniteTruth(y))
         end
         greatest = FiniteTruth[]
         for candidate in candidates
             all(other -> _finite_leq(meet_table, other, candidate), candidates) && push!(greatest, candidate)
         end
         length(greatest) == 1 || _invalid_flew("residuum existence", (x, z),
-            "the set of y with x ⊙ y ≤ z has no greatest element")
+            "the set of y with x ⊗ y ≤ z has no greatest element")
         implication[x, z] = only(greatest)
     end
     # Explicitly validate residuation, rather than relying solely on the
     # candidate search above.  This catches accidental table/index mistakes
     # and keeps the promised axiom check visible in diagnostics.
     for x in 1:n, y in 1:n, z in 1:n
-        left = _finite_leq(meet_table, monoid[x, y], FiniteTruth(z))
+        left = _finite_leq(meet_table, fusion[x, y], FiniteTruth(z))
         right = _finite_leq(meet_table, FiniteTruth(x), implication[y, z])
         left == right || _invalid_flew("residuation", (x, y, z),
-            "x ⊙ y ≤ z iff x ≤ y → z fails")
+            "x ⊗ y ≤ z iff x ≤ y → z fails")
     end
     implication
 end
 
-function _make_flew(join_table, meet_table, monoid_table, bot, top, n::Int)
+function _make_flew(join_table, meet_table, fusion_table, bot, top, n::Int)
     join = _finite_table(join_table, n, "join")
     lattice_meet = _finite_table(meet_table, n, "meet")
-    monoid = _finite_table(monoid_table, n, "monoid")
+    fusion = _finite_table(fusion_table, n, "fusion")
     b = _finite_index(bot, n, "bottom")
     t = _finite_index(top, n, "top")
     _validate_lattice(join, lattice_meet, b, t, n)
-    _validate_monoid(monoid, lattice_meet, t, n)
-    implication = _derive_implication(join, lattice_meet, monoid, b, t, n)
-    FiniteFLewAlgebra{n}(join, lattice_meet, monoid, implication, b, t, _validated_flew)
+    _validate_fusion(fusion, lattice_meet, t, n)
+    implication = _derive_implication(join, lattice_meet, fusion, b, t, n)
+    FiniteFLewAlgebra{n}(join, lattice_meet, fusion, implication, b, t, _validated_flew)
 end
 
-function FiniteFLewAlgebra(join_table, meet_table, monoid_table, bot, top)
+function FiniteFLewAlgebra(join_table, meet_table, fusion_table, bot, top)
     n = if meet_table isa AbstractMatrix
         size(meet_table, 1) == size(meet_table, 2) || throw(ArgumentError("meet table must be square"))
         size(meet_table, 1)
@@ -182,13 +182,13 @@ function FiniteFLewAlgebra(join_table, meet_table, monoid_table, bot, top)
     end
     n >= 1 || throw(ArgumentError("a finite FLew-algebra must have at least one truth value"))
     n <= typemax(FiniteTruth) || throw(ArgumentError("FiniteFLewAlgebra supports at most 255 truth values"))
-    FiniteFLewAlgebra{n}(join_table, meet_table, monoid_table, bot, top)
+    FiniteFLewAlgebra{n}(join_table, meet_table, fusion_table, bot, top)
 end
 
-function FiniteFLewAlgebra{N}(join_table, meet_table, monoid_table, bot, top) where N
+function FiniteFLewAlgebra{N}(join_table, meet_table, fusion_table, bot, top) where N
     N isa Integer && 1 <= N <= typemax(FiniteTruth) ||
         throw(ArgumentError("FiniteFLewAlgebra parameter N must be an integer in 1:255"))
-    _make_flew(join_table, meet_table, monoid_table, bot, top, Int(N))
+    _make_flew(join_table, meet_table, fusion_table, bot, top, Int(N))
 end
 
 truth_type(::Type{<:FiniteFLewAlgebra}) = FiniteTruth
@@ -209,28 +209,21 @@ function isfinitechain(algebra::FiniteFLewAlgebra)
 end
 Base.length(::FiniteFLewAlgebra{N}) where N = N
 
-"""Return the lattice meet (as opposed to the monoid conjunction)."""
-@inline function lattice_meet(algebra::FiniteFLewAlgebra, left, right)
+"""Return the lattice meet (infimum) of two finite truth values."""
+@inline function meet(algebra::FiniteFLewAlgebra, left, right)
     x, y = _checked_finite_index(algebra, left), _checked_finite_index(algebra, right)
     algebra.meet[Int(x), Int(y)]
 end
-latticejoin(algebra::FiniteFLewAlgebra, left, right) = join(algebra, left, right)
-lattice_join(algebra::FiniteFLewAlgebra, left, right) = join(algebra, left, right)
-lmeet(algebra::FiniteFLewAlgebra, left, right) = lattice_meet(algebra, left, right)
 join_table(algebra::FiniteFLewAlgebra) = algebra.join
 lattice_meet_table(algebra::FiniteFLewAlgebra) = algebra.meet
-monoid_table(algebra::FiniteFLewAlgebra) = algebra.monoid
+fusion_table(algebra::FiniteFLewAlgebra) = algebra.fusion
 implication_table(algebra::FiniteFLewAlgebra) = algebra.implication
 
-"""Return the monoid product `x ⊙ y`; this is semantic conjunction."""
-@inline function product(algebra::FiniteFLewAlgebra, left, right)
+"""Return the monoid fusion `x ⊗ y` of two finite truth values."""
+@inline function fusion(algebra::FiniteFLewAlgebra, left, right)
     x, y = _checked_finite_index(algebra, left), _checked_finite_index(algebra, right)
-    algebra.monoid[Int(x), Int(y)]
+    algebra.fusion[Int(x), Int(y)]
 end
-tnorm(algebra::FiniteFLewAlgebra, left, right) = product(algebra, left, right)
-monoid_product(algebra::FiniteFLewAlgebra, left, right) = product(algebra, left, right)
-monoid(algebra::FiniteFLewAlgebra, left, right) = product(algebra, left, right)
-monoid_operation(algebra::FiniteFLewAlgebra, left, right) = product(algebra, left, right)
 
 @inline function top(algebra::FiniteFLewAlgebra)
     algebra.top
@@ -242,9 +235,6 @@ end
     x, y = _checked_finite_index(algebra, left), _checked_finite_index(algebra, right)
     algebra.join[Int(x), Int(y)]
 end
-# In the TruthAlgebra interface `meet` is the logical conjunction.  FLew's
-# lattice meet remains available as lattice_meet above.
-@inline meet(algebra::FiniteFLewAlgebra, left, right) = product(algebra, left, right)
 @inline function implication(algebra::FiniteFLewAlgebra, left, right)
     x, y = _checked_finite_index(algebra, left), _checked_finite_index(algebra, right)
     algebra.implication[Int(x), Int(y)]
@@ -300,9 +290,6 @@ function minimalmembers(algebra::FiniteFLewAlgebra, subset)
         [x for x in domain(algebra) if !precedeq(algebra, x, subset)] : _finite_subset(algebra, subset)
     [x for x in values if !any(y -> y != x && precedes(algebra, y, x), values)]
 end
-
-# Alternate name makes the lattice meet unambiguous to callers that use the FLew notation directly.
-latticemeet(algebra::FiniteFLewAlgebra, left, right) = lattice_meet(algebra, left, right)
 
 """
     truthlabel(index)
@@ -408,11 +395,13 @@ function Base.show(io::IO, ::MIME"text/plain", algebra::FiniteFLewAlgebra{N}) wh
 
     N <= 10 || return
     tables = (_render_table_rows("∧", algebra.meet, order, labels),
+              _render_table_rows("⊗", algebra.fusion, order, labels),
               _render_table_rows("∨", algebra.join, order, labels),
               _render_table_rows("→", algebra.implication, order, labels))
-    titles = ("  Meet (∧)", "  Join (∨)", "  Implication (→)")
+    titles = ("  Meet (∧)", "  Fusion (⊗)", "  Join (∨)", "  Implication (→)")
     widths = (max(maximum(length, tables[1]), length(titles[1])) + 4,
               max(maximum(length, tables[2]), length(titles[2])) + 4,
+              max(maximum(length, tables[3]), length(titles[3])) + 4,
               0)
 
     print(io, "\n\n")
@@ -446,15 +435,15 @@ function _chain_flew(n::Int, kind::Symbol)
     n >= 2 || throw(ArgumentError("a finite chain needs at least two values"))
     join_table = Matrix{FiniteTruth}(undef, n, n)
     meet_table = Matrix{FiniteTruth}(undef, n, n)
-    monoid_table = Matrix{FiniteTruth}(undef, n, n)
+    fusion_table = Matrix{FiniteTruth}(undef, n, n)
     levels_ = [i == 1 ? 1//1 : i == 2 ? 0//1 : (i - 2)//(n - 1) for i in 1:n]
     for i in 1:n, j in 1:n
         join_table[i, j] = _chain_index(max(levels_[i], levels_[j]), n)
         meet_table[i, j] = _chain_index(min(levels_[i], levels_[j]), n)
         monoid_level = kind === :godel ? min(levels_[i], levels_[j]) : max(0//1, levels_[i] + levels_[j] - 1)
-        monoid_table[i, j] = _chain_index(monoid_level, n)
+        fusion_table[i, j] = _chain_index(monoid_level, n)
     end
-    _make_flew(join_table, meet_table, monoid_table, 2, 1, n)
+    _make_flew(join_table, meet_table, fusion_table, 2, 1, n)
 end
 
 const G3 = _chain_flew(3, :godel)
@@ -466,8 +455,8 @@ const Ł4 = _chain_flew(4, :lukasiewicz)
 const L3 = Ł3
 const L4 = Ł4
 
-function _named_flew(join_values, meet_values, monoid_values, n)
-    _make_flew(join_values, meet_values, monoid_values, 2, 1, n)
+function _named_flew(join_values, meet_values, fusion_values, n)
+    _make_flew(join_values, meet_values, fusion_values, 2, 1, n)
 end
 
 const H4 = _named_flew(

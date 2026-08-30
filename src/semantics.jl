@@ -20,8 +20,9 @@ struct AnyWorld end
 """
     TruthAlgebra{T}
 
-Interface for a truth algebra whose carrier is `T`.  Implementations provide
-`top`, `bottom`, `meet`, `join`, `implication`, and `negation`.  Keeping `T` in
+Interface for a truth algebra whose carrier type is `T`.  Implementations provide
+`top`, `bottom`, lattice `meet`, `join`, monoid `fusion`, `implication`, and
+`negation`.  Keeping `T` in
 the type makes an interpretation's result type part of the model's type rather
 than a `Union` of unrelated truth domains.
 """
@@ -31,8 +32,13 @@ abstract type TruthAlgebra{T} end
 truth_type(::Type{<:TruthAlgebra{T}}) where T = T
 truth_type(algebra::TruthAlgebra) = truth_type(typeof(algebra))
 
-"""Return the carrier type of `algebra` (an alias for [`truth_type`](@ref))."""
-carrier(algebra::TruthAlgebra) = truth_type(algebra)
+"""Return the carrier representation of `algebra`.
+
+Finite algebras return a tuple enumerating every carrier value.  The continuous
+unit-interval chains return `(bottom, top)` as their finite bounds
+representation; use the algebra's operations for the full interval.
+"""
+carrier(algebra::TruthAlgebra) = domain(algebra)
 
 """ASCII alias for [`truth_type`](@ref)."""
 truthtype(algebra) = truth_type(algebra)
@@ -53,6 +59,11 @@ bot(algebra::TruthAlgebra) = bottom(algebra)
 """Meet operation of `algebra`."""
 function meet(algebra::TruthAlgebra, left, right)
     throw(MethodError(meet, (algebra, left, right)))
+end
+
+"""Monoid fusion operation of `algebra`."""
+function fusion(algebra::TruthAlgebra, left, right)
+    throw(MethodError(fusion, (algebra, left, right)))
 end
 
 """Join operation of `algebra`."""
@@ -92,6 +103,7 @@ truth_type(::Type{BooleanAlgebra}) = Bool
 top(::BooleanAlgebra) = true
 bottom(::BooleanAlgebra) = false
 meet(::BooleanAlgebra, left::Bool, right::Bool) = left & right
+fusion(::BooleanAlgebra, left::Bool, right::Bool) = left & right
 join(::BooleanAlgebra, left::Bool, right::Bool) = left | right
 implication(::BooleanAlgebra, left::Bool, right::Bool) = (!left) | right
 negation(::BooleanAlgebra, value::Bool) = !value
@@ -148,7 +160,7 @@ end
 
 An Łukasiewicz chain with carrier `Float64`.  With no argument this is the
 standard unit interval; `LukasiewiczAlgebra(n)` restricts values to the `n`
-equally spaced members (`n ≥ 2`).  `top = 1`, `bottom = 0`, meet is the Łukasiewicz t-norm
+equally spaced members (`n ≥ 2`).  `top = 1`, `bottom = 0`, meet is `min`, fusion is the Łukasiewicz t-norm
 `max(0, left + right - 1)`, join is `max`, implication is
 `min(1, 1 - left + right)`, and negation is `1 - value`.  Structurally, this is
 an FL-algebra/residuated-lattice instance in the framework defined by Galatos
@@ -194,6 +206,7 @@ end
 top(::GodelAlgebra) = 1.0
 bottom(::GodelAlgebra) = 0.0
 meet(algebra::GodelAlgebra, left::Real, right::Real) = min(_godel_value(algebra, left), _godel_value(algebra, right))
+fusion(algebra::GodelAlgebra, left::Real, right::Real) = min(_godel_value(algebra, left), _godel_value(algebra, right))
 join(algebra::GodelAlgebra, left::Real, right::Real) = max(_godel_value(algebra, left), _godel_value(algebra, right))
 function implication(algebra::GodelAlgebra, left::Real, right::Real)
     x, y = _godel_value(algebra, left), _godel_value(algebra, right)
@@ -205,7 +218,9 @@ end
 
 top(::LukasiewiczAlgebra) = 1.0
 bottom(::LukasiewiczAlgebra) = 0.0
-function meet(algebra::LukasiewiczAlgebra, left::Real, right::Real)
+meet(algebra::LukasiewiczAlgebra, left::Real, right::Real) =
+    min(_lukasiewicz_value(algebra, left), _lukasiewicz_value(algebra, right))
+function fusion(algebra::LukasiewiczAlgebra, left::Real, right::Real)
     x, y = _lukasiewicz_value(algebra, left), _lukasiewicz_value(algebra, right)
     _lukasiewicz_result(algebra, max(0.0, x + y - 1.0))
 end
@@ -227,7 +242,7 @@ end
 """Return whether `algebra` is a finite chain rather than the unit interval."""
 isfinitechain(::Union{GodelAlgebra{N},LukasiewiczAlgebra{N}}) where N = N != 0
 
-"""Return the finite carrier values, or the `(bottom, top)` interval bounds."""
+"""Return the carrier values of `algebra`."""
 domain(::BooleanAlgebra) = (false, true)
 domain(algebra::GodelAlgebra{0}) = (0.0, 1.0)
 domain(algebra::LukasiewiczAlgebra{0}) = (0.0, 1.0)

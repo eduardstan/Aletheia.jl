@@ -1,5 +1,6 @@
 using Test
 using Aletheia
+const Extension = Aletheia.Extension
 
 @testset "presentation and rich display" begin
     # 1. Models & Frames
@@ -58,6 +59,7 @@ using Aletheia
     s_h4 = sprint(show, MIME("text/plain"), H4)
     @test occursin("FiniteFLewAlgebra{4}", s_h4)
     @test occursin("Meet (∧)", s_h4)
+    @test occursin("Fusion (⊗)", s_h4)
     @test occursin("Join (∨)", s_h4)
     @test occursin("Implication (→)", s_h4)
 
@@ -208,12 +210,12 @@ using Aletheia
         "FiniteFLewAlgebra{3} (3 values, chain, bottom=⊥, top=⊤)",
         "  Order: ⊥ < α < ⊤",
         "",
-        "  Meet (∧)      Join (∨)      Implication (→)",
-        " ∧ │ ⊥ α ⊤     ∨ │ ⊥ α ⊤     → │ ⊥ α ⊤",
-        "───┼──────    ───┼──────    ───┼──────",
-        " ⊥ │ ⊥ ⊥ ⊥     ⊥ │ ⊥ α ⊤     ⊥ │ ⊤ ⊤ ⊤",
-        " α │ ⊥ α α     α │ α α ⊤     α │ ⊥ ⊤ ⊤",
-        " ⊤ │ ⊥ α ⊤     ⊤ │ ⊤ ⊤ ⊤     ⊤ │ ⊥ α ⊤",
+        "  Meet (∧)      Fusion (⊗)      Join (∨)      Implication (→)",
+        " ∧ │ ⊥ α ⊤     ⊗ │ ⊥ α ⊤       ∨ │ ⊥ α ⊤     → │ ⊥ α ⊤",
+        "───┼──────    ───┼──────      ───┼──────    ───┼──────",
+        " ⊥ │ ⊥ ⊥ ⊥     ⊥ │ ⊥ ⊥ ⊥       ⊥ │ ⊥ α ⊤     ⊥ │ ⊤ ⊤ ⊤",
+        " α │ ⊥ α α     α │ ⊥ α α       α │ α α ⊤     α │ ⊥ ⊤ ⊤",
+        " ⊤ │ ⊥ α ⊤     ⊤ │ ⊥ α ⊤       ⊤ │ ⊤ ⊤ ⊤     ⊤ │ ⊥ α ⊤",
     ], "\n")
 
     # H4 is not a chain, so its display says so instead of implying that the
@@ -222,13 +224,13 @@ using Aletheia
         "FiniteFLewAlgebra{4} (4 values, not a chain, bottom=⊥, top=⊤)",
         "  Elements: ⊥, α, β, ⊤",
         "",
-        "  Meet (∧)        Join (∨)        Implication (→)",
-        " ∧ │ ⊥ α β ⊤     ∨ │ ⊥ α β ⊤     → │ ⊥ α β ⊤",
-        "───┼────────    ───┼────────    ───┼────────",
-        " ⊥ │ ⊥ ⊥ ⊥ ⊥     ⊥ │ ⊥ α β ⊤     ⊥ │ ⊤ ⊤ ⊤ ⊤",
-        " α │ ⊥ α ⊥ α     α │ α α ⊤ ⊤     α │ β ⊤ β ⊤",
-        " β │ ⊥ ⊥ β β     β │ β ⊤ β ⊤     β │ α α ⊤ ⊤",
-        " ⊤ │ ⊥ α β ⊤     ⊤ │ ⊤ ⊤ ⊤ ⊤     ⊤ │ ⊥ α β ⊤",
+        "  Meet (∧)        Fusion (⊗)      Join (∨)        Implication (→)",
+        " ∧ │ ⊥ α β ⊤     ⊗ │ ⊥ α β ⊤     ∨ │ ⊥ α β ⊤     → │ ⊥ α β ⊤",
+        "───┼────────    ───┼────────    ───┼────────    ───┼────────",
+        " ⊥ │ ⊥ ⊥ ⊥ ⊥     ⊥ │ ⊥ ⊥ ⊥ ⊥     ⊥ │ ⊥ α β ⊤     ⊥ │ ⊤ ⊤ ⊤ ⊤",
+        " α │ ⊥ α ⊥ α     α │ ⊥ α ⊥ α     α │ α α ⊤ ⊤     α │ β ⊤ β ⊤",
+        " β │ ⊥ ⊥ β β     β │ ⊥ ⊥ β β     β │ β ⊤ β ⊤     β │ α α ⊤ ⊤",
+        " ⊤ │ ⊥ α β ⊤     ⊤ │ ⊥ α β ⊤     ⊤ │ ⊤ ⊤ ⊤ ⊤     ⊤ │ ⊥ α β ⊤",
     ], "\n")
     for algebra in (G3, G4, G5, G6, Ł3, Ł4, H4, H6, H6_1, H6_2, H6_3, H9, BooleanFLewAlgebra)
         rich = sprint(show, MIME("text/plain"), algebra)
