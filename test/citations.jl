@@ -48,7 +48,7 @@ end
         @test !normalized_occurs(retracted, docs_sources)
     end
     @test normalized_occurs("five-seed medians", readme)
-    @test normalized_occurs("4.60×", results)
+    @test normalized_occurs("4.73×", results)
     @test normalized_occurs("1.02×–1.15×", results)
     @test normalized_occurs("5.6 worlds out of 1,326", results)
     @test normalized_occurs("238×", results)
