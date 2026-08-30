@@ -223,6 +223,8 @@ collateworlds
 check
 extension
 describe
+EvaluationCache
+clear!
 Valuation
 Model
 frame

@@ -142,4 +142,33 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
     cp = atom(custom_pool, "p")
     cq = atom(custom_pool, "q")
     @test_throws ArgumentError check(branch(custom_pool, TestXor(), cp, cq), boolean, :w1)
+
+    # EvaluationCache is explicit, model-bound, and works for propositional
+    # and modal formulas across the built-in algebra families.
+    h4_model = Model(frame, H4, Dict("p" => Dict(:w1 => UInt8(3), :w2 => UInt8(4), :w3 => UInt8(2))))
+    for cached_model in (boolean, godel, lukasiewicz, h4_model)
+        cache = EvaluationCache(cached_model)
+        @test extension(nested, cached_model; cache=cache) == extension(nested, cached_model)
+        @test check(nested, cached_model, :w1; cache=cache) == check(nested, cached_model, :w1)
+        retained = extension(nested, cached_model; cache=cache)
+        retained_value = retained[1]
+        retained[1] = top(algebra(cached_model))
+        @test extension(nested, cached_model; cache=cache)[1] == retained_value
+        @test check(nested, cached_model, :w1; cache=cache) == check(nested, cached_model, :w1)
+        clear!(cache)
+        @test extension(nested, cached_model; cache=cache) == extension(nested, cached_model)
+    end
+    callback_calls = Ref(0)
+    cached_callback_model = Model(frame, (value, world) -> (callback_calls[] += 1; world == :w2), BOOLEAN)
+    callback_cache = EvaluationCache(cached_callback_model)
+    @test check(nested, cached_callback_model, :w1; cache=callback_cache) === false
+    cold_calls = callback_calls[]
+    @test check(nested, cached_callback_model, :w1; cache=callback_cache) === false
+    @test callback_calls[] == cold_calls
+    @test_throws ArgumentError extension(nested, boolean; cache=EvaluationCache(godel))
+    other_pool = FormulaPool(sig)
+    other_p = atom(other_pool, "p")
+    pool_cache = EvaluationCache(boolean)
+    extension(p, boolean; cache=pool_cache)
+    @test_throws ArgumentError extension(other_p, boolean; cache=pool_cache)
 end

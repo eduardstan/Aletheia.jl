@@ -85,6 +85,26 @@ Diamond is the algebraic join of successor values, so a dead end gives
 models this reproduces the familiar existential/universal clauses; in
 many-valued models it is the corresponding algebra fold.
 
+## Reusing evaluations explicitly
+
+Repeated checks can reuse a computed extension through an
+[`EvaluationCache`](@ref). The cache is opt-in and belongs to one exact `Model`:
+
+```julia
+cache = EvaluationCache(model)
+check(formula, model, :a; cache=cache)
+extension(formula, model; cache=cache)
+clear!(cache)
+```
+
+Formula ids are used as keys within the formula's pool. A cache rejects another
+model or formula pool rather than risking a false hit. It does not inspect the
+model for changes, so the valuation, frame, algebra, and mutable data reachable
+from them must remain unchanged while entries are live. If a model is changed,
+discard the cache; `clear!` cannot repair relation adjacency already cached by
+the `Frame`. Uncached calls remain the default and retain their existing
+behavior.
+
 ## API boundary
 
 `interpret(atom, model, world)` is intentionally atom-only. Calling it on a

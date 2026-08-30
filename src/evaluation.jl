@@ -272,6 +272,81 @@ function _evaluate(formula::Formula, model::Model, ::Type{E})::E where E
 end
 
 """
+    EvaluationCache(model)
+
+An explicit cache for extensions evaluated against `model`.  Pass it as the
+`cache` keyword to [`extension`](@ref) or [`check`](@ref) to reuse a formula's
+extension on later calls.  Formula ids are used as keys because formulas are
+hash-consed; the cache also records the formula pool on first use so ids from a
+different pool cannot collide.
+
+The cache is tied to the exact model object passed to this constructor.  It is
+correct only while that model's valuation, frame, and algebra (including any
+mutable objects reachable through them) remain unchanged.  The cache does not
+inspect or snapshot those objects, so call [`clear!`](@ref) after changing one.
+Cached `extension` calls return a deep copy, so changing that returned vector
+or its mutable carrier values does not change the retained result.  `clear!(cache)`
+removes all retained extensions and permits the cache to be used with a new
+formula pool, while retaining its model binding.  If a model is mutated, discard
+the cache; `clear!` cannot repair relation adjacency already cached by its
+`Frame`.
+"""
+mutable struct EvaluationCache
+    model::Model
+    pool::Union{Nothing,FormulaPool}
+    values::Dict{Int,Any}
+    lock::ReentrantLock
+end
+
+EvaluationCache(model::Model) = EvaluationCache(model, nothing, Dict{Int,Any}(), ReentrantLock())
+
+"""Clear all extensions retained by an [`EvaluationCache`](@ref)."""
+function clear!(cache::EvaluationCache)
+    lock(cache.lock)
+    try
+        empty!(cache.values)
+        cache.pool = nothing
+    finally
+        unlock(cache.lock)
+    end
+    cache
+end
+
+function _cached_evaluate(formula::Formula, model::Model, ::Type{E}, cache::EvaluationCache)::E where E
+    cache.model === model || throw(ArgumentError("evaluation cache belongs to a different model"))
+    lock(cache.lock)
+    try
+        formula_pool = pool(formula)
+        if cache.pool === nothing
+            cache.pool = formula_pool
+        elseif cache.pool !== formula_pool
+            throw(ArgumentError("evaluation cache cannot mix formula pools"))
+        end
+        key = id(formula)
+        if haskey(cache.values, key)
+            value = cache.values[key]
+            value isa E || throw(ArgumentError("evaluation cache contains a result for a different carrier type"))
+            return value::E
+        end
+        value = _evaluate(formula, model, E)
+        cache.values[key] = value
+        value
+    finally
+        unlock(cache.lock)
+    end
+end
+
+function _evaluate_with_cache(formula::Formula, model::Model, ::Type{E}, ::Nothing)::E where E
+    _evaluate(formula, model, E)
+end
+function _evaluate_with_cache(formula::Formula, model::Model, ::Type{E}, cache::EvaluationCache)::E where E
+    _cached_evaluate(formula, model, E, cache)
+end
+function _evaluate_with_cache(formula::Formula, model::Model, ::Type{E}, cache)::E where E
+    throw(ArgumentError("cache must be nothing or an EvaluationCache"))
+end
+
+"""
     Extension(values, worlds)
     Extension(values, model)
 
@@ -343,12 +418,14 @@ every other algebra returns a vector whose element type is the algebra's carrier
 To construct a rich display view of the extension, pass the result and model to
 `Extension` or [`describe`](@ref).
 """
-function extension(formula::Formula, model::Model{Bool,A}) where {A<:BooleanAlgebra}
-    _evaluate(formula, model, BitVector)
+function extension(formula::Formula, model::Model{Bool,A}; cache=nothing) where {A<:BooleanAlgebra}
+    values = _evaluate_with_cache(formula, model, BitVector, cache)
+    cache === nothing ? values : deepcopy(values)
 end
 
-function extension(formula::Formula, model::Model{T}) where T
-    _evaluate(formula, model, Vector{T})
+function extension(formula::Formula, model::Model{T}; cache=nothing) where T
+    values = _evaluate_with_cache(formula, model, Vector{T}, cache)
+    cache === nothing ? values : deepcopy(values)
 end
 
 """
@@ -358,22 +435,22 @@ Return the truth value of `φ` at `world`.  The result is exactly the carrier
 type of the model's algebra.  Evaluation uses the same DAG walk as
 [`extension`](@ref).
 """
-function check(formula::Formula, model::Model{Bool,A}, world)::Bool where {A<:BooleanAlgebra}
+function check(formula::Formula, model::Model{Bool,A}, world; cache=nothing)::Bool where {A<:BooleanAlgebra}
     position = world_position(frame(model), world)
-    values = _evaluate(formula, model, BitVector)
+    values = _evaluate_with_cache(formula, model, BitVector, cache)
     values[position]
 end
 
-function check(formula::Formula, model::Model{T}, world)::T where T
+function check(formula::Formula, model::Model{T}, world; cache=nothing)::T where T
     position = world_position(frame(model), world)
-    values = _evaluate(formula, model, Vector{T})
+    values = _evaluate_with_cache(formula, model, Vector{T}, cache)
     values[position]
 end
 
 """Check whether a formula holds at some world via the incumbent marker."""
-function check(formula::Formula, model::Model{Bool,A}, ::AnyWorld)::Bool where {A<:BooleanAlgebra}
-    any(extension(formula, model))
+function check(formula::Formula, model::Model{Bool,A}, ::AnyWorld; cache=nothing)::Bool where {A<:BooleanAlgebra}
+    any(extension(formula, model; cache=cache))
 end
-function check(formula::Formula, model::Model{T}, ::AnyWorld)::Bool where T
-    any(value -> value == top(algebra(model)), extension(formula, model))
+function check(formula::Formula, model::Model{T}, ::AnyWorld; cache=nothing)::Bool where T
+    any(value -> value == top(algebra(model)), extension(formula, model; cache=cache))
 end
