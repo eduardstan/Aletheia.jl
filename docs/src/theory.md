@@ -115,7 +115,7 @@ formula = branch(pool, Diamond(:R), p)
 original = [check(formula, model, w) for w in worlds(base)]
 reduced = [check(formula, quotient, w) for w in worlds(base)]
 println("contraction world count: ", length(worlds(base)), " -> ",
-    length(worlds(frame(quotient))))
+    length(worlds(Aletheia.frame(quotient))))
 println("values preserved: ", original == reduced)
 
 # output

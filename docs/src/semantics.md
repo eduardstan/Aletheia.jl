@@ -90,11 +90,15 @@ many-valued models it is the corresponding algebra fold.
 Repeated checks can reuse a computed extension through an
 [`EvaluationCache`](@ref). The cache is opt-in and belongs to one exact `Model`:
 
-```julia
-cache = EvaluationCache(model)
-check(formula, model, :a; cache=cache)
-extension(formula, model; cache=cache)
-clear!(cache)
+```jldoctest semantics2
+let cache = EvaluationCache(model)
+    check(formula, model, :a; cache=cache)
+    extension(formula, model; cache=cache)
+    clear!(cache)
+    nothing
+end
+
+# output
 ```
 
 Formula ids are used as keys within the formula's pool. A cache rejects another
