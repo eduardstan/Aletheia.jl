@@ -1,6 +1,7 @@
 # Pull requests and manual dispatch run the full three-version Linux and Windows
 # matrix. Main pushes use one Julia version on Ubuntu: the August 2026 CI-minute
-# budget motivated keeping branch protection real without restoring six-way cost.
+# budget motivated keeping branch protection real without restoring six-way cost. The
+# same push budget applies to the coverage job below, so main still checks its floor.
 
 name: CI
 
@@ -54,6 +55,7 @@ jobs:
         run: julia --project=docs docs/make.jl
 
   coverage:
+    # Coverage runs on every main push with the same single Ubuntu/Julia configuration.
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     name: Line coverage
     runs-on: ubuntu-latest
