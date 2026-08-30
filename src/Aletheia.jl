@@ -62,7 +62,7 @@ export AbstractFrame, AbstractUniModalFrame, AbstractMultiModalFrame
 export AbstractWorld, AbstractWorlds, AnyWorld
 export Frame, worlds, relations, hasworldindex, world_position, accessible
 export collateworlds
-export check, extension, describe
+export check, extension, describe, EvaluationCache, clear!
 export Valuation, Model, frame, algebra, valuation, interpret
 export AbstractModelFamily, ModelFamily, instance_count, eachinstance, instance_model
 export instance_frame, uniform_frame, isuniform
