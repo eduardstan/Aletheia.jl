@@ -39,6 +39,9 @@ Aletheia.arity(::TestDelimiterNotation) = 1
 Aletheia.notation(::TestDelimiterNotation) = "("
 
 struct TestUnspecified end
+struct TestUnionPayload
+    value::Union{Int,Vector{Int}}
+end
 
 @testset "syntax" begin
     diamond = Diamond(:G)
@@ -160,6 +163,10 @@ end
     @test_throws ArgumentError Branch(pool, id(t), ¬, (id(p),))
     mutable_atom_payload = [1]
     @test_throws ArgumentError atom(pool, mutable_atom_payload)
+    # A union field is value-dependent: its immutable alternative is accepted,
+    # while the mutable alternative remains rejected.
+    @test Aletheia._payload_is_immutable(TestUnionPayload(1))
+    @test !Aletheia._payload_is_immutable(TestUnionPayload([1]))
     mutable_relation = [:R]
     mutable_pool = FormulaPool(Signature((Diamond(mutable_relation),)))
     mutable_p = atom(mutable_pool, "p")

@@ -13,7 +13,7 @@ When updating this file, preserve this bar for all agents and keep entries conci
 
 ## Syntax layer
 
-- The syntax implementation lives in `src/syntax.jl` and `src/parse.jl`; it is deliberately semantic-free.
+- The syntax implementation lives in `src/syntax.jl` and `src/parse.jl`; it is deliberately semantic-free. Immutable payload validation uses a generated type-level fast path for closed types and retains the `IdDict` fallback for value-dependent fields/cycles.
 - Validate both package tests and the citation-aware docs build with `julia --project=. -e 'using Pkg; Pkg.test()'` and `julia --project=docs docs/make.jl`.
 - Every worked example under `docs/src/` is a script-style `jldoctest` block, so the docs build verifies its output. Regenerate expected output by running `makedocs` with `doctest = :fix` from a copy of `docs/make.jl` placed inside `docs/`; never hand-write it. A block whose expected output is empty is not fixed correctly and needs a manual pass.
 - CI enforces source line coverage with `julia --project=. -e 'using Pkg; Pkg.test(coverage=true)'` followed by `julia --project=coverage -e 'using Pkg; Pkg.instantiate(); include("coverage/check.jl")'`; do not commit generated `.cov` or manifests.
