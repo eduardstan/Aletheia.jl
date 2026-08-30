@@ -6,8 +6,10 @@ will not work if you point it at Aletheia instead.
 `Aletheia.SoleLogics` is an opt-in compatibility module. A consumer whose
 imported names are covered can begin a trial by replacing its old import with:
 
-```julia
+```jldoctest compatibility
 using Aletheia.SoleLogics
+
+# output
 ```
 
 The module is nested, so these names are not added to `Aletheia` itself. It is

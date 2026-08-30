@@ -26,7 +26,7 @@ julia --project=.
 
 Paste this into the Julia prompt (or save it as a script):
 
-```julia
+```jldoctest readme_quickstart
 using Aletheia
 
 signature = Signature((¬, ∧, Diamond(:R), Box(:R)))
@@ -39,11 +39,9 @@ base_frame = Frame((:w₁, :w₂),
 model = Model(base_frame, BOOLEAN,
     Dict("p" => Set([:w₂]), "q" => Set([:w₁, :w₂])))
 println(check(formula, model, :w₁))
-```
 
-Expected output:
+# output
 
-```text
 ⟨R⟩p ∧ [R]q
 true
 ```
