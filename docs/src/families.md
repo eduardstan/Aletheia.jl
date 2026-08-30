@@ -52,7 +52,8 @@ true
 
 `extension(φ, family)` returns one extension per instance, in instance order;
 `extension(φ, family, i)` and `check(φ, family, i, world)` address a single
-instance. Nothing is cached across instances by these calls.
+instance. Extension results are not cached across instances; relation adjacency
+on a shared `Frame` may be cached and reused.
 
 ## When instances share a frame
 

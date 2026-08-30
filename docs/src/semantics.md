@@ -39,7 +39,7 @@ rounded.
 
 ## Frames, valuations, models
 
-A [`Frame`](@ref) stores an ordered nonempty tuple of worlds and one or more
+A [`Frame`](@ref) stores an ordered nonempty tuple of worlds and zero or more
 named accessibility relations. Accessibility is lazy: `accessible(frame, w,
 r)` returns an iterator, and `collect` is an explicit request for storage.
 Relations may be maps, edge lists, adjacency functions, or a callable frame.

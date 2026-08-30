@@ -152,7 +152,9 @@ scores all 32 hypothesis/interpretation pairs. SoleLogics stores model/world/
 label tuples; Aletheia constructs `learning_from_interpretations` examples.
 Example and hypothesis construction is outside the timed score loop, so this
 is a paired score/evaluation hot path, not a comparison of learner
-construction APIs.
+construction APIs. The ILP row is supported by the [raw benchmark artefact](https://github.com/eduardstan/Aletheia.jl/blob/main/data/benchmark-run/run.txt#L39):
+it scores four hypotheses against eight seeded models (32 pairs; models have
+4–7 worlds and edge probability .35).
 
 | case | SoleLogics | Aletheia | ratio | allocations |
 | --- | ---: | ---: | ---: | ---: |
@@ -174,7 +176,7 @@ construction APIs.
 | finite chain G3 check, depth 2 | 3.21 μs | 2.21 μs | 1.45× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
 | finite chain Ł3 check, depth 2 | 2.13 μs | 2.08 μs | 1.02× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
 | non-chain H4 check, depth 2 | 3.00 μs | 2.11 μs | 1.42× | 40 / 1.469 KiB ; 42 / 2.484 KiB |
-| learning from interpretations, 8 models / 4 hypotheses | 3.37 ms | 73.81 μs | 45.70× | 6,354 / 226.531 KiB ; 1,928 / 118.344 KiB |
+| learning from interpretations, 8 models / 4 hypotheses | 261.45 μs | 79.41 μs | 3.29× | 6,354 / 226.531 KiB ; 1,928 / 118.344 KiB |
 
 The extension comparison is explicitly an equivalent all-world check loop on
 SoleLogics because it has no `extension` API; it is not labelled as a win over

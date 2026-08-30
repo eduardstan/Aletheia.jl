@@ -49,8 +49,9 @@ handles into an explicit pool rather than recursively typed trees, and truth
 algebras are values rather than types. Because the two packages answer the same
 questions, this site measures Aletheia against SoleLogics throughout — the
 [measured results](results.md) chapter reports the wins and the losses — and
-ships an opt-in [compatibility layer](compatibility.md) so an existing
-SoleLogics consumer can be tried against Aletheia by changing one import line.
+ships an opt-in [compatibility layer](compatibility.md) for trying selected
+SoleLogics consumers against Aletheia; the migration page records which consumers
+work and which remain unsupported.
 
 ## Choose a path
 

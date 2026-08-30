@@ -3,8 +3,8 @@
 If you have code that imports SoleLogics, this page tells you what will and
 will not work if you point it at Aletheia instead.
 
-`Aletheia.SoleLogics` is an opt-in compatibility module. A consumer copy can
-replace its old import with:
+`Aletheia.SoleLogics` is an opt-in compatibility module. A consumer whose
+imported names are covered can begin a trial by replacing its old import with:
 
 ```julia
 using Aletheia.SoleLogics
@@ -12,8 +12,8 @@ using Aletheia.SoleLogics
 
 The module is nested, so these names are not added to `Aletheia` itself. It is
 not a package named `SoleLogics`; a consumer's `Project.toml` and import line
-must select the nested module explicitly. The trials described below changed
-only that import line and left both consumer checkouts otherwise untouched.
+must select the nested module explicitly. This import change is not sufficient
+for every consumer; the gap inventory and trials below record the current limits.
 
 ## Mapping table
 
@@ -72,9 +72,10 @@ remain the core API.
   (`allow_atom_flipping`, `prefer_implications`, and the rest) are a different
   normalization semantics from Aletheia's; conversion here is explicit through
   `cnf` and `dnf`.
-* `AbstractInterpretationSet`, `LogicalInstance`, `feature`, `condition` and
-  `threshold` are SoleData/SoleModels concepts. They raise clear errors; they
-  are not approximated by syntax payload inspection. `alphabet` answers for an
+* `AbstractInterpretationSet` and `LogicalInstance` are SoleData/SoleModels
+  concepts that remain unresolved here. `feature`, `condition`, and `threshold`
+  are also SoleData/SoleModels concepts; they raise clear errors rather than
+  being approximated by syntax payload inspection. `alphabet` answers for an
   alphabet or a vector of atoms and still raises for a dataset, because the
   alphabets a learner actually builds are SoleData objects over
   `ScalarCondition` payloads.
@@ -94,6 +95,22 @@ remain the core API.
 * The compatibility `check` and `interpret` forwarders accept positional
   arguments only. Aletheia's core methods have no keyword arguments, so
   accepting `kwargs...` would advertise calls that can never resolve.
+
+## Consumer import gaps
+
+A replay of the four consumers' literal SoleLogics imports resolves 107 of 142
+bindings. The 25 distinct unresolved names (commented-out imports excluded) are:
+
+```text
+AbstractAssignment  AbstractDimensionalFrame  AbstractInterpretation
+AbstractKripkeStructure  CONJUNCTION  CheckAlgorithm
+Full0DFrame  Full1DFrame  Full2DFrame  LogicalInstance  OneWorld  Point3D
+SyntaxToken  X  Y  Z  composeformulas  frametype  intervals2D_in
+intervals_in  ndisjuncts  nparameters  nworlds  short_intervals_in valuetype
+```
+
+These gaps span SoleLogics vocabulary and consumer-facing type/value names;
+they are not limited to the deliberate semantic gaps below.
 
 ## What downstream packages actually use
 
@@ -156,8 +173,9 @@ H4  H6  H6_1  H6_2  H6_3  H9  Ł3  Ł4  α  β  BASE_MANY_VALUED_CONNECTIVES
 ## Where the remaining gaps are
 
 The four consumers below were scanned for every name they take from
-SoleLogics, and each name was checked against this module. What is left is not
-one list but three different kinds of thing.
+SoleLogics, and each name was checked against this module. The complete
+unresolved enumeration is above; what those gaps mean is not one thing but
+several different kinds of limitation.
 
 ### Genuinely SoleLogics, and now covered
 
@@ -166,12 +184,21 @@ alphabets, `randatom` and `randformula`. These are syntax-level concepts, so
 this module can supply them over ordinary Aletheia formulas without the core
 learning about them.
 
+### Genuinely SoleLogics vocabulary, not yet covered
+
+Examples of unresolved logic-level names are `SyntaxToken`, `CONJUNCTION`,
+`composeformulas`, `ndisjuncts`, `nparameters`, `nworlds`, `frametype`,
+`valuetype`, `AbstractKripkeStructure`, `AbstractInterpretation`,
+`Full0DFrame`, `Full1DFrame`, `Full2DFrame`, `Point3D`, `intervals_in`,
+`short_intervals_in`, and `intervals2D_in`.
+
 ### SoleData or SoleModels concepts reached through SoleLogics
 
-`AbstractInterpretationSet`, `LogicalInstance`, `feature`, `condition`,
-`threshold`, and the alphabets a learner actually builds — `UnionAlphabet`s of
-`Atom{ScalarCondition}` produced by `alphabet(::AbstractLogiset)`. The names
-resolve here, but the values do not come from a logic library.
+`feature`, `condition`, `threshold`, and the alphabets a learner actually
+builds — `UnionAlphabet`s of `Atom{ScalarCondition}` produced by
+`alphabet(::AbstractLogiset)`. `AbstractInterpretationSet` and
+`LogicalInstance` remain unresolved here; the other values do not come from a
+logic library.
 `ModalDecisionLists` imports `AbstractAlphabet`, `UnionAlphabet` and
 `alphabet` from **SoleData**, not from SoleLogics, and
 `ModalDecisionTrees` takes `OneWorld` and `Worlds` from SoleData as well.
@@ -185,8 +212,9 @@ vocabulary: `collatetruth` asks for truth values that are formulas, and
 `normalize` asks for a rewriting calculus that differs from Aletheia's. Either
 would change the core, so both stay documented gaps above.
 
-`SoleReasoners` uses no name outside the first group: its only absent symbol
-was `randformula`.
+The import replay above is the authoritative list of unresolved names; the
+consumer trials below show the practical effect for SoleReasoners and
+SolePostHoc.
 
 ## Many-valued tableau bridge
 
@@ -217,9 +245,13 @@ evaluator values.
 
 ## Trials against real consumers
 
-Each trial below used a local copy of a consumer package with its
-`using SoleLogics` line changed to `using Aletheia.SoleLogics`, and nothing
-else. The copies are not part of this repository.
+The trials use different harnesses. The SoleReasoners trial used a local copy
+of the consumer package with only its `using SoleLogics` line changed to
+`using Aletheia.SoleLogics`. SolePostHoc does not precompile against this module:
+two type-position blockers remain, where `SyntaxBranch` and
+`AbstractInterpretationSet` are used as types. Its subsection is a single-file
+harness with SoleData/SoleModels test doubles, not a package trial. The copies
+are not part of this repository.
 
 ### SoleReasoners
 
