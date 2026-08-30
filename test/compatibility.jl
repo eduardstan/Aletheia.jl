@@ -142,8 +142,7 @@ end
             CompatibilityClient.⊥)
     @test_throws ArgumentError CompatibilityClient.parseformula("⊤"; atom_parser=_ -> CompatibilityClient.⊤)
     @test_throws ArgumentError CompatibilityClient.collatetruth(CompatibilityClient.:∧, (CompatibilityClient.⊤, CompatibilityClient.⊥))
-    @test_throws ArgumentError CompatibilityClient.LeftmostConjunctiveForm([p, q])
-    @test_throws ArgumentError CompatibilityClient.ispos(nothing)
+    @test_throws MethodError CompatibilityClient.ispos(nothing)
     @test_throws ArgumentError CompatibilityClient.alphabet(nothing)
     @test_throws ArgumentError CompatibilityClient.feature(nothing)
     @test_throws ArgumentError CompatibilityClient.condition(nothing)
@@ -196,8 +195,7 @@ end
     @test CompatibilityClient.RCC5Relations == Aletheia.RCC5Relations
     @test CompatibilityClient.IA3Relations == Aletheia.IA3Relations
     @test CompatibilityClient.IA7Relations == Aletheia.IA7Relations
-    @test_throws ArgumentError CompatibilityClient.Literal()
-    @test_throws ArgumentError CompatibilityClient.Literal(p)
+    @test_throws MethodError CompatibilityClient.Literal()
     @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.precedeq(1, 2)
     @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.succeedeq(1, 2)
     @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.maximalmembers((1, 2))
@@ -354,4 +352,227 @@ end
         CompatibilityClient.CL_SE, CompatibilityClient.CL_SW) ===
         (Aletheia.CL_N, Aletheia.CL_S, Aletheia.CL_E, Aletheia.CL_W,
         Aletheia.CL_NE, Aletheia.CL_NW, Aletheia.CL_SE, Aletheia.CL_SW)
+end
+
+# The chain below is SolePostHoc's own conversion code from
+# `src/shared_utils.jl`, kept verbatim in shape: it reads `.grandchildren`,
+# `.ispos` and `.atom`, and builds branches from `NamedConnective{:sym}()`.
+module LeftmostClient
+using Aletheia.SoleLogics
+
+function to_syntaxbranch(form, connective, convert)
+    forms = form.grandchildren
+    length(forms) == 1 && return convert(forms[1])
+    foldl(forms[2:end]; init=convert(forms[1])) do branch, element
+        SyntaxBranch(connective, (branch, convert(element)))
+    end
+end
+literal_to_syntaxbranch(literal) = literal.ispos ? literal.atom :
+    SyntaxBranch(NamedConnective{:¬}(), (literal.atom,))
+conjunction_to_syntaxbranch(conjunction) =
+    to_syntaxbranch(conjunction, NamedConnective{:∧}(), literal_to_syntaxbranch)
+dnf_to_syntaxbranch(form) =
+    to_syntaxbranch(form, NamedConnective{:∨}(), conjunction_to_syntaxbranch)
+lf_to_string(form) =
+    "(" * join(map(syntaxstring, SoleLogics.grandchildren(form)), " ∧ ") * ")"
+end
+
+@testset "leftmost linear forms" begin
+    p, q, r = CompatibilityClient.Atom("p"), CompatibilityClient.Atom("q"),
+        CompatibilityClient.Atom("r")
+    conjunctive = CompatibilityClient.LeftmostConjunctiveForm([p, q])
+    @test conjunctive isa CompatibilityClient.LeftmostLinearForm
+    @test conjunctive isa Aletheia.Formula
+    @test CompatibilityClient.grandchildren(conjunctive) == [p, q]
+    @test CompatibilityClient.ngrandchildren(conjunctive) == 2
+    @test CompatibilityClient.nconjuncts(conjunctive) == 2
+    @test CompatibilityClient.conjuncts(conjunctive) == [p, q]
+    @test CompatibilityClient.connective(conjunctive) === Aletheia.:∧
+    @test CompatibilityClient.token(conjunctive).native === Aletheia.:∧
+    @test conjunctive[1] == p
+    @test CompatibilityClient.syntaxstring(conjunctive) == "p ∧ q"
+    @test CompatibilityClient.syntaxstring(CompatibilityClient.tree(conjunctive)) == "p ∧ q"
+    @test CompatibilityClient.height(conjunctive) == 1
+    @test LeftmostClient.lf_to_string(conjunctive) == "(p ∧ q)"
+
+    # Sole's own mutation vocabulary for a growing antecedent.
+    CompatibilityClient.pushconjunct!(conjunctive, r)
+    @test CompatibilityClient.ngrandchildren(conjunctive) == 3
+    @test conjunctive[[1, 3]] == CompatibilityClient.LeftmostConjunctiveForm([p, r])
+    push!(conjunctive, p)
+    @test CompatibilityClient.ngrandchildren(conjunctive) == 4
+
+    # A binary connective unwinds leftmost, so the fold is right-nested.
+    nested = CompatibilityClient.tree(CompatibilityClient.LeftmostConjunctiveForm([p, q, r]))
+    @test CompatibilityClient.syntaxstring(nested) == "p ∧ (q ∧ r)"
+    @test CompatibilityClient.syntaxstring(
+        CompatibilityClient.children(nested)[2]) == "q ∧ r"
+
+    # A tree flattens back into a container over one connective.
+    flattened = CompatibilityClient.LeftmostLinearForm(nested)
+    @test CompatibilityClient.connective(flattened) === Aletheia.:∧
+    @test CompatibilityClient.grandchildren(flattened) == [p, q, r]
+    @test CompatibilityClient.LeftmostLinearForm(Aletheia.:∧, [p, q]) ==
+        CompatibilityClient.LeftmostConjunctiveForm([p, q])
+
+    @test_throws ArgumentError CompatibilityClient.LeftmostConjunctiveForm(
+        CompatibilityClient.Atom[])
+    @test CompatibilityClient.LeftmostConjunctiveForm(
+        CompatibilityClient.Atom[], true) isa CompatibilityClient.LeftmostLinearForm
+
+    literal = CompatibilityClient.Literal(p)
+    @test literal.ispos && literal.atom == p
+    @test CompatibilityClient.ispos(literal)
+    @test CompatibilityClient.atom(literal) == p
+    @test CompatibilityClient.tree(literal) == p
+    negative = CompatibilityClient.dual(literal)
+    @test !CompatibilityClient.ispos(negative)
+    @test CompatibilityClient.hasdual(literal)
+    @test CompatibilityClient.syntaxstring(negative) == "¬p"
+    @test CompatibilityClient.Literal(
+        CompatibilityClient.SyntaxBranch(Aletheia.:¬, p)) == negative
+    @test_throws ArgumentError CompatibilityClient.Literal(
+        CompatibilityClient.SyntaxBranch(Aletheia.:∧, p, q))
+
+    # Sole's dnf/cnf return leftmost containers of literals.
+    formula = CompatibilityClient.parseformula("(p ∧ q) ∨ (¬r ∧ q)")
+    normal = CompatibilityClient.dnf(formula)
+    @test normal isa CompatibilityClient.DNF
+    @test CompatibilityClient.syntaxstring(normal) == "(p ∧ q) ∨ (¬r ∧ q)"
+    @test all(literal -> literal isa CompatibilityClient.Literal,
+        CompatibilityClient.grandchildren(CompatibilityClient.grandchildren(normal)[1]))
+    @test CompatibilityClient.cnf(CompatibilityClient.parseformula("p ∧ (q ∨ r)")) isa
+        CompatibilityClient.CNF
+    @test_throws ArgumentError CompatibilityClient.dnf(formula; profile=:nnf)
+
+    # SolePostHoc's rule-extraction chain, end to end.
+    rebuilt = LeftmostClient.dnf_to_syntaxbranch(normal)
+    @test rebuilt isa Aletheia.Formula
+    @test CompatibilityClient.tree(normal) == rebuilt
+    @test CompatibilityClient.syntaxstring(rebuilt) == "p ∧ q ∨ ¬r ∧ q"
+    @test CompatibilityClient.NamedConnective{:∧}().native === Aletheia.:∧
+    @test_throws ArgumentError CompatibilityClient.NamedConnective{:⊻}()
+
+    # Containers evaluate by folding into the ordinary DAG.
+    frame = Aletheia.Frame((:w,), Dict{Symbol,Any}())
+    model = Aletheia.Model(frame, Aletheia.BOOLEAN,
+        Aletheia.Valuation(Dict(("p", :w) => true, ("q", :w) => true, ("r", :w) => false)))
+    @test CompatibilityClient.check(
+        CompatibilityClient.LeftmostConjunctiveForm([p, q]), model, :w)
+    @test !CompatibilityClient.check(
+        CompatibilityClient.LeftmostConjunctiveForm([p, r]), model, :w)
+    @test CompatibilityClient.check(CompatibilityClient.Literal(false, r), model, :w)
+    @test CompatibilityClient.check(normal, model, :w) ==
+        CompatibilityClient.check(rebuilt, model, :w)
+
+    # Aletheia connective values are Sole operators for dispatch purposes.
+    @test Aletheia.:∧ isa CompatibilityClient.Operator
+    @test Vector{CompatibilityClient.Connective}(
+        [Aletheia.:∨, Aletheia.:∧, Aletheia.:→]) isa Vector
+    @test CompatibilityClient.AbstractSyntaxStructure === Aletheia.Formula
+end
+
+@testset "alphabets and random generation" begin
+    p, q, r = CompatibilityClient.Atom("p"), CompatibilityClient.Atom("q"),
+        CompatibilityClient.Atom("r")
+    explicit = CompatibilityClient.ExplicitAlphabet([p, q, r])
+    @test CompatibilityClient.atoms(explicit) == [p, q, r]
+    @test CompatibilityClient.natoms(explicit) == 3
+    @test p in explicit
+    @test isfinite(explicit)
+    @test CompatibilityClient.alphabet(explicit) === explicit
+    @test CompatibilityClient.atoms(CompatibilityClient.ExplicitAlphabet(["p"])) ==
+        [CompatibilityClient.Atom("p")]
+    union_alphabet = CompatibilityClient.UnionAlphabet([explicit])
+    @test CompatibilityClient.subalphabets(union_alphabet) == [explicit]
+    @test CompatibilityClient.atoms(union_alphabet) == [p, q, r]
+    @test CompatibilityClient.randatom(MersenneTwister(1), explicit) in [p, q, r]
+    @test CompatibilityClient.randatom(explicit) in [p, q, r]
+
+    operators = [Aletheia.:¬, Aletheia.:∧, Aletheia.:∨]
+    generated = CompatibilityClient.randformula(MersenneTwister(7), 3, explicit, operators)
+    @test generated isa Aletheia.Formula
+    @test CompatibilityClient.height(generated) <= 3
+    @test generated == CompatibilityClient.randformula(MersenneTwister(7), 3, explicit, operators)
+    full = CompatibilityClient.randformula(MersenneTwister(11), 3, [p, q, r], operators;
+        mode=:full)
+    @test CompatibilityClient.height(full) == 3
+    @test CompatibilityClient.randformula(3, explicit, operators) isa Aletheia.Formula
+
+    # SoleReasoners passes a basecase picker and operator weights.
+    weighted = CompatibilityClient.randformula(MersenneTwister(3), 2, explicit, operators;
+        opweights=[0, 1, 0], basecase=rng -> p, mode=:full)
+    @test CompatibilityClient.syntaxstring(weighted) == "p ∧ p ∧ (p ∧ p)"
+    modal = CompatibilityClient.randformula(MersenneTwister(5), 2, explicit,
+        [Aletheia.Diamond(Aletheia.IA_L)]; mode=:full)
+    @test CompatibilityClient.token(modal) == Aletheia.Diamond(Aletheia.IA_L)
+    @test CompatibilityClient.height(modal) == 2
+
+    @test_throws ArgumentError CompatibilityClient.randformula(
+        MersenneTwister(1), 2, explicit, operators; opweights=[1, 1])
+    @test_throws ArgumentError CompatibilityClient.randformula(
+        MersenneTwister(1), 2, explicit, operators; atompicker=[1, 1])
+    @test_throws ArgumentError CompatibilityClient.randformula(
+        MersenneTwister(1), 2, explicit, operators; unsupported_kwarg=1)
+    @test_throws ArgumentError CompatibilityClient.randformula(1, 2, explicit, operators)
+end
+
+# A truth constant that occurs as a leaf inside a formula must come back from
+# `children` as a `Truth`, not as an `Atom` wrapping one. SoleReasoners' tableau
+# branches on the child object's type (`alphasat.jl:152`,
+# `assertion(node) isa Tuple{Truth,Truth}`), so an `Atom` there silently
+# disarms the closure rules and turns UNSAT into SAT.
+@testset "truth constants stay truth values" begin
+    MV = CompatibilityClient.ManyValuedLogics
+    p = CompatibilityClient.Atom("p")
+    bot, top = CompatibilityClient.⊥, CompatibilityClient.⊤
+
+    conjunction = CompatibilityClient.SyntaxBranch(Aletheia.:∧, bot, bot)
+    child = CompatibilityClient.children(conjunction)[1]
+    @test child isa CompatibilityClient.Truth
+    @test child === bot
+    @test !(child isa CompatibilityClient.Atom)
+    @test CompatibilityClient.token(child) === child
+    # the consumer's own closure-rule predicate
+    @test (MV.α, child) isa Tuple{CompatibilityClient.Truth,CompatibilityClient.Truth}
+
+    mixed = CompatibilityClient.SyntaxBranch(Aletheia.:∧, p, top)
+    @test CompatibilityClient.children(mixed)[1] === p
+    @test CompatibilityClient.children(mixed)[2] === top
+    @test (MV.α, CompatibilityClient.children(mixed)[2]) isa
+        Tuple{CompatibilityClient.Truth,CompatibilityClient.Truth}
+    @test !((MV.α, CompatibilityClient.children(mixed)[1]) isa
+        Tuple{CompatibilityClient.Truth,CompatibilityClient.Truth})
+
+    # finite tableau carriers travel the same path
+    finite = CompatibilityClient.SyntaxBranch(Aletheia.:∨, p, MV.α)
+    finite_child = CompatibilityClient.children(finite)[2]
+    @test finite_child isa MV.FiniteTruth
+    @test finite_child === MV.α
+
+    # a child handed back this way rebuilds the identical formula
+    @test CompatibilityClient.SyntaxBranch(Aletheia.:∧,
+        CompatibilityClient.children(mixed)...) == mixed
+
+    # flattened and normal-form views keep the truth value too
+    @test CompatibilityClient.conjuncts(mixed) == [p, top]
+    normal = CompatibilityClient.dnf(CompatibilityClient.SyntaxBranch(Aletheia.:∧, p, bot))
+    literals = CompatibilityClient.grandchildren(
+        CompatibilityClient.grandchildren(normal)[1])
+    @test any(literal -> literal.atom isa CompatibilityClient.Truth, literals)
+
+    # the surrounding vocabulary keeps its documented meaning
+    @test CompatibilityClient.atoms(mixed) == [p]
+    @test CompatibilityClient.leaves(mixed) == [p, top]
+    @test CompatibilityClient.truths(mixed) == [top]
+    @test CompatibilityClient.nleaves(mixed) == 2
+
+    # and evaluation is unchanged: a truth leaf is still an algebra constant
+    frame = Aletheia.Frame((:w,), Dict{Symbol,Any}())
+    model = Aletheia.Model(frame, Aletheia.BOOLEAN,
+        Aletheia.Valuation(Dict(("p", :w) => true)))
+    @test CompatibilityClient.check(mixed, model, :w)
+    @test !CompatibilityClient.check(
+        CompatibilityClient.SyntaxBranch(Aletheia.:∧, p, bot), model, :w)
+    @test CompatibilityClient.check(bot, model, :w) == false
 end
