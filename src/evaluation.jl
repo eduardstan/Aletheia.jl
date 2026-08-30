@@ -347,25 +347,25 @@ function _evaluate_with_cache(formula::Formula, model::Model, ::Type{E}, cache):
 end
 
 """
-    Extension(values, worlds)
+    Extension(values, worlds, algebra)
     Extension(values, model)
 
-A display view wrapping an extension result vector and world tuple to provide
-a rich REPL display showing which worlds satisfy the formula.  The model form
-also keeps the model's algebra, so graded truth values are shown as the
-algebra's elements rather than as its carrier representation.
+A display view wrapping an extension result vector, world tuple, and truth
+algebra to provide a rich REPL display showing which worlds satisfy the
+formula.  Graded truth values are shown as the algebra's elements rather than
+as its carrier representation.
 """
-struct Extension{T,V<:AbstractVector{T},W<:Tuple,A}
+struct Extension{T,V<:AbstractVector{T},W<:Tuple,A<:TruthAlgebra}
     values::V
     worlds::W
     algebra::A
 
-    function Extension(values::V, worlds::W, algebra::A=nothing) where {T, V<:AbstractVector{T}, W<:Tuple, A}
+    function Extension(values::V, worlds::W, algebra::A) where {T, V<:AbstractVector{T}, W<:Tuple, A<:TruthAlgebra}
         new{T, V, W, A}(values, worlds, algebra)
     end
 end
 
-Extension(values::AbstractVector, worlds) = Extension(values, Tuple(worlds))
+Extension(values::AbstractVector, worlds, algebra) = Extension(values, Tuple(worlds), algebra)
 Extension(values::AbstractVector, model::Model) = Extension(values, frame(model).worlds, algebra(model))
 
 """
