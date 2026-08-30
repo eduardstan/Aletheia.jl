@@ -359,6 +359,13 @@ end
 Base.show(io::IO, ::MIME"text/plain", ::BooleanAlgebra) =
     _display_header(io, "BooleanAlgebra", "carrier Bool: {false, true}")
 
+_model_algebra_summary(::BooleanAlgebra) = "BooleanAlgebra()"
+_model_algebra_summary(::GodelAlgebra{0}) = "GodelAlgebra (unit interval [0.0, 1.0])"
+_model_algebra_summary(::LukasiewiczAlgebra{0}) = "LukasiewiczAlgebra (unit interval [0.0, 1.0])"
+_model_algebra_summary(::GodelAlgebra{N}) where N = "GodelAlgebra ($N-level chain)"
+_model_algebra_summary(::LukasiewiczAlgebra{N}) where N = "LukasiewiczAlgebra ($N-level chain)"
+_model_algebra_summary(::FiniteFLewAlgebra{N}) where N = "FiniteFLewAlgebra ($N values)"
+
 function Base.show(io::IO, ::MIME"text/plain", alg::GodelAlgebra{N}) where N
     N == 0 && return _display_header(io, "GodelAlgebra", "unit interval [0.0, 1.0]")
     lvls = join(string.(levels(alg)), ", ")

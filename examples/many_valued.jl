@@ -23,7 +23,7 @@ diamondp = branch(pool, Diamond(:R), p)
 println("dead-end Gödel Box/Diamond: ", check(boxp, godel, :w), "/", check(diamondp, godel, :w))
 # BEGIN EXPECTED OUTPUT
 # Gödel model:
-# Model (1 world, 1 relation, GodelAlgebra{0}())
+# Model (1 world, 1 relation, GodelAlgebra (unit interval [0.0, 1.0]))
 #   Worlds (1): :w
 #   Relations:
 #     :R: (none)
@@ -31,7 +31,7 @@ println("dead-end Gödel Box/Diamond: ", check(boxp, godel, :w), "/", check(diam
 #     p: {:w => 0.4}
 #     q: {:w => 0.8}
 # Łukasiewicz model:
-# Model (1 world, 1 relation, LukasiewiczAlgebra{0}())
+# Model (1 world, 1 relation, LukasiewiczAlgebra (unit interval [0.0, 1.0]))
 #   Worlds (1): :w
 #   Relations:
 #     :R: (none)

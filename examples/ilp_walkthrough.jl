@@ -26,8 +26,8 @@ println("accessible(w₁,R): ", collect(accessible(base_frame, :w₁, :R)))
 # BEGIN EXPECTED OUTPUT
 # General and specific clauses:
 # ClauseSet (2 clauses)
-#   father(:a) :- parent(:a)
 #   father(X) :- parent(X)
+#   father(a) :- parent(a)
 # general subsumes specific: true
 # reverse subsumption: false
 # One downward refinement:

@@ -7,8 +7,8 @@ formula = branch(pool, ∧, branch(pool, ∨, p, q),
     branch(pool, ∨, r, branch(pool, ∧, s, t)))
 cnf, dnf = to_cnf(formula), to_dnf(formula)
 println("formula: ", syntaxstring(formula))
-println("CNF: ", syntaxstring(cnf), " (", iscnf(cnf), ")")
-println("DNF: ", syntaxstring(dnf), " (", isdnf(dnf), ")")
+println("CNF: ", syntaxstring(cnf), " (iscnf: ", iscnf(cnf), ")")
+println("DNF: ", syntaxstring(dnf), " (isdnf: ", isdnf(dnf), ")")
 
 base_frame = Frame((:a, :b, :c, :d), Dict(); index=true)
 model = Model(base_frame, BOOLEAN, Dict("p" => Set([:a, :d]), "q" => Set([:b]),
@@ -20,8 +20,8 @@ println()
 println("extensions agree: ", extension(formula, model) == extension(cnf, model) == extension(dnf, model))
 # BEGIN EXPECTED OUTPUT
 # formula: (p ∨ q) ∧ (r ∨ s ∧ t)
-# CNF: (p ∨ q) ∧ (r ∨ s) ∧ (r ∨ t) (true)
-# DNF: p ∧ r ∨ p ∧ s ∧ t ∨ q ∧ r ∨ q ∧ s ∧ t (true)
+# CNF: (p ∨ q) ∧ (r ∨ s) ∧ (r ∨ t) (iscnf: true)
+# DNF: p ∧ r ∨ p ∧ s ∧ t ∨ q ∧ r ∨ q ∧ s ∧ t (isdnf: true)
 # Model (4 worlds, 0 relations, BooleanAlgebra())
 #   Worlds (4): :a, :b, :c, :d
 #   Valuation:

@@ -74,10 +74,11 @@ const FOExists = Exists
 const FOForall = Forall
 
 Base.show(io::IO, v::Variable) = print(io, v.name)
-Base.show(io::IO, c::Constant) = print(io, repr(c.value))
+_fo_constant_text(value) = value isa Symbol ? string(value) : repr(value)
+Base.show(io::IO, c::Constant) = print(io, _fo_constant_text(c.value))
 function _fo_term_text(term)
     term isa Variable && return string(term.name)
-    term isa Constant && return repr(term.value)
+    term isa Constant && return _fo_constant_text(term.value)
     term isa FunctionTerm && return "$(term.name)(" * join((_fo_term_text(t) for t in term.arguments), ", ") * ")"
     string(typeof(term))
 end
