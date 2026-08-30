@@ -840,3 +840,90 @@ Base.show(io::IO, connective::Disjunction) = print(io, notation(connective))
 Base.show(io::IO, connective::Implication) = print(io, notation(connective))
 Base.show(io::IO, connective::Diamond) = print(io, notation(connective))
 Base.show(io::IO, connective::Box) = print(io, notation(connective))
+
+# ---------------------------------------------------------------------------
+# Implicit default pool
+#
+# The pool is what makes formulas hash-consed; it is not something a reader of
+# `(φ ∧ ψ)` should have to name.  These spellings drop the pool argument and
+# route to one process-wide pool.  They are opt-in per call site: the pool a
+# formula belongs to is still readable from the code, because a call that
+# names no pool is exactly a call on `DEFAULT_POOL`.  There is no global mode
+# switch, and the explicit `FormulaPool` path is unchanged.
+
+"""
+    DEFAULT_SIGNATURE
+
+The similarity type behind the pool-free spellings: the five built-in
+propositional connectives [`¬`](@ref), [`∧`](@ref), [`⊗`](@ref), [`∨`](@ref),
+and [`→`](@ref).
+
+This tuple is fixed.  Modal and user-defined connectives are not in it, so a
+modal language declares its own [`Signature`](@ref) and [`FormulaPool`](@ref);
+that is also the textbook reading, in which a modal similarity type is
+declared before its formulas are formed.
+"""
+const DEFAULT_SIGNATURE = Signature((NEGATION, CONJUNCTION, FUSION, DISJUNCTION, IMPLICATION))
+
+"""
+    DEFAULT_POOL
+
+The single process-wide [`FormulaPool`](@ref) used by `atom(value)`,
+`branch(connective, children...)`, and `parse(Formula, source)` when no pool is
+given.
+
+Three properties are worth knowing before using it:
+
+  * **One signature, so no silent collision.** Every formula built through the
+    pool-free path lives in this pool over [`DEFAULT_SIGNATURE`](@ref).  Two
+    such formulas can never come from incompatible signatures.  A connective
+    outside that signature is an `ArgumentError`, and mixing a default-path
+    formula with an explicit-pool formula is an `ArgumentError` as well, never
+    a wrong answer.
+  * **Thread-safe, like every pool.** `FormulaPool` interning is guarded by a
+    lock, and the default pool is an ordinary pool.
+  * **Never released.** A `const` pool lives for the whole process, so every
+    distinct term interned through it is retained.  Long-running processes
+    that intern unboundedly many distinct formulas should use an explicit
+    `FormulaPool`, which is collected once it goes out of scope.
+"""
+const DEFAULT_POOL = FormulaPool(DEFAULT_SIGNATURE)
+
+"""
+    atom(value)
+
+Intern `value` as an atom in [`DEFAULT_POOL`](@ref).  Equivalent to
+`atom(DEFAULT_POOL, value)`.
+"""
+atom(value) = atom(DEFAULT_POOL, value)
+
+"""
+    branch(connective, children...)
+
+Intern a connective application in [`DEFAULT_POOL`](@ref).  Equivalent to
+`branch(DEFAULT_POOL, connective, children...)`; every child must already
+belong to the default pool.  Only the vararg spelling is given a pool-free
+form: `branch(pool, childtuple)` and `branch(connective, childtuple)` would be
+ambiguous, and the explicit path owns the tuple spelling.
+"""
+branch(connective, children...) = branch(DEFAULT_POOL, connective, children)
+
+# Connective values are callable on pooled formulas, so the formation rule
+# reads as it is written in the textbook: `p ∧ q`, `¬p`, `Diamond(r)(p)`.  The
+# pool is taken from the operands, which keeps the explicit path spelled the
+# same way; a cross-pool application is rejected by `branch`.
+#
+# The connective parameters below are deliberately spelled to match the
+# migration-only call methods in `compatibility.jl`, whose operand type is the
+# wider `Formula`; matching them keeps these strictly more specific instead of
+# ambiguous with them.
+const _PooledFormula = Union{Atom,Branch}
+
+(connective::Negation)(formula::_PooledFormula) =
+    branch(_formula_pool(formula), connective, (formula,))
+(connective::Union{Conjunction,Disjunction,Implication})(left::_PooledFormula, right::_PooledFormula) =
+    branch(_formula_pool(left), connective, (left, right))
+(connective::Fusion)(left::_PooledFormula, right::_PooledFormula) =
+    branch(_formula_pool(left), connective, (left, right))
+(connective::Union{Diamond,Box})(formula::_PooledFormula) =
+    branch(_formula_pool(formula), connective, (formula,))

@@ -23,6 +23,8 @@ infimum, while `fusion`/`⊗` is the monoid operation.
 Signature
 Formula
 FormulaPool
+DEFAULT_SIGNATURE
+DEFAULT_POOL
 Atom
 Branch
 atom

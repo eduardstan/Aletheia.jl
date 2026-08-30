@@ -262,6 +262,7 @@ end
     @test_throws ArgumentError parse(pool, "z(p)")
 end
 
+include("defaultpool.jl")
 include("semantics.jl")
 include("evaluation.jl")
 include("dataset.jl")
