@@ -22,7 +22,7 @@ only that import line and left both consumer checkouts otherwise untouched.
 | `Formula`, `SyntaxStructure`, `SyntaxTree` | `Aletheia.Formula`; formulas are pool-local DAG handles. |
 | `Atom` and `Atom(value)` | A compatibility `Atom <: Aletheia.Formula` wrapper is a real type for `isa`/dispatch; `Atom(value)` wraps an atom in the migration-only default pool. New code should use `atom(pool, value)`. |
 | `SyntaxBranch(op, children...)` | A local compatibility constructor over `Aletheia.branch`, using the children's pool and repooling when a modal connective is added. |
-| `children`, `value`, `token`, `tree` | `children`/`value` are direct; `token` returns the atom itself for a leaf and `operator` for a branch; `tree` is identity. |
+| `children`, `value`, `token`, `tree` | `children`/`value` are direct; `token` returns the atom itself for a leaf and `operator` for a branch; `tree` is identity. A truth constant occurring as a leaf comes back from `children` as the `Truth` itself, as in SoleLogics, not as an `Atom` wrapping one. |
 | `syntaxstring`, `arity`, `nchildren`, `height`, `atoms`, `leaves`, `operators`, `ntokens`, `natoms`, `nleaves`, `nconnectives`, `noperators` | Tree-walk adapters over ordinary Aletheia formulas. Display-only Sole keywords are accepted and ignored. |
 | `parseformula` | Parses through an explicit compatibility pool; `atom_parser` callbacks returning a compatibility `Atom` are unwrapped to their payload. |
 | `dnf`, `cnf` | Aletheia's classical normal forms, returned in SoleLogics' `DNF`/`CNF` leftmost containers of `Literal`s. `tree` folds one back into an ordinary pooled formula. |
@@ -59,7 +59,11 @@ remain the core API.
 * `Truth`/`BooleanTruth`/`⊤`/`⊥` are compatibility leaves, not ordinary
   Aletheia atoms. Direct `Atom(⊤)` construction and parsing a truth leaf still
   raise an `ArgumentError`; finite tableau leaves are handled by the nested
-  `ManyValuedLogics` boundary adapter below.
+  `ManyValuedLogics` boundary adapter below. Inside a formula a truth constant
+  is stored as an ordinary pool payload — the core evaluator never sees a boxed
+  truth — but every accessor hands it back as the `Truth`. Consumers branch on
+  the child object's type, so an `Atom` there would be a semantic change, not a
+  representation detail.
 * `BoxRelationalConnective`/`DiamondRelationalConnective` type-parameter
   dispatch and the old `collatetruth` protocol have no Aletheia counterpart.
   Connectives are values with extensible traits, and semantic operations belong
@@ -232,11 +236,40 @@ p∧¬p => false
 (p∨q)∧(¬p∨q) => true
 ```
 
-The same copy loaded `alphasat` and ran seeded HS, Compass, RCC8, and temporal
-tableau calls; its selected HS suite agreed exactly with the native SoleLogics
-run, including the native `nothing` timeout outcomes. This exercises both the
-propositional tableau boundary and the finite-valued truth-carrier boundary,
-and both hold.
+The many-valued Halpern–Shoham tableau was then compared decision by decision,
+because it is the workload that exercises truth constants as formula leaves.
+Formulas were generated once with SoleLogics' `randformula` using the upstream
+experiment's own basecase (`aot = vcat(myalphabet, getdomain(algebra))`,
+`experiments/alphasat/mvhs-tableau.jl:87-89`) and translated structurally, so
+both substrates decide the identical formula; node selection is deterministic
+(`roundrobin!`, `distancefromroot`, `formulaheight`), since the package default
+seeds its own generator. 64 decisions over eight algebra/height configurations,
+42 of them carrying at least one truth-constant leaf (68 such leaves, all handed
+back as `Truth`):
+
+| outcome | decisions |
+| --- | ---: |
+| both substrates returned a verdict | 42 |
+| — of which the verdicts differ | **0** |
+| both returned `nothing` (undetermined) | 17 |
+| SoleLogics returned `nothing`, Aletheia a verdict | 5 |
+
+`alphasat` returns `nothing` only from its wall-clock timeout and its
+out-of-memory bail (`alphasat.jl:124`, `:134`, `:566`, `:571`, `:890`, `:895`);
+the unsatisfiable answer is a distinct `false` at `alphasat.jl:137`. So
+`nothing` means *undetermined within the budget*, never *no*. Each of the five
+was re-run with a 600 s budget instead of 20 s, and SoleLogics then returned the
+same verdict Aletheia had: `⟨L̅⟩p`, `⟨D̅⟩[L]r`, `⟨D⟩[E̅]p`, `⟨O̅⟩r ∧ [B](⊤)` and
+`⟨D⟩[E̅]p` all `true` on both sides. **Every decision either substrate
+determined agrees; none differ.**
+
+Two limits on that sentence. The 17 undetermined decisions are evidence of
+nothing either way — neither substrate answered. And which decisions fall in the
+five is a wall-clock fact, not a capability difference: those cases needed
+18.9–28.5 s against a 20 s budget on a box whose load average moved from 3.79 to
+5.35 during the sweep, so under different load the membership of that set would
+change. Nothing here supports a performance claim; a paired, load-controlled
+measurement is a separate exercise.
 
 ### SolePostHoc
 

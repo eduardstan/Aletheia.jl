@@ -156,7 +156,13 @@ struct _CompatBranch{C,N,P<:Aletheia.FormulaPool} <: Aletheia.Formula
         _CompatBranch{C,N,P}(native.pool, native.id, native.connective, native.children)
 end
 const _CompatFormula = Union{Atom,_CompatBranch}
-const _CompatCacheEntry = Union{Nothing,Atom,_CompatBranch}
+# A truth constant interned as a pool payload is still a truth value, not an
+# atom.  SoleLogics puts the `Truth` itself in the tree, and consumers branch on
+# the child object's type, so the wrapper cache stores the payload unchanged for
+# those leaves.  `token` already unwrapped them; `children` did not, and that
+# asymmetry silently disarmed the tableau closure rules that test
+# `Tuple{Truth,Truth}`.
+const _CompatCacheEntry = Union{Nothing,Atom,_CompatBranch,Truth}
 const _WRAPPER_CACHE = IdDict{Aletheia.FormulaPool,Vector{_CompatCacheEntry}}()
 const _WRAPPER_CACHE_LOCK = ReentrantLock()
 const _NEGATION_CACHE = IdDict{Aletheia.FormulaPool,Vector{Int}}()
@@ -165,6 +171,7 @@ const SyntaxLeaf = Atom
 const AbstractAtom = Atom
 @inline _wrap(formula::Atom) = formula
 @inline _wrap(formula::_CompatBranch) = formula
+@inline _wrap(formula::Truth) = formula
 @inline _wrap(formula::Aletheia.Atom{V,P}) where {V,P<:Aletheia.FormulaPool} = _wrap_id(formula.pool, formula.id)
 @inline _wrap(formula::Aletheia.Branch{C,N,P}) where {C,N,P<:Aletheia.FormulaPool} = _wrap_id(formula.pool, formula.id)
 @inline _unwrap(formula::Atom) = Aletheia._formula_unlocked(formula.pool, formula.id)
@@ -195,7 +202,9 @@ Base.hash(formula::_CompatBranch, h::UInt) = hash(objectid(formula.pool), hash(f
         cached = cache[id]
         cached === nothing || return cached
         node = pool.nodes[id]
-        wrapped = node.kind == 0x01 ? Atom{typeof(node.payload),P}(pool, id, node.payload) :
+        wrapped = node.kind == 0x01 ?
+            (node.payload isa Truth ? node.payload :
+                Atom{typeof(node.payload),P}(pool, id, node.payload)) :
             _CompatBranch{typeof(node.payload),length(node.children),P}(pool, id, node.payload, node.children)
         cache[id] = wrapped
         wrapped
@@ -288,8 +297,11 @@ end
         _wrap(Aletheia.branch(target, formula.connective, ids))
     end
 end
+# A truth leaf is interned as a payload, so repooling yields the native atom:
+# wrapping it would hand back the `Truth` again and lose the pool identity that
+# branch construction needs.
 function _repool(formula::Truth, target)
-    _wrap(Aletheia.atom(target, formula))
+    Aletheia.atom(target, formula)
 end
 function _repool(formula::Aletheia.Formula, target)
     Aletheia.pool(formula) === target && return _wrap(formula)
@@ -304,6 +316,7 @@ end
 @inline _compat_child_id(child::_CompatBranch, pool) = child.pool === pool ? child.id : 0
 @inline _compat_child_id(child::Aletheia.Atom, pool) = Aletheia.pool(child) === pool ? Aletheia.id(child) : 0
 @inline _compat_child_id(child::Aletheia.Branch, pool) = Aletheia.pool(child) === pool ? Aletheia.id(child) : 0
+@inline _compat_child_id(child::Truth, pool) = Aletheia.id(Aletheia.atom(pool, child))
 @inline _compat_child_id(child, pool) = 0
 
 @inline function _compat_negation(pool::P, child_id::Int) where {P<:Aletheia.FormulaPool}

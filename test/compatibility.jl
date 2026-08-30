@@ -516,3 +516,63 @@ end
         MersenneTwister(1), 2, explicit, operators; unsupported_kwarg=1)
     @test_throws ArgumentError CompatibilityClient.randformula(1, 2, explicit, operators)
 end
+
+# A truth constant that occurs as a leaf inside a formula must come back from
+# `children` as a `Truth`, not as an `Atom` wrapping one. SoleReasoners' tableau
+# branches on the child object's type (`alphasat.jl:152`,
+# `assertion(node) isa Tuple{Truth,Truth}`), so an `Atom` there silently
+# disarms the closure rules and turns UNSAT into SAT.
+@testset "truth constants stay truth values" begin
+    MV = CompatibilityClient.ManyValuedLogics
+    p = CompatibilityClient.Atom("p")
+    bot, top = CompatibilityClient.⊥, CompatibilityClient.⊤
+
+    conjunction = CompatibilityClient.SyntaxBranch(Aletheia.:∧, bot, bot)
+    child = CompatibilityClient.children(conjunction)[1]
+    @test child isa CompatibilityClient.Truth
+    @test child === bot
+    @test !(child isa CompatibilityClient.Atom)
+    @test CompatibilityClient.token(child) === child
+    # the consumer's own closure-rule predicate
+    @test (MV.α, child) isa Tuple{CompatibilityClient.Truth,CompatibilityClient.Truth}
+
+    mixed = CompatibilityClient.SyntaxBranch(Aletheia.:∧, p, top)
+    @test CompatibilityClient.children(mixed)[1] === p
+    @test CompatibilityClient.children(mixed)[2] === top
+    @test (MV.α, CompatibilityClient.children(mixed)[2]) isa
+        Tuple{CompatibilityClient.Truth,CompatibilityClient.Truth}
+    @test !((MV.α, CompatibilityClient.children(mixed)[1]) isa
+        Tuple{CompatibilityClient.Truth,CompatibilityClient.Truth})
+
+    # finite tableau carriers travel the same path
+    finite = CompatibilityClient.SyntaxBranch(Aletheia.:∨, p, MV.α)
+    finite_child = CompatibilityClient.children(finite)[2]
+    @test finite_child isa MV.FiniteTruth
+    @test finite_child === MV.α
+
+    # a child handed back this way rebuilds the identical formula
+    @test CompatibilityClient.SyntaxBranch(Aletheia.:∧,
+        CompatibilityClient.children(mixed)...) == mixed
+
+    # flattened and normal-form views keep the truth value too
+    @test CompatibilityClient.conjuncts(mixed) == [p, top]
+    normal = CompatibilityClient.dnf(CompatibilityClient.SyntaxBranch(Aletheia.:∧, p, bot))
+    literals = CompatibilityClient.grandchildren(
+        CompatibilityClient.grandchildren(normal)[1])
+    @test any(literal -> literal.atom isa CompatibilityClient.Truth, literals)
+
+    # the surrounding vocabulary keeps its documented meaning
+    @test CompatibilityClient.atoms(mixed) == [p]
+    @test CompatibilityClient.leaves(mixed) == [p, top]
+    @test CompatibilityClient.truths(mixed) == [top]
+    @test CompatibilityClient.nleaves(mixed) == 2
+
+    # and evaluation is unchanged: a truth leaf is still an algebra constant
+    frame = Aletheia.Frame((:w,), Dict{Symbol,Any}())
+    model = Aletheia.Model(frame, Aletheia.BOOLEAN,
+        Aletheia.Valuation(Dict(("p", :w) => true)))
+    @test CompatibilityClient.check(mixed, model, :w)
+    @test !CompatibilityClient.check(
+        CompatibilityClient.SyntaxBranch(Aletheia.:∧, p, bot), model, :w)
+    @test CompatibilityClient.check(bot, model, :w) == false
+end
