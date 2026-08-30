@@ -345,22 +345,13 @@ DAG access reuse the same immutable handles. The compatibility tests assert
 both the inferred child-view types and a bounded allocation budget for 1,000
 traversals.
 
-The agreement-first 72-formula sweep was rerun with the same seed and
-SoleReasoners propositional tableau. Both sides produced 72 decisions (36 SAT,
-36 UNSAT); timing was discarded for no disagreement.
-
-This table inverts the convention used on the [measured results](results.md)
-page: here a time ratio is **Aletheia divided by SoleLogics**, so *below* `1×`
-means Aletheia took less time. Allocation cells are **SoleLogics ; Aletheia**
-medians from the paired child-process runs.
-
-| section | before time (Aletheia ÷ SoleLogics) | after time (Aletheia ÷ SoleLogics) | before allocations | after allocations |
-| --- | ---: | ---: | ---: | ---: |
-| parse existing text | 0.185× | 0.117× | 645 ; 146 | 459.5 ; 96.5 |
-| construct from recipe | 62.30× | 1.10× | 136 ; 1,427 | 94 ; 85 |
-| pre-parsed tableau search | 2.38× | 0.78× | 340 ; 1,921.5 | 144 ; 116.5 |
-
-The post-fix paired search median is below SoleLogics' (0.78×), rather than
-quietly treating parity as success. Command shape, timeout and file isolation,
-and the fixed seed match the benchmark protocol; the profile was collected
-before changing the wrapper representation and repeated after it.
+The earlier 72-formula agreement-first table and its 0.78× search ratio are
+withdrawn. That trial did not cover formulas with a truth constant as a leaf,
+so it could not support either a correctness or a performance claim. The #48
+repair makes the repaired result above possible, and that measured result
+replaces the old table: 64 decisions over eight algebra/height
+configurations, including 42 decisions with a truth-constant leaf, had **0
+genuine disagreements**. In five decisions SoleLogics returned `nothing` on the
+20-second budget; at 600 seconds it returned Aletheia's verdict. Which cases
+land in those five is a **wall-clock fact, not a capability difference**. This
+is evidence of agreement under the tested budgets, not a performance claim.

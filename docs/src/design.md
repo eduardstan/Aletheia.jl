@@ -21,7 +21,9 @@ needed) `precedence`/`associativity` traits.
 `FormulaPool`. A branch stores child IDs, not recursively typed child
 values. Thus a deeply nested formula does not produce a recursively nested
 Julia type. Hash-consing makes repeated construction of the same atom or branch
-return the same pool-local ID:
+return the same pool-local ID. This is an identity guarantee, not a general
+allocation or runtime win; the measured benefit depends on whether a workload
+actually reuses subterms:
 
 ```jldoctest design
 using Aletheia

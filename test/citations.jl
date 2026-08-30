@@ -49,6 +49,14 @@ end
     end
     @test normalized_occurs("five-seed medians", readme)
     @test normalized_occurs("5.44×", results)
+    @test normalized_occurs("1.02×–1.15×", results)
+    @test normalized_occurs("5.6 worlds out of 1,326", results)
+    @test normalized_occurs("238×", results)
+    @test normalized_occurs("ModalDecisionTrees cannot accept a quotient", results)
+    @test normalized_occurs("height-8 formulas", results)
+    @test normalized_occurs("≈16.8× more allocations", results)
+    @test normalized_occurs("workload-specific", results)
+    @test !normalized_occurs("expect pooled identity and DAG sharing to matter", results)
     @test normalized_occurs("data/benchmark-run/run.txt", results)
     @test normalized_occurs("scores four hypotheses against eight seeded models", results)
     artifact = read(joinpath(root, "data", "benchmark-run", "run.txt"), String)
@@ -62,6 +70,12 @@ end
     @test !normalized_occurs("changing one import line", index)
     @test normalized_occurs("selected\nSoleLogics consumers", index)
     @test normalized_occurs("107 of 142", compatibility)
+    @test normalized_occurs("64 decisions over eight algebra/height configurations", compatibility)
+    @test normalized_occurs("42 of them carrying at least one truth-constant leaf", compatibility)
+    @test normalized_occurs("verdicts differ | **0**", compatibility)
+    @test normalized_occurs("wall-clock fact, not a capability difference", compatibility)
+    @test !normalized_occurs("Both sides produced 72 decisions", compatibility)
+    @test !normalized_occurs("pre-parsed tableau search", compatibility)
     for name in ("AbstractAssignment", "AbstractDimensionalFrame", "AbstractInterpretation",
                  "AbstractKripkeStructure", "CONJUNCTION", "CheckAlgorithm", "Full0DFrame",
                  "Full1DFrame", "Full2DFrame", "LogicalInstance", "OneWorld", "Point3D",

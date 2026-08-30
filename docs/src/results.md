@@ -334,7 +334,23 @@ per-repetition logs, the run-order diagnostic, and the before/after
 optimisation record are published in
 [`data/solemodels-consumer/`](https://github.com/eduardstan/Aletheia.jl/tree/main/data/solemodels-consumer).
 
-## Bisimulation contraction amortisation
+## Bisimulation contraction: capability and scope
+
+Bisimulation contraction remains a library capability. The synthetic amortisation
+below shows when that capability can pay back its construction cost; it is not a
+claim that contraction improves real modal learners. Two independent learner
+probes found that real models compress only **1.02×–1.15×**: on continuous NATOPS
+models, the quotient is nearly the same size as the original. The incumbent's
+`representatives` path instead visits about **5.6 worlds out of 1,326** per check
+(a roughly **238×** reduction), precisely because it need not preserve all modal
+truth. ModalDecisionTrees cannot accept a quotient: its memoset is keyed by
+interval coordinates and it reports witness worlds.
+
+Rule extraction does manufacture height-8 formulas, the workload shape that
+contraction was intended to help, but it still fails on these data because the
+models do not compress—not because that workload is absent. The synthetic
+amortisation below is therefore a capability boundary, not a motivation for a
+learner integration.
 
 The contraction generator makes a complete all-world relation model with binary
 atom labels chosen to produce the requested quotient size. `C` times
@@ -405,7 +421,13 @@ costs.
 
 **Where a win does not generalise.** Contraction amortisation is workload specific: for the highly redundant
 `q/n≈0.02` model the corrected five-seed estimate pays back at about 42
-formulas (and is marked **UNSTABLE**), while an already-minimal model makes contraction pure overhead. The consumer min /
+formulas (and is marked **UNSTABLE**), while an already-minimal model makes contraction pure overhead. The
+learner evidence above narrows this further: real continuous models compress only
+1.02×–1.15×, and the existing `representatives` path is already much stronger.
+Hash-consed subterm sharing is likewise workload-specific. It helps when a
+workload repeatedly reuses subterms, but against the flat leftmost representation
+that SolePostHoc actually uses it costs **≈16.8× more allocations** and leaves a
+larger live footprint. Neither mechanism is a general speedup. The consumer min /
 median / max columns are first-use, steady-state, and fresh-family churn phase
 distributions; use the phase matching your workload and retain the tails. The interval fast path applies to
 canonical generated domains with their arithmetic provider, not automatically
@@ -415,10 +437,13 @@ not be read as a claim that both packages expose the same operation.
 
 **What to expect.** If you evaluate many formulas over one finite model, expect
 the extension/BitVector path to matter. If you build and compare formulas
-repeatedly, expect pooled identity and DAG sharing to matter. If you check one
-shallow propositional formula once, expect little difference and possibly the near-parity, unstable outcome seen here. For a new real-data consumer, first decide whether
-you are measuring cold adapter construction, steady reuse, or fresh-family
-churn; this page provides evidence for each, not a universal speedup.
+repeatedly *with shared subterms*, pooled identity and DAG sharing can matter;
+the flat leftmost consumer representation is a measured counterexample, not a
+general win. If you check one shallow propositional formula once, expect little
+difference and possibly the near-parity, unstable outcome seen here. For a new
+real-data consumer, first decide whether you are measuring cold adapter
+construction, steady reuse, or fresh-family churn; this page provides evidence
+for each, not a universal speedup.
 
 ## Correctness and coverage
 
