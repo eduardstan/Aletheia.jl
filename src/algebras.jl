@@ -252,7 +252,7 @@ function precedes(algebra::FiniteFLewAlgebra, left, right)
     x, y = _checked_finite_index(algebra, left), _checked_finite_index(algebra, right)
     x != y && precedeq(algebra, x, y)
 end
-function succeedes(algebra::FiniteFLewAlgebra, left, right)
+function succeeds(algebra::FiniteFLewAlgebra, left, right)
     x, y = _checked_finite_index(algebra, left), _checked_finite_index(algebra, right)
     x != y && succeedeq(algebra, x, y)
 end

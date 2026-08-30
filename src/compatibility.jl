@@ -1174,6 +1174,7 @@ end
     l, r = convert(FiniteTruth, left), convert(FiniteTruth, right)
     l != r && precedeq(algebra, l, r)
 end
+# Deliberately mirrors SoleLogics' spelling for compatibility.
 @inline succeedes(algebra::FiniteFLewAlgebra, left, right) =
     precedes(algebra, right, left)
 

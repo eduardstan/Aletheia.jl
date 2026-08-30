@@ -57,7 +57,7 @@
     @test maximalmembers(H4, UInt8[3, 4]) == UInt8[3, 4]
     @test minimalmembers(H4, (UInt8(3), UInt8(4))) == UInt8[3, 4]
     @test precedeq(H4, 2, 3) && succeedeq(H4, 3, 2)
-    @test precedes(H4, 2, 3) && succeedes(H4, 3, 2)
+    @test precedes(H4, 2, 3) && succeeds(H4, 3, 2)
     @test maximalmembers(H4, UInt8(2)) == UInt8[]
     @test minimalmembers(H4, UInt8(1)) == UInt8[]
     @test_throws ArgumentError maximalmembers(H4, [2, 9])
