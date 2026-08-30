@@ -39,7 +39,7 @@ println("dead-end Gödel Box/Diamond: ", check(boxp, godel, :w), "/", check(diam
 #     p: {:w => 0.4}
 #     q: {:w => 0.8}
 # p ∧ q under Gödel: 0.4
-# p ∧ q under Łukasiewicz: 0.20000000000000018
+# p ∧ q under Łukasiewicz: 0.4
 # dead-end Gödel Box/Diamond: 1.0/0.0
 #
 # END EXPECTED OUTPUT

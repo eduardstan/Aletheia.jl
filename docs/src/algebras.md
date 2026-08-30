@@ -6,7 +6,7 @@ index (`FiniteTruth`, currently `UInt8`) into a table carrier. The public
 constructor is:
 
 ```julia
-FiniteFLewAlgebra(join_table, lattice_meet_table, monoid_table, bottom, top)
+FiniteFLewAlgebra(join_table, meet_table, fusion_table, bottom, top)
 ```
 
 where each table is a square integer matrix over the carrier indices. Flat
@@ -14,11 +14,11 @@ integer vectors or tuples of length `N*N` are also accepted and normalized to
 `UInt8` matrices.
 
 The constructor validates the bounded-lattice and commutative-monoid axioms,
-monotonicity of the monoid, and residuation. It derives `x → z` as the
-largest `y` such that `x ⊙ y ≤ z`; implication is never accepted as an
-independent hand-written table. `meet(algebra, x, y)` is the logical monoid
-conjunction, while `lattice_meet(algebra, x, y)` exposes the lattice meet used
-to derive `precedeq`.
+monotonicity of fusion, and residuation. It derives `x → z` as the
+largest `y` such that `x ⊗ y ≤ z`; implication is never accepted as an
+independent hand-written table. `meet(algebra, x, y)` is the lattice infimum, while
+`fusion(algebra, x, y)` is the monoid operation used for strong conjunction.
+The syntax `⊗` denotes fusion and `∧` denotes the lattice meet.
 
 The named `G3`, `G4`, `G5`, `G6`, `Ł3`, `Ł4`, `H4`, `H6`, `H6_1`, `H6_2`,
 `H6_3`, and `H9` values reproduce the corresponding tables shipped by
@@ -42,7 +42,7 @@ using Aletheia
 show(stdout, MIME"text/plain"(), H4)
 println()
 println(join(H4, α, β) == ⊤H)
-println(lattice_meet(H4, α, β) == ⊥H)
+println(meet(H4, α, β) == ⊥H)
 println(Aletheia.truthlabel.(Ref(H4), maximalmembers(H4, [α, β])))
 println(Aletheia.truthlabel.(Ref(H4), minimalmembers(H4, [α, β])))
 
@@ -51,13 +51,13 @@ println(Aletheia.truthlabel.(Ref(H4), minimalmembers(H4, [α, β])))
 FiniteFLewAlgebra{4} (4 values, not a chain, bottom=⊥, top=⊤)
   Elements: ⊥, α, β, ⊤
 
-  Meet (∧)        Join (∨)        Implication (→)
- ∧ │ ⊥ α β ⊤     ∨ │ ⊥ α β ⊤     → │ ⊥ α β ⊤
-───┼────────    ───┼────────    ───┼────────
- ⊥ │ ⊥ ⊥ ⊥ ⊥     ⊥ │ ⊥ α β ⊤     ⊥ │ ⊤ ⊤ ⊤ ⊤
- α │ ⊥ α ⊥ α     α │ α α ⊤ ⊤     α │ β ⊤ β ⊤
- β │ ⊥ ⊥ β β     β │ β ⊤ β ⊤     β │ α α ⊤ ⊤
- ⊤ │ ⊥ α β ⊤     ⊤ │ ⊤ ⊤ ⊤ ⊤     ⊤ │ ⊥ α β ⊤
+  Meet (∧)        Fusion (⊗)      Join (∨)        Implication (→)
+ ∧ │ ⊥ α β ⊤     ⊗ │ ⊥ α β ⊤     ∨ │ ⊥ α β ⊤     → │ ⊥ α β ⊤
+───┼────────    ───┼────────    ───┼────────    ───┼────────
+ ⊥ │ ⊥ ⊥ ⊥ ⊥     ⊥ │ ⊥ ⊥ ⊥ ⊥     ⊥ │ ⊥ α β ⊤     ⊥ │ ⊤ ⊤ ⊤ ⊤
+ α │ ⊥ α ⊥ α     α │ ⊥ α ⊥ α     α │ α α ⊤ ⊤     α │ β ⊤ β ⊤
+ β │ ⊥ ⊥ β β     β │ ⊥ ⊥ β β     β │ β ⊤ β ⊤     β │ α α ⊤ ⊤
+ ⊤ │ ⊥ α β ⊤     ⊤ │ ⊥ α β ⊤     ⊤ │ ⊤ ⊤ ⊤ ⊤     ⊤ │ ⊥ α β ⊤
 true
 true
 ["α", "β"]
@@ -70,7 +70,7 @@ one of those two table entries. For example, a formula valuation may assign
 configuration that no totally ordered truth algebra can represent.
 
 The order helpers are derived from the lattice meet:
-`precedeq(a, x, y)` means `lattice_meet(a, x, y) == x`, and
+`precedeq(a, x, y)` means `meet(a, x, y) == x`, and
 `succeedeq` reverses the arguments. `check` and `extension` use the same DAG
 walk for these algebras as for Boolean and chain models; finite models return
 `UInt8` vectors, including for modal `Diamond` and `Box` formulas.

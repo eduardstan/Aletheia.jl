@@ -63,7 +63,8 @@ A custom relation value does not have to subtype `RelationFamily`: implementing
 ## Allen intervals and RCC8 rectangles
 
 Aletheia provides all thirteen Allen values in `ALLEN_RELATIONS`, including
-`EQUALS`, and compatibility `IA_*` spellings. `interval_frame(n)` builds every
+`EQUALS`. Compatibility `IA_*` spellings are available under
+`Aletheia.SoleLogics`. `interval_frame(n)` builds every
 interval over `n` cells — that is, every pair of boundaries drawn from
 `1:(n + 1)` with the first strictly below the second, so `n * (n + 1) / 2`
 worlds. `rectangle_frame(nx, ny)` makes all axis-aligned rectangles. Both
@@ -119,27 +120,30 @@ true
 true
 ```
 
-`IA7Relations` and `IA3Relations` are SoleLogics' coarser Allen subsets;
-`RCC5Relations` is `(Topo_DR, PO, Topo_PP, Topo_PPi)`. Each generated successor
-set is exhaustively checked against its predicate on small interval and
-rectangle domains.
+The core RCC5 tuple `RCC5_RELATIONS` contains `(DR, PO, PP, PPi)`.
+`Aletheia.SoleLogics` additionally provides `IA7Relations`, `IA3Relations`,
+and the incumbent `RCC5Relations` and `Topo_*` spellings. Each generated
+successor set is exhaustively checked against its predicate on small interval
+and rectangle domains.
 
 ## Compass logic 2D point relations
 
-Aletheia provides the eight cardinal 2D point relations from Compass logic:
-`CL_N`, `CL_S`, `CL_E`, `CL_W`, `CL_NE`, `CL_NW`, `CL_SE`, and `CL_SW` in
-`POINT2D_RELATIONS`. `point_frame(nx, ny)` creates a 2D grid frame whose worlds
+The opt-in `Aletheia.SoleLogics` namespace provides the eight cardinal 2D
+point relations from Compass logic: `CL_N`, `CL_S`, `CL_E`, `CL_W`, `CL_NE`,
+`CL_NW`, `CL_SE`, and `CL_SW`. The canonical tuple is
+`Aletheia.POINT2D_RELATIONS`. `point_frame(nx, ny)` creates a 2D grid frame whose worlds
 are `Point(x, y)`. Each relation is transitive and has a converse (for example
-`converse(CL_N) === CL_S` and `converse(CL_NE) === CL_SW`).
+`converse(Aletheia.SoleLogics.CL_N) === Aletheia.SoleLogics.CL_S` and
+`converse(Aletheia.SoleLogics.CL_NE) === Aletheia.SoleLogics.CL_SW`).
 
 ```jldoctest relations
 using Aletheia
 
 frame2d = point_frame(3, 3)
 w = Point(2, 2)
-println(collect(accessible(frame2d, w, CL_N)))
-println(collect(accessible(frame2d, w, CL_NE)))
-println(converse(CL_NE) === CL_SW)
+println(collect(accessible(frame2d, w, Aletheia.SoleLogics.CL_N)))
+println(collect(accessible(frame2d, w, Aletheia.SoleLogics.CL_NE)))
+println(converse(Aletheia.SoleLogics.CL_NE) === Aletheia.SoleLogics.CL_SW)
 
 # output
 
@@ -158,12 +162,11 @@ explicit world order. The generated frames are ordinary `Frame` values, and
 `accessible` remains lazy.
 
 RCC8 has eight values in `RCC8_RELATIONS`, including `RCC_EQ`; the seven-value
-`RCC8_BASICS` tuple is retained only for compatibility. `TPP` means that the
+`RCC8_BASICS` tuple is a convenient non-equality partition. `TPP` means that the
 source is a tangential proper part of the target, while `TPPi` is its converse
-(and likewise for `NTPP`/`NTPPi`). The compatibility spellings `Topo_TPP` and
-`Topo_NTPP` use SoleLogics' opposite naming orientation, so
-`Topo_TPP === TPPi` and `Topo_NTPP === NTPPi`. Use the RCC names when writing
-new code. `rectangle_relation(x, y)` instead combines one relation per axis;
+(and likewise for `NTPP`/`NTPPi`). The compatibility spellings `Aletheia.SoleLogics.Topo_TPP` and
+`Aletheia.SoleLogics.Topo_NTPP` use SoleLogics' opposite naming orientation,
+so they equal `TPPi` and `NTPPi`. Use the RCC names when writing new code. `rectangle_relation(x, y)` instead combines one relation per axis;
 it is not itself an RCC8 value.
 
 ## Frame classes and correspondence

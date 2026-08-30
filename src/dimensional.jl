@@ -184,16 +184,16 @@ function _interval_relation_successors(relation, source::Interval, boundaries, w
         return _interval_relation_successors(CONTAINS, source, boundaries, worlds)
     elseif relation === RCC_EQ
         return _interval_relation_successors(EQUALS, source, boundaries, worlds)
-    elseif relation === Topo_DR
+    elseif relation === DR
         # Mode 1 spans a full k x l block, so it may enter cells with l <= k
         # once lfirst <= klast; those map back to the preceding interval and
         # duplicate it. The targets at or after the source's right boundary
         # are the triangle l > k, which is exactly mode 0.
         return Iterators.flatten((_interval_successors(worlds, n, right, n - 1, right + 1, n, 0),
             _interval_successors(worlds, n, 1, left - 1, 0, left, 0)))
-    elseif relation === Topo_PP
+    elseif relation === PP
         return _interval_successors(worlds, n, 1, left, right, n, 4)
-    elseif relation === Topo_PPi
+    elseif relation === PPi
         return _interval_successors(worlds, n, left, right - 1, 0, right, 3)
     elseif relation === BEFORE
         return _interval_before_successors(source, boundaries, worlds)
@@ -359,9 +359,9 @@ function _rectangle_rcc_holds(relation::RCCRelation, ax, ay, bx, by)
     bpropersubseta = acontainsb && !equal
     externally_connected = !disconnected && (_interval_touching(ax, bx) || _interval_touching(ay, by)) &&
         !acontainsb && !bcontainsa
-    relation === Topo_DR ? disconnected || externally_connected :
-    relation === Topo_PP ? (bcontainsa && !equal) :
-    relation === Topo_PPi ? (acontainsb && !equal) :
+    relation === DR ? disconnected || externally_connected :
+    relation === PP ? (bcontainsa && !equal) :
+    relation === PPi ? (acontainsb && !equal) :
     relation === DC ? disconnected :
     relation === EC ? externally_connected :
     relation === RCC_EQ ? equal :

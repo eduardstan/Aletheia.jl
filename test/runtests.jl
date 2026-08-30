@@ -43,7 +43,7 @@ struct TestUnspecified end
 @testset "syntax" begin
     diamond = Diamond(:G)
     box = Box(:G)
-    sig = Signature((¬, ∧, ∨, →, diamond, box, TestXor()))
+    sig = Signature((¬, ∧, ⊗, ∨, →, diamond, box, TestXor()))
     pool = FormulaPool(sig)
 
     p = atom(pool, "p")
@@ -57,6 +57,9 @@ struct TestUnspecified end
     modal = parse(pool, "⟨G⟩p → [G]q")
     @test string(modal) == "⟨G⟩p → [G]q"
     @test parse(pool, string(modal)) == modal
+    fusion_formula = branch(pool, ⊗, p, q)
+    @test string(fusion_formula) == "p ⊗ q"
+    @test parse(pool, string(fusion_formula)) == fusion_formula
     @test string(parse(pool, "¬1→0"; atom_parser=x -> Base.parse(Float64, x))) == "¬1.0 → 0.0"
     @test string(parse(pool, "¬a → b ∧ c")) == "¬a → b ∧ c"
 
@@ -79,6 +82,7 @@ struct TestUnspecified end
     @test ids == sort(ids)
     @test [node.id for node in dag(repeated)] == ids
     @test all(all(child < node.id for child in node.children) for node in dag(repeated))
+    @test all(node isa Aletheia.DAGNode for node in dag(repeated))
 
     other_pool = FormulaPool(sig)
     @test atom(other_pool, "p") != p
@@ -93,23 +97,23 @@ end
     @test invoke_trait(hasdual, TestUnspecified()) == false
     @test invoke_trait(precedence, TestUnspecified()) == 0
     @test invoke_trait(associativity, TestUnspecified()) == :none
-    @test invoke_trait(commutative, TestUnspecified()) == false
-    @test invoke_trait(modality, TestUnspecified()) == false
-    @test invoke_trait(iscommutative, TestUnspecified()) == false
-    @test invoke_trait(ismodality, TestUnspecified()) == false
+    @test invoke_trait(Aletheia.commutative, TestUnspecified()) == false
+    @test invoke_trait(Aletheia.modality, TestUnspecified()) == false
+    @test invoke_trait(Aletheia.iscommutative, TestUnspecified()) == false
+    @test invoke_trait(Aletheia.ismodality, TestUnspecified()) == false
     @test_throws MethodError arity(TestUnspecified())
     @test_throws ArgumentError dual(TestUnspecified())
     @test precedence(TestUnspecified()) == 0
     @test associativity(TestUnspecified()) == :none
-    @test !commutative(TestUnspecified())
-    @test !modality(TestUnspecified())
+    @test !Aletheia.commutative(TestUnspecified())
+    @test !Aletheia.modality(TestUnspecified())
     @test !hasdual(TestUnspecified())
-    @test !iscommutative(TestUnspecified())
-    @test !ismodality(TestUnspecified())
+    @test !Aletheia.iscommutative(TestUnspecified())
+    @test !Aletheia.ismodality(TestUnspecified())
     @test notation(TestUnspecified()) isa String
 
-    @test Signature([¬, ∧]).arities == (1, 2)
-    @test Signature([¬, ∧], [1, 2]).arities == (1, 2)
+    @test Signature([¬, ∧, ⊗]).arities == (1, 2, 2)
+    @test Signature([¬, ∧, ⊗], [1, 2, 2]).arities == (1, 2, 2)
     @test_throws ArgumentError Signature(())
     @test_throws ArgumentError Signature((¬, ∧), (1,))
     @test_throws ArgumentError Signature((¬,), (2,))
@@ -120,7 +124,7 @@ end
 
     nullary = TestNullary()
     ternary = TestTernary()
-    sig = Signature((¬, ∧, nullary, ternary))
+    sig = Signature((¬, ∧, ⊗, nullary, ternary))
     pool = FormulaPool(sig)
     p = atom(pool, "p")
     q = atom(pool, "q")
@@ -161,7 +165,7 @@ end
     mutable_p = atom(mutable_pool, "p")
     @test_throws ArgumentError branch(mutable_pool, Diamond(mutable_relation), mutable_p)
     @test_throws BoundsError Aletheia._formula(pool, 0)
-    @test dag(pool) isa Vector{DAGNode}
+    @test dag(pool) isa Vector{Aletheia.DAGNode}
     @test dag(pool, id(t)).id == id(t)
     @test_throws BoundsError dag(pool, 0)
     @test subterms(p) == [id(p)]
@@ -208,9 +212,9 @@ end
     @test arity(Box(:G)) == 1
     @test precedence(¬) > precedence(∧) > precedence(∨) > precedence(→)
     @test associativity(∧) == :left && associativity(→) == :right
-    @test commutative(∧) && commutative(∨)
-    @test modality(Diamond(:G)) && modality(Box(:G))
-    @test ismodality(Diamond(:G))
+    @test Aletheia.commutative(∧) && Aletheia.commutative(∨)
+    @test Aletheia.modality(Diamond(:G)) && Aletheia.modality(Box(:G))
+    @test Aletheia.ismodality(Diamond(:G))
     @test relation(Diamond(:G)) == :G && relation(Box(:G)) == :G
     @test dual(¬) === ¬
     @test dual(∧) === (∨) && dual(∨) === (∧)
@@ -223,16 +227,17 @@ end
         @test invoke_trait(associativity, c) == associativity(c)
     end
     for c in (∧, ∨)
-        @test invoke_trait(commutative, c)
+        @test invoke_trait(Aletheia.commutative, c)
     end
     for c in (Diamond(:G), Box(:G))
-        @test invoke_trait(modality, c)
+        @test invoke_trait(Aletheia.modality, c)
         @test invoke_trait(hasdual, c)
     end
     @test invoke_trait(hasdual, ¬)
     @test sprint(show, p) == "p"
     @test sprint(show, t) == "T(p, q, r)"
     @test sprint(show, ∧) == "∧"
+    @test sprint(show, ⊗) == "⊗"
     @test sprint(show, ∨) == "∨"
     @test sprint(show, →) == "→"
     @test sprint(show, ¬) == "¬"

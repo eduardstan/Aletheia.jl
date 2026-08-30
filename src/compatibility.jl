@@ -902,6 +902,13 @@ const Point = Aletheia.Point
 const Point1D = Aletheia.Point
 const Point2D = Aletheia.Point
 const FullDimensionalFrame = Aletheia.FullDimensionalFrame
+const Full1DFrame = Aletheia.Full1DFrame
+const Full2DFrame = Aletheia.Full2DFrame
+const Full1DPointFrame = Aletheia.Full1DPointFrame
+const Full2DPointFrame = Aletheia.Full2DPointFrame
+const Point2DRelation = Aletheia.Point2DRelation
+const POINT2D_RELATIONS = Aletheia.POINT2D_RELATIONS
+const Point2DRelations = Aletheia.Point2DRelations
 diamond(relation_value) = Aletheia.Diamond(relation_value)
 box(relation_value) = Aletheia.Box(relation_value)
 const IA_A = Aletheia.IA_A
@@ -923,11 +930,18 @@ const IA_DiorBiorEi = Aletheia.IA_DiorBiorEi
 const IA_I = Aletheia.IA_I
 const IA7Relations = Aletheia.IA7Relations
 const IA3Relations = Aletheia.IA3Relations
-const RCC5Relations = Aletheia.RCC5Relations
-const RCC8Relations = Aletheia.RCC8Relations
-const Topo_DR = Aletheia.Topo_DR
-const Topo_PP = Aletheia.Topo_PP
-const Topo_PPi = Aletheia.Topo_PPi
+const Topo_DR = Aletheia.DR
+const Topo_PP = Aletheia.PPi
+const Topo_PPi = Aletheia.PP
+const RCC5Relations = (Topo_DR, Aletheia.PO, Topo_PP, Topo_PPi)
+const Topo_DC = Aletheia.DC
+const Topo_EC = Aletheia.EC
+const Topo_PO = Aletheia.PO
+const Topo_TPP = Aletheia.TPPi
+const Topo_TPPi = Aletheia.TPP
+const Topo_NTPP = Aletheia.NTPPi
+const Topo_NTPPi = Aletheia.NTPP
+const RCC8Relations = (Topo_DC, Topo_EC, Topo_PO, Topo_TPP, Topo_TPPi, Topo_NTPP, Topo_NTPPi)
 const TruthDict = Aletheia.Valuation
 KripkeStructure(frame_value, valuation_value) = Aletheia.Model(frame_value, Aletheia.BOOLEAN, valuation_value)
 
@@ -978,13 +992,13 @@ const HS_Bi = Aletheia.IA_Bi
 const HS_Ei = Aletheia.IA_Ei
 const HS_Di = Aletheia.IA_Di
 const HS_Oi = Aletheia.IA_Oi
-const LRCC8_Rec_DC = Aletheia.Topo_DC
-const LRCC8_Rec_EC = Aletheia.Topo_EC
-const LRCC8_Rec_PO = Aletheia.Topo_PO
-const LRCC8_Rec_TPP = Aletheia.Topo_TPP
-const LRCC8_Rec_TPPi = Aletheia.Topo_TPPi
-const LRCC8_Rec_NTPP = Aletheia.Topo_NTPP
-const LRCC8_Rec_NTPPi = Aletheia.Topo_NTPPi
+const LRCC8_Rec_DC = Topo_DC
+const LRCC8_Rec_EC = Topo_EC
+const LRCC8_Rec_PO = Topo_PO
+const LRCC8_Rec_TPP = Topo_TPP
+const LRCC8_Rec_TPPi = Topo_TPPi
+const LRCC8_Rec_NTPP = Topo_NTPP
+const LRCC8_Rec_NTPPi = Topo_NTPPi
 const LTLFP_F = Aletheia.GREATER
 const LTLFP_P = Aletheia.LESSER
 
@@ -1112,7 +1126,7 @@ function _wrap_algebra(native::Aletheia.FiniteFLewAlgebra{N}) where N
     FiniteFLewAlgebra{N}(
         _FiniteOperation{N}(native.join),
         _FiniteOperation{N}(native.meet),
-        _FiniteOperation{N}(native.monoid),
+        _FiniteOperation{N}(native.fusion),
         _FiniteOperation{N}(native.implication),
         FiniteTruth(native.bot), FiniteTruth(native.top), native)
 end
@@ -1231,6 +1245,7 @@ const BASE_MANY_VALUED_CONNECTIVES = [Aletheia.:∨, Aletheia.:∧, Aletheia.:�
 
 export FiniteTruth, ContinuousTruth, FiniteFLewAlgebra, getdomain
 export GodelAlgebra, LukasiewiczAlgebra, BooleanAlgebra
+export G3, G4, G5, G6, H4, H6, H6_1, H6_2, H6_3, H9, Ł3, Ł4
 export booleanalgebra, precedeq, precedes, succeedeq, succeedes, maximalmembers, minimalmembers
 export α, β, BASE_MANY_VALUED_CONNECTIVES
 end
@@ -1296,7 +1311,9 @@ end
 export Formula, SyntaxStructure, SyntaxTree, SyntaxLeaf, SyntaxBranch, Branch
 export Atom, AbstractAtom, AbstractRelation, Operator, Connective, NamedConnective
 export BoxRelationalConnective, DiamondRelationalConnective
-export Interval, Interval2D, Point, Point1D, Point2D, FullDimensionalFrame, diamond, box
+export Interval, Interval2D, Point, Point1D, Point2D, FullDimensionalFrame, Full1DFrame,
+    Full2DFrame, Full1DPointFrame, Full2DPointFrame, Point2DRelation,
+    POINT2D_RELATIONS, Point2DRelations, diamond, box
 export IA_A, IA_L, IA_B, IA_E, IA_D, IA_O, IA_Ai, IA_Li, IA_Bi, IA_Ei, IA_Di, IA_Oi
 export token, op, tree, children, value, nchildren, arity, syntaxstring, hasdual, dual, relation
 export formulas, subformulas, atoms, leaves, connectives, operators, ntokens, natoms, nleaves
@@ -1314,7 +1331,8 @@ export Truth, BooleanTruth, TOP, BOT, ⊤, ⊥, istop, isbot, truths, collatetru
 export dnf, cnf, normalize, LeftmostLinearForm, LeftmostConjunctiveForm
 export LeftmostDisjunctiveForm, DNF, CNF, Literal, AbstractInterpretationSet, ispos
 export IARelations, IA7Relations, IA3Relations, IA_AorO, IA_DorBorE, IA_AiorOi,
-    IA_DiorBiorEi, IA_I, RCC5Relations, RCC8Relations, Topo_DR, Topo_PP, Topo_PPi,
+    IA_DiorBiorEi, IA_I, RCC5Relations, RCC8Relations, Topo_DC, Topo_EC, Topo_PO,
+    Topo_TPP, Topo_TPPi, Topo_NTPP, Topo_NTPPi, Topo_DR, Topo_PP, Topo_PPi,
     alphabet, feature, condition, threshold, name, sample
 export TruthDict, KripkeStructure
 export ManyValuedLogics
@@ -1356,6 +1374,27 @@ function cnf(formula::Aletheia.Formula, literaltype::Type=Literal; kwargs...)
 end
 
 # Aletheia names useful to a consumer that is being migrated incrementally.
+# These aliases deliberately stay in the opt-in module.  In particular, the
+# old `meet` spelling means the legacy monoid operation here; core `meet` is
+# the lattice infimum and core `fusion` is the monoid operation.
+const carrier = Aletheia.carrier
+const truth_type = Aletheia.truth_type
+const truthtype = Aletheia.truth_type
+const meet = Aletheia.fusion
+const lattice_meet = Aletheia.meet
+const latticemeet = Aletheia.meet
+const lmeet = Aletheia.meet
+const latticejoin = Aletheia.join
+const lattice_join = Aletheia.join
+const product = Aletheia.fusion
+const tnorm = Aletheia.fusion
+const monoid = Aletheia.fusion
+const monoid_product = Aletheia.fusion
+const monoid_operation = Aletheia.fusion
+const residuum = Aletheia.implication
+const fusion_table = Aletheia.fusion_table
+const monoid_table = Aletheia.fusion_table
+const implication_table = Aletheia.implication_table
 const FormulaPool = Aletheia.FormulaPool
 const Signature = Aletheia.Signature
 const parse = Aletheia.parse
@@ -1365,8 +1404,19 @@ const TruthAlgebra = Aletheia.TruthAlgebra
 const BooleanAlgebra = Aletheia.BooleanAlgebra
 const GodelAlgebra = Aletheia.GodelAlgebra
 const LukasiewiczAlgebra = Aletheia.LukasiewiczAlgebra
+
+# The compatibility wrapper preserves SoleLogics' boxed finite carrier while
+# the core API exposes the unboxed carrier values.  Keep these accessors
+# coherent for callers that qualify the SoleLogics namespace.
+Aletheia.carrier(algebra::ManyValuedLogics.FiniteFLewAlgebra) = ManyValuedLogics.getdomain(algebra)
+Aletheia.truth_type(::ManyValuedLogics.FiniteFLewAlgebra) = ManyValuedLogics.FiniteTruth
+Aletheia.domain(algebra::ManyValuedLogics.FiniteFLewAlgebra) = ManyValuedLogics.getdomain(algebra)
+
 export FormulaPool, Signature, atom, branch, parse, Model, Valuation, TruthAlgebra
 export BooleanAlgebra, GodelAlgebra, LukasiewiczAlgebra
+export carrier, truth_type, truthtype, meet, lattice_meet, latticemeet, lmeet
+export latticejoin, lattice_join, product, tnorm, monoid, monoid_product, monoid_operation
+export residuum, fusion_table, monoid_table, implication_table
 export ¬, ∧, ∨, →
 const ¬ = Aletheia.:¬
 const ∧ = Aletheia.:∧

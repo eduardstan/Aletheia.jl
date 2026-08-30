@@ -31,16 +31,17 @@ for every consumer; the gap inventory and trials below record the current limits
 | `randformula` | SoleLogics' generator over Aletheia formulas; `mode`, `basecase`, `opweights`, `atompicker`, `maxmodaldepth` and `earlystoppingtreshold` keep their meaning. The caller supplies the generator, since Aletheia has no dependency to build one from a seed. |
 | `dual`, `hasdual`, `arity`, `relation` | Direct for Aletheia connective values (`¬`, `∧`, `∨`, `→`, `Diamond`, `Box`). |
 | `∧`, `∨`, `¬`, `→`, `NamedConnective`, `Operator`, `Connective` | Aletheia values remain the underlying operators; compatibility connective wrappers provide `NamedConnective{:symbol}` dispatch, and `NamedConnective{:∧}()` constructs the wrapper for the four base connectives. `Operator`/`Connective` are the union of those wrappers with Aletheia's own connective values, so `Vector{Connective}` and `x isa Operator` behave as consumers expect. |
-| `Interval`, `Interval2D`, `Point`, `Point1D`, `Point2D`, `FullDimensionalFrame`, `IA_*`, `IARelations` | Data-level aliases to Aletheia's dimensional and Allen APIs. `IARelations` keeps Sole's 12-value order and excludes `EQUALS`. |
+| `Interval`, `Interval2D`, `Point`, `Point1D`, `Point2D`, `FullDimensionalFrame`, `Full1DFrame`, `Full2DFrame`, `Full1DPointFrame`, `Full2DPointFrame`, `IA_*`, `IARelations` | Data-level aliases to Aletheia's dimensional and Allen APIs. `IARelations` keeps Sole's 12-value order and excludes `EQUALS`. |
 | `CL_*` | Direct aliases of Aletheia's Compass 2D point relations (`CL_N`, `CL_S`, `CL_E`, `CL_W`, `CL_NE`, `CL_NW`, `CL_SE`, `CL_SW`). |
 | `diamond`, `box`, `TruthDict`, `KripkeStructure`, `allworlds`, `accessible`, `accessibles` | Small adapters to `Diamond`/`Box`, `Valuation`/Boolean `Model`, and lazy frame access; callers collect explicitly when they need storage. |
 | `HS_*` | Direct aliases of Aletheia's `IA_*` Allen interval relations, including inverses. |
-| `LRCC8_Rec_*` | Direct aliases of Aletheia's `Topo_*` RCC8 relations; SoleLogics' orientation is retained (notably `Topo_TPP = TPPi`). |
+| `LRCC8_Rec_*` | Direct aliases of the core RCC8 values with SoleLogics' orientation (notably `Topo_TPP = TPPi`). |
 | `LTLFP_F`, `LTLFP_P` | Direct aliases of Aletheia's `GREATER` and `LESSER` point relations. |
 | `AbstractFrame`, `AbstractUniModalFrame`, `AbstractMultiModalFrame`, `AbstractWorld`, `AbstractWorlds`, `AnyWorld` | Direct frame/world dispatch vocabulary; `Frame` is a concrete multimodal frame and dimensional worlds subtype `AbstractWorld`. |
 | `globalrel`, `identityrel`, `AtWorldRelation`, `tocenterrel`, `centralworld`, `emptyworld` | Direct natural-relation values and frame hooks, with `identityrel === IDENTITY`; special accessibility remains lazy. |
 | `collateworlds`, `ismodal`, `isunary`, `isdiamond`, `isbox`, `isgrounding`, `isgrounded`, `AbstractRelationalConnective` | Aletheia's Boolean world-set collation and syntactic/relation predicates. |
-| `RCC8Relations` | Direct alias to Aletheia's top-level RCC8 relation tuple. |
+| `RCC8Relations` | SoleLogics' seven-value compatibility tuple, using its `Topo_*` orientation. The core `RCC8_RELATIONS` has eight values and includes `RCC_EQ`. |
+| `Topo_DC`, `Topo_EC`, `Topo_PO`, `Topo_TPP`, `Topo_TPPi`, `Topo_NTPP`, `Topo_NTPPi`, `Topo_DR`, `Topo_PP`, `Topo_PPi` | Sole-oriented aliases to core relation values. Proper-part names retain SoleLogics' converse orientation; `LRCC8_Rec_*` aliases the same singletons. |
 | `ManyValuedLogics` | Exists as a nested namespace. Finite truth values and finite FLew algebras are boundary adapters over Aletheia's `UInt8` tables; named algebras, `BASE_MANY_VALUED_CONNECTIVES`, thresholds, and tableau order helpers are available. Native Boolean/Gödel/Lukasiewicz algebras are also exposed; Sole tableau truth-carrier/order helpers remain unsupported where no faithful adapter exists. |
 
 The poolless `Atom(value)` and `SyntaxBranch(op, children...)` spellings are
@@ -79,8 +80,9 @@ remain the core API.
   alphabet or a vector of atoms and still raises for a dataset, because the
   alphabets a learner actually builds are SoleData objects over
   `ScalarCondition` payloads.
-* `RCC5Relations`, `IA3Relations`, and `IA7Relations` map directly to
-  Aletheia's RCC5 and coarser Allen relation values. Compass `CL_*` names map
+* `RCC5Relations`, `IA3Relations`, and `IA7Relations` map to Aletheia's
+  canonical RCC5 and coarser Allen relation values. The compatibility RCC5
+  tuple retains SoleLogics' `Topo_PP`/`Topo_PPi` orientation. Compass `CL_*` names map
   directly to Aletheia's 2D point relation values. Every unsupported marker
   has its own singleton dispatch type, so one consumer method per name does
   not overwrite another; invoking a marker still raises the explicit
@@ -111,6 +113,25 @@ intervals_in  ndisjuncts  nparameters  nworlds  short_intervals_in valuetype
 
 These gaps span SoleLogics vocabulary and consumer-facing type/value names;
 they are not limited to the deliberate semantic gaps below.
+
+## Measured top-level export cut
+
+The pre-change top-level inventory contained 436 exported names. The measured
+alias audit found 69 duplicate-constant classes covering 187 names, about 25
+function aliases, and 66 names referenced only once. We retained the canonical
+names used by the compatibility layer, the SoleData extension, and the four
+consumer scans, and removed unused migration spellings and implementation
+storage accessors. The direct-import scan found 151 distinct names: 101 were
+resolved and 50 were already outside Aletheia's supported surface. The nested
+`ManyValuedLogics` scan is separate: SoleReasoners imports 22 names, including
+12 named algebras now exported from that nested module. The replay above is an
+occurrence-level 107/142 result; it is not intended to add to the 151-name
+union count.
+
+The resulting core exports are intentionally smaller. In particular, tables,
+DAG records, valuation plumbing, SoleLogics aliases, and `Topo_*` spellings
+are accessed through qualified compatibility or internal names rather than
+being added to the flat `using Aletheia` namespace.
 
 ## What downstream packages actually use
 

@@ -4,6 +4,22 @@ Aletheia.notation(::TheoryXor) = "⊻"
 
 struct TheoryUnknownTerm <: FirstOrderTerm end
 struct TheoryUnknownFO <: FirstOrderFormula end
+const FOAnd = Aletheia.FOAnd
+const FOOr = Aletheia.FOOr
+const FOImplies = Aletheia.FOImplies
+const FONot = Aletheia.FONot
+const FOExists = Aletheia.FOExists
+const FOForall = Aletheia.FOForall
+const FOAtom = Aletheia.FOAtom
+const FOPredicate = Aletheia.FOPredicate
+const FOEquality = Aletheia.FOEquality
+const FOConstant = Aletheia.FOConstant
+const FOFunction = Aletheia.FOFunction
+const FOFormula = Aletheia.FOFormula
+const FOTerm = Aletheia.FOTerm
+const FOInterpretation = Aletheia.FOInterpretation
+const FOModel = Aletheia.FOModel
+const FOVariable = Aletheia.FOVariable
 struct TheoryDummyProver <: AbstractProver end
 struct TheoryUnknownProvider <: Aletheia._RelationProvider end
 struct TheoryUnknownValuation end
@@ -25,7 +41,7 @@ end
     @test string(Predicate(:p, (Variable(:x),))) == "p(x)"
     @test string(Predicate(:p, [Variable(:x)])) == "p(x)"
     @test sprint(show, Predicate(:p, Variable(:x))) == "p(x)"
-    @test string(FOAnd(Predicate(:p, Variable(:x)), FOOr(Predicate(:q, Variable(:x)), Predicate(:r, Variable(:x))))) ==
+    @test string(Aletheia.FOAnd(Predicate(:p, Variable(:x)), FOOr(Predicate(:q, Variable(:x)), Predicate(:r, Variable(:x))))) ==
         "p(x) ∧ (q(x) ∨ r(x))"
     interpretation = FirstOrderInterpretation((1, 2), Dict(:p => Set([1, 2]), :R => Set([(1, 2)])))
     keyword_interpretation = FirstOrderInterpretation((1,); predicates=Dict(:p => Set([1])))
@@ -33,7 +49,7 @@ end
     @test evaluate(Predicate(:p, Variable(:x)), interpretation, Dict(:x => 1))
     @test interpret(Predicate(:p, Variable(:x)), interpretation, Dict(:x => 1))
     @test evaluate(Exists(Variable(:y), Predicate(:p, Variable(:y))), interpretation)
-    @test evaluate(Forall(Variable(:y), FOImplies(Predicate(:R, Variable(:x), Variable(:y)),
+    @test evaluate(Forall(Variable(:y), Aletheia.FOImplies(Predicate(:R, Variable(:x), Variable(:y)),
         Predicate(:p, Variable(:y)))), interpretation, Dict(:x => 1))
     @test_throws ArgumentError FirstOrderInterpretation((), Dict())
     @test_throws KeyError evaluate(Predicate(:p, Variable(:z)), interpretation)
@@ -103,7 +119,7 @@ end
     @test_throws ArgumentError bisimilar(Model(f1, BOOLEAN, (a, w) -> false), 1, m1, 1)
 
     callback_model = Model(Frame((1, 2), Dict(); index=true), BOOLEAN,
-        ValuationCallback((a, world) -> a == "p" && world == 2))
+        Aletheia.ValuationCallback((a, world) -> a == "p" && world == 2))
     @test_throws ArgumentError bisimilar(callback_model, 1, callback_model, 2)
     @test_throws ArgumentError bisimulation_contraction(callback_model)
     @test_throws ArgumentError first_order_interpretation(callback_model)
@@ -264,8 +280,8 @@ end
 @testset "theory edge cases" begin
     @test string(Constant(:c)) == "c"
     @test string(Equality(Variable(:x), Constant(1))) == "x = 1"
-    @test string(FONot(FOAnd(Predicate(:p, Variable(:x)), Predicate(:q, Variable(:x))))) == "¬(p(x) ∧ q(x))"
-    @test string(FOImplies(Predicate(:p, Variable(:x)), Predicate(:q, Variable(:x)))) == "p(x) → q(x)"
+    @test string(FONot(Aletheia.FOAnd(Predicate(:p, Variable(:x)), Predicate(:q, Variable(:x))))) == "¬(p(x) ∧ q(x))"
+    @test string(Aletheia.FOImplies(Predicate(:p, Variable(:x)), Predicate(:q, Variable(:x)))) == "p(x) → q(x)"
     @test string(FOExists(Variable(:x), Predicate(:p, Variable(:x)))) == "∃x. p(x)"
     @test string(FOForall(Variable(:x), Predicate(:p, Variable(:x)))) == "∀x. p(x)"
     @test string(TheoryUnknownTerm()) == "Main.TheoryUnknownTerm()" || string(TheoryUnknownTerm()) isa String
@@ -282,7 +298,7 @@ end
     @test_throws KeyError evaluate(Predicate(:empty, Variable(:x)),
         FirstOrderInterpretation((1,), Dict(:empty => Dict())), Dict(:x => 1))
     @test evaluate(FODisjunction(Predicate(:d, Variable(:x)), Predicate(:e, Variable(:x))), fi, Dict(:x => 1))
-    @test evaluate(FOAnd(Predicate(:d, Variable(:x)), Predicate(:e, Variable(:x))), fi, (x=1,))
+    @test evaluate(Aletheia.FOAnd(Predicate(:d, Variable(:x)), Predicate(:e, Variable(:x))), fi, (x=1,))
     @test_throws KeyError evaluate(Predicate(:missing, Variable(:x)), fi, Dict(:x => 1))
     ff = FirstOrderInterpretation((1,), (name, args...) -> name == :p && args == (1,))
     @test evaluate(Predicate(:p, Variable(:x)), ff, Dict(:x => 1))

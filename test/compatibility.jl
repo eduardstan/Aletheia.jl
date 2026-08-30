@@ -192,9 +192,12 @@ end
     @test CompatibilityClient.IARelations == (Aletheia.IA_A, Aletheia.IA_L, Aletheia.IA_B, Aletheia.IA_E, Aletheia.IA_D, Aletheia.IA_O, Aletheia.IA_Ai, Aletheia.IA_Li, Aletheia.IA_Bi, Aletheia.IA_Ei, Aletheia.IA_Di, Aletheia.IA_Oi)
     @test CompatibilityClient.box(CompatibilityClient.IA_L) isa Aletheia.Box
     @test CompatibilityClient.name(Aletheia.:∧) == :∧
-    @test CompatibilityClient.RCC5Relations == Aletheia.RCC5Relations
+    @test CompatibilityClient.RCC5Relations == (Aletheia.DR, Aletheia.PO, Aletheia.PPi, Aletheia.PP)
     @test CompatibilityClient.IA3Relations == Aletheia.IA3Relations
     @test CompatibilityClient.IA7Relations == Aletheia.IA7Relations
+    @test CompatibilityClient.Topo_PP === Aletheia.PPi
+    @test CompatibilityClient.Topo_PPi === Aletheia.PP
+    @test CompatibilityClient.Point2DRelations == Aletheia.POINT2D_RELATIONS
     @test_throws MethodError CompatibilityClient.Literal()
     @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.precedeq(1, 2)
     @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.succeedeq(1, 2)
@@ -338,8 +341,8 @@ end
         CompatibilityClient.LRCC8_Rec_PO, CompatibilityClient.LRCC8_Rec_TPP,
         CompatibilityClient.LRCC8_Rec_TPPi, CompatibilityClient.LRCC8_Rec_NTPP,
         CompatibilityClient.LRCC8_Rec_NTPPi) ===
-        (Aletheia.Topo_DC, Aletheia.Topo_EC, Aletheia.Topo_PO, Aletheia.Topo_TPP,
-        Aletheia.Topo_TPPi, Aletheia.Topo_NTPP, Aletheia.Topo_NTPPi)
+        (Aletheia.DC, Aletheia.EC, Aletheia.PO, Aletheia.TPPi,
+        Aletheia.TPP, Aletheia.NTPPi, Aletheia.NTPP)
 
     # SoleLogics defines LTLFP_F = GreaterRel and LTLFP_P = LesserRel.
     @test CompatibilityClient.LTLFP_F === Aletheia.GREATER

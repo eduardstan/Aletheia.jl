@@ -2,6 +2,7 @@ struct SymbolAlgebra <: TruthAlgebra{Symbol} end
 Aletheia.top(::SymbolAlgebra) = :top
 Aletheia.bottom(::SymbolAlgebra) = :bottom
 Aletheia.meet(::SymbolAlgebra, ::Symbol, ::Symbol) = :meet
+Aletheia.fusion(::SymbolAlgebra, ::Symbol, ::Symbol) = :fusion
 Aletheia.join(::SymbolAlgebra, ::Symbol, ::Symbol) = :join
 Aletheia.implication(::SymbolAlgebra, ::Symbol, ::Symbol) = :implication
 Aletheia.negation(::SymbolAlgebra, ::Symbol) = :negation
@@ -10,17 +11,19 @@ struct VectorAlgebra <: TruthAlgebra{BitVector} end
 Aletheia.top(::VectorAlgebra) = trues(2)
 Aletheia.bottom(::VectorAlgebra) = falses(2)
 Aletheia.meet(::VectorAlgebra, left::BitVector, right::BitVector) = left .& right
+Aletheia.fusion(::VectorAlgebra, left::BitVector, right::BitVector) = left .& right
 Aletheia.join(::VectorAlgebra, left::BitVector, right::BitVector) = left .| right
 Aletheia.implication(::VectorAlgebra, left::BitVector, right::BitVector) = (.!left) .| right
 Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
 
 @testset "evaluation" begin
-    sig = Signature((¬, ∧, ∨, →, Diamond(:G), Box(:G), Diamond(:missing), Box(:missing)))
+    sig = Signature((¬, ∧, ⊗, ∨, →, Diamond(:G), Box(:G), Diamond(:missing), Box(:missing)))
     pool = FormulaPool(sig)
     p = atom(pool, "p")
     q = atom(pool, "q")
     notp = branch(pool, ¬, p)
     conjunction = branch(pool, ∧, p, q)
+    fusion_formula = branch(pool, ⊗, p, q)
     disjunction = branch(pool, ∨, p, q)
     implication_formula = branch(pool, →, p, q)
 
@@ -28,6 +31,7 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
     propositional = Model(one, BOOLEAN, Dict("p" => Set([:only]), "q" => Set{Symbol}()))
     @test @inferred(check(p, propositional, :only)) === true
     @test @inferred(check(conjunction, propositional, :only)) === false
+    @test @inferred(check(fusion_formula, propositional, :only)) === false
     @test @inferred(extension(p, propositional)) == BitVector([true])
     @test extension(p, propositional) isa BitVector
     @test extension(notp, propositional) == BitVector([false])
@@ -68,6 +72,7 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
     @test gdiamond isa Vector{Float64} && gdiamond == [0.7, 0.2, 0.0]
     @test gbox == [0.2, 0.2, 1.0]
     @test check(branch(pool, ∧, p, q), godel, :w1) === 0.4
+    @test check(fusion_formula, godel, :w1) === 0.4
     @test check(branch(pool, ∨, p, q), godel, :w1) === 0.9
     @test check(branch(pool, →, p, q), godel, :w1) === 0.4
     @test check(notp, godel, :w1) === 0.0
@@ -78,8 +83,9 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
     lukasiewicz = Model(frame, LukasiewiczAlgebra(), Dict("p" => Dict(
         :w1 => 0.9, :w2 => 0.2, :w3 => 0.7)))
     @test extension(diamond, lukasiewicz) == [0.7, 0.2, 0.0]
-    @test extension(box, lukasiewicz) ≈ [0.0, 0.2, 1.0]
-    @test check(branch(pool, ∧, p, p), lukasiewicz, :w1) === 0.8
+    @test extension(box, lukasiewicz) ≈ [0.2, 0.2, 1.0]
+    @test check(branch(pool, ∧, p, p), lukasiewicz, :w1) === 0.9
+    @test check(branch(pool, ⊗, p, p), lukasiewicz, :w1) === 0.8
     @test check(branch(pool, →, p, q), Model(frame, LukasiewiczAlgebra(), Dict(
         "p" => Dict(:w1 => 0.9, :w2 => 0.2, :w3 => 0.7),
         "q" => Dict(:w1 => 0.4, :w2 => 0.8, :w3 => 0.1))), :w1) === 0.5
@@ -94,6 +100,7 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
     @test check(p, symbolic, :only) === :atom
     @test check(notp, symbolic, :only) === :negation
     @test check(conjunction, symbolic, :only) === :meet
+    @test check(fusion_formula, symbolic, :only) === :fusion
     @test check(disjunction, symbolic, :only) === :join
     @test check(implication_formula, symbolic, :only) === :implication
     @test check(branch(pool, Diamond(:G), p), symbolic, :only) === :bottom
@@ -107,6 +114,16 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
     @test extension(conjunction, vector_model) == [BitVector([false, false])]
     @test extension(conjunction, vector_model) == [BitVector([false, false])]
     @test extension(branch(pool, Box(:G), p), vector_model) == [trues(2)]
+
+    # Box uses the lattice infimum, even when the monoid fusion is non-idempotent.
+    lukasiewicz3_frame = Frame((:source, :left, :right), Dict(:G => Dict(
+        :source => [:left, :right], :left => [], :right => [])); index=true)
+    lukasiewicz3 = Model(lukasiewicz3_frame, Ł3, Dict(
+        "p" => Dict(:source => UInt8(1), :left => UInt8(3), :right => UInt8(3))))
+    box3 = branch(pool, Box(:G), p)
+    @test meet(Ł3, UInt8(3), UInt8(3)) == UInt8(3)
+    @test fusion(Ł3, UInt8(3), UInt8(3)) == UInt8(2)
+    @test check(box3, lukasiewicz3, :source) == UInt8(3)
 
     duplicate_frame = Frame((:a, :b), Dict(:G => [(:a, :b), (:a, :b)]); index=true)
     duplicate_model = Model(duplicate_frame, LukasiewiczAlgebra(),

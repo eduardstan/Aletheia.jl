@@ -5,6 +5,54 @@ Aletheia.relation_holds(::ExternalFamilyRelation, source::Int, target::Int) = is
 struct HookedPointRelation end
 const hooked_point_calls = Ref(0)
 Aletheia.relation_holds(::HookedPointRelation, source::Int, target::Int) = source == target
+
+# Migration spellings are intentionally tested through their qualified modules.
+const IA_A = Aletheia.IA_A
+const IA_L = Aletheia.IA_L
+const IA_B = Aletheia.IA_B
+const IA_E = Aletheia.IA_E
+const IA_D = Aletheia.IA_D
+const IA_O = Aletheia.IA_O
+const IA_Ai = Aletheia.IA_Ai
+const IA_Li = Aletheia.IA_Li
+const IA_Bi = Aletheia.IA_Bi
+const IA_Ei = Aletheia.IA_Ei
+const IA_Di = Aletheia.IA_Di
+const IA_Oi = Aletheia.IA_Oi
+const IA_AorO = Aletheia.IA_AorO
+const IA_DorBorE = Aletheia.IA_DorBorE
+const IA_AiorOi = Aletheia.IA_AiorOi
+const IA_DiorBiorEi = Aletheia.IA_DiorBiorEi
+const IA_I = Aletheia.IA_I
+const IA7Relations = Aletheia.IA7Relations
+const IA3Relations = Aletheia.IA3Relations
+const IA72IARelations = Aletheia.IA72IARelations
+const IA32IARelations = Aletheia.IA32IARelations
+const RCC5Relations = Aletheia.RCC5_RELATIONS
+const RCC8Relations = Aletheia.RCC8_RELATIONS
+const Topo_DR = Aletheia.SoleLogics.Topo_DR
+const Topo_PP = Aletheia.SoleLogics.Topo_PP
+const Topo_PPi = Aletheia.SoleLogics.Topo_PPi
+const Topo_TPP = Aletheia.SoleLogics.Topo_TPP
+const Topo_TPPi = Aletheia.SoleLogics.Topo_TPPi
+const Topo_NTPP = Aletheia.SoleLogics.Topo_NTPP
+const Topo_NTPPi = Aletheia.SoleLogics.Topo_NTPPi
+const Point2DRelation = Aletheia.Point2DRelation
+const POINT2D_RELATIONS = Aletheia.POINT2D_RELATIONS
+const Point2DRelations = Aletheia.SoleLogics.Point2DRelations
+const CL_N = Aletheia.SoleLogics.CL_N
+const CL_S = Aletheia.SoleLogics.CL_S
+const CL_E = Aletheia.SoleLogics.CL_E
+const CL_W = Aletheia.SoleLogics.CL_W
+const CL_NE = Aletheia.SoleLogics.CL_NE
+const CL_NW = Aletheia.SoleLogics.CL_NW
+const CL_SE = Aletheia.SoleLogics.CL_SE
+const CL_SW = Aletheia.SoleLogics.CL_SW
+const FullDimensionalFrame = Aletheia.FullDimensionalFrame
+const Full1DFrame = Aletheia.Full1DFrame
+const Full2DFrame = Aletheia.Full2DFrame
+const Full1DPointFrame = Aletheia.Full1DPointFrame
+const Full2DPointFrame = Aletheia.Full2DPointFrame
 function Aletheia.relation_successors(::HookedPointRelation, source::Int, worlds)
     hooked_point_calls[] += 1
     (source,)
@@ -136,15 +184,18 @@ end
     end
     @test length(RCC8_BASICS) == 7
     @test Topo_TPP === TPPi && Topo_NTPP === NTPPi
-    @test RCC5Relations == (Topo_DR, PO, Topo_PP, Topo_PPi)
+    @test RCC5Relations == (DR, PO, PP, PPi)
+    @test Aletheia.SoleLogics.Topo_PP === PPi && Aletheia.SoleLogics.Topo_PPi === PP
     @test inverse(Topo_DR) === Topo_DR && inverse(Topo_PP) === Topo_PPi
     @test all(inverse(inverse(r)) === r for r in (IA_AorO, IA_DorBorE, IA_AiorOi, IA_DiorBiorEi, IA_I,
         Topo_DR, Topo_PP, Topo_PPi))
     @test all(sprint(show, r) isa String for r in (IA_AorO, IA_DorBorE, IA_AiorOi, IA_DiorBiorEi,
         IA_I, Topo_DR, Topo_PP, Topo_PPi))
-    @test relation_holds(Topo_DR, I(1, 2), I(2, 3))
-    @test relation_holds(Topo_PP, I(1, 2), I(1, 4))
-    @test relation_holds(Topo_PPi, I(1, 4), I(1, 2))
+    @test relation_holds(DR, I(1, 2), I(2, 3))
+    @test relation_holds(PP, I(1, 2), I(1, 4))
+    @test relation_holds(PPi, I(1, 4), I(1, 2))
+    @test !relation_holds(Aletheia.SoleLogics.Topo_PP, I(1, 2), I(1, 4))
+    @test relation_holds(Aletheia.SoleLogics.Topo_PP, I(1, 4), I(1, 2))
     for r in RCC8_RELATIONS
         @test all(Set(relation_successors(r, source, interval_worlds)) ==
             Set(target for target in interval_worlds if relation_holds(r, source, target))
@@ -426,7 +477,7 @@ end
     @test symmetric(reflexive_frame, :R) && serial(reflexive_frame, :R)
     @test isreflexive(reflexive_frame) && istransitive(reflexive_frame)
     @test satisfies(serial_frame, SERIAL, :R) && !satisfies(nonserial, SERIAL, :R)
-    @test checkclass(reflexive_frame, T, :R) && validclass(reflexive_frame, T, :R)
+    @test Aletheia.checkclass(reflexive_frame, T, :R) && Aletheia.validclass(reflexive_frame, T, :R)
     @test istransitive(preorder, :R) && !issymmetric(preorder, :R)
     @test !istransitive(nontransitive, :R) && isreflexive(nontransitive, :R)
     @test !isreflexive(preorder, :R)

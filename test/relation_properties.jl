@@ -6,6 +6,13 @@
 # Failures report the offending pairs, not just a boolean.
 
 const _RELATION_RNG = MersenneTwister(0x5eed)
+const IA_AorO = Aletheia.IA_AorO
+const IA_DorBorE = Aletheia.IA_DorBorE
+const IA_AiorOi = Aletheia.IA_AiorOi
+const IA_DiorBiorEi = Aletheia.IA_DiorBiorEi
+const IA_I = Aletheia.IA_I
+const IA72IARelations = Aletheia.IA72IARelations
+const IA32IARelations = Aletheia.IA32IARelations
 
 # A strictly increasing boundary vector with generated origin and spacing.
 function _generated_boundaries(rng, count)
@@ -82,7 +89,9 @@ _converse_mismatches(relation, ws) =
         if relation_holds(inverse(relation), a, b, ws) != relation_holds(relation, b, a, ws)]
 
 @testset "relation properties over generated domains" begin
-    @test length(_EXPORTED_RELATIONS) >= 40
+    @test length(_EXPORTED_RELATIONS) >= length(ALLEN_RELATIONS) + length(RCC8_RELATIONS) + length(POINT_RELATIONS)
+    @test all(relation -> relation in _EXPORTED_RELATIONS,
+        (ALLEN_RELATIONS..., RCC8_RELATIONS..., POINT_RELATIONS...))
 
     @testset "inverse is the converse" begin
         for relation in _EXPORTED_RELATIONS

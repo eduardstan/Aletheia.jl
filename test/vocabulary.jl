@@ -29,11 +29,11 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
 
     # SoleLogics.jl/src/types/modal-logic.jl:278-287 documents the iterator
     # boundary for global and modal access; no vector is materialised here.
-    lazy = accessibles(frame_small, :a, globalrel)
+    lazy = Aletheia.SoleLogics.accessibles(frame_small, :a, globalrel)
     @test lazy isa Base.Generator
     @test !(lazy isa AbstractVector)
     @test collect(lazy) == collect(worlds_small)
-    @test accessibles(frame_small, globalrel) === worlds(frame_small)
+    @test Aletheia.SoleLogics.accessibles(frame_small, globalrel) === worlds(frame_small)
 
     # Converse properties from the incumbent relation traits.
     @test inverse(inverse(globalrel)) === globalrel
@@ -60,7 +60,7 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
     interval = interval_frame(4)
     @test emptyworld(interval) == Interval(-1, 0)
     @test centralworld(interval) == Interval(2, 4)
-    @test collect(accessibles(interval, centralworld(interval), tocenterrel)) == [centralworld(interval)]
+    @test collect(Aletheia.SoleLogics.accessibles(interval, centralworld(interval), tocenterrel)) == [centralworld(interval)]
 
     # Exhaustive Boolean world-set collation over a three-world frame.
     allsets = [Set(worlds_small[i] for i in eachindex(worlds_small) if mask & (1 << (i - 1)) != 0)
@@ -151,7 +151,10 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
     @test Aletheia.SoleLogics.tocenterrel === tocenterrel
     @test Aletheia.SoleLogics.AbstractFrame === AbstractFrame
     @test Aletheia.SoleLogics.AbstractWorld === AbstractWorld
-    @test Aletheia.SoleLogics.RCC8Relations === RCC8Relations
+    @test Aletheia.SoleLogics.RCC8Relations ===
+        (Aletheia.SoleLogics.Topo_DC, Aletheia.SoleLogics.Topo_EC, Aletheia.SoleLogics.Topo_PO,
+        Aletheia.SoleLogics.Topo_TPP, Aletheia.SoleLogics.Topo_TPPi,
+        Aletheia.SoleLogics.Topo_NTPP, Aletheia.SoleLogics.Topo_NTPPi)
 
     # Exercise the complete incumbent value vocabulary, including display and
     # trait methods that consumers use for dispatch tables.
@@ -213,7 +216,7 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
 
     # The world-set accessibility view is lazy and must survive re-iteration:
     # a shared `seen` set across passes silently drops already-yielded worlds.
-    reachable = accessibles(frame_small, [:a, :b], :R)
+    reachable = Aletheia.SoleLogics.accessibles(frame_small, [:a, :b], :R)
     @test !(reachable isa AbstractVector)
     @test collect(reachable) == [:b, :c]
     @test !isempty(reachable)

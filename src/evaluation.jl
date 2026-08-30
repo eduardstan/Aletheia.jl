@@ -160,6 +160,18 @@ function _meet_extension(::BooleanAlgebra, left::BitVector, right::BitVector)::B
     left .& right
 end
 
+function _fusion_extension(algebra::TruthAlgebra, left::Vector{T}, right::Vector{T})::Vector{T} where T
+    result = Vector{T}(undef, length(left))
+    for i in eachindex(left)
+        result[i] = fusion(algebra, left[i], right[i])::T
+    end
+    result
+end
+
+function _fusion_extension(::BooleanAlgebra, left::BitVector, right::BitVector)::BitVector
+    left .& right
+end
+
 function _join_extension(algebra::TruthAlgebra, left::Vector{T}, right::Vector{T})::Vector{T} where T
     result = Vector{T}(undef, length(left))
     for i in eachindex(left)
@@ -205,6 +217,8 @@ function _diamond_extension(::BooleanAlgebra, child::BitVector, adjacency::_Rela
     result
 end
 
+# Box is universal quantification, so it folds successor values with the
+# lattice meet (infimum), not monoid fusion.
 function _box_extension(algebra::TruthAlgebra, child::Vector{T}, adjacency::_RelationAdjacency)::Vector{T} where T
     rows = adjacency.rows
     result = Vector{T}(undef, length(rows))
@@ -228,6 +242,8 @@ function _branch_extension(node::_EvaluationNode, values::Vector{E}, model::Mode
         return _negation_extension(model.algebra, values[node.children[1]])
     elseif connective isa Conjunction
         return _meet_extension(model.algebra, values[node.children[1]], values[node.children[2]])
+    elseif connective isa Fusion
+        return _fusion_extension(model.algebra, values[node.children[1]], values[node.children[2]])
     elseif connective isa Disjunction
         return _join_extension(model.algebra, values[node.children[1]], values[node.children[2]])
     elseif connective isa Implication
@@ -280,7 +296,7 @@ Extension(values::AbstractVector, model::Model) = Extension(values, frame(model)
 """
     describe(extension_result, model)
 
-Return an [`Extension`](@ref) view of `extension_result` over `model` for rich REPL printing.
+Return an `Extension` view of `extension_result` over `model` for rich REPL printing.
 """
 describe(ext::AbstractVector, model::Model) = Extension(ext, model)
 describe(io::IO, ext::AbstractVector, model::Model) = show(io, MIME("text/plain"), Extension(ext, model))
@@ -325,7 +341,7 @@ Return the extension of `φ` over the model's worlds, in world-index order (or
 enumeration order when no index is supplied). A Boolean model returns a `BitVector`;
 every other algebra returns a vector whose element type is the algebra's carrier type.
 To construct a rich display view of the extension, pass the result and model to
-[`Extension`](@ref) or [`describe`](@ref).
+`Extension` or [`describe`](@ref).
 """
 function extension(formula::Formula, model::Model{Bool,A}) where {A<:BooleanAlgebra}
     _evaluate(formula, model, BitVector)

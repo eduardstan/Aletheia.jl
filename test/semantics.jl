@@ -3,6 +3,7 @@ struct IncompleteAlgebra <: TruthAlgebra{Int} end
 Aletheia.top(::TestSymbolAlgebra) = :top
 Aletheia.bottom(::TestSymbolAlgebra) = :bottom
 Aletheia.meet(::TestSymbolAlgebra, ::Symbol, ::Symbol) = :meet
+Aletheia.fusion(::TestSymbolAlgebra, ::Symbol, ::Symbol) = :fusion
 Aletheia.join(::TestSymbolAlgebra, ::Symbol, ::Symbol) = :join
 Aletheia.implication(::TestSymbolAlgebra, ::Symbol, ::Symbol) = :implication
 Aletheia.negation(::TestSymbolAlgebra, ::Symbol) = :negation
@@ -10,13 +11,14 @@ Aletheia.negation(::TestSymbolAlgebra, ::Symbol) = :negation
 @testset "truth algebras" begin
     b = BooleanAlgebra()
     @test b isa TruthAlgebra{Bool}
-    @test truth_type(b) === Bool && truthtype(b) === Bool && carrier(b) === Bool
+    @test truth_type(b) === Bool && Aletheia.truthtype(b) === Bool && carrier(b) == (false, true)
     @test top(b) && !bottom(b) && bot(b) == false
     @test meet(b, true, false) == false
+    @test fusion(b, true, false) == false
     @test join(b, true, false) == true
     @test implication(b, true, false) == false
-    @test implies(b, false, false) == true
-    @test negation(b, true) == false && negate(b, false)
+    @test Aletheia.implies(b, false, false) == true
+    @test negation(b, true) == false && Aletheia.negate(b, false)
     @test domain(b) == (false, true)
 
     g = GodelAlgebra()
@@ -27,9 +29,9 @@ Aletheia.negation(::TestSymbolAlgebra, ::Symbol) = :negation
     @test meet(g, 0.2, 0.7) == 0.2 && join(g, 0.2, 0.7) == 0.7
     @test implication(g, 0.2, 0.7) == 1.0 && implication(g, 0.7, 0.2) == 0.2
     @test negation(g, 0.0) == 1.0 && negation(g, 0.2) == 0.0
-    @test !isfinitechain(g) && domain(g) == (0.0, 1.0)
+    @test !isfinitechain(g) && carrier(g) == (0.0, 1.0)
     @test_throws ArgumentError levels(g)
-    @test GodelChain(3) isa GodelAlgebra{3}
+    @test Aletheia.GodelChain(3) isa GodelAlgebra{3}
     @test collect(levels(GodelAlgebra(3))) == [0.0, 0.5, 1.0]
     @test domain(GodelAlgebra(3)) == (0.0, 0.5, 1.0)
     @test isfinitechain(GodelAlgebra(3))
@@ -39,14 +41,14 @@ Aletheia.negation(::TestSymbolAlgebra, ::Symbol) = :negation
     @test domain(l) == (0.0, 1.0)
     @test top(l) == 1.0 && bottom(l) == 0.0
     @test Base.invokelatest(top, l) == 1.0 && Base.invokelatest(bottom, l) == 0.0
-    @test meet(l, 0.6, 0.6) ≈ 0.2 && join(l, 0.2, 0.6) ≈ 0.6
+    @test meet(l, 0.6, 0.6) ≈ 0.6 && fusion(l, 0.6, 0.6) ≈ 0.2 && join(l, 0.2, 0.6) ≈ 0.6
     @test implication(l, 0.7, 0.4) ≈ 0.7
     @test implication(l, 0.4, 0.7) == 1.0 && negation(l, 0.2) ≈ 0.8
-    @test LukasiewiczChain(4) isa LukasiewiczAlgebra{4}
+    @test Aletheia.LukasiewiczChain(4) isa LukasiewiczAlgebra{4}
     @test collect(levels(LukasiewiczAlgebra(4))) == [0.0, 1 / 3, 2 / 3, 1.0]
     @test domain(LukasiewiczAlgebra(4)) == Tuple(collect(levels(LukasiewiczAlgebra(4))))
 
-    @test GödelAlgebra === GodelAlgebra && ŁukasiewiczAlgebra === LukasiewiczAlgebra
+    @test Aletheia.GödelAlgebra === GodelAlgebra && Aletheia.ŁukasiewiczAlgebra === LukasiewiczAlgebra
     @test_throws ArgumentError GodelAlgebra(0)
     @test_throws ArgumentError GodelAlgebra(1)
     @test_throws ArgumentError LukasiewiczAlgebra(1)
@@ -54,12 +56,14 @@ Aletheia.negation(::TestSymbolAlgebra, ::Symbol) = :negation
     @test_throws ArgumentError meet(g, 0.2, 1.1)
     @test_throws ArgumentError meet(GodelAlgebra(3), 0.25, 0.5)
     @test meet(GodelAlgebra(3), 0.5, 1.0) == 0.5
-    @test meet(LukasiewiczAlgebra(4), 1 / 3, 2 / 3) == 0.0
+    @test meet(LukasiewiczAlgebra(4), 1 / 3, 2 / 3) == 1 / 3
+    @test fusion(LukasiewiczAlgebra(4), 1 / 3, 2 / 3) == 0.0
     @test_throws ArgumentError implication(LukasiewiczAlgebra(3), 0.25, 0.5)
     @test truth_type(TestSymbolAlgebra()) === Symbol
     @test top(TestSymbolAlgebra()) == :top
     @test bottom(TestSymbolAlgebra()) == :bottom
     @test meet(TestSymbolAlgebra(), :a, :b) == :meet
+    @test fusion(TestSymbolAlgebra(), :a, :b) == :fusion
     @test join(TestSymbolAlgebra(), :a, :b) == :join
     @test implication(TestSymbolAlgebra(), :a, :b) == :implication
     @test negation(TestSymbolAlgebra(), :a) == :negation
@@ -67,6 +71,7 @@ Aletheia.negation(::TestSymbolAlgebra, ::Symbol) = :negation
     @test_throws MethodError top(incomplete)
     @test_throws MethodError bottom(incomplete)
     @test_throws MethodError meet(incomplete, 1, 2)
+    @test_throws MethodError fusion(incomplete, 1, 2)
     @test_throws MethodError join(incomplete, 1, 2)
     @test_throws MethodError implication(incomplete, 1, 2)
     @test_throws MethodError negation(incomplete, 1)
@@ -80,7 +85,7 @@ Base.getindex(::BadIndexData, ::Any) = error("bad index")
                                :H => [(:w1, :w1)]); index=true)
     @test worlds(f) == (:w1, :w2) && length(f) == 2 && collect(f) == [:w1, :w2]
     @test relations(f) isa Dict && hasworldindex(f)
-    @test world_index(f)[:w2] == 2 && world_position(f, :w1) == 1 && world_position(f, :w2) == 2
+    @test Aletheia.world_index(f)[:w2] == 2 && world_position(f, :w1) == 1 && world_position(f, :w2) == 2
     successors = accessible(f, :w1, :G)
     @test successors isa Base.Generator && collect(successors) == [:w2]
     @test collect(accessible(f, :w2, :G)) == [:w2]
@@ -90,7 +95,7 @@ Base.getindex(::BadIndexData, ::Any) = error("bad index")
 
     plain = Frame([1, 2], Dict(:R => Dict(1 => [2])); index=false)
     @test !hasworldindex(plain) && world_position(plain, 2) == 2
-    @test world_index(plain) === nothing
+    @test Aletheia.world_index(plain) === nothing
     @test collect(accessible(plain, 2, :R)) == []
     indexed = Frame([1, 2], Dict(); world_index=Dict(1 => 1, 2 => 2))
     @test hasworldindex(indexed)

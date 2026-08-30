@@ -8,7 +8,7 @@ struct EmptyFamily <: AbstractModelFamily end
     frame = Frame((1, 2), Dict(:R => Dict(1 => [2], 2 => [2])); index=true)
     calls = Ref(0)
     batches = Ref(0)
-    callback = ValuationCallback(
+    callback = Aletheia.ValuationCallback(
         (name, world) -> begin
             calls[] += 1
             name == "p" && world == 2
@@ -42,13 +42,13 @@ struct EmptyFamily <: AbstractModelFamily end
     @test uniform_frame(uniform) == frame
     @test extension(p, uniform) == [BitVector([false, true]), BitVector([false, true])]
 
-    gcallback = ValuationCallback((name, world) -> 0.5;
+    gcallback = Aletheia.ValuationCallback((name, world) -> 0.5;
         vectorized=(name, worlds) -> [0.5, 1.0])
     gmodel = Model(frame, GodelAlgebra(3), gcallback)
     @test extension(p, gmodel) == [0.5, 1.0]
 
     @test uniform_frame(ModelFamily(Model[])) === nothing
-    bad = ValuationCallback((name, world) -> true; vectorized=(name, worlds) -> Bool[])
+    bad = Aletheia.ValuationCallback((name, world) -> true; vectorized=(name, worlds) -> Bool[])
     @test_throws ArgumentError extension(p, Model(frame, BOOLEAN, bad))
 
     @test_throws MethodError instance_count(EmptyFamily())
