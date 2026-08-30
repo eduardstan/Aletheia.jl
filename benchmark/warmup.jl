@@ -5,17 +5,23 @@ function run_case(mode, kind, side, argument)
 function execute(f; samples=BENCH_SAMPLES)
     if mode == "benchmark"
         m = measure_samples(f; samples=samples)
-        println(m.time, " ", m.allocs, " ", m.memory)
+        load = try
+            load_match = Base.match(r"load average: ([0-9.]+)", readchomp(`uptime`))
+            load_match === nothing ? missing : parse(Float64, load_match.captures[1])
+        catch
+            missing
+        end
+        println(m.time, " ", m.allocs, " ", m.memory, " ", load === missing ? "missing" : load)
     else
         start = time_ns(); f(); println((time_ns() - start) / 1_000_000)
     end
 end
 
 if kind == "construction"
-    label, depth_text = parts; depth = parse(Int, depth_text); r = label == "shared" ? shared(depth) : unshared(depth)
+    label, depth_text = parts; depth = parse(Int, depth_text); r = label == "shared" ? seeded_shared(depth) : seeded_unshared(depth)
     execute(side == "incumbent" ? (() -> build_s(r)) : (() -> build_a(r, pool_a())))
 elseif kind in ("parsing", "printing", "roundtrip")
-    depth = parse(Int, argument); r = unshared(depth); pa = build_a(r, pool_a()); ps = build_s(r); text = Aletheia.syntaxstring(pa)
+    depth = parse(Int, argument); r = seeded_unshared(depth); pa = build_a(r, pool_a()); ps = build_s(r); text = Aletheia.syntaxstring(pa)
     if kind == "parsing"
         execute(side == "incumbent" ? (() -> SoleLogics.parseformula(SoleLogics.SyntaxTree, text)) : (() -> Aletheia.parse(pool_a(), text)))
     elseif kind == "printing"
@@ -25,14 +31,14 @@ elseif kind in ("parsing", "printing", "roundtrip")
             (() -> Aletheia.syntaxstring(Aletheia.parse(pool_a(), text))))
     end
 elseif kind == "equality"
-    n = parse(Int, argument); r = chain(n)
+    n = parse(Int, argument); r = chain(n; seed=SEED)
     if side == "incumbent"
         s = build_s(r); t = build_s(r); execute(() -> isequal(s, t))
     else
         ap = pool_a(); a = build_a(r, ap); b = build_a(r, ap); execute(() -> isequal(a, b))
     end
 elseif kind == "prop_check"
-    depth = parse(Int, argument); r = unshared(depth)
+    depth = parse(Int, argument); r = seeded_unshared(depth)
     if side == "incumbent"
         f = build_s(r); td = SoleLogics.TruthDict(Dict(name => isodd(i) for (i, name) in enumerate(recipe_atoms(r))))
         execute(() -> SoleLogics.check(f, td))
@@ -42,7 +48,7 @@ elseif kind == "prop_check"
         execute(() -> Aletheia.check(f, m, 1))
     end
 elseif kind == "prop_extension"
-    n, depth = parse.(Int, parts); r = unshared(depth)
+    n, depth = parse.(Int, parts); r = seeded_unshared(depth)
     if side == "incumbent"
         f = build_s(r); ws = SoleLogics.World.(1:n); names = recipe_atoms(r); td = Dict(w => SoleLogics.TruthDict(Dict(name => ((i + w.name) % 2 == 0) for (i, name) in enumerate(names))) for w in ws)
         k = SoleLogics.KripkeStructure(SoleLogics.SimpleModalFrame(ws, SoleLogics.Graphs.SimpleDiGraph(n)), td)
@@ -58,12 +64,12 @@ elseif kind == "prop_extension"
         execute(() -> Aletheia.extension(f, m))
     end
 elseif kind == "modal_check"
-    n, density, depth = parse(Int, parts[1]), parse(Float64, parts[2]), parse(Int, parts[3]); edges = edge_data(n, density, SEED + n + depth); r = modal_formula(depth)
+    n, density, depth = parse(Int, parts[1]), parse(Float64, parts[2]), parse(Int, parts[3]); case_seed = SEED + n + depth; edges = edge_data(n, density, case_seed); r = random_recipe(MersenneTwister(case_seed), depth; modal=true); sets = seeded_sets(recipe_atoms(r), n, case_seed)
     if side == "incumbent"
-        f = build_s(r); m = s_boolean_model(n, edges); w = first(SoleLogics.allworlds(SoleLogics.frame(m)))
+        f = build_s(r); m = s_boolean_model(n, edges; sets=sets); w = first(SoleLogics.allworlds(SoleLogics.frame(m)))
         execute(() -> SoleLogics.check(f, m, w; perform_normalization=false))
     else
-        p = modal_pool_a(); f = build_a(r, p); m = a_boolean_model(n, edges)
+        p = modal_pool_a(); f = build_a(r, p); m = a_boolean_model(n, edges; sets=sets)
         execute(() -> Aletheia.check(f, m, 1))
     end
 elseif kind == "interval_adjacency"
@@ -101,17 +107,19 @@ elseif kind == "many_check"
 elseif kind == "ilp_score"
     model_count, hypothesis_count = parse.(Int, parts)
     if side == "incumbent"
-        hs = [build_s(modal_formula(1 + mod(i, 4))) for i in 1:hypothesis_count]
+        hs = [build_s(random_recipe(MersenneTwister(SEED + i), 1 + mod(i, 4); modal=true)) for i in 1:hypothesis_count]
         examples = Tuple[]
+        names = unique(vcat((recipe_atoms(random_recipe(MersenneTwister(SEED + i), 1 + mod(i, 4); modal=true)) for i in 1:hypothesis_count)...))
         for i in 1:model_count
-            n = 4 + mod(i, 4); m = s_boolean_model(n, edge_data(n, 0.35, SEED + i)); push!(examples, (m, first(SoleLogics.allworlds(SoleLogics.frame(m))), isodd(i)))
+            n = 4 + mod(i, 4); case_seed = SEED + i * UInt64(7919); m = s_boolean_model(n, edge_data(n, 0.35, case_seed); sets=seeded_sets(names, n, case_seed)); push!(examples, (m, first(SoleLogics.allworlds(SoleLogics.frame(m))), isodd(i)))
         end
         execute(() -> score_s(hs, examples))
     else
-        hs = Aletheia.Formula[]; p = modal_pool_a(); append!(hs, [build_a(modal_formula(1 + mod(i, 4)), p) for i in 1:hypothesis_count])
+        hs = Aletheia.Formula[]; p = modal_pool_a(); append!(hs, [build_a(random_recipe(MersenneTwister(SEED + i), 1 + mod(i, 4); modal=true), p) for i in 1:hypothesis_count])
         examples = Aletheia.InterpretationExample[]
+        names = unique(vcat((recipe_atoms(random_recipe(MersenneTwister(SEED + i), 1 + mod(i, 4); modal=true)) for i in 1:hypothesis_count)...))
         for i in 1:model_count
-            n = 4 + mod(i, 4); m = a_boolean_model(n, edge_data(n, 0.35, SEED + i));
+            n = 4 + mod(i, 4); case_seed = SEED + i * UInt64(7919); m = a_boolean_model(n, edge_data(n, 0.35, case_seed); sets=seeded_sets(names, n, case_seed));
             # This is the ILP learning-from-interpretations constructor; the
             # score loop below is the learner's eval/check hot path.
             push!(examples, Aletheia.learning_from_interpretations(m; positive=isodd(i)))
@@ -120,7 +128,7 @@ elseif kind == "ilp_score"
     end
 elseif kind in ("contraction_cost", "contraction_orig", "contraction_quot", "contraction_batch_orig", "contraction_batch_quot")
     n, q = parse.(Int, parts[1:2]); count = length(parts) >= 3 ? parse(Int, parts[3]) : 8; k = length(parts) >= 4 ? parse(Int, parts[4]) : count
-    model, atoms = contraction_model(n, q); pool = Aletheia.FormulaPool(Aletheia.Signature((Aletheia.Diamond(:R), Aletheia.Box(:R)))); fs = contraction_formulas(pool, atoms, max(count, k))
+    model, atoms = contraction_model(n, q, SEED); pool = Aletheia.FormulaPool(Aletheia.Signature((Aletheia.Diamond(:R), Aletheia.Box(:R)))); fs = contraction_formulas(pool, atoms, max(count, k))
     if kind == "contraction_cost"
         execute(() -> Aletheia.bisimulation_contraction(model; atoms=atoms, relations=[:R]); samples=2000)
     elseif kind == "contraction_orig"
@@ -144,6 +152,10 @@ function main()
         side = ARGS[2]
         for item in split(ARGS[3], ';')
             kind, argument = split(item, '='; limit=2)
+            if occursin("@", argument)
+                argument, seed_text = rsplit(argument, "@"; limit=2)
+                global SEED = parse_seed(seed_text)
+            end
             run_case("benchmark", kind, side, argument)
         end
     else

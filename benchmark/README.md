@@ -13,13 +13,27 @@ From a fresh checkout, set the incumbent checkout and run one command:
 SOLELOGICS_PATH=/path/to/SoleLogics.jl julia --project=benchmark benchmark/run.jl
 ```
 
-The default quick run uses fixed seed `0xA1E7_2024` and 200 paired samples;
+The default quick run sweeps five seeds (`0xA1E7_2024`, `0x5EED_2025`,
+`0xC0FF_EE42`, `0x1234_5678`, and `0x9ABC_DEF0`) and keeps 200 paired
+samples per seed;
 `--deep` expands formula/model/ratio sweeps. Each section and side runs all its
 cases in one warmed Julia child; GNU `timeout` kills the section at the printed
 hard bound, and timeout/unavailable cells remain visible in the report. Every
 sample pairs its allocation count with the sample nearest the median time.
 The process writes raw values and provenance (Julia/CPU, load average, mode,
-seed, and per-cell sample counts) to `data/benchmark-run/run.txt`.
+seed set, uptime at start and end, and per-cell sample counts) to `data/benchmark-run/run.txt`.
+
+A three-seed pilot showed material ratio spread in several rows, so the default
+uses five seeds. The five-seed quick run is expected to take about 7.7 minutes on
+this machine, versus 6.9 minutes for the retired single-seed run. This is still
+minutes rather than hours, but it exceeds the old quick-run budget. The final
+ILP ratio ranged from 4.09× to 7.83× and propositional depth 2 from 0.68× to
+1.37×, so the published rows expose that instability. Per-row samples are not
+reduced; future runs may parallelize independent seed workers on a dedicated
+machine instead. The first five-seed pass was sequential and took 38.7 minutes
+with load rising from 3.00 to 6.28; it was discarded. The published pass
+interleaves and rotates seeds within each warmed section, took 7.7 minutes,
+and records paired per-seed loads as `seed_loads` in the run artefact.
 
 `benchmark/differential.jl` is the deterministic correctness comparison:
 

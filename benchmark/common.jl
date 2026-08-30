@@ -8,7 +8,15 @@ using SoleLogics
 include(joinpath(@__DIR__, "paired_measure.jl"))
 
 const DEEP = "--deep" in ARGS
-const SEED = 0xA1E7_2024
+const DEFAULT_SEEDS = (UInt64(0xA1E7_2024), UInt64(0x5EED_2025),
+    UInt64(0xC0FF_EE42), UInt64(0x1234_5678), UInt64(0x9ABC_DEF0))
+function parse_seed(text)
+    clean = replace(text, "_" => "")
+    startswith(lowercase(clean), "0x") ? parse(UInt64, clean[3:end]; base=16) : parse(UInt64, clean)
+end
+SEED = let raw = get(ENV, "BENCHMARK_SEED", string(DEFAULT_SEEDS[1]))
+    parse(UInt64, raw)
+end
 const BENCH_SECONDS = DEEP ? 0.05 : 0.01
 const BENCH_SAMPLES = DEEP ? 500 : 200
 const CASE_TIMEOUT = DEEP ? 180 : 120
@@ -33,6 +41,26 @@ end
 atomrecipe(name) = Recipe(:atom, (), String(name))
 recipe(op, children...) = Recipe(op, children, nothing)
 
+# Keep the labelled depth while varying the generated formula across seeds.
+function seeded_tree(depth, rng; shared=false, binary_ops=(:and, :or, :implies), counter=Ref(0))
+    if depth == 0
+        counter[] += 1
+        return atomrecipe("p$(counter[])_$(rand(rng, 1:10_000))")
+    end
+    op = rand(rng, binary_ops)
+    if shared
+        child = seeded_tree(depth - 1, rng; shared=true, binary_ops=binary_ops, counter=counter)
+        return recipe(op, child, child)
+    end
+    recipe(op, seeded_tree(depth - 1, rng; binary_ops=binary_ops, counter=counter),
+        seeded_tree(depth - 1, rng; binary_ops=binary_ops, counter=counter))
+end
+seeded_unshared(depth, seed=SEED; binary_ops=(:and, :or, :implies)) =
+    seeded_tree(depth, MersenneTwister(seed); binary_ops=binary_ops)
+seeded_shared(depth, seed=SEED; binary_ops=(:and, :or, :implies)) =
+    seeded_tree(depth, MersenneTwister(seed); shared=true, binary_ops=binary_ops)
+
+
 function unshared(depth, counter = Ref(0))
     # Every leaf occurrence gets a distinct atom.  This is intentionally a
     # tree-shaped recipe; `shared` below is the contrasting DAG recipe.
@@ -51,8 +79,8 @@ function shared(depth)
     child = shared(depth - 1)
     recipe(:and, child, child)
 end
-function chain(n)
-    result = atomrecipe("p")
+function chain(n; seed=SEED)
+    result = atomrecipe("p$(1 + mod(seed, 10_000))")
     for _ in 1:n
         result = recipe(:not, result)
     end
@@ -103,8 +131,10 @@ struct Measurement
     allocs::Union{Missing,Int}
     memory::Union{Missing,Int}
     note::String
+    load::Union{Missing,Float64}
 end
-Measurement(time, allocs, memory) = Measurement(time, allocs, memory, "")
+Measurement(time, allocs, memory) = Measurement(time, allocs, memory, "", missing)
+Measurement(time, allocs, memory, note) = Measurement(time, allocs, memory, note, missing)
 
 
 # BenchmarkTools stores allocations and memory as minima over its samples.
@@ -116,7 +146,7 @@ end
 
 # A call is measured in a child Julia process.  Unlike BenchmarkTools' seconds
 # sampling budget, GNU timeout kills a non-yielding call at CASE_TIMEOUT.
-function guarded_measure(label, kind, side, argument, f=nothing; timeout=CASE_TIMEOUT)
+function guarded_measure(label, kind, side, argument, f=nothing; timeout=CASE_TIMEOUT, seed=SEED)
     println("[case] ", label)
     flush(stdout)
     project = @__DIR__
@@ -125,6 +155,8 @@ function guarded_measure(label, kind, side, argument, f=nothing; timeout=CASE_TI
     command = DEEP ?
         `timeout -k 1s $(timeout)s $julia --startup-file=no --project=$project $helper benchmark $kind $side $argument --deep` :
         `timeout -k 1s $(timeout)s $julia --startup-file=no --project=$project $helper benchmark $kind $side $argument`
+    env = Dict{String,String}(ENV); env["BENCHMARK_SEED"] = string(seed)
+    command = setenv(command, env)
     path, io = mktemp(); close(io)
     process = run(pipeline(command, stdout=path, stderr=devnull); wait=false)
     wait(process)
@@ -133,40 +165,59 @@ function guarded_measure(label, kind, side, argument, f=nothing; timeout=CASE_TI
     process.exitcode == 137 && return Measurement(missing, missing, missing, "timeout ($(timeout)s; killed)")
     process.exitcode != 0 && return Measurement(missing, missing, missing, "unavailable (exit code $(process.exitcode))")
     values = try parse.(Float64, split(strip(output))) catch; Float64[] end
-    length(values) == 3 || return Measurement(missing, missing, missing, "unavailable (invalid measurement)")
-    Measurement(values[1], Int(round(values[2])), Int(round(values[3])))
+    length(values) == 4 || return Measurement(missing, missing, missing, "unavailable (invalid measurement)")
+    Measurement(values[1], Int(round(values[2])), Int(round(values[3])), "", values[4])
 end
 # One warmed child handles a complete suite section. The process boundary
 # remains the hard wall-clock kill switch while package loading is amortized.
-function section_measure(label, cases, side; timeout=CASE_TIMEOUT)
-    println("[section] ", label, " / ", side); flush(stdout)
+function section_measure(label, cases, side; timeout=CASE_TIMEOUT, seed=SEED, seeds=nothing)
+    seed_list = seeds === nothing ? [seed] : collect(seeds)
+    # Interleave seeds within each row and rotate their order across rows.
+    order = NamedTuple[]
+    for i in eachindex(cases)
+        for offset in 0:length(seed_list)-1
+            push!(order, (case_index=i, seed=seed_list[1 + mod(i - 1 + offset, length(seed_list))]))
+        end
+    end
     project = @__DIR__; julia = Base.julia_cmd(); helper = joinpath(@__DIR__, "warmup.jl")
-    encoded = join((string(kind, "=", argument) for (kind, argument) in cases), ";")
+    encoded = join((string(cases[item.case_index][1], "=", cases[item.case_index][2], "@", item.seed) for item in order), ";")
     command = DEEP ?
         `timeout -k 1s $(timeout)s $julia --startup-file=no --project=$project $helper section $side $encoded --deep` :
         `timeout -k 1s $(timeout)s $julia --startup-file=no --project=$project $helper section $side $encoded`
+    env = Dict{String,String}(ENV); env["BENCHMARK_SEED"] = string(seed_list[1])
+    command = setenv(command, env)
     path, io = mktemp(); close(io)
     process = run(pipeline(command, stdout=path, stderr=devnull); wait=false)
     wait(process)
     output = read(path, String); rm(path; force=true)
     lines = [split(strip(line)) for line in split(output, '\n') if !isempty(strip(line))]
-    if process.exitcode == 124 || process.exitcode == 137
-        return [Measurement(missing, missing, missing, "section timeout ($(timeout)s)") for _ in cases]
-    end
     result = Measurement[]
-    for line in lines
-        length(line) == 3 || continue
-        parsed = try parse.(Float64, line) catch; nothing end
-        if parsed === nothing
-            push!(result, Measurement(missing, missing, missing, "invalid measurement"))
-        else
-            push!(result, Measurement(parsed[1], Int(round(parsed[2])), Int(round(parsed[3]))))
+    if process.exitcode == 124 || process.exitcode == 137
+        result = [Measurement(missing, missing, missing, "section timeout ($(timeout)s)") for _ in order]
+    else
+        for line in lines
+            length(line) == 4 || continue
+            parsed = try parse.(Float64, line[1:3]) catch; nothing end
+            if parsed === nothing
+                push!(result, Measurement(missing, missing, missing, "invalid measurement"))
+            else
+                load = line[4] == "missing" ? missing : try parse(Float64, line[4]) catch; missing end
+                push!(result, Measurement(parsed[1], Int(round(parsed[2])), Int(round(parsed[3])), "", load))
+            end
         end
+        while length(result) < length(order)
+            push!(result, Measurement(missing, missing, missing, "section unavailable (exit code $(process.exitcode))"))
+        end
+        length(result) > length(order) && resize!(result, length(order))
     end
-    while length(result) < length(cases)
-        push!(result, Measurement(missing, missing, missing, "section unavailable (exit code $(process.exitcode))"))
-    end
-    result[1:length(cases)]
+    [begin
+        out = Vector{Measurement}(undef, length(cases))
+        for i in eachindex(cases)
+            match_index = findfirst(k -> order[k].case_index == i && order[k].seed == seed_list[j], eachindex(order))
+            out[i] = result[match_index]
+        end
+        out
+    end for j in eachindex(seed_list)]
 end
 
 function measure(f; seconds=BENCH_SECONDS, samples=BENCH_SAMPLES)
@@ -184,20 +235,50 @@ end
 fmt_alloc(m::Measurement) = m.allocs === missing ? "—" : "$(m.allocs) / $(Base.format_bytes(m.memory))"
 
 const rows = NamedTuple[]
-function addrow!(suite, inc, ale; allocations=true, note="")
-    ratio = inc.time === missing || ale.time === missing ? missing : inc.time / ale.time
-    push!(rows, (suite=suite, incumbent=inc, aletheia=ale, ratio=ratio, allocations=allocations, note=note))
+function aggregate_measurements(measurements)
+    valid = filter(m -> m.time !== missing, measurements)
+    isempty(valid) && return Measurement(missing, missing, missing, "all seeds unavailable")
+    allocs = [m.allocs for m in valid if m.allocs !== missing]
+    memory = [m.memory for m in valid if m.memory !== missing]
+    Measurement(median(getfield.(valid, :time)), isempty(allocs) ? missing : round(Int, median(allocs)),
+        isempty(memory) ? missing : round(Int, median(memory)))
+end
+function finite_values(measurements, field=:time)
+    [getfield(m, field) for m in measurements if getfield(m, field) !== missing]
+end
+function stats(values)
+    isempty(values) ? (median=missing, mean=missing, std=missing) :
+        (median=median(values), mean=mean(values), std=length(values) < 2 ? 0.0 : std(values))
+end
+function time_summary(measurements)
+    values = finite_values(measurements); s = stats(values)
+    count_note = length(values) == length(measurements) ? "" : " [$(length(values))/$(length(measurements)) seeds]"
+    s.mean === missing ? "empty$count_note" : "$(fmt_time(s.median)) (mean $(fmt_time(s.mean)) ± $(fmt_time(s.std)))$count_note"
+end
+function ratio_summary(row)
+    s = stats(row.ratios); s.mean === missing && return "—"
+    marker = row.unstable ? " [UNSTABLE]" : ""
+    count_note = length(row.ratios) == length(row.incumbent_seeds) ? "" : " [$(length(row.ratios))/$(length(row.incumbent_seeds)) seeds]"
+    @sprintf("%.2fx (mean %.2fx ± %.2fx)%s%s", s.median, s.mean, s.std, marker, count_note)
+end
+function addrow!(suite, incumbents, aletheias; allocations=true, note="")
+    inc = aggregate_measurements(incumbents); ale = aggregate_measurements(aletheias)
+    ratios = [i.time / a.time for (i, a) in zip(incumbents, aletheias) if i.time !== missing && a.time !== missing]
+    rs = stats(ratios)
+    unstable = !isempty(ratios) && (minimum(ratios) < rs.mean - rs.std || maximum(ratios) > rs.mean + rs.std)
+    push!(rows, (suite=suite, incumbent=inc, aletheia=ale, ratio=rs.median, ratios=ratios,
+        ratio_mean=rs.mean, ratio_std=rs.std, unstable=unstable, allocations=allocations, note=note,
+        incumbent_seeds=incumbents, aletheia_seeds=aletheias))
 end
 function print_report()
-    println("suite | SoleLogics median | Aletheia median | ratio (S/A) | allocations (Sole/Aletheia) | note")
-    println("------|--------------------|-----------------|--------------|--------------------------|-----")
+    println("suite | SoleLogics median (mean ± std) | Aletheia median (mean ± std) | ratio median (mean ± std) | allocations (Sole/Aletheia) | note")
+    println("------|---------------------------------|--------------------------------|----------------------------|--------------------------|-----")
     for row in rows
         if row.incumbent.time === missing
             println("$(row.suite) | unsupported/$(fmt_measure(row.incumbent)) | $(fmt_measure(row.aletheia)) | — | — | $(row.note)")
         else
-            inc, ale = row.incumbent, row.aletheia
-            alloc = row.allocations ? "$(fmt_alloc(inc)) ; $(fmt_alloc(ale))" : "—/—"
-            println("$(row.suite) | $(fmt_measure(inc)) | $(fmt_measure(ale)) | $(row.ratio === missing ? "—" : @sprintf("%.2fx", row.ratio)) | $alloc | $(row.note)")
+            alloc = row.allocations ? "$(fmt_alloc(row.incumbent)) ; $(fmt_alloc(row.aletheia))" : "—/—"
+            println("$(row.suite) | $(time_summary(row.incumbent_seeds)) | $(time_summary(row.aletheia_seeds)) | $(ratio_summary(row)) | $alloc | $(row.note)")
         end
     end
 end
@@ -207,6 +288,10 @@ end
 function edge_data(n, density, seed)
     rng = MersenneTwister(seed)
     [(i, j) for i in 1:n for j in 1:n if rand(rng) < density]
+end
+function seeded_sets(names, n, seed=SEED)
+    rng = MersenneTwister(seed)
+    Dict(name => Set(w for w in 1:n if rand(rng, Bool)) for name in unique(names))
 end
 function a_boolean_model(n, edges; sets=nothing)
     worlds_a = Tuple(1:n)
@@ -283,7 +368,7 @@ function finite_truth(index)
 end
 finite_truth_value(index) = UInt8(index)
 function mv_setup(side, algebra_name, depth)
-    r = unshared(depth)
+    r = seeded_unshared(depth; binary_ops=(:and, :or, :implies))
     algebra_name in ("godel", "lukasiewicz", "h4") || error("unknown finite algebra $algebra_name")
     if side == "aletheia"
         pool = mv_pool_a(); f = build_a(r, pool)
@@ -310,9 +395,12 @@ end
 
 # Quotient models span q/n from high collapse to no collapse.  Binary labels
 # distinguish q classes; each class has identical successors to every world.
-function contraction_model(n, q)
+function contraction_model(n, q, seed=SEED)
+    rng = MersenneTwister(seed)
     atoms = ["p$(i)" for i in 1:max(1, ceil(Int, log2(max(q, 2))))]
-    labels = Dict(atom => Set(w for w in 1:n if ((div(w - 1, max(1, n ÷ q)) >> (i - 1)) & 1) == 1)
+    permutation = randperm(rng, n)
+    labels = Dict(atom => Set(w for (position, w) in enumerate(permutation)
+        if ((div(position - 1, max(1, n ÷ q)) >> (i - 1)) & 1) == 1)
                    for (i, atom) in enumerate(atoms))
     adjacency = Dict(w => collect(1:n) for w in 1:n)
     model = Aletheia.Model(Aletheia.Frame(Tuple(1:n), Dict(:R => adjacency); index=true),

@@ -65,15 +65,9 @@ Pkg.develop(url="https://github.com/eduardstan/Aletheia.jl.git")
 
 ## Measurements
 
-Representative rows from the [full measured results](https://eduardstan.github.io/Aletheia.jl/results/) compare
-like-for-like APIs (SoleLogics / Aletheia):
-
-- Parsing, depth 2: **4.07×** (61.39 μs / 15.07 μs).
-- Propositional `check`, depth 6: **1.48×** (48.10 μs / 32.40 μs).
-- Propositional `check`, depth 2: **0.99×** (2.50 μs / 2.52 μs), so not every workload improves.
-
-These corrected quick-run medians are transcribed from the [measured results](https://eduardstan.github.io/Aletheia.jl/results/);
-see that page for conditions, allocations, and the complete measurements.
+The [measured results](https://eduardstan.github.io/Aletheia.jl/results/) report
+five-seed medians, means, standard deviations, instability labels, allocations,
+and raw provenance. See that page for the workload and reproduction command.
 
 ## Modal breadth
 
