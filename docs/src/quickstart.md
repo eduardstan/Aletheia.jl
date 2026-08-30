@@ -207,7 +207,7 @@ Extension (2 worlds)
 
 The example above used `GodelAlgebra()`, the full unit interval, so any value
 in `[0, 1]` is legal. A finite chain such as `GodelAlgebra(3)` admits only its
-own levels — `0.0`, `0.5`, `1.0` — and rejects anything else.
+own levels — `0.0`, `0.5`, `1.0` — and rejects anything else. The Gödel and Łukasiewicz operations on these chains are standard examples in the many-valued setting [hajek1998; Example 2.1.2, p. 28](@cite), and the finite Łukasiewicz chains are MV-algebras [cignoli2000; §1.1, Definition 1.1.1 and pp. 7–8](@cite).
 
 Each idea in this guide also exists as a runnable script under
 [`examples/`](https://github.com/eduardstan/Aletheia.jl/tree/main/examples); run
