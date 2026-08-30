@@ -1,5 +1,12 @@
 # Reproducible, human-run evaluation benchmark.  It is intentionally outside CI.
+# Keep cold child imports from selecting the host's default BLAS pool.
+ENV["OPENBLAS_NUM_THREADS"] = "1"
+ENV["OMP_NUM_THREADS"] = "1"
+ENV["MKL_NUM_THREADS"] = "1"
 import Pkg
+using LinearAlgebra
+# Set BLAS before package setup so no benchmark child inherits the default pool.
+LinearAlgebra.BLAS.set_num_threads(1)
 sole_path = get(ENV, "SOLELOGICS_PATH", "../SoleLogics.jl")
 isdir(sole_path) || error("SoleLogics checkout not found at $sole_path; set SOLELOGICS_PATH")
 Pkg.develop(Pkg.PackageSpec(path=sole_path)); Pkg.instantiate()
@@ -178,11 +185,38 @@ artifact = joinpath(normpath(joinpath(@__DIR__, "..")), "data", "benchmark-run",
 mkpath(dirname(artifact))
 load_average = try readchomp(`uptime`) catch; "unavailable" end
 run_end_uptime = load_average
+start_load = parse_load_average(RUN_START_UPTIME)
+end_load = parse_load_average(run_end_uptime)
+recorded_seed_loads = Float64[]
+for row in rows
+    append!(recorded_seed_loads, [measurement.load for measurement in row.incumbent_seeds
+        if measurement.load !== missing && isfinite(measurement.load)])
+    append!(recorded_seed_loads, [measurement.load for measurement in row.aletheia_seeds
+        if measurement.load !== missing && isfinite(measurement.load)])
+end
+for measurements in contraction_measurements
+    append!(recorded_seed_loads, [measurement.load for measurement in measurements
+        if measurement.load !== missing && isfinite(measurement.load)])
+end
+load_verdict = benchmark_load_verdict(start_load, end_load, recorded_seed_loads, Sys.CPU_THREADS)
+load_status = load_verdict.publishable ? "publishable" : "non-publishable"
+load_text(value) = value === missing ? "missing" : @sprintf("%.2f", value)
+load_marker = load_verdict.publishable ? "" : ALLOW_CONTENDED ?
+    "!!! BENCHMARK NON-PUBLISHABLE (OVERRIDE): load gate $(load_verdict.reason) !!!" :
+    "!!! BENCHMARK REFUSED: NON-PUBLISHABLE; load gate $(load_verdict.reason) !!!"
 open(artifact, "w") do io
     println(io, "julia=$(VERSION)")
     println(io, "cpu=$(Sys.CPU_NAME)")
     println(io, "cpu_threads=$(Sys.CPU_THREADS)")
+    println(io, "blas_threads=$(BLAS_THREADS)")
     println(io, "load_average=$(load_average)")
+    println(io, "load_start=$(load_text(start_load))")
+    println(io, "load_end=$(load_text(end_load))")
+    println(io, "load_peak=$(load_text(load_verdict.peak_load))")
+    println(io, "load_rise=$(load_text(load_verdict.rise))")
+    println(io, "load_publishability=$(load_status)")
+    println(io, "load_gate_reason=$(load_verdict.reason)")
+    isempty(load_marker) || println(io, load_marker)
     println(io, "mode=$(DEEP ? "deep" : "quick")")
     println(io, "seeds=$(join(string.(SEEDS), ","))")
     println(io, "seed_count=$(length(SEEDS))")
@@ -214,3 +248,9 @@ open(artifact, "w") do io
     end
 end
 println("raw provenance written to ", artifact)
+if load_verdict.publishable
+    println("benchmark publishability: PASS (load gate)")
+else
+    println(load_marker)
+    ALLOW_CONTENDED || exit(1)
+end
