@@ -138,11 +138,12 @@ predicate on small interval and rectangle domains.
 
 The opt-in `Aletheia.SoleLogics` namespace provides the strict eight-direction
 2D point vocabulary `CL_N`, `CL_S`, `CL_E`, `CL_W`, `CL_NE`, `CL_NW`, `CL_SE`,
-and `CL_SW`. Marx and Reynolds define Compass Logic over a Cartesian product
-of linear orders [marx1999compass](@cite). Montanari, Puppis, and Sala give the
-exact projection-based formulas for the axial `N`, `S`, `E`, and `W` relations
+and `CL_SW`. Venema provides the foundational interval/product perspective
+[venema1990](@cite), while Marx and Reynolds study Compass Logic
+[marx1999compass](@cite). Montanari, Puppis, and Sala give the exact
+projection-based formulas for the axial `N`, `S`, `E`, and `W` relations
 [montanari2015cone; §2, p. 3](@cite). The four strict quadrant directions are a
-package vocabulary extension, not attributed to either source. Aletheia has no
+package vocabulary extension, not attributed to these sources. Aletheia has no
 coincident or undetermined-direction value. The canonical tuple is
 `Aletheia.POINT2D_RELATIONS`. `point_frame(nx, ny)` creates a 2D grid frame whose worlds
 are `Point(x, y)`. Each relation is transitive and has a converse (for example

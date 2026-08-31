@@ -31,14 +31,15 @@ abstract type RCCRelation <: RelationFamily end
 """
     Point2DRelation
 
-Compass logic 2D point relations. Marx and Reynolds define Compass Logic over
-two-dimensional Cartesian products of linear orders [marx1999compass](@cite).
-Montanari, Puppis, and Sala give the projection-based `N`, `S`, `E`, and `W`
-point predicates that match the axial relations here [montanari2015cone; §2,
-p. 3](@cite). Aletheia adds the four strict quadrant predicates `NE`, `NW`,
-`SE`, and `SW` as a package vocabulary extension; no claim is made that either
-source defines those four additional values. Aletheia does not add a coincident
-or undetermined-direction value.
+Compass logic 2D point relations. Venema's interval tense logic provides the
+foundational two-dimensional interval/product perspective [venema1990](@cite);
+Marx and Reynolds study the resulting Compass Logic and its undecidability
+[marx1999compass](@cite). Montanari, Puppis, and Sala give the projection-based
+`N`, `S`, `E`, and `W` point predicates that match the axial relations here
+[montanari2015cone; §2, p. 3](@cite). Aletheia adds the four strict quadrant
+predicates `NE`, `NW`, `SE`, and `SW` as a package vocabulary extension; no claim
+is made that either source defines those four additional values. Aletheia does
+not add a coincident or undetermined-direction value.
 """
 abstract type Point2DRelation <: RelationFamily end
 

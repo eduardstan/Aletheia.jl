@@ -170,7 +170,7 @@ therefore throws an `ArgumentError` for `MINIMUM`.
 @doc "Allen interval relation: the first starts within and ends after the second." OVERLAPPED_BY
 @doc "Allen interval relation: the first starts before the second and ends within it." OVERLAPS
 @doc "RCC8 relation: the regions partially overlap." PO
-@doc "Tuple containing the strict eight-direction compass point relation values. The axial projection formulas match Montanari, Puppis, and Sala [montanari2015cone; §2, p. 3](@cite), while the diagonal values are a package vocabulary extension not attributed to that source; Compass Logic is defined over Cartesian products of linear orders by Marx and Reynolds [marx1999compass](@cite)." POINT2D_RELATIONS
+@doc "Tuple containing the strict eight-direction compass point relation values. Venema provides the foundational interval/product perspective [venema1990](@cite), while Marx and Reynolds study Compass Logic [marx1999compass](@cite) and Montanari, Puppis, and Sala give exact axial projection formulas [montanari2015cone; §2, p. 3](@cite). The diagonal values are a package vocabulary extension not attributed to these sources." POINT2D_RELATIONS
 @doc "Tuple containing the one-dimensional point relation values." POINT_RELATIONS
 @doc "Point relation selecting immediate predecessors." PREDECESSOR
 @doc "First-order atomic formula with a predicate name and terms." Predicate
