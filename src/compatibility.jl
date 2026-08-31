@@ -1,12 +1,12 @@
 # Compatibility vocabulary for consumers migrating from SoleLogics.
 #
 # This module is deliberately nested: `using Aletheia.SoleLogics` imports the
-# incumbent spellings without adding them to Aletheia's own namespace.
+# SoleLogics spellings without adding them to Aletheia's own namespace.
 """
     Aletheia.SoleLogics
 
 Opt-in vocabulary adapters for consumers migrating from SoleLogics. The
-module keeps incumbent names out of Aletheia's top-level namespace and raises
+module keeps SoleLogics names out of Aletheia's top-level namespace and raises
 explicit errors for concepts with no faithful equivalent.
 """
 module SoleLogics
@@ -974,7 +974,7 @@ function worldtype(::Aletheia.Frame)
 end
 name(connective) = Symbol(Aletheia.notation(connective))
 
-# These names preserve the incumbent aliases to Aletheia's relation values;
+# These names preserve the SoleLogics aliases to Aletheia's relation values;
 # use the definitions from SoleLogics rather than guessing from their spelling.
 const CL_N = Aletheia.CL_N
 const CL_S = Aletheia.CL_S
@@ -1111,7 +1111,7 @@ end
 Base.show(io::IO, algebra::FiniteFLewAlgebra) = print(io, string(typeof(algebra)))
 # The payload keeps SoleLogics' shape — a domain of boxed truths and the raw
 # carrier tables — because migrating consumers read this view for parity with
-# the incumbent.  Only the presentation conventions are Aletheia's: colour when
+# These conventions match SoleLogics.  Only the presentation conventions are Aletheia's: colour when
 # the IO context has it, and a shape summary instead of a wall of indices for a
 # table too large to read.
 function Base.show(io::IO, ::MIME"text/plain", algebra::FiniteFLewAlgebra{N}) where N

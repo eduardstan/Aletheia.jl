@@ -447,7 +447,7 @@ function check(formula::Formula, model::Model{T}, world; cache=nothing)::T where
     values[position]
 end
 
-"""Check whether a formula holds at some world via the incumbent marker."""
+"""Check whether a formula holds at some world via the SoleLogics marker."""
 function check(formula::Formula, model::Model{Bool,A}, ::AnyWorld; cache=nothing)::Bool where {A<:BooleanAlgebra}
     any(extension(formula, model; cache=cache))
 end

@@ -12,7 +12,7 @@ abstract type AbstractFrame{W} end
 abstract type AbstractUniModalFrame{W} <: AbstractFrame{W} end
 """Abstract frame with named accessibility relations."""
 abstract type AbstractMultiModalFrame{W} <: AbstractFrame{W} end
-"""The incumbent's world-set dispatch alias."""
+"""The SoleLogics world-set dispatch alias."""
 const AbstractWorlds{W} = AbstractVector{W} where {W<:AbstractWorld}
 """Marker used when a grounded formula is checked without choosing a world."""
 struct AnyWorld end
@@ -479,7 +479,7 @@ end
 
 """Return the worlds satisfying a Boolean connective from child extensions.
 
-The result is a materialised world set, as in the incumbent collation API;
+The result is a materialised world set, as in the SoleLogics collation API;
 accessibility itself remains lazy and is only consumed by the modal predicates.
 """
 function collateworlds(frame::AbstractFrame, connective, truth_sets::Tuple)

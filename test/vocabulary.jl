@@ -1,5 +1,5 @@
-# Differential coverage for the Stage 2b frame/world/relation vocabulary.
-# The expected cases below are transcribed from the incumbent definitions in
+# Differential coverage for the frame/world/relation vocabulary.
+# The expected cases below are transcribed from the SoleLogics definitions in
 # SoleLogics.jl/src/utils/modal-logic/modal-logic.jl (relations and natural
 # accessibility), SoleLogics.jl/src/types/modal-logic.jl:429-490 (predicates),
 # SoleLogics.jl/src/utils/modal-logic/modal-logic.jl:703-780 (collateworlds),
@@ -15,7 +15,7 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
     frame_small = Frame(worlds_small,
         Dict(:R => Dict(:a => (:b,), :b => (:c,), :c => ())))
 
-    # Incumbent GlobalRel is universal and IdentityRel is equality.  The
+    # SoleLogics GlobalRel is universal and IdentityRel is equality.  The
     # AtWorldRelation implementation returns exactly its stored target.
     at_b = AtWorldRelation(:b)
     for source in worlds_small, target in worlds_small
@@ -35,7 +35,7 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
     @test collect(lazy) == collect(worlds_small)
     @test Aletheia.SoleLogics.accessibles(frame_small, globalrel) === worlds(frame_small)
 
-    # Converse properties from the incumbent relation traits.
+    # Converse properties from the SoleLogics relation traits.
     @test inverse(inverse(globalrel)) === globalrel
     @test inverse(inverse(identityrel)) === identityrel
     @test all(inverse(inverse(r)) === r for r in ALLEN_RELATIONS)
@@ -55,7 +55,7 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
     @test AnyWorld() isa AnyWorld
     @test Diamond(globalrel) isa AbstractRelationalConnective
 
-    # Incumbent dimensional defaults (SoleLogics.jl/src/utils/frames/full-
+    # SoleLogics dimensional defaults (SoleLogics.jl/src/utils/frames/full-
     # dimensional-frame/main.jl:141-153) are reproduced for Aletheia frames.
     interval = interval_frame(4)
     @test emptyworld(interval) == Interval(-1, 0)
@@ -83,7 +83,7 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
     end
     @test_throws ArgumentError collateworlds(frame_small, ¬, ())
 
-    # Exhaustive predicate table for the incumbent's values.  See
+    # Exhaustive predicate table for SoleLogics values.  See
     # SoleLogics.jl/src/types/modal-logic.jl:429-474 and :478-490.
     connective_cases = (
         (¬, false, true, false, false),
@@ -107,7 +107,7 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
     @test isbox(Box)
     @test !isbox(Diamond)
 
-    # Grounding follows the incumbent's recursive formula criterion.
+    # Grounding follows SoleLogics' recursive formula criterion.
     pool = FormulaPool(Signature((¬, ∧, Diamond(globalrel), Diamond(:R))))
     atom_p = atom(pool, :p)
     @test !isgrounded(atom_p)
@@ -156,7 +156,7 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
         Aletheia.SoleLogics.Topo_TPP, Aletheia.SoleLogics.Topo_TPPi,
         Aletheia.SoleLogics.Topo_NTPP, Aletheia.SoleLogics.Topo_NTPPi)
 
-    # Exercise the complete incumbent value vocabulary, including display and
+    # Exercise the complete SoleLogics value vocabulary, including display and
     # trait methods that consumers use for dispatch tables.
     io = IOBuffer()
     display_relations = (globalrel, identityrel, at_b, tocenterrel,
@@ -185,7 +185,7 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
     @test !isdiamond(Box) && !isdiamond(Box(:R))
     @test isbox(Box) && isbox(Box(:R))
     @test !isbox(Diamond) && !isbox(Diamond(globalrel))
-    # Avoid inference-only elimination of the tiny incumbent methods when
+    # Avoid inference-only elimination of the tiny SoleLogics methods when
     # collecting source coverage.
     @test Base.invokelatest(relation_holds, GlobalRelation(), :a, :b)
     @test Base.invokelatest(arity, GlobalRelation()) == 2

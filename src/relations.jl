@@ -65,7 +65,7 @@ const ID = IDENTITY
 relation_holds(::IdentityRelation, source, target) = isequal(source, target)
 inverse(relation::IdentityRelation) = relation
 
-# Relations used by the incumbent frame vocabulary.  They are values rather
+# Relations used by the SoleLogics-compatible frame vocabulary.  They are values rather
 # than syntax connectives; modal connectives carry one of these values in
 # their relation field.
 struct GlobalRelation <: RelationFamily end
@@ -99,7 +99,7 @@ inverse(::ToCenterRelation) = throw(ArgumentError("`inverse(tocenterrel)` is und
     `centralworld` — so there is no relation for `inverse` to return. No relation in this \
     vocabulary is its converse."))
 
-# Incumbent names and Aletheia's established relation protocol use different
+# SoleLogics names and Aletheia's established relation protocol use different
 # spellings for identity; retain both as the same singleton value.
 const identityrel = IDENTITY
 
@@ -200,7 +200,7 @@ const IA_CONTAINS = CONTAINS
 const IA_FINISHED_BY = FINISHED_BY
 # Sole-compatible abbreviations, retaining their documented orientation:
 # A=meets, L=before, B=target-starts-source, E=target-finishes-source,
-# D=target-during-source, O=overlaps (the incumbent accessibility orientation).
+# D=target-during-source, O=overlaps (the SoleLogics accessibility orientation).
 const IA_A = MEETS
 const IA_L = BEFORE
 const IA_B = STARTED_BY
@@ -216,7 +216,7 @@ const IA_Oi = OVERLAPPED_BY
 
 # Coarser Allen relation families used by the Sole ecosystem. Their members
 # are unions of the primitive Allen relations, with the same orientation as
-# the corresponding incumbent values.
+# the corresponding SoleLogics values.
 struct IA_AorORelation <: IntervalRelation end
 struct IA_DorBorERelation <: IntervalRelation end
 struct IA_AiorOiRelation <: IntervalRelation end
