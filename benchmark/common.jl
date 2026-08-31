@@ -137,15 +137,7 @@ canonical(f::Aletheia.Branch) = (:branch, Aletheia.notation(Aletheia.operator(f)
 canonical(f::SoleLogics.Atom) = (:atom, SoleLogics.value(f))
 canonical(f::SoleLogics.SyntaxBranch) = (:branch, SoleLogics.syntaxstring(SoleLogics.token(f)), canonical.(SoleLogics.children(f)))
 
-struct Measurement
-    time::Union{Missing,Float64}
-    allocs::Union{Missing,Int}
-    memory::Union{Missing,Int}
-    note::String
-    load::Union{Missing,Float64}
-end
-Measurement(time, allocs, memory) = Measurement(time, allocs, memory, "", missing)
-Measurement(time, allocs, memory, note) = Measurement(time, allocs, memory, note, missing)
+include(joinpath(@__DIR__, "measurement.jl"))
 
 
 # BenchmarkTools stores allocations and memory as minima over its samples.
@@ -157,6 +149,27 @@ end
 
 # A call is measured in a child Julia process.  Unlike BenchmarkTools' seconds
 # sampling budget, GNU timeout kills a non-yielding call at CASE_TIMEOUT.
+function _child_failure(exitcode, error_output; context="", output="")
+    message = strip(error_output)
+    isempty(message) && (message = strip(output))
+    message = replace(message, '\n' => "\\n")
+    isempty(message) && (message = "exit code $(exitcode)")
+    prefix = isempty(context) ? "" : "$(context): "
+    Measurement(missing, missing, missing,
+        "$(prefix)failed (exit code $(exitcode)): $(message)", missing, :failed)
+end
+
+function _run_child(command)
+    output_path, output_io = mktemp(); close(output_io)
+    error_path, error_io = mktemp(); close(error_io)
+    process = run(pipeline(command, stdout=output_path, stderr=error_path); wait=false)
+    wait(process)
+    output = read(output_path, String)
+    error_output = read(error_path, String)
+    rm(output_path; force=true); rm(error_path; force=true)
+    process, output, error_output
+end
+
 function guarded_measure(label, kind, side, argument, f=nothing; timeout=CASE_TIMEOUT, seed=SEED)
     println("[case] ", label)
     flush(stdout)
@@ -168,16 +181,16 @@ function guarded_measure(label, kind, side, argument, f=nothing; timeout=CASE_TI
         `timeout -k 1s $(timeout)s $julia --startup-file=no --project=$project $helper benchmark $kind $side $argument`
     env = Dict{String,String}(ENV); env["BENCHMARK_SEED"] = string(seed)
     command = setenv(command, env)
-    path, io = mktemp(); close(io)
-    process = run(pipeline(command, stdout=path, stderr=devnull); wait=false)
-    wait(process)
-    output = read(path, String); rm(path; force=true)
-    process.exitcode == 124 && return Measurement(missing, missing, missing, "timeout ($(timeout)s)")
-    process.exitcode == 137 && return Measurement(missing, missing, missing, "timeout ($(timeout)s; killed)")
-    process.exitcode != 0 && return Measurement(missing, missing, missing, "unavailable (exit code $(process.exitcode))")
+    process, output, error_output = _run_child(command)
+    if is_timeout_exitcode(process.exitcode)
+        note = process.exitcode == 137 ? "timeout ($(timeout)s; killed)" : "timeout ($(timeout)s)"
+        return Measurement(missing, missing, missing, note, missing, :timeout)
+    end
+    process.exitcode != 0 && return _child_failure(process.exitcode, error_output; output=output)
     values = try parse.(Float64, split(strip(output))) catch; Float64[] end
-    length(values) == 4 || return Measurement(missing, missing, missing, "unavailable (invalid measurement)")
-    Measurement(values[1], Int(round(values[2])), Int(round(values[3])), "", values[4])
+    length(values) == 4 || return Measurement(missing, missing, missing,
+        "failed (invalid measurement)", missing, :failed)
+    Measurement(values[1], Int(round(values[2])), Int(round(values[3])), "", values[4], :measured)
 end
 # One warmed child handles a complete suite section. The process boundary
 # remains the hard wall-clock kill switch while package loading is amortized.
@@ -197,30 +210,37 @@ function section_measure(label, cases, side; timeout=CASE_TIMEOUT, seed=SEED, se
         `timeout -k 1s $(timeout)s $julia --startup-file=no --project=$project $helper section $side $encoded`
     env = Dict{String,String}(ENV); env["BENCHMARK_SEED"] = string(seed_list[1])
     command = setenv(command, env)
-    path, io = mktemp(); close(io)
-    process = run(pipeline(command, stdout=path, stderr=devnull); wait=false)
-    wait(process)
-    output = read(path, String); rm(path; force=true)
+    process, output, error_output = _run_child(command)
     lines = [split(strip(line)) for line in split(output, '\n') if !isempty(strip(line))]
     result = Measurement[]
-    if process.exitcode == 124 || process.exitcode == 137
-        result = [Measurement(missing, missing, missing, "section timeout ($(timeout)s)") for _ in order]
+    if is_timeout_exitcode(process.exitcode)
+        result = [Measurement(missing, missing, missing,
+            "section timeout ($(timeout)s)", missing, :timeout) for _ in order]
     else
         for line in lines
             length(line) == 4 || continue
             parsed = try parse.(Float64, line[1:3]) catch; nothing end
-            if parsed === nothing
-                push!(result, Measurement(missing, missing, missing, "invalid measurement"))
-            else
-                load = line[4] == "missing" ? missing : try parse(Float64, line[4]) catch; missing end
-                push!(result, Measurement(parsed[1], Int(round(parsed[2])), Int(round(parsed[3])), "", load))
-            end
+            parsed === nothing && continue
+            load = line[4] == "missing" ? missing : try parse(Float64, line[4]) catch; missing end
+            push!(result, Measurement(parsed[1], Int(round(parsed[2])), Int(round(parsed[3])), "", load, :measured))
         end
-        while length(result) < length(order)
-            push!(result, Measurement(missing, missing, missing, "section unavailable (exit code $(process.exitcode))"))
+        if process.exitcode != 0 && length(result) == length(order)
+            # Complete-looking output from a failed child is not trustworthy.
+            failure = _child_failure(process.exitcode, error_output; context="section", output=output)
+            result = [failure for _ in order]
+        elseif length(result) < length(order)
+            failure = process.exitcode == 0 ?
+                Measurement(missing, missing, missing,
+                    "failed (invalid or incomplete measurement)", missing, :failed) :
+                _child_failure(process.exitcode, error_output; context="section", output=output)
+            # Keep valid prefix rows, and make the failed/skipped suffix explicit.
+            while length(result) < length(order)
+                push!(result, failure)
+            end
         end
         length(result) > length(order) && resize!(result, length(order))
     end
+
     [begin
         out = Vector{Measurement}(undef, length(cases))
         for i in eachindex(cases)
@@ -241,40 +261,47 @@ function fmt_time(x)
     x < 1_000 ? @sprintf("%.1f ns", x) : x < 1_000_000 ? @sprintf("%.2f μs", x / 1_000) : @sprintf("%.2f ms", x / 1_000_000)
 end
 function fmt_measure(m)
-    m.time === missing ? m.note : isempty(m.note) ? fmt_time(m.time) : "$(fmt_time(m.time)) [$(m.note)]"
+    m.status === :timeout && return isempty(m.note) ? "timed out" : "timed out: $(m.note)"
+    m.status === :failed && return isempty(m.note) ? "failed" : "failed: $(m.note)"
+    m.time === missing ? "empty" : isempty(m.note) ? fmt_time(m.time) : "$(fmt_time(m.time)) [$(m.note)]"
 end
 fmt_alloc(m::Measurement) = m.allocs === missing ? "—" : "$(m.allocs) / $(Base.format_bytes(m.memory))"
 
 const rows = NamedTuple[]
 function aggregate_measurements(measurements)
-    valid = filter(m -> m.time !== missing, measurements)
-    isempty(valid) && return Measurement(missing, missing, missing, "all seeds unavailable")
-    allocs = [m.allocs for m in valid if m.allocs !== missing]
-    memory = [m.memory for m in valid if m.memory !== missing]
-    Measurement(median(getfield.(valid, :time)), isempty(allocs) ? missing : round(Int, median(allocs)),
-        isempty(memory) ? missing : round(Int, median(memory)))
+    isempty(measurements) && return Measurement(missing, missing, missing, "no measurements", missing, :failed)
+    all(is_measured, measurements) || begin
+        summary = outcome_summary(measurements)
+        status = any(m -> m.status === :failed, measurements) ? :failed : :timeout
+        return Measurement(missing, missing, missing, something(summary, "no measurements"), missing, status)
+    end
+    allocs = [m.allocs for m in measurements if m.allocs !== missing]
+    memory = [m.memory for m in measurements if m.memory !== missing]
+    Measurement(median(getfield.(measurements, :time)), isempty(allocs) ? missing : round(Int, median(allocs)),
+        isempty(memory) ? missing : round(Int, median(memory)), "", missing, :measured)
 end
 function finite_values(measurements, field=:time)
-    [getfield(m, field) for m in measurements if getfield(m, field) !== missing]
+    [getfield(m, field) for m in measurements if is_measured(m) && getfield(m, field) !== missing]
 end
 function stats(values)
     isempty(values) ? (median=missing, mean=missing, std=missing) :
         (median=median(values), mean=mean(values), std=length(values) < 2 ? 0.0 : std(values))
 end
 function time_summary(measurements)
+    outcome = outcome_summary(measurements)
+    outcome !== nothing && return outcome
     values = finite_values(measurements); s = stats(values)
-    count_note = length(values) == length(measurements) ? "" : " [$(length(values))/$(length(measurements)) seeds]"
-    s.mean === missing ? "empty$count_note" : "$(fmt_time(s.median)) (mean $(fmt_time(s.mean)) ± $(fmt_time(s.std)))$count_note"
+    s.mean === missing ? "empty" : "$(fmt_time(s.median)) (mean $(fmt_time(s.mean)) ± $(fmt_time(s.std)))"
 end
 function ratio_summary(row)
     s = stats(row.ratios); s.mean === missing && return "—"
     marker = row.unstable ? " [UNSTABLE]" : ""
-    count_note = length(row.ratios) == length(row.incumbent_seeds) ? "" : " [$(length(row.ratios))/$(length(row.incumbent_seeds)) seeds]"
-    @sprintf("%.2fx (mean %.2fx ± %.2fx)%s%s", s.median, s.mean, s.std, marker, count_note)
+    @sprintf("%.2fx (mean %.2fx ± %.2fx)%s", s.median, s.mean, s.std, marker)
 end
 function addrow!(suite, incumbents, aletheias; allocations=true, note="")
     inc = aggregate_measurements(incumbents); ale = aggregate_measurements(aletheias)
-    ratios = [i.time / a.time for (i, a) in zip(incumbents, aletheias) if i.time !== missing && a.time !== missing]
+    ratios = all(is_measured, incumbents) && all(is_measured, aletheias) ?
+        [i.time / a.time for (i, a) in zip(incumbents, aletheias)] : Float64[]
     rs = stats(ratios)
     unstable = !isempty(ratios) && (minimum(ratios) < rs.mean - rs.std || maximum(ratios) > rs.mean + rs.std)
     push!(rows, (suite=suite, incumbent=inc, aletheia=ale, ratio=rs.median, ratios=ratios,
@@ -285,12 +312,9 @@ function print_report()
     println("suite | SoleLogics median (mean ± std) | Aletheia median (mean ± std) | ratio median (mean ± std) | allocations (Sole/Aletheia) | note")
     println("------|---------------------------------|--------------------------------|----------------------------|--------------------------|-----")
     for row in rows
-        if row.incumbent.time === missing
-            println("$(row.suite) | unsupported/$(fmt_measure(row.incumbent)) | $(fmt_measure(row.aletheia)) | — | — | $(row.note)")
-        else
-            alloc = row.allocations ? "$(fmt_alloc(row.incumbent)) ; $(fmt_alloc(row.aletheia))" : "—/—"
-            println("$(row.suite) | $(time_summary(row.incumbent_seeds)) | $(time_summary(row.aletheia_seeds)) | $(ratio_summary(row)) | $alloc | $(row.note)")
-        end
+        alloc = row.allocations && row.incumbent.status === :measured && row.aletheia.status === :measured ?
+            "$(fmt_alloc(row.incumbent)) ; $(fmt_alloc(row.aletheia))" : "—/—"
+        println("$(row.suite) | $(time_summary(row.incumbent_seeds)) | $(time_summary(row.aletheia_seeds)) | $(ratio_summary(row)) | $alloc | $(row.note)")
     end
 end
 
@@ -432,24 +456,35 @@ function contraction_formulas(pool, atoms, count)
 end
 
 function parse_ratio_measurements(measurements)
-    valid = filter(m -> m.time !== missing, measurements)
-    isempty(valid) && return Measurement(missing, missing, missing, "all cases unavailable")
-    Measurement(median(getfield.(valid, :time)), round(Int, median(getfield.(valid, :allocs))),
-        round(Int, median(getfield.(valid, :memory))))
+    isempty(measurements) && return Measurement(missing, missing, missing, "no measurements", missing, :failed)
+    all(is_measured, measurements) || begin
+        summary = outcome_summary(measurements)
+        status = any(m -> m.status === :failed, measurements) ? :failed : :timeout
+        return Measurement(missing, missing, missing, something(summary, "no measurements"), missing, status)
+    end
+    Measurement(median(getfield.(measurements, :time)), round(Int, median(getfield.(measurements, :allocs))),
+        round(Int, median(getfield.(measurements, :memory))), "", missing, :measured)
 end
 
 function external_measure(code; reps=DEEP ? 2 : 1)
-    project = @__DIR__; julia = Base.julia_cmd(); values = Tuple{Float64,Float64}[]
+    project = @__DIR__; values = Tuple{Float64,Float64}[]
     for _ in 1:reps
+        julia = Base.julia_cmd()
         command = `timeout -k 1s $(CASE_TIMEOUT)s $julia --startup-file=no --project=$project -e $code`
-        path, io = mktemp(); close(io)
-        process = run(pipeline(ignorestatus(command), stdout=path, stderr=devnull); wait=true)
-        wait(process)
-        output = read(path, String); rm(path; force=true)
-        process.exitcode == 0 || return nothing
-        parts = split(strip(output)); length(parts) >= 2 || return nothing
-        parsed = try (parse(Float64, parts[1]), parse(Float64, parts[2])) catch; return nothing end
+        process, output, error_output = _run_child(command)
+        if is_timeout_exitcode(process.exitcode)
+            return (status=:timeout, note="timeout ($(CASE_TIMEOUT)s)")
+        elseif process.exitcode != 0
+            failure = _child_failure(process.exitcode, error_output; context="cold child", output=output)
+            return (status=:failed, note=failure.note)
+        end
+        parts = split(strip(output))
+        length(parts) >= 2 || return (status=:failed, note="failed (invalid measurement)")
+        parsed = try (parse(Float64, parts[1]), parse(Float64, parts[2])) catch
+            return (status=:failed, note="failed (invalid measurement)")
+        end
         push!(values, parsed)
     end
-    isempty(values) ? nothing : (median(first.(values)), median(last.(values)))
+    isempty(values) ? (status=:failed, note="failed (no measurements)") :
+        (status=:measured, values=(median(first.(values)), median(last.(values))))
 end

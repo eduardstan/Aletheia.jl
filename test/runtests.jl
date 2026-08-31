@@ -277,6 +277,7 @@ include("ilp.jl")
 include("presentation.jl")
 include("examples.jl")
 include("benchmark_load_gate.jl")
+include("benchmark_measurement.jl")
 @testset "Aletheia" begin
     Aqua.test_all(Aletheia)
     if pkgversion(JET) < v"0.11"

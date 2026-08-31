@@ -16,16 +16,17 @@ SOLELOGICS_PATH=/path/to/SoleLogics.jl julia --project=benchmark benchmark/run.j
 The harness pins BLAS to one thread and records that setting. At the end it
 compares the maximum recorded load (including `seed_loads`) and the load rise
 against midpoints derived from the recorded quiet and contaminated runs. A
-failed gate writes a prominent refusal marker, exits non-zero, and must not be
-published. For a local inspection only, use `--allow-contended`; it still
-stamps the artefact non-publishable.
+failed load gate or child case writes a prominent refusal marker, exits non-zero,
+and must not be published. For a local inspection of load contention only, use
+`--allow-contended`; it still stamps the artefact non-publishable and never
+overrides a failed child case.
 
 The default quick run sweeps five seeds (`0xA1E7_2024`, `0x5EED_2025`,
 `0xC0FF_EE42`, `0x1234_5678`, and `0x9ABC_DEF0`) and keeps 200 paired
 samples per seed;
 `--deep` expands formula/model/ratio sweeps. Each section and side runs all its
 cases in one warmed Julia child; GNU `timeout` kills the section at the printed
-hard bound, and timeout/unavailable cells remain visible in the report. Every
+hard bound, and timeout/failed cells remain visible in the report. Every
 sample pairs its allocation count with the sample nearest the median time.
 The process writes raw values and provenance (Julia/CPU, load average, mode,
 seed set, uptime at start and end, and per-cell sample counts) to `data/benchmark-run/run.txt`.

@@ -53,8 +53,8 @@ SOLELOGICS_PATH=/path/to/SoleLogics.jl julia --project=benchmark benchmark/run.j
 
 Use `--deep` for the expanded, slower sweeps. The run writes raw values and
 provenance (including load average and per-cell sample counts) to
-`data/benchmark-run/run.txt`; timeout/unavailable cells remain visible in the
-terminal report. Expect tens of minutes for the complete measurement harness.
+`data/benchmark-run/run.txt`; measured, timed-out, and failed cells remain visible in the
+terminal report. Failed child cases make the run non-publishable. Expect tens of minutes for the complete measurement harness.
 
 ## Differential correctness
 
