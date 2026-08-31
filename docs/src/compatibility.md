@@ -59,6 +59,18 @@ remain the core API.
 
 ## Deliberate gaps
 
+* The parser's atom contract is intentionally stricter than SoleLogics'.
+  Aletheia tokenizes the input before it calls `atom_parser`: an unquoted atom
+  is a contiguous run ending at whitespace, parentheses, commas, or connective
+  notation, while a quoted atom may contain those characters. Therefore an
+  unquoted name such as `V1 ≥ 0.5 (min)` is split before the callback can see it;
+  the callback receives one token, not the whole proposition, and cannot change
+  that boundary. This gives the grammar a predictable meaning independent of
+  callback code. Callers with names containing spaces, brackets, or other
+  delimiters should quote them (as in `"V1 ≥ 0.5 (min)"`) or translate the
+  upstream text before parsing. A broader SoleLogics-style lexical contract,
+  if needed, belongs in this compatibility layer; its absence from the core
+  parser is deliberate, not an oversight.
 * `Truth`/`BooleanTruth`/`⊤`/`⊥` are compatibility leaves, not ordinary
   Aletheia atoms. Direct `Atom(⊤)` construction and parsing a truth leaf still
   raise an `ArgumentError`; finite tableau leaves are handled by the nested
@@ -200,6 +212,30 @@ logic library.
 `ModalDecisionTrees` takes `OneWorld` and `Worlds` from SoleData as well.
 Substituting under the learners is therefore a SoleData/SoleModels question,
 not a question about this module.
+
+### SoleModels model application
+
+The SoleModels model-application path is deliberately out of scope for
+substitution. Reaching it would require ten compatibility pieces: the nine
+missing names `nworlds`, `LogicalInstance`, `CheckAlgorithm`,
+`AbstractKripkeStructure`, `Worlds`, `World`, `converse`, `hasconverse`, and
+`intersects`, plus a real `normalize`; the compatibility `normalize` currently
+resolves to a stub that throws when called. The measured ceiling is **1.06×**
+for tree application and **1.057×** for rule sets. Before 1.0, ten pieces of
+permanent public surface for at most a six-percent ceiling is a poor trade.
+This is a scope choice made against that measurement, not a claim that
+substitution is impossible, so Aletheia does not build these shims.
+
+### SolePostHoc substitution boundary
+
+SolePostHoc is the ecosystem's largest consumer and is out of scope for
+substitution. Its rule antecedents are constructed upstream by SoleModels as
+`LeftmostConjunctiveForm`; the installed SoleModels source does this at
+`src/rule-extraction.jl:91`. SoleModels also declares a direct dependency on
+SoleLogics 0.13. Replacing SoleLogics at the logic layer therefore cannot reach
+this path: the constraint is one package upstream of the substitution target.
+That is a structural dependency fact, not a criticism of either package's
+design.
 
 ### Left to the maintainer
 

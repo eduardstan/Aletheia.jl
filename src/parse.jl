@@ -160,6 +160,18 @@ end
 Parse a formula over the pool's signature.  Atoms are parsed by
 `atom_parser`, which receives their token text and defaults to returning a
 `String`; this keeps parsing independent of any semantic or truth-value type.
+The tokenizer establishes atom boundaries before the callback runs: an
+unquoted atom is a contiguous run that ends at whitespace, `(`, `)`, `,`, or
+any connective notation.  A quoted atom may contain those characters (with
+only quote and backslash escapes), so names such as `V1 ≥ 0.5 (min)` must be
+written as a quoted atom.  The callback receives one already-delimited token;
+it cannot consume neighboring text or redefine the lexical boundary.  This is
+a deliberate contract that keeps the grammar predictable and prevents a
+callback from changing what a formula means.  Callers with a different atom
+syntax should quote or translate their input before parsing; a broader
+compatibility contract belongs in `Aletheia.SoleLogics`, not in this core
+parser.
+
 The parser is precedence-aware and accepts both infix binary notation and
 prefix/function notation for higher-arity connectives.
 """
