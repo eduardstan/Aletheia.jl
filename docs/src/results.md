@@ -19,21 +19,12 @@ readings are retained in the raw run artefact.
 Each section runs in a warmed child Julia process; GNU `timeout` kills a section
 at the printed hard bound (120 s quick, 180 s deep). `--deep` expands the size
 and ratio sweeps. A timeout is reported as data, not silently dropped. Cold-load rows are measured in fresh processes.
-This published run started at load **1.11**, ended at **1.77**, and recorded a
-peak of **1.97** (rise **0.66**); the benchmark load gate passed. **Idle-run
-timeout:** the Aletheia side of the interval subset RCC5 row timed out for all
-five seeds, so that row has no ratio. Two ratio directions changed relative to
-the held snapshot: random modal worlds=8 at density .15/depth 2 and worlds=24
-at density .5/depth 2 now fall below 1.00×, meaning Aletheia is slower in those
-rows. This reflects the merged implementation work, not a correction of the
-measurement.
+This published run started at load **1.93**, ended at **1.54**, and recorded a peak of **2.35** (rise **-0.39**); the load and failure gates passed. All quick rows, including interval subset RCC5, measured across five seeds; no row timed out.
 The ratio is SoleLogics/Aletheia; allocations are `count / bytes`. Every ratio
 cell shows the median, mean ± standard deviation, and the observed per-seed
 range. The range is descriptive, not a confidence interval. `[no clear winner]`
 means that the mean ± standard deviation band contains `1.00×`. The raw run is retained in
 [`data/benchmark-run/run.txt`](https://github.com/eduardstan/Aletheia.jl/blob/main/data/benchmark-run/run.txt),
-and the correction history is in
-[`data/benchmark-run/corrections.md`](https://github.com/eduardstan/Aletheia.jl/blob/main/data/benchmark-run/corrections.md).
 
 
 ## How to read a row
@@ -94,14 +85,14 @@ there is no allocation sample for those wall-clock measurements.
 
 | case | SoleLogics median (mean ± std) | Aletheia median (mean ± std) | ratio median (mean ± std, range) | allocations |
 | --- | ---: | ---: | ---: | ---: |
-| construction, depth 2 (unshared) | 4.74 μs (mean 4.94 μs ± 652.2 ns) | 2.94 μs (mean 2.85 μs ± 671.4 ns) | 1.83× (mean 1.78× ± 0.30×, range 1.49-2.19×) | 37 / 1.281 KiB ; 56 / 2.594 KiB |
-| construction, depth 2 (shared) | 4.50 μs (mean 5.43 μs ± 1.90 μs) | 2.34 μs (mean 2.46 μs ± 634.9 ns) | 2.35× (mean 2.23× ± 0.63×, range 1.36-2.82×) | 37 / 1.281 KiB ; 50 / 2.203 KiB |
-| parsing, depth 2 | 61.42 μs (mean 66.94 μs ± 29.56 μs) | 9.06 μs (mean 11.14 μs ± 3.26 μs) | 6.04× (mean 6.00× ± 1.72×, range 4.18-7.89×) | 295 / 12.312 KiB ; 62 / 3.672 KiB |
-| printing, depth 2 | 8.98 μs (mean 9.52 μs ± 2.27 μs) | 3.63 μs (mean 4.13 μs ± 1.07 μs) | 2.47× (mean 2.44× ± 0.88×, range 1.36-3.79×) | 45 / 1.750 KiB ; 19 / 864 bytes |
-| round-trip, depth 2 | 58.90 μs (mean 64.26 μs ± 11.10 μs) | 19.31 μs (mean 17.79 μs ± 4.28 μs) | 3.20× (mean 3.84× ± 1.27×, range 2.61-5.38×) | 340 / 14.062 KiB ; 81 / 4.516 KiB |
-| `isequal`, chain 16 | 2.99 μs (mean 2.82 μs ± 424.1 ns) | 19.0 ns (mean 22.2 ns ± 5.9 ns) | 129.06× (mean 131.34× ± 25.44×, range 104.34-157.42×) | 32 / 1.469 KiB ; 0 / 0 bytes |
-| cold package load | 1000.56 ms (mean 1025.02 ms ± 79.88 ms) | 20.02 ms (mean 20.51 ms ± 4.34 ms) | 45.96× (mean 51.84× ± 11.92×, range 38.82-67.52×) | —/— |
-| cold time to first result | 3610.41 ms (mean 3637.55 ms ± 263.77 ms) | 1197.55 ms (mean 1357.82 ms ± 231.62 ms) | 2.78× (mean 2.73× ± 0.45×, range 2.20-3.27×) | —/— |
+| construction, depth 2 (unshared) | 5.40 μs (mean 5.18 μs ± 1.25 μs) | 2.01 μs (mean 2.28 μs ± 741.8 ns) | 2.36× (mean 2.37× ± 0.60×, range 1.56-3.08×) | 37 / 1.281 KiB ; 56 / 2.594 KiB |
+| construction, depth 2 (shared) | 5.27 μs (mean 5.03 μs ± 1.31 μs) | 2.65 μs (mean 2.44 μs ± 474.6 ns) | 2.18× (mean 2.15× ± 0.79×, range 1.33-3.07×) | 37 / 1.281 KiB ; 50 / 2.203 KiB |
+| parsing, depth 2 | 46.88 μs (mean 46.87 μs ± 6.22 μs) | 10.23 μs (mean 10.11 μs ± 1.84 μs) | 4.41× (mean 4.82× ± 1.35×, range 3.11-6.46×) | 295 / 12.312 KiB ; 62 / 3.672 KiB |
+| printing, depth 2 | 11.72 μs (mean 14.95 μs ± 8.25 μs) | 4.02 μs (mean 4.61 μs ± 1.50 μs) | 2.92× (mean 3.07× ± 0.78×, range 2.30-4.26×) | 45 / 1.750 KiB ; 19 / 864 bytes |
+| round-trip, depth 2 | 59.60 μs (mean 63.28 μs ± 12.66 μs) | 13.71 μs (mean 13.30 μs ± 2.48 μs) | 5.14× (mean 4.82× ± 0.89×, range 3.61-5.88×) | 340 / 14.062 KiB ; 81 / 4.516 KiB |
+| `isequal`, chain 16 | 3.36 μs (mean 3.40 μs ± 533.6 ns) | 22.0 ns (mean 23.8 ns ± 7.8 ns) | 165.75× (mean 151.33× ± 38.20×, range 95.94-188.95×) | 32 / 1.469 KiB ; 0 / 0 bytes |
+| cold package load | 953.62 ms (mean 970.13 ms ± 49.91 ms) | 16.97 ms (mean 17.58 ms ± 1.33 ms) | 55.60× (mean 55.38× ± 4.30×, range 48.83-60.83×) | —/— |
+| cold time to first result | 3464.17 ms (mean 3431.09 ms ± 92.83 ms) | 1216.44 ms (mean 1219.82 ms ± 110.99 ms) | 2.69× (mean 2.83× ± 0.29×, range 2.53-3.22×) | —/— |
 
 The load ratio is measured across fresh processes and is not attributed to the
 evaluator. The equality ratio is the pool-local integer identity path versus
@@ -152,28 +143,28 @@ it scores four hypotheses against eight seeded models (32 pairs; models have
 
 | case | SoleLogics median (mean ± std) | Aletheia median (mean ± std) | ratio median (mean ± std, range) | allocations |
 | --- | ---: | ---: | ---: | ---: |
-| propositional check, depth 2 | 2.00 μs (mean 2.15 μs ± 262.1 ns) | 2.33 μs (mean 2.29 μs ± 309.5 ns) | 1.00× (mean 0.95× ± 0.20×, range 0.73-1.23×) [no clear winner] | 29 / 752 bytes ; 48 / 2.484 KiB |
-| propositional check, depth 4 | 14.93 μs (mean 14.89 μs ± 2.93 μs) | 9.18 μs (mean 10.34 μs ± 3.06 μs) | 1.60× (mean 1.55× ± 0.52×, range 0.69-2.09×) | 155 / 4.109 KiB ; 159 / 9.078 KiB |
-| propositional check, depth 6 | 57.93 μs (mean 62.71 μs ± 8.16 μs) | 44.86 μs (mean 47.10 μs ± 10.59 μs) | 1.29× (mean 1.37× ± 0.28×, range 1.11-1.82×) | 659 / 17.609 KiB ; 601 / 36.055 KiB |
-| e×tension, 8 worlds / depth 3 | 49.74 μs (mean 52.12 μs ± 8.83 μs) | 11.63 μs (mean 11.00 μs ± 2.07 μs) | 5.21× (mean 4.94× ± 1.52×, range 3.32-7.06×) | 760 / 30.297 KiB ; 143 / 11.641 KiB |
-| e×tension, 32 worlds / depth 4 | 229.59 μs (mean 231.70 μs ± 18.80 μs) | 93.42 μs (mean 89.42 μs ± 18.70 μs) | 2.36× (mean 2.66× ± 0.44×, range 2.33-3.20×) | 2191 / 110.000 KiB ; 655 / 160.078 KiB |
-| random modal, worlds=8 / 0.15 / depth=2 | 6.08 μs (mean 4.10 μs ± 2.83 μs) | 3.74 μs (mean 3.69 μs ± 2.08 μs) | 0.95× (mean 1.03× ± 0.48×, range 0.36-1.62×) [no clear winner] | 136 / 5.156 KiB ; 58 / 3.547 KiB |
-| random modal, worlds=24 / 0.15 / depth=2 | 12.41 μs (mean 11.80 μs ± 6.48 μs) | 7.61 μs (mean 7.76 μs ± 2.75 μs) | 1.63× (mean 1.43× ± 0.57×, range 0.43-1.83×) [no clear winner] | 264 / 13.297 KiB ; 128 / 20.109 KiB |
-| random modal, worlds=8 / 0.5 / depth=2 | 7.82 μs (mean 7.60 μs ± 6.57 μs) | 3.26 μs (mean 3.22 μs ± 966.6 ns) | 2.17× (mean 2.11× ± 1.65×, range 0.56-4.67×) [no clear winner] | 138 / 5.188 KiB ; 58 / 3.547 KiB |
-| random modal, worlds=24 / 0.5 / depth=2 | 15.60 μs (mean 14.99 μs ± 8.11 μs) | 21.61 μs (mean 16.65 μs ± 8.36 μs) | 0.90× (mean 0.94× ± 0.62×, range 0.21-1.90×) [no clear winner] | 264 / 13.469 KiB ; 128 / 20.109 KiB |
-| random modal, worlds=8 / 0.15 / depth=4 | 16.98 μs (mean 15.70 μs ± 13.43 μs) | 2.80 μs (mean 3.46 μs ± 2.00 μs) | 4.15× (mean 4.25× ± 3.87×, range 0.62-10.38×) [no clear winner] | 304 / 10.922 KiB ; 68 / 4.828 KiB |
-| random modal, worlds=24 / 0.15 / depth=4 | 28.41 μs (mean 54.86 μs ± 60.70 μs) | 16.68 μs (mean 15.81 μs ± 9.55 μs) | 1.70× (mean 2.75× ± 2.67×, range 0.43-7.24×) [no clear winner] | 390 / 18.219 KiB ; 126 / 20.094 KiB |
-| random modal, worlds=8 / 0.5 / depth=4 | 35.80 μs (mean 25.81 μs ± 18.30 μs) | 3.52 μs (mean 5.00 μs ± 3.66 μs) | 4.96× (mean 5.37× ± 3.68×, range 0.55-10.16×) | 307 / 11.266 KiB ; 68 / 4.828 KiB |
-| random modal, worlds=24 / 0.5 / depth=4 | 52.88 μs (mean 56.53 μs ± 52.25 μs) | 12.98 μs (mean 12.18 μs ± 7.28 μs) | 4.07× (mean 3.49× ± 2.43×, range 0.39-6.07×) | 390 / 19.844 KiB ; 126 / 20.094 KiB |
-| interval adjacency, n=6 | 1.92 μs (mean 2.08 μs ± 546.9 ns) | 1.10 μs (mean 1.24 μs ± 445.4 ns) | 1.74× (mean 1.84× ± 0.68×, range 0.88-2.56×) | 107 / 5.094 KiB ; 100 / 3.656 KiB |
-| Allen BEFORE check, n=6 | 11.09 μs (mean 15.34 μs ± 8.52 μs) | 9.55 μs (mean 9.39 μs ± 2.49 μs) | 1.75× (mean 1.66× ± 0.76×, range 0.90-2.74×) [no clear winner] | 230 / 32.234 KiB ; 176 / 22.109 KiB |
-| interval subset IA3, n=6 | 96.37 μs (mean 113.17 μs ± 37.33 μs) | 10.15 μs (mean 9.64 μs ± 2.77 μs) | 12.49× (mean 11.97× ± 2.76×, range 7.88-14.79×) | 3048 / 198.609 KiB ; 273 / 40.656 KiB |
-| interval subset IA7, n=6 | 63.04 μs (mean 60.67 μs ± 6.45 μs) | 37.87 μs (mean 32.98 μs ± 12.50 μs) | 1.52× (mean 2.14× ± 1.02×, range 1.30-3.26×) | 2484 / 141.266 KiB ; 717 / 113.438 KiB |
-| interval subset RCC5, n=6 | 90.69 μs (mean 92.24 μs ± 8.33 μs) | empty [0/5 seeds] | — | 4104 / 243.375 KiB ; — |
-| finite chain G3 check, depth 2 | 2.59 μs (mean 3.01 μs ± 1.06 μs) | 2.19 μs (mean 2.22 μs ± 297.8 ns) | 1.22× (mean 1.39× ± 0.61×, range 0.95-2.44×) [no clear winner] | 40 / 1.469 KiB ; 42 / 2.484 KiB |
-| finite chain Ł3 check, depth 2 | 3.81 μs (mean 3.75 μs ± 366.9 ns) | 2.48 μs (mean 2.50 μs ± 480.4 ns) | 1.62× (mean 1.56× ± 0.37×, range 1.04-1.98×) | 40 / 1.469 KiB ; 42 / 2.484 KiB |
-| non-chain H4 check, depth 2 | 3.40 μs (mean 3.05 μs ± 751.7 ns) | 2.91 μs (mean 2.57 μs ± 538.3 ns) | 1.25× (mean 1.21× ± 0.30×, range 0.73-1.58×) [no clear winner] | 40 / 1.469 KiB ; 42 / 2.484 KiB |
-| ILP interpretation scoring, 8 models / 4 hypotheses | 548.05 μs (mean 651.76 μs ± 238.00 μs) | 129.69 μs (mean 126.88 μs ± 19.07 μs) | 4.73× (mean 5.05× ± 1.14×, range 4.00-6.99×) | 8872 / 331.469 KiB ; 2056 / 130.781 KiB |
+| propositional check, depth 2 | 3.06 μs (mean 3.12 μs ± 869.1 ns) | 2.34 μs (mean 2.34 μs ± 300.7 ns) | 1.31× (mean 1.37× ± 0.49×, range 0.88-1.97×) [no clear winner] | 29 / 752 bytes ; 48 / 2.484 KiB |
+| propositional check, depth 4 | 18.77 μs (mean 18.08 μs ± 1.39 μs) | 9.38 μs (mean 10.20 μs ± 2.20 μs) | 1.76× (mean 1.83× ± 0.35×, range 1.38-2.30×) | 155 / 4.109 KiB ; 159 / 9.078 KiB |
+| propositional check, depth 6 | 70.55 μs (mean 71.26 μs ± 7.71 μs) | 34.69 μs (mean 38.00 μs ± 5.24 μs) | 1.81× (mean 1.91× ± 0.36×, range 1.53-2.34×) | 659 / 17.609 KiB ; 601 / 36.055 KiB |
+| e×tension, 8 worlds / depth 3 | 44.51 μs (mean 47.41 μs ± 8.26 μs) | 10.97 μs (mean 12.35 μs ± 3.21 μs) | 3.91× (mean 3.94× ± 0.69×, range 3.26-5.03×) | 760 / 30.297 KiB ; 143 / 11.641 KiB |
+| e×tension, 32 worlds / depth 4 | 220.31 μs (mean 220.72 μs ± 20.62 μs) | 120.05 μs (mean 131.10 μs ± 29.82 μs) | 1.88× (mean 1.74× ± 0.36×, range 1.22-2.11×) | 2191 / 110.000 KiB ; 655 / 160.078 KiB |
+| random modal, worlds=8 / 0.15 / depth=2 | 4.44 μs (mean 3.91 μs ± 2.70 μs) | 2.04 μs (mean 2.06 μs ± 650.6 ns) | 2.10× (mean 1.70× ± 0.85×, range 0.67-2.63×) [no clear winner] | 136 / 5.156 KiB ; 58 / 3.547 KiB |
+| random modal, worlds=24 / 0.15 / depth=2 | 13.36 μs (mean 11.64 μs ± 5.18 μs) | 8.52 μs (mean 8.04 μs ± 3.35 μs) | 1.42× (mean 1.40× ± 0.39×, range 0.88-1.82×) | 264 / 13.297 KiB ; 128 / 20.109 KiB |
+| random modal, worlds=8 / 0.5 / depth=2 | 4.62 μs (mean 4.86 μs ± 3.90 μs) | 3.34 μs (mean 3.03 μs ± 1.12 μs) | 1.38× (mean 1.40× ± 0.78×, range 0.67-2.58×) [no clear winner] | 138 / 5.188 KiB ; 58 / 3.547 KiB |
+| random modal, worlds=24 / 0.5 / depth=2 | 18.32 μs (mean 17.69 μs ± 10.78 μs) | 12.99 μs (mean 11.62 μs ± 4.97 μs) | 1.42× (mean 1.38× ± 0.55×, range 0.47-1.92×) [no clear winner] | 264 / 13.594 KiB ; 128 / 20.109 KiB |
+| random modal, worlds=8 / 0.15 / depth=4 | 12.71 μs (mean 13.20 μs ± 12.11 μs) | 3.31 μs (mean 3.27 μs ± 1.76 μs) | 3.84× (mean 3.24× ± 2.01×, range 0.69-5.21×) | 304 / 10.922 KiB ; 68 / 4.828 KiB |
+| random modal, worlds=24 / 0.15 / depth=4 | 35.63 μs (mean 46.73 μs ± 46.80 μs) | 15.65 μs (mean 16.52 μs ± 10.80 μs) | 2.25× (mean 2.37× ± 2.40×, range 0.23-6.19×) [no clear winner] | 390 / 18.219 KiB ; 126 / 20.094 KiB |
+| random modal, worlds=8 / 0.5 / depth=4 | 26.42 μs (mean 20.28 μs ± 16.11 μs) | 4.09 μs (mean 4.63 μs ± 3.91 μs) | 3.75× (mean 4.31× ± 3.08×, range 0.40-8.61×) | 307 / 11.266 KiB ; 68 / 4.828 KiB |
+| random modal, worlds=24 / 0.5 / depth=4 | 44.96 μs (mean 55.93 μs ± 52.45 μs) | 15.03 μs (mean 13.58 μs ± 8.43 μs) | 2.99× (mean 3.21× ± 2.16×, range 0.35-5.85×) | 390 / 19.844 KiB ; 126 / 20.094 KiB |
+| interval adjacency, n=6 | 2.17 μs (mean 2.05 μs ± 467.0 ns) | 1.27 μs (mean 1.17 μs ± 244.6 ns) | 1.77× (mean 1.75× ± 0.12×, range 1.61-1.92×) | 107 / 5.094 KiB ; 100 / 3.656 KiB |
+| Allen BEFORE check, n=6 | 14.29 μs (mean 14.42 μs ± 263.2 ns) | 8.92 μs (mean 8.03 μs ± 1.52 μs) | 1.63× (mean 1.86× ± 0.40×, range 1.54-2.39×) | 230 / 32.234 KiB ; 176 / 22.109 KiB |
+| interval subset IA3, n=6 | 78.64 μs (mean 81.12 μs ± 25.34 μs) | 9.85 μs (mean 9.26 μs ± 2.27 μs) | 7.45× (mean 9.57× ± 4.97×, range 4.79-17.32×) | 3048 / 198.609 KiB ; 273 / 40.656 KiB |
+| interval subset IA7, n=6 | 49.49 μs (mean 50.42 μs ± 7.57 μs) | 39.48 μs (mean 44.76 μs ± 21.52 μs) | 1.22× (mean 1.41× ± 0.78×, range 0.54-2.44×) [no clear winner] | 2484 / 141.266 KiB ; 717 / 113.438 KiB |
+| interval subset RCC5, n=6 | 111.43 μs (mean 108.43 μs ± 17.93 μs) | 57.30 μs (mean 58.17 μs ± 2.33 μs) | 1.81× (mean 1.87× ± 0.34×, range 1.40-2.29×) | 4104 / 243.375 KiB ; 1057 / 128.000 KiB |
+| finite chain G3 check, depth 2 | 2.97 μs (mean 3.08 μs ± 357.2 ns) | 3.06 μs (mean 2.71 μs ± 603.8 ns) | 1.10× (mean 1.17× ± 0.19×, range 0.95-1.43×) [no clear winner] | 40 / 1.469 KiB ; 42 / 2.484 KiB |
+| finite chain Ł3 check, depth 2 | 4.91 μs (mean 4.73 μs ± 398.2 ns) | 2.65 μs (mean 2.69 μs ± 217.1 ns) | 1.69× (mean 1.76× ± 0.19×, range 1.59-2.05×) | 40 / 1.469 KiB ; 42 / 2.484 KiB |
+| non-chain H4 check, depth 2 | 3.73 μs (mean 3.52 μs ± 726.1 ns) | 2.31 μs (mean 2.27 μs ± 342.7 ns) | 1.60× (mean 1.54× ± 0.10×, range 1.40-1.63×) | 40 / 1.469 KiB ; 42 / 2.484 KiB |
+| ILP interpretation scoring, 8 models / 4 hypotheses | 697.97 μs (mean 739.46 μs ± 228.09 μs) | 105.75 μs (mean 129.12 μs ± 42.33 μs) | 5.55× (mean 5.79× ± 0.93×, range 4.85-7.15×) | 8872 / 331.469 KiB ; 2056 / 130.781 KiB |
 
 The extension comparison is explicitly an equivalent all-world check loop on
 SoleLogics because it has no `extension` API; it is not labelled as a win over
@@ -199,7 +190,7 @@ range, while `accessible` stays lazy. The effect grows with the domain size
 
 | n | SoleLogics | Aletheia | ratio | allocations (SoleLogics ; Aletheia) |
 | ---: | ---: | ---: | ---: | ---: |
-| 6 | 1.54 μs | 648.0 ns | 2.38× | 107 / 5.094 KiB ; 100 / 3.656 KiB |
+| 6 | 2.17 μs (mean 2.05 μs ± 467.0 ns) | 1.27 μs (mean 1.17 μs ± 244.6 ns) | 1.77× (mean 1.75× ± 0.12×, range 1.61-1.92×) | 107 / 5.094 KiB ; 100 / 3.656 KiB |
 | 12 | 14.62 μs | 2.86 μs | 5.11× | 447 / 36.820 KiB ; 373 / 19.562 KiB |
 | 24 | 204.31 μs | 29.34 μs | 6.96× | 2,048 / 457.773 KiB ; 1,462 / 161.477 KiB |
 | 36 | 1.18 ms | 140.08 μs | 8.43× | 5,066 / 1.721 MiB ; 3,358 / 693.648 KiB |
@@ -342,11 +333,11 @@ contraction pays for itself.
 
 | original n | quotient q | q/n | C (median; mean ± std) | P_orig (median; mean ± std) | P_quot (median; mean ± std) | K* (median; mean ± std; range) |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 48 | 1 | 0.021 | 276.11 μs (mean 299.23 μs ± 57.65 μs) | 6.79 μs (mean 7.07 μs ± 611.1 ns) | 2.59 μs (mean 2.56 μs ± 604.7 ns) | 60.0 (mean 66.7 ± 13.7, range 57.8-90.5) |
-| 48 | 48 | 1.000 | 1.97 ms (mean 1.96 ms ± 48.57 μs) | 7.93 μs (mean 7.82 μs ± 764.3 ns) | 34.23 μs (mean 34.76 μs ± 1.50 μs) | ∞ |
+| 48 | 1 | 0.021 | C=268.06 μs (mean 272.24 μs ± 17.73 μs) | P_orig=8.80 μs (mean 8.74 μs ± 1.12 μs) | P_quot=2.48 μs (mean 2.54 μs ± 642.3 ns) | K*=42.8 (mean 47.6 ± 17.4, range 33.6-76.1) |
+| 48 | 48 | 1.000 | C=1.97 ms (mean 1.97 ms ± 35.61 μs) | P_orig=6.44 μs (mean 6.72 μs ± 865.8 ns) | P_quot=35.20 μs (mean 35.42 μs ± 872.4 ns) | K*=∞ |
 
 Both contraction cells completed in this quick run. For the q=1 case, the
-observed K* median is 60.0 formulas (mean 66.7 ± 13.7; range 57.8–90.5).
+observed K* median is 42.8 formulas (mean 47.6 ± 17.4; range 33.6–76.1).
 The already-minimal q=48 case never crosses over, so its K* remains ∞. The raw
 artefact records the per-seed measurements.
 

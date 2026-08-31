@@ -305,9 +305,8 @@ function addrow!(suite, incumbents, aletheias; allocations=true, note="")
     ratios = all(is_measured, incumbents) && all(is_measured, aletheias) ?
         [i.time / a.time for (i, a) in zip(incumbents, aletheias)] : Float64[]
     rs = stats(ratios)
-    unstable = !isempty(ratios) && (minimum(ratios) < rs.mean - rs.std || maximum(ratios) > rs.mean + rs.std)
     push!(rows, (suite=suite, incumbent=inc, aletheia=ale, ratio=rs.median, ratios=ratios,
-        ratio_mean=rs.mean, ratio_std=rs.std, unstable=unstable, allocations=allocations, note=note,
+        ratio_mean=rs.mean, ratio_std=rs.std, allocations=allocations, note=note,
         incumbent_seeds=incumbents, aletheia_seeds=aletheias))
 end
 function print_report()

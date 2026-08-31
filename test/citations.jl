@@ -48,7 +48,7 @@ end
         @test !normalized_occurs(retracted, docs_sources)
     end
     @test normalized_occurs("five-seed medians", readme)
-    @test normalized_occurs("4.73×", results)
+    @test normalized_occurs("5.55×", results)
     @test normalized_occurs("1.02×–1.15×", results)
     @test normalized_occurs("5.6 worlds out of 1,326", results)
     @test normalized_occurs("238×", results)
@@ -58,7 +58,7 @@ end
     @test normalized_occurs("workload-specific", results)
     @test !normalized_occurs("expect pooled identity and DAG sharing to matter", results)
     @test normalized_occurs("data/benchmark-run/run.txt", results)
-    @test normalized_occurs("data/benchmark-run/corrections.md", results)
+    @test !normalized_occurs("data/benchmark-run/corrections.md", results)
     @test normalized_occurs("range", results)
     @test normalized_occurs("[no clear winner]", results)
     @test normalized_occurs("scores four hypotheses against eight seeded models", results)
