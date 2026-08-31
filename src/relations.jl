@@ -3,13 +3,44 @@
 
 """A relation family marker. User-defined relation values need not subtype it."""
 abstract type RelationFamily end
-"""Allen interval relations."""
+"""
+    IntervalRelation
+
+Allen interval relations. The thirteen basic relationships follow Figure 2 of
+Allen [allen1983; §3, Figures 1–2, p. 834](@cite); the non-equality `IA32IARelations(IA_I)` member list follows the
+twelve relationships in Figure 4 [allen1983; Fig. 4](@cite).
+"""
 abstract type IntervalRelation <: RelationFamily end
-"""Point relations on a bounded linear order."""
+"""
+    PointRelation
+
+Point relations on a bounded linear order. These six utility relations are
+Aletheia-specific frame helpers rather than a claim to implement a named
+external calculus, so no external citation is asserted.
+"""
 abstract type PointRelation <: RelationFamily end
-"""Region Connection Calculus relations."""
+"""
+    RCCRelation
+
+Region Connection Calculus relations. The primitive relation definitions and
+the RCC8 basis follow Randell, Cui, and Cohn [randell1992; §4, Fig. 1,
+pp. 167–168](@cite), with the RCC8 presentation and proper-part distinctions
+also summarized by Cohn et al. [cohn1997](@cite).
+"""
 abstract type RCCRelation <: RelationFamily end
-"""Compass logic 2D point relations."""
+"""
+    Point2DRelation
+
+Compass logic 2D point relations. Venema's interval tense logic provides the
+foundational two-dimensional interval/product perspective [venema1990](@cite);
+Marx and Reynolds study the resulting Compass Logic and its undecidability
+[marx1999compass](@cite). Montanari, Puppis, and Sala give the projection-based
+`N`, `S`, `E`, and `W` point predicates that match the axial relations here
+[montanari2015cone; §2, p. 3](@cite). Aletheia adds the four strict quadrant
+predicates `NE`, `NW`, `SE`, and `SW` as a package vocabulary extension; no claim
+is made that either source defines those four additional values. Aletheia does
+not add a coincident or undetermined-direction value.
+"""
 abstract type Point2DRelation <: RelationFamily end
 
 """

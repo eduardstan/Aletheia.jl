@@ -63,8 +63,11 @@ A custom relation value does not have to subtype `RelationFamily`: implementing
 ## Allen intervals and RCC8 rectangles
 
 Aletheia provides all thirteen Allen values in `ALLEN_RELATIONS`, including
-`EQUALS`. Compatibility `IA_*` spellings are available under
-`Aletheia.SoleLogics`. `interval_frame(n)` builds every
+`EQUALS`, corresponding to the thirteen relationships in Allen's Figure 2
+[allen1983; §3, Figures 1–2, p. 834](@cite). Compatibility `IA_*` spellings are available under
+`Aletheia.SoleLogics`. The `IA32IARelations(IA_I)` member tuple intentionally excludes equality,
+matching the twelve non-equality relationships in Allen's Figure 4
+[allen1983; Fig. 4](@cite). `interval_frame(n)` builds every
 interval over `n` cells — that is, every pair of boundaries drawn from
 `1:(n + 1)` with the first strictly below the second, so `n * (n + 1) / 2`
 worlds. `rectangle_frame(nx, ny)` makes all axis-aligned rectangles. Both
@@ -120,17 +123,28 @@ true
 true
 ```
 
-The core RCC5 tuple `RCC5_RELATIONS` contains `(DR, PO, PP, PPi)`.
-`Aletheia.SoleLogics` additionally provides `IA7Relations`, `IA3Relations`,
-and the SoleLogics `RCC5Relations` and `Topo_*` spellings. Each generated
-successor set is exhaustively checked against its predicate on small interval
-and rectangle domains.
+The core non-equality RCC5-style tuple `RCC5_RELATIONS` contains
+`(DR, PO, PP, PPi)`. It follows the `DR` and proper-part coarsenings of the
+region-connection relations defined by Randell, Cui, and Cohn [randell1992;
+§4, pp. 167–168](@cite); `RCC_EQ` remains separate rather than being a fifth
+tuple member. The eight-value RCC8 basis, including equality, is described in
+the same source [randell1992; §4, Fig. 1, pp. 167–168](@cite) and surveyed by
+Cohn et al. [cohn1997](@cite). `Aletheia.SoleLogics` additionally provides
+`IA7Relations`, `IA3Relations`, and the SoleLogics `RCC5Relations` and `Topo_*`
+spellings. Each generated successor set is exhaustively checked against its
+predicate on small interval and rectangle domains.
 
 ## Compass logic 2D point relations
 
-The opt-in `Aletheia.SoleLogics` namespace provides the eight cardinal 2D
-point relations from Compass logic: `CL_N`, `CL_S`, `CL_E`, `CL_W`, `CL_NE`,
-`CL_NW`, `CL_SE`, and `CL_SW`. The canonical tuple is
+The opt-in `Aletheia.SoleLogics` namespace provides the strict eight-direction
+2D point vocabulary `CL_N`, `CL_S`, `CL_E`, `CL_W`, `CL_NE`, `CL_NW`, `CL_SE`,
+and `CL_SW`. Venema provides the foundational interval/product perspective
+[venema1990](@cite), while Marx and Reynolds study Compass Logic
+[marx1999compass](@cite). Montanari, Puppis, and Sala give the exact
+projection-based formulas for the axial `N`, `S`, `E`, and `W` relations
+[montanari2015cone; §2, p. 3](@cite). The four strict quadrant directions are a
+package vocabulary extension, not attributed to these sources. Aletheia has no
+coincident or undetermined-direction value. The canonical tuple is
 `Aletheia.POINT2D_RELATIONS`. `point_frame(nx, ny)` creates a 2D grid frame whose worlds
 are `Point(x, y)`. Each relation is transitive and has a converse (for example
 `converse(Aletheia.SoleLogics.CL_N) === Aletheia.SoleLogics.CL_S` and
