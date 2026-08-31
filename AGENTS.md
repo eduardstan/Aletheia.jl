@@ -55,7 +55,7 @@ When updating this file, preserve this bar for all agents and keep entries conci
 
 ## ILP foundations
 
-- Clauses, θ-subsumption, lazy refinement operators, and learning-setting example wrappers live in `src/ilp.jl`; the reference terminology and properties are documented in `docs/src/index.md` with `muggleton1994`. `test/ilp.jl` covers the recursive implication counterexample and quasi-order boundaries.
+- Clauses, θ-subsumption, lazy refinement operators, learning-setting example wrappers, and hypothesis scoring live in `src/ilp.jl`; scoring uses `check` at `AnyWorld`, reports confusion counts plus accuracy, and treats valuation `KeyError`s as uncovered. The reference terminology and properties are documented in `docs/src/index.md` with `muggleton1994`. `test/ilp.jl` covers the recursive implication counterexample and quasi-order boundaries.
 
 - The public documentation is written for an outside reader: no internal work-lane vocabulary (stage names, "incumbent", "scratch", "routed"), and SoleLogics is always named rather than alluded to.
 - The optional SoleData model-family bridge lives in `ext/AletheiaSoleDataExt.jl`; `benchmark/dataset_protocol.jl` uses a temporary environment and read-only SoleData for its differential gate, with results and decision evidence in `data/soledata-protocol/report.md` and `run.txt`.

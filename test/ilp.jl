@@ -184,3 +184,77 @@ end
     @test_throws ArgumentError interpretation_example(first_order)
     @test_throws ArgumentError learning_from_interpretations(first_order)
 end
+
+
+@testset "ILP hypothesis scoring" begin
+    function labelled_model(value; algebra=BOOLEAN, world=:w)
+        model = Model(Frame((world,), Dict()), Dict("p" => Dict(world => value)); algebra=algebra)
+        model
+    end
+
+    hypothesis = atom("p")
+    positive_covered = InterpretationExample(labelled_model(true); positive=true)
+    negative_covered = InterpretationExample(labelled_model(true); positive=false)
+    negative_uncovered = InterpretationExample(labelled_model(false); positive=false)
+    positive_uncovered = InterpretationExample(labelled_model(false); positive=true)
+
+    # Each confusion cell is independently represented in this hand-counted set.
+    result = score(hypothesis, [positive_covered, negative_covered,
+                                negative_uncovered, positive_uncovered])
+    @test result.true_positives == 1
+    @test result.false_positives == 1
+    @test result.true_negatives == 1
+    @test result.false_negatives == 1
+    @test result.accuracy == 0.5
+
+    no_positives = score(hypothesis, [negative_covered, negative_uncovered])
+    @test (no_positives.true_positives, no_positives.false_positives,
+           no_positives.true_negatives, no_positives.false_negatives) == (0, 1, 1, 0)
+    @test no_positives.accuracy == 0.5
+
+    no_negatives = score(hypothesis, [positive_covered, positive_uncovered])
+    @test (no_negatives.true_positives, no_negatives.false_positives,
+           no_negatives.true_negatives, no_negatives.false_negatives) == (1, 0, 0, 1)
+    @test no_negatives.accuracy == 0.5
+
+    empty_result = score(hypothesis, InterpretationExample[])
+    @test empty_result.true_positives == 0
+    @test empty_result.false_positives == 0
+    @test empty_result.true_negatives == 0
+    @test empty_result.false_negatives == 0
+    @test ismissing(empty_result.accuracy)
+
+    covered_by_none = score(hypothesis, [positive_uncovered, negative_uncovered])
+    @test (covered_by_none.true_positives, covered_by_none.false_positives,
+           covered_by_none.true_negatives, covered_by_none.false_negatives) == (0, 0, 1, 1)
+    @test covered_by_none.accuracy == 0.5
+
+    partial = Model(Frame((:w,), Dict()), Dict("q" => Set([:w])); algebra=BOOLEAN)
+    @test_throws KeyError check(hypothesis, partial, AnyWorld())
+    partial_result = score(hypothesis, [InterpretationExample(partial; positive=true),
+                                         InterpretationExample(partial; positive=false)])
+    @test (partial_result.true_positives, partial_result.false_positives,
+           partial_result.true_negatives, partial_result.false_negatives) == (0, 0, 1, 1)
+
+    # AnyWorld is existential and does not depend on a first-world/index=1 convention.
+    arbitrary_worlds = Model(Frame((:dead, :true), Dict()), Dict("p" => Set([:true])); algebra=BOOLEAN)
+    arbitrary_world_result = score(hypothesis, [InterpretationExample(arbitrary_worlds)])
+    @test (arbitrary_world_result.true_positives, arbitrary_world_result.false_positives,
+           arbitrary_world_result.true_negatives, arbitrary_world_result.false_negatives) == (1, 0, 0, 0)
+
+    malformed = Model(Frame((:w,), Dict()), Dict("p" => Dict(:w => 1)); algebra=BOOLEAN)
+    @test_throws ArgumentError score(hypothesis, [InterpretationExample(malformed)])
+
+    # A many-valued model covers only at the algebra's top value.
+    many_valued_top = labelled_model(top(G3); algebra=G3)
+    many_valued_middle = labelled_model(FiniteTruth(3); algebra=G3)
+    many_valued = score(hypothesis, [InterpretationExample(many_valued_top; positive=true),
+                                      InterpretationExample(many_valued_middle; positive=false)])
+    @test (many_valued.true_positives, many_valued.false_positives,
+           many_valued.true_negatives, many_valued.false_negatives) == (1, 0, 1, 0)
+    @test many_valued.accuracy == 1.0
+
+    @test_throws ArgumentError score(hypothesis, [positive_covered.interpretation])
+    @test_throws ArgumentError score(hypothesis, [InterpretationExample(:not_a_model)])
+    @test_throws ArgumentError HypothesisScore(-1, 0, 0, 0)
+end

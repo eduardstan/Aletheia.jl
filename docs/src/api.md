@@ -318,6 +318,8 @@ learning_from_interpretations
 learning_from_proofs
 interpretation_example
 model_example
+HypothesisScore
+score
 ```
 
 ## Compatibility boundary

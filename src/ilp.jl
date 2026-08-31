@@ -553,6 +553,94 @@ interpretation_example(other; positive=true) =
     throw(ArgumentError("learning from interpretations expects a modal Model, got $(typeof(other))"))
 model_example(model::Model; positive=true) = interpretation_example(model; positive=positive)
 
+"""
+    HypothesisScore
+
+The confusion counts and accuracy obtained by scoring a hypothesis against
+labelled [`InterpretationExample`](@ref) values.  `true_positives`,
+`false_positives`, `true_negatives`, and `false_negatives` are counts of
+examples, not truth-algebra values.  `accuracy` is
+`(true_positives + true_negatives) / (true_positives + false_positives +
+true_negatives + false_negatives)` when at least one example is present;
+for an empty collection it is `missing` because no accuracy is defined.
+
+A positive example is covered only when [`check`](@ref) says that the
+hypothesis is true at [`AnyWorld`](@ref), meaning at some world of the model.
+For a many-valued model, true means the top element of its algebra.  A
+`KeyError` from `check` means that coverage cannot be established (most
+commonly because an atom is absent from a partial valuation), so the example
+is counted as uncovered.  Because [`check`](@ref) evaluates the whole model
+extension before applying [`AnyWorld`](@ref), a missing value at any world has
+this result.  This is an explicit open-world treatment of missing data, rather
+than an implicit false valuation.  Other evaluator errors are propagated.
+
+The aggregate remains defined when there are no positive examples, no
+negative examples, or the hypothesis covers no examples.  In those cases the
+formula above is evaluated over the examples that do exist; only the empty
+collection returns `missing`.
+"""
+struct HypothesisScore
+    true_positives::Int
+    false_positives::Int
+    true_negatives::Int
+    false_negatives::Int
+    accuracy::Union{Missing,Float64}
+
+    function HypothesisScore(true_positives::Integer, false_positives::Integer,
+                             true_negatives::Integer, false_negatives::Integer)
+        counts = (true_positives, false_positives, true_negatives, false_negatives)
+        all(count -> count >= 0, counts) || throw(ArgumentError("confusion counts must be non-negative"))
+        total = sum(counts)
+        accuracy = total == 0 ? missing : Float64(true_positives + true_negatives) / total
+        new(Int(true_positives), Int(false_positives), Int(true_negatives), Int(false_negatives), accuracy)
+    end
+end
+
+"""
+    score(hypothesis, examples)
+
+Score a formula `hypothesis` against a collection of labelled
+[`InterpretationExample`](@ref) values and return a [`HypothesisScore`](@ref).
+Coverage is evaluated by [`check`](@ref) at [`AnyWorld`](@ref), so a model is
+covered when the formula is true at at least one of its worlds.  A missing atom
+in a partial valuation is not treated as true: a resulting `KeyError` is
+interpreted as failure to establish coverage and the example is counted as
+uncovered.  Since `check` evaluates the whole extension first, a missing value
+at any world has this result.  This function measures a supplied hypothesis only; Aletheia ships
+no learner or hypothesis-search procedure.
+"""
+function score(hypothesis::Formula, examples)
+    true_positives = 0
+    false_positives = 0
+    true_negatives = 0
+    false_negatives = 0
+    for example in examples
+        example isa InterpretationExample ||
+            throw(ArgumentError("score expects InterpretationExample values; got $(typeof(example))"))
+        model = example.interpretation
+        model isa Model ||
+            throw(ArgumentError("score expects InterpretationExample values containing Model interpretations; got $(typeof(model))"))
+        covered = try
+            check(hypothesis, model, AnyWorld())
+        catch error
+            error isa KeyError || rethrow()
+            false
+        end
+        if example.positive
+            if covered
+                true_positives += 1
+            else
+                false_negatives += 1
+            end
+        elseif covered
+            false_positives += 1
+        else
+            true_negatives += 1
+        end
+    end
+    HypothesisScore(true_positives, false_positives, true_negatives, false_negatives)
+end
+
 Base.show(io::IO, sub::Substitution) =
     print(io, "Substitution(", join(["$(p.first) => $(p.second)" for p in sub.bindings], ", "), ")")
 
