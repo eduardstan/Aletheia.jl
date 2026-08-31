@@ -64,8 +64,8 @@ Pkg.develop(url="https://github.com/eduardstan/Aletheia.jl.git")
 ## Measurements
 
 The [measured results](https://eduardstan.github.io/Aletheia.jl/results/) report
-five-seed medians, means, standard deviations, instability labels, allocations,
-and raw provenance. See that page for the workload and reproduction command.
+five-seed medians, means, standard deviations, `[no clear winner]` labels,
+allocations, and raw provenance. See that page for the workload and reproduction command.
 
 ## Modal breadth
 

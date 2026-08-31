@@ -122,7 +122,7 @@ true
 
 The core RCC5 tuple `RCC5_RELATIONS` contains `(DR, PO, PP, PPi)`.
 `Aletheia.SoleLogics` additionally provides `IA7Relations`, `IA3Relations`,
-and the incumbent `RCC5Relations` and `Topo_*` spellings. Each generated
+and the SoleLogics `RCC5Relations` and `Topo_*` spellings. Each generated
 successor set is exhaustively checked against its predicate on small interval
 and rectangle domains.
 

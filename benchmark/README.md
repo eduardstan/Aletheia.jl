@@ -7,7 +7,7 @@ shared-runner timings are noisy.
 
 ## Reproduce
 
-From a fresh checkout, set the incumbent checkout and run one command:
+From a fresh checkout, set the SoleLogics checkout and run one command:
 
 ```sh
 SOLELOGICS_PATH=/path/to/SoleLogics.jl julia --project=benchmark benchmark/run.jl
@@ -31,16 +31,8 @@ sample pairs its allocation count with the sample nearest the median time.
 The process writes raw values and provenance (Julia/CPU, load average, mode,
 seed set, uptime at start and end, and per-cell sample counts) to `data/benchmark-run/run.txt`.
 
-A three-seed pilot showed material ratio spread in several rows, so the default
-uses five seeds. The five-seed quick run is expected to take about 7.7 minutes on
-this machine, versus 6.9 minutes for the retired single-seed run. This is still
-minutes rather than hours, but it exceeds the old quick-run budget. Published rows
-expose the observed per-seed spread. Per-row samples are not
-reduced; future runs may parallelize independent seed workers on a dedicated
-machine instead. The first five-seed pass was sequential and took 38.7 minutes
-with load rising from 3.00 to 6.28; it was discarded. The published pass
-interleaves and rotates seeds within each warmed section, took 7.7 minutes,
-and records paired per-seed loads as `seed_loads` in the run artefact.
+Published rows expose the observed per-seed spread. Per-row samples are not
+reduced. The benchmark interleaves and rotates seeds within each warmed section.
 
 `benchmark/differential.jl` is the deterministic correctness comparison:
 
@@ -49,15 +41,15 @@ SOLELOGICS_PATH=/path/to/SoleLogics.jl julia --project=benchmark benchmark/diffe
 ```
 
 The contraction gate runs before timing and compares every tested formula and
-world against its quotient. The incumbent has no contraction API and is
+world against its quotient. SoleLogics has no contraction API and is
 reported unsupported rather than assigned a ratio. The extension row compares
 Aletheia's BitVector extension with SoleLogics' equivalent all-world check loop,
-which is the same semantic question even though the incumbent has no named
+which is the same semantic question even though SoleLogics has no named
 `extension` method. The SoleLogics loop shares one subformula memo per timed
 invocation and disables normalization; allocations are paired with median-time
 samples.
 
-## SoleData dataset-protocol stage 1
+## SoleData dataset protocol
 
 The experiment is benchmark-only, but it exercises the production optional
 SoleData extension: it creates a temporary Julia environment, develops the
@@ -82,9 +74,9 @@ both cold first-check and warm repeated-check medians.  The report is
 GNU `timeout`, temporary files, medians, and allocation counts; no benchmark
 output is piped.
 
-## SoleModels consumer stage 2a
+## SoleModels consumer comparison
 
-This experiment is the narrow consumer trial: it compares the installed
+This experiment is a narrow consumer comparison: it compares the installed
 `SoleModels.checkantecedent(rule, X)` path with a disposable copy whose
 `checkantecedent` builds an Aletheia model family and evaluates the antecedent
 through `extension`.  The source package and installed checkout are never
@@ -96,7 +88,7 @@ SOLEMODELS_PATH=/path/to/SoleModels \
 julia --startup-file=no --project=. benchmark/dataset_consumer.jl
 ```
 
-The script creates baseline and routed SoleModels copies under a temporary
+The script creates baseline and Aletheia-backed SoleModels copies under a temporary
 subdirectory of this checkout, runs a seeded mask gate first, then starts one
 warmed child per side under GNU `timeout`.  Child output and timeout handling
 use files, not pipes; the raw sweep is written to
@@ -104,9 +96,7 @@ use files, not pipes; the raw sweep is written to
 phases: first use on genuinely new datasets, steady state after cache
 population, and repeated fresh-dataset churn.  Its allocation and byte fields
 come from the sample nearest the median time, not BenchmarkTools' minimum over
-an unspecified sample set; sample ranges and GC time are retained.  The
-corrected repeated artifacts are under
-`data/solemodels-consumer/corrected-repetitions/`.  The temporary copies and
+an unspecified sample set; sample ranges and GC time are retained.  The temporary copies and
 environments are removed on exit.  For run-order diagnostics, set
 `DATASET_CONSUMER_CASE_ORDER` to a comma-separated permutation of `1:18`; the
 case seeds and shapes remain unchanged while the timing order is recorded in
