@@ -76,6 +76,7 @@ export first_order_interpretation
 export Literal, literal, positive_literal, negative_literal, atoms, literals, clauses, Clause, HornClause, ClauseSet
 export Substitution, substitute, subsumes, more_general, more_specific, equivalent_under_subsumption, ishorn
 export downward_refinements, upward_refinements, generalizations
+export HypothesisScore, score
 export ILPExample, EntailmentExample, InterpretationExample, ProofExample
 export learning_from_entailment, learning_from_interpretations, learning_from_proofs, interpretation_example, model_example
 export iscnf, isdnf, to_cnf, to_dnf

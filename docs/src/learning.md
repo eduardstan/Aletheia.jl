@@ -17,7 +17,25 @@ A Kripke [`Model`](@ref) is an interpretation in this sense: it is a domain of
 worlds, accessibility structure, and atom valuation. So a modal decision tree
 or decision list is already a learner over interpretations, with no conversion
 to a first-order representation. Aletheia supplies the example wrapper and the
-evaluator; the hypothesis search and scoring belong to the learner.
+evaluator; the hypothesis search belongs to the learner.
+
+Aletheia also supplies [`score`](@ref), which measures a supplied formula
+against labelled interpretation examples. This is scoring only: no learner,
+search procedure, refinement loop, or hypothesis-selection policy ships in
+Aletheia. A formula covers an interpretation when [`check`](@ref) is true at
+[`AnyWorld`](@ref), that is, at some world in its model. In a many-valued model,
+"true" means the top element of the model's algebra. A missing atom in a
+partial valuation makes coverage unestablished and therefore counts as
+uncovered; it is not silently assigned a false value. Since `check` evaluates
+the whole extension before applying `AnyWorld`, a missing value at any world
+has this result.
+
+The returned [`HypothesisScore`](@ref) reports the four confusion counts and
+accuracy. For a non-empty collection, accuracy is
+`(true_positives + true_negatives) / (true_positives + false_positives +
+true_negatives + false_negatives)`. For an empty collection, accuracy is
+`missing`. Collections with no positives, no negatives, or no covered examples
+still use this same denominator over the examples that are present.
 
 ## A worked interpretation example
 
@@ -46,6 +64,26 @@ true
 true
 [:w₂]
 true
+```
+
+A score retains the confusion cells, so its accuracy can be checked from the
+reported counts:
+
+```jldoctest learning_scoring
+using Aletheia
+frame = Frame((:w,), Dict())
+positive = Model(frame, BOOLEAN, Dict("p" => Set([:w])))
+negative = Model(frame, BOOLEAN, Dict("p" => Set{Symbol}()))
+result = score(atom("p"), [InterpretationExample(positive; positive=true),
+                             InterpretationExample(negative; positive=false)])
+println((result.true_positives, result.false_positives,
+         result.true_negatives, result.false_negatives))
+println(result.accuracy)
+
+# output
+
+(1, 0, 1, 0)
+1.0
 ```
 
 `learning_from_interpretations(model)` is the concise constructor for the same
