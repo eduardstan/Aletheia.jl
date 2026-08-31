@@ -155,15 +155,21 @@ for entry in contraction_ranges
     kstar = isempty(finite_k) ? Inf : median(finite_k)
     kstats = stats(finite_k)
     kmarker = length(finite_k) > 1 && (minimum(finite_k) < kstats.mean - kstats.std || maximum(finite_k) > kstats.mean + kstats.std) ? " [UNSTABLE]" : ""
-    ktext = isempty(finite_k) ? "∞" : @sprintf("%.1f (mean %.1f ± %.1f)%s", kstats.median, kstats.mean, kstats.std, kmarker)
+    ktext = if isempty(finite_k)
+        failed_k = any(r -> r.c.status === :failed || r.po.status === :failed || r.pq.status === :failed, seed_records)
+        timeout_k = any(r -> r.c.status === :timeout || r.po.status === :timeout || r.pq.status === :timeout, seed_records)
+        failed_k ? "failed" : timeout_k ? "timed out" : "∞"
+    else
+        @sprintf("%.1f (mean %.1f ± %.1f)%s", kstats.median, kstats.mean, kstats.std, kmarker)
+    end
     println("$(entry.n) | $(entry.q) | $(@sprintf("%.3f", entry.q / entry.n)) | $(time_summary([r.c for r in seed_records])) | $(time_summary([r.po for r in seed_records])) | $(time_summary([r.pq for r in seed_records])) | $ktext | ")
     push!(contraction_records, (n=entry.n, q=entry.q, c=c, po=po, pq=pq, kstar=kstar, ktext=ktext, seeds=seed_records))
     for (k, oi, qi) in zip(contraction_curve, entry.curve_orig, entry.curve_quot)
         bos = [measurements[oi] for measurements in contraction_measurements]
         bqs = [measurements[qi] for measurements in contraction_measurements]
         cs = [r.c for r in seed_records]
-        totals = [bq.time === missing || cc.time === missing ? missing : cc.time + bq.time for (bq, cc) in zip(bqs, cs)]
-        println("  K=$k: $(time_summary(bos)) / $(isempty(filter(x -> x !== missing, totals)) ? "timeout" : time_summary([Measurement(t, missing, missing) for t in totals]))")
+        totals = [combine_measurements(cc, bq) for (bq, cc) in zip(bqs, cs)]
+        println("  K=$k: $(time_summary(bos)) / $(time_summary(totals))")
     end
 end
 
@@ -171,7 +177,10 @@ println("[cold package load]")
 load_a = raw"""t0=time_ns(); using Aletheia; t1=time_ns(); s=Aletheia.Signature((Aletheia.NEGATION,Aletheia.CONJUNCTION,Aletheia.DISJUNCTION,Aletheia.IMPLICATION)); p=Aletheia.FormulaPool(s); Aletheia.syntaxstring(Aletheia.parse(p, "p")); t2=time_ns(); println((t1-t0)/1e6, " ", (t2-t0)/1e6)"""
 load_s = raw"""t0=time_ns(); using SoleLogics; t1=time_ns(); SoleLogics.syntaxstring(SoleLogics.parseformula(SoleLogics.SyntaxTree, "p")); t2=time_ns(); println((t1-t0)/1e6, " ", (t2-t0)/1e6)"""
 load_values = [(external_measure(load_a), external_measure(load_s)) for _ in SEEDS]
-cold_measure(x, i) = x === nothing ? Measurement(missing, missing, missing, "unavailable") : Measurement(x[i] * 1e6, missing, missing)
+function cold_measure(x, i)
+    x.status === :measured ? Measurement(x.values[i] * 1e6, missing, missing, "", missing, :measured) :
+        Measurement(missing, missing, missing, x.note, missing, x.status)
+end
 addrow!("cold package load", [cold_measure(x[2], 1) for x in load_values], [cold_measure(x[1], 1) for x in load_values]; allocations=false)
 addrow!("cold time-to-first-result", [cold_measure(x[2], 2) for x in load_values], [cold_measure(x[1], 2) for x in load_values]; allocations=false)
 
@@ -199,11 +208,25 @@ for measurements in contraction_measurements
         if measurement.load !== missing && isfinite(measurement.load)])
 end
 load_verdict = benchmark_load_verdict(start_load, end_load, recorded_seed_loads, Sys.CPU_THREADS)
+run_has_failures = let failed = false
+    for row in rows
+        failed |= any(m -> m.status === :failed, row.incumbent_seeds)
+        failed |= any(m -> m.status === :failed, row.aletheia_seeds)
+    end
+    for measurements in contraction_measurements
+        failed |= any(m -> m.status === :failed, measurements)
+    end
+    failed
+end
 load_status = load_verdict.publishable ? "publishable" : "non-publishable"
+overall_publishable = load_verdict.publishable && !run_has_failures
+overall_status = overall_publishable ? "publishable" : "non-publishable"
 load_text(value) = value === missing ? "missing" : @sprintf("%.2f", value)
 load_marker = load_verdict.publishable ? "" : ALLOW_CONTENDED ?
     "!!! BENCHMARK NON-PUBLISHABLE (OVERRIDE): load gate $(load_verdict.reason) !!!" :
     "!!! BENCHMARK REFUSED: NON-PUBLISHABLE; load gate $(load_verdict.reason) !!!"
+failure_marker = run_has_failures ?
+    "!!! BENCHMARK REFUSED: NON-PUBLISHABLE; one or more cases failed !!!" : ""
 open(artifact, "w") do io
     println(io, "julia=$(VERSION)")
     println(io, "cpu=$(Sys.CPU_NAME)")
@@ -216,7 +239,11 @@ open(artifact, "w") do io
     println(io, "load_rise=$(load_text(load_verdict.rise))")
     println(io, "load_publishability=$(load_status)")
     println(io, "load_gate_reason=$(load_verdict.reason)")
+    println(io, "failure_publishability=$(run_has_failures ? "non-publishable" : "publishable")")
+    println(io, "failure_gate_reason=$(run_has_failures ? "failed_case" : "none")")
+    println(io, "publishability=$(overall_status)")
     isempty(load_marker) || println(io, load_marker)
+    isempty(failure_marker) || println(io, failure_marker)
     println(io, "mode=$(DEEP ? "deep" : "quick")")
     println(io, "seeds=$(join(string.(SEEDS), ","))")
     println(io, "seed_count=$(length(SEEDS))")
@@ -231,8 +258,11 @@ open(artifact, "w") do io
         samples = occursin("cold", row.suite) ? (DEEP ? 2 : 1) : BENCH_SAMPLES
         println(io, row.suite, " | ", time_summary(row.incumbent_seeds), " | ",
             time_summary(row.aletheia_seeds), " | ", ratio_summary(row), " | ",
-            row.allocations ? fmt_alloc(row.incumbent) * " ; " * fmt_alloc(row.aletheia) : "—/—",
+            row.allocations && row.incumbent.status === :measured && row.aletheia.status === :measured ?
+                fmt_alloc(row.incumbent) * " ; " * fmt_alloc(row.aletheia) : "—/—",
             " | samples=", samples, " per seed; seed_ratios=", join([@sprintf("%.6f", x) for x in row.ratios], ","),
+            "; seed_outcomes=", join(["$(i.status)/$(a.status)" for (i, a) in zip(row.incumbent_seeds, row.aletheia_seeds)], ","),
+            "; seed_notes=", join([replace("$(i.note)/$(a.note)", '\n' => "\\n") for (i, a) in zip(row.incumbent_seeds, row.aletheia_seeds)], "|"),
             "; seed_loads=", join(["$(i.load === missing ? "missing" : @sprintf("%.2f", i.load))/$(a.load === missing ? "missing" : @sprintf("%.2f", a.load))" for (i, a) in zip(row.incumbent_seeds, row.aletheia_seeds)], ","))
     end
     for (entry, record) in zip(contraction_ranges, contraction_records)
@@ -241,15 +271,17 @@ open(artifact, "w") do io
         for (k, oi, qi) in zip(contraction_curve, entry.curve_orig, entry.curve_quot)
             bos = [measurements[oi] for measurements in contraction_measurements]
             bqs = [measurements[qi] for measurements in contraction_measurements]
-            totals = [r.c.time === missing || bq.time === missing ? missing : r.c.time + bq.time for (r, bq) in zip(record.seeds, bqs)]
-            total_text = isempty(filter(x -> x !== missing, totals)) ? "timeout" : time_summary([Measurement(t, missing, missing) for t in totals])
-            println(io, "contraction_batch n=$(record.n) q=$(record.q) K=$k | original=$(time_summary(bos)) | quotient_total=$total_text | samples=2000 per seed")
+            totals = [combine_measurements(r.c, bq) for (r, bq) in zip(record.seeds, bqs)]
+            println(io, "contraction_batch n=$(record.n) q=$(record.q) K=$k | original=$(time_summary(bos)) | quotient_total=$(time_summary(totals)) | samples=2000 per seed")
         end
     end
 end
 println("raw provenance written to ", artifact)
-if load_verdict.publishable
-    println("benchmark publishability: PASS (load gate)")
+if run_has_failures
+    println(failure_marker)
+    exit(1)
+elseif load_verdict.publishable
+    println("benchmark publishability: PASS (load gate; no failed cases)")
 else
     println(load_marker)
     ALLOW_CONTENDED || exit(1)

@@ -87,7 +87,7 @@ elseif kind == "interval_subset"
         execute(() -> interval_subset_s(frame, relation_set, ws))
     else
         frame = Aletheia.interval_frame(n); ws = collect(Aletheia.worlds(frame))
-        relation_set = name == "ia3" ? Aletheia.IA3Relations : name == "ia7" ? Aletheia.IA7Relations : Aletheia.RCC5Relations
+        relation_set = name == "ia3" ? Aletheia.IA3Relations : name == "ia7" ? Aletheia.IA7Relations : Aletheia.RCC5_RELATIONS
         execute(() -> interval_subset_a(frame, relation_set, ws))
     end
 elseif kind == "interval_check"
