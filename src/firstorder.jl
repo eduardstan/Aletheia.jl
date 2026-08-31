@@ -276,24 +276,15 @@ const translate = standard_translation
 
 """Build the first-order interpretation corresponding to a Boolean modal model.
 
-Dictionary valuation keys that overlap frame worlds are ambiguous and require
-an explicit `atoms` keyword; callable and otherwise unrecognised valuations
-require it as well."""
+Dictionary layouts enumerate atom names, including nested world-to-atom maps
+when their nested keys are unambiguous. Overlapping dictionary keys whose
+orientation cannot be determined require an explicit `atoms` keyword; callable
+and otherwise unrecognised valuations require it as well."""
 function first_order_interpretation(model::Model; atoms=nothing, relations=nothing,
                                     atom_predicate=identity, relation_predicate=identity)
     algebra(model) isa BooleanAlgebra || throw(ArgumentError("standard translation interpretations are Boolean"))
     atom_names = atoms === nothing ? _valuation_atoms(model) : collect(atoms)
     relation_names = relations === nothing ? _model_relation_names(frame(model)) : collect(relations)
-    raw_valuation = valuation(model)
-    opaque_valuation = raw_valuation isa Function || raw_valuation isa ValuationCallback ||
-        (raw_valuation isa Valuation &&
-         (raw_valuation.data isa Function || raw_valuation.data isa ValuationCallback))
-    if atoms === nothing && isempty(atom_names) && !(raw_valuation isa AbstractDict || raw_valuation isa Valuation{<:AbstractDict}) && opaque_valuation
-        throw(ArgumentError("callable valuations require an explicit atoms keyword"))
-    end
-    if relations === nothing && frame(model).relations isa Function
-        throw(ArgumentError("callable accessibility requires an explicit relations keyword"))
-    end
     predicates = Dict{Any,Any}()
     for name in atom_names
         payload = name isa Atom ? value(name) : name

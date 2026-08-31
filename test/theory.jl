@@ -123,15 +123,21 @@ end
     @test_throws ArgumentError bisimilar(callback_model, 1, callback_model, 2)
     @test_throws ArgumentError bisimulation_contraction(callback_model)
     @test_throws ArgumentError first_order_interpretation(callback_model)
-    @test_throws ArgumentError Aletheia._valuation_atoms(callback_model)
+    callback_error = try Aletheia._valuation_atoms(callback_model) catch error; error end
+    @test callback_error isa ArgumentError
+    @test occursin("atoms", sprint(showerror, callback_error))
+    @test_throws ArgumentError Aletheia._valuation_atoms(
+        Model(frame(callback_model), BOOLEAN, Valuation((a, world) -> true)))
     @test !bisimilar(callback_model, 1, callback_model, 2; atoms=["p"])
     callback_quotient = bisimulation_contraction(callback_model; atoms=["p"])
     @test length(classes(callback_quotient)) == 2
     @test [check(p, callback_model, world) for world in worlds(frame(callback_model))] ==
         [check(p, callback_quotient, contraction_world(callback_quotient, world))
          for world in worlds(frame(callback_model))]
-    @test_throws ArgumentError Aletheia._model_relation_names(
-        Frame((1,), (world, relation) -> ()))
+    relation_error = try Aletheia._model_relation_names(
+        Frame((1,), (world, relation) -> ())) catch error; error end
+    @test relation_error isa ArgumentError
+    @test occursin("relations", sprint(showerror, relation_error))
 
     nested_model = Model(Frame((1, 2); index=true), BOOLEAN,
         Dict(1 => Dict("p" => true), 2 => Dict("p" => false)))
@@ -172,12 +178,17 @@ end
     # Generated interval frames use a relation provider rather than a relation
     # dictionary; relation inference must still include their Allen relations.
     interval = interval_frame(3)
-    interval_model = Model(interval, BOOLEAN, Dict())
     interval_worlds = worlds(interval)
+    interval_model = Model(interval, BOOLEAN, Dict("p" => Set([interval_worlds[1]])))
     @test !bisimilar(interval_model, interval_worlds[1], interval_model, interval_worlds[2])
     @test !bisimilar(interval_model, interval_worlds[1], interval_model, interval_worlds[2]; relations=[BEFORE])
     interval_quotient = bisimulation_contraction(interval_model)
     @test length(classes(interval_quotient)) > 1
+    interval_before_quotient = bisimulation_contraction(interval_model; relations=[BEFORE])
+    @test length(classes(interval_before_quotient)) == 2
+    @test [check(p, interval_model, world) for world in interval_worlds] ==
+        [check(p, interval_before_quotient, contraction_world(interval_before_quotient, world))
+         for world in interval_worlds]
 
     redundant = Frame((1, 2, 3), Dict(:R => Dict(1 => [2, 3], 2 => [2, 3], 3 => [2, 3])); index=true)
     redundant_model = Model(redundant, BOOLEAN, Dict("p" => Set([1, 2, 3])))
@@ -386,7 +397,7 @@ end
     pair_frame = Frame((1, 2), Dict(); index=true)
     pair_model = Model(pair_frame, BOOLEAN, Dict((pair_atom, 1) => true, (2, pair_atom) => false,
         1 => Dict("q" => true)))
-    @test_throws ArgumentError Aletheia._valuation_atoms(pair_model)
+    @test Set(Aletheia._valuation_atoms(pair_model)) == Set([pair_atom, "q"])
     @test sprint(show, first(classes(bisimulation_contraction(Model(frame, BOOLEAN,
         Dict("p" => Set([1]))); atoms=["p"], relations=[:R])))) isa String
     split_frame = Frame((1, 2), Dict(:R => Dict(1 => [1], 2 => [])); index=true)

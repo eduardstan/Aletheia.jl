@@ -51,9 +51,11 @@ not a many-valued first-order semantics.
     predicate even though the modal model is valid. Dictionary-backed
     valuations and named frame relations are inferred, but callable valuations
     require `atoms=[...]` and callable accessibility requires `relations=[...]`.
-    Dictionary valuation keys that overlap frame worlds are ambiguous, so those
-    models also require an explicit `atoms=[...]` namespace. Other valuation
-    representations are not inferred and require an explicit `atoms=[...]` too.
+    Dictionary layouts enumerate atom names, including nested world-to-atom maps
+    when their nested keys are unambiguous. Dictionary keys whose orientation
+    cannot be determined require an explicit `atoms=[...]` namespace. Other
+    valuation representations are not inferred and require an explicit
+    `atoms=[...]` too.
     An atom handle may be supplied in `atoms` when the valuation is keyed by
     `Atom`; a string or other atom value is also accepted. First-order
     assignments are looked up by `Symbol` (for example `Dict(:x => world)`),
@@ -131,8 +133,10 @@ values preserved: true
 ```
 
 `atoms` and `relations` are semantic vocabularies, not formula-pool metadata.
-They are inferred from dictionary-backed models and frames, but must be passed
-explicitly for callable valuation or accessibility data. `contraction_world(q,
+They are inferred from dictionary-backed models and frames, including generated
+interval frames. Nested dictionary layouts are inferred when their atom keys are
+unambiguous. Callable or otherwise opaque valuation and accessibility data must
+be given explicit vocabularies. `contraction_world(q,
 w)` maps an original world to its `BisimulationClass`; `check` accepts either an
 original world or a class. `extension(formula, q)` deliberately preserves the
 underlying model's world order and length, so use `check` on quotient classes

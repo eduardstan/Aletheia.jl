@@ -4,33 +4,54 @@ function _model_relation_names(frame::Frame)
     stored = frame.relations
     stored isa AbstractDict && return collect(keys(stored))
     stored isa _IntervalRelationMap && return collect(ALLEN_RELATIONS)
+    stored isa Function && throw(ArgumentError(
+        "callable accessibility requires an explicit relations keyword"))
     stored isa _RelationProvider && throw(ArgumentError(
         "unrecognised relation provider $(typeof(stored)); pass an explicit relations keyword"))
-    Any[]
+    throw(ArgumentError(
+        "unrecognised relation representation $(typeof(stored)); pass an explicit relations keyword"))
 end
-function _opaque_valuation(model::Model)
-    data = valuation(model)
-    data isa Function || data isa ValuationCallback ||
-        (data isa Valuation && (data.data isa Function || data.data isa ValuationCallback))
-end
+
 function _valuation_atoms(model::Model)
     data = valuation(model)
-    data isa Valuation && (data = data.data)
-    (data isa AbstractDict || data isa Function || data isa ValuationCallback) || throw(ArgumentError(
+    while data isa Valuation
+        data = data.data
+    end
+    (data isa Function || data isa ValuationCallback) && throw(ArgumentError(
+        "callable valuations require an explicit atoms keyword"))
+    data isa AbstractDict || throw(ArgumentError(
         "unrecognised valuation representation $(typeof(data)); pass an explicit atoms keyword"))
-    data isa AbstractDict || return Any[]
     frame_worlds = worlds(frame(model))
     is_world(value) = any(world -> isequal(world, value), frame_worlds)
     result = Any[]
-    for key in keys(data)
+    for (key, value) in data
         if key isa Tuple && length(key) == 2
             first_world, second_world = is_world(key[1]), is_world(key[2])
-            first_world && second_world && throw(ArgumentError(
-                "dictionary valuation keys $(repr(key)) are ambiguous between atom and world; pass an explicit atoms keyword"))
-            first_world ? push!(result, key[2]) : second_world && push!(result, key[1])
+            if first_world && second_world
+                throw(ArgumentError(
+                    "dictionary valuation keys $(repr(key)) are ambiguous between atom and world; pass an explicit atoms keyword"))
+            elseif first_world || second_world
+                push!(result, first_world ? key[2] : key[1])
+            else
+                # A tuple with no identifiable world is an atom payload, not
+                # an atom/world pair.  The latter cannot enumerate its atom.
+                push!(result, key)
+            end
         elseif is_world(key)
-            throw(ArgumentError(
-                "dictionary valuation key $(repr(key)) is also a frame world; pass an explicit atoms keyword"))
+            # A world-keyed nested dictionary/set can enumerate atoms, but a
+            # world-only or world-overlapping namespace cannot be inferred.
+            candidates = if value isa AbstractDict
+                collect(keys(value))
+            elseif value isa AbstractSet
+                collect(value)
+            else
+                Any[]
+            end
+            isempty(candidates) && throw(ArgumentError(
+                "dictionary valuation key $(repr(key)) does not enumerate atoms; pass an explicit atoms keyword"))
+            any(is_world, candidates) && throw(ArgumentError(
+                "dictionary valuation key $(repr(key)) has an ambiguous atom namespace; pass an explicit atoms keyword"))
+            append!(result, candidates)
         else
             push!(result, key)
         end
@@ -60,18 +81,16 @@ by the cited literature. Definitions and invariance are those of BDV §2.2
 When omitted, `atoms` are inferred from dictionary-backed models and `relations`
 from dictionary-backed frames and generated interval frames; pass them explicitly
 for callable valuations or callable accessibility.
-Dictionary valuation keys that overlap the frame's worlds are ambiguous, so
-those models also require an explicit `atoms` keyword. Unrecognised valuation
-representations likewise require an explicit atom namespace.
+Dictionary layouts enumerate atom names, including nested world-to-atom
+maps when their nested keys are unambiguous. Overlapping dictionary keys whose
+orientation cannot be determined require an explicit `atoms` keyword.
+Unrecognised valuation representations likewise require an explicit atom
+namespace.
 """
 function bisimilar(m1::Model, w1, m2::Model, w2; atoms=nothing, relations=nothing)
     _check_world(frame(m1), w1); _check_world(frame(m2), w2)
     names = atoms === nothing ? unique(vcat(_valuation_atoms(m1), _valuation_atoms(m2))) : collect(atoms)
     rels = relations === nothing ? unique(vcat(_model_relation_names(frame(m1)), _model_relation_names(frame(m2)))) : collect(relations)
-    atoms === nothing && (_opaque_valuation(m1) || _opaque_valuation(m2)) &&
-        throw(ArgumentError("callable valuations require an explicit atoms keyword"))
-    relations === nothing && (frame(m1).relations isa Function || frame(m2).relations isa Function) &&
-        throw(ArgumentError("callable accessibility requires an explicit relations keyword"))
     pairs = Set{Tuple{Any,Any}}()
     for left in worlds(frame(m1)), right in worlds(frame(m2))
         _label_compatible(m1, left, m2, right, names) && push!(pairs, (left, right))
@@ -194,17 +213,14 @@ time and storage. These are derived implementation bounds, not bounds stated by
 the cited literature. Callable relation providers must be accompanied by
 `relations`, except for built-in generated interval frames, whose Allen relation
 names are inferred. Dictionary-backed frames infer relation names. Dictionary
-valuation keys that overlap frame worlds are ambiguous and require an explicit
-`atoms` keyword. Unrecognised valuation representations require explicit `atoms`
-as well.
+layouts enumerate atom names, including nested world-to-atom maps
+when their nested keys are unambiguous. Overlapping dictionary keys whose
+orientation cannot be determined require an explicit `atoms` keyword.
+Unrecognised valuation representations require explicit `atoms` as well.
 """
 function bisimulation_contraction(model::Model; atoms=nothing, relations=nothing)
-    atoms === nothing && _opaque_valuation(model) &&
-        throw(ArgumentError("callable valuations require an explicit atoms keyword"))
     atom_names = atoms === nothing ? _valuation_atoms(model) : collect(atoms)
     relation_names = relations === nothing ? _model_relation_names(frame(model)) : collect(relations)
-    relations === nothing && frame(model).relations isa Function &&
-        throw(ArgumentError("callable accessibility requires an explicit relations keyword"))
     quotient_classes = _classes_for_model(model, atom_names, relation_names)
     mapping = Dict{Any,Any}()
     for class in quotient_classes
