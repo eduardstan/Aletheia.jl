@@ -1,4 +1,4 @@
-# Stage 2a: one real SoleModels consumer, measured through checkantecedent.
+# One real SoleModels consumer, measured through checkantecedent.
 # The script builds disposable package copies and removes them on exit.
 import Pkg
 using Printf

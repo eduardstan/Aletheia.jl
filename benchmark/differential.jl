@@ -50,7 +50,7 @@ const FORMULA_COUNT = 64
         stext = SoleLogics.syntaxstring(sp)
         @test Aletheia.syntaxstring(Aletheia.parse(pool_a(), atext)) == atext
         @test SoleLogics.syntaxstring(SoleLogics.parseformula(SoleLogics.SyntaxTree, stext)) == stext
-        # Aletheia's explicit parentheses are accepted by the incumbent too.
+        # Aletheia's explicit parentheses are accepted by SoleLogics too.
         @test canonical(SoleLogics.parseformula(SoleLogics.SyntaxTree, atext)) == canonical(ap)
 
         # Structural equality decisions: equal and deliberately altered forms.

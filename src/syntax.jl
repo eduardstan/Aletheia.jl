@@ -729,8 +729,8 @@ struct Box{R} <: AbstractRelationalConnective{R}
     relation::R
 end
 
-# SoleLogics-compatible modal/connective predicates.  The incumbent's
-# predicates intentionally default to `false` for non-connective values and
+# SoleLogics-compatible modal/connective predicates.  These predicates
+# intentionally default to `false` for non-connective values and
 # classify a diamond as any modal connective that is not a box.
 ismodal(::Any) = false
 ismodal(::Type{<:Diamond}) = true

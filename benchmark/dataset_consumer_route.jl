@@ -1,4 +1,4 @@
-# Scratch-only SoleModels route copied into a disposable package tree by dataset_consumer.jl.
+# SoleModels route copied into a disposable package tree by dataset_consumer.jl.
 # This is deliberately not a production SoleModels integration.
 using Aletheia
 
