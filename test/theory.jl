@@ -123,12 +123,24 @@ end
     @test_throws ArgumentError bisimilar(callback_model, 1, callback_model, 2)
     @test_throws ArgumentError bisimulation_contraction(callback_model)
     @test_throws ArgumentError first_order_interpretation(callback_model)
+    @test_throws ArgumentError Aletheia._valuation_atoms(callback_model)
+    @test !bisimilar(callback_model, 1, callback_model, 2; atoms=["p"])
     callback_quotient = bisimulation_contraction(callback_model; atoms=["p"])
     @test length(classes(callback_quotient)) == 2
     @test [check(p, callback_model, world) for world in worlds(frame(callback_model))] ==
         [check(p, callback_quotient, contraction_world(callback_quotient, world))
          for world in worlds(frame(callback_model))]
+    @test_throws ArgumentError Aletheia._model_relation_names(
+        Frame((1,), (world, relation) -> ()))
 
+    nested_model = Model(Frame((1, 2); index=true), BOOLEAN,
+        Dict(1 => Dict("p" => true), 2 => Dict("p" => false)))
+    @test Aletheia._valuation_atoms(nested_model) == ["p"]
+    nested_quotient = bisimulation_contraction(nested_model)
+    @test length(classes(nested_quotient)) == 2
+    @test [check(p, nested_model, world) for world in worlds(frame(nested_model))] ==
+        [check(p, nested_quotient, contraction_world(nested_quotient, world))
+         for world in worlds(frame(nested_model))]
     unknown_provider_frame = Frame((1,), TheoryUnknownProvider())
     provider_error = try
         Aletheia._model_relation_names(unknown_provider_frame)
