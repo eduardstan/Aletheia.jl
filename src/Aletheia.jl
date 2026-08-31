@@ -81,7 +81,8 @@ export learning_from_entailment, learning_from_interpretations, learning_from_pr
 export iscnf, isdnf, to_cnf, to_dnf
 export bisimilar, BisimulationClass, BisimulationContraction, QuotientModel, bisimulation_contraction, contraction_world
 export model, classes, world_map
-export AbstractProver, ProverResult, PropositionalProver, prove, prove_valid
+export AbstractProver, ProverResult, PropositionalProver, FiniteModelProver, BoundedFiniteProver
+export prove, prove_valid, prove_entails
 export issatisfiable, isvalid, entails
 
 # Public bindings not attached to a more specific declaration above.
@@ -246,5 +247,8 @@ therefore throws an `ArgumentError` for `MINIMUM`.
 @doc "Mathematical alias for [`CONJUNCTION`](@ref)." (∧)
 @doc "Mathematical alias for [`FUSION`](@ref)." (⊗)
 @doc "Mathematical alias for [`DISJUNCTION`](@ref)." (∨)
+
+@doc "Alias for [`FiniteModelProver`](@ref)." BoundedFiniteProver
+@doc "Return a status-preserving result for an entailment query." prove_entails
 
 end

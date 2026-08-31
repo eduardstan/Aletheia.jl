@@ -279,8 +279,11 @@ world_map
 AbstractProver
 ProverResult
 PropositionalProver
+FiniteModelProver
+BoundedFiniteProver
 prove
 prove_valid
+prove_entails
 issatisfiable
 isvalid
 entails

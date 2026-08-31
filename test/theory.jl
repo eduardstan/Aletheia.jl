@@ -274,6 +274,37 @@ end
     @test issatisfiable(prover, branch(pool, Diamond(:R), p)) === nothing
     @test prove_valid(prover, tautology).status == :valid
     @test prove(prover, contradiction).status == :unsat
+
+    finite = FiniteModelProver(1)
+    sat_formula = branch(pool, Diamond(:R), p)
+    sat_result = prove(finite, sat_formula)
+    @test sat_result.status == :sat && sat_result.answer === true
+    @test sat_result.countermodel isa Model
+    @test sat_result.certificate === sat_result.countermodel
+    @test any(check(sat_formula, sat_result.countermodel, world)
+              for world in worlds(frame(sat_result.countermodel)))
+
+    valid_result = prove_valid(finite, tautology)
+    @test valid_result.status == :valid && valid_result.answer === true
+    unsat_result = prove(finite, contradiction)
+    @test unsat_result.status == :unsat && unsat_result.answer === false
+
+    needs_two_worlds = branch(pool, Diamond(:R),
+        branch(pool, ∧, p, branch(pool, ¬, branch(pool, Diamond(:R), p))))
+    inconclusive = prove(finite, needs_two_worlds)
+    @test inconclusive.status == :inconclusive && inconclusive.answer === nothing
+    @test prove_valid(finite, sat_formula).status == :invalid
+    @test prove_entails(finite, (sat_formula,), p).status == :inconclusive
+
+    # Finite truth algebras use the same evaluator and designated top value.
+    godel_sat = prove(finite, p; algebra=G3)
+    godel_valid = prove_valid(finite, tautology; algebra=G3)
+    @test godel_sat.status == :sat && godel_sat.countermodel isa Model
+    @test check(p, godel_sat.countermodel, first(worlds(frame(godel_sat.countermodel)))) == top(G3)
+    @test godel_valid.status == :valid
+    @test prove(finite, p; algebra=GodelAlgebra()).status == :unknown
+    @test_throws ArgumentError FiniteModelProver(0)
+    @test prove(finite, sat_formula; bound=1).status == :sat
 end
 
 

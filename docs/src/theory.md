@@ -154,11 +154,22 @@ applying a modal duality. For classical CNF/DNF and clausal form, see Goranko,
 
 [`AbstractProver`](@ref) defines the interface. `PropositionalProver` is an
 exhaustive truth-table fallback for Boolean propositional formulas; modal or
-custom branches return `nothing`/`:unknown`. It is deliberately not a modal
-or first-order prover. The optional `atoms` override must contain every atom
-payload in the formula (and may include extras); an incomplete or duplicate
-override is rejected with `ArgumentError`. A downstream backend can implement `prove`,
-`prove_valid`, and entailment without changing syntax or semantics.
+custom branches return `nothing`/`:unknown`. `FiniteModelProver` is a separate,
+naive finite-model search backend. Its `bound` is the maximum number of worlds
+searched (default `2`), and every directed relation and atom valuation up to
+that size is enumerated. A modal witness or counterexample is conclusive; a
+search that reaches the bound without one returns `:inconclusive` and leaves
+`answer` as `nothing`. Non-modal formulas are exhaustively decided for Boolean
+and supported finite Gödel, Łukasiewicz, and FLew algebras. Infinite-valued
+algebras, first-order formulas, and unsupported connectives remain outside the
+backend. Aletheia still ships no general modal or first-order prover.
+
+The optional `atoms` override must contain every atom payload in the formula
+(and may include extras); an incomplete or duplicate override is rejected with
+`ArgumentError`. [`prove_entails`](@ref) exposes the full entailment result;
+`entails` retains the compatibility spelling that returns only `Bool` or
+`nothing`. A downstream backend can implement `prove`, `prove_valid`, and
+entailment without changing syntax or semantics.
 
 ```jldoctest theory_prover
 using Aletheia
@@ -178,10 +189,29 @@ valid
 
 `prove` asks for satisfiability; use `prove_valid` for validity. The shipped
 `PropositionalProver` returns statuses such as `:sat`, `:unsat`, `:valid`, and
-`:invalid`; modal or custom branches return `ProverResult(:unknown)` rather
-than being treated as false. Consequently, inspect `result.status` when
-unknown and false must be distinguished — `Bool(result)` is only a convenience
-for a known true answer. The convenience forms use
+`:invalid`; unsupported branches return `ProverResult(:unknown)` rather than
+being treated as false. Consequently, inspect `result.status` when unknown,
+inconclusive, and false must be distinguished — `Bool(result)` is only a
+convenience for a known true answer. The convenience forms use
 `issatisfiable(formula)`/`isvalid(formula)` with a fresh propositional prover;
 applications with a modal backend should pass their own `AbstractProver`
 explicitly.
+
+```jldoctest theory_finite_prover
+using Aletheia
+sig = Signature((¬, ∧, →, Diamond(:R)))
+pool = FormulaPool(sig)
+p = atom(pool, "p")
+prover = FiniteModelProver(1)
+formula = branch(pool, Diamond(:R), p)
+result = prove(prover, formula)
+println(result.status, " ", result.answer, " ", result.countermodel isa Model)
+println(prove_valid(prover, branch(pool, →, p, p); algebra=G3).status)
+println(prove_entails(prover, p, p).status)
+
+# output
+
+sat true true
+valid
+entailed
+```
