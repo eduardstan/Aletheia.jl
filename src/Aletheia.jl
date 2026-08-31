@@ -87,7 +87,7 @@ export issatisfiable, isvalid, entails
 # Public bindings not attached to a more specific declaration above.
 
 @doc "Allen interval relation: the first interval begins after the second ends." AFTER
-@doc "Tuple containing the thirteen Allen interval relation values." ALLEN_RELATIONS
+@doc "Tuple containing the thirteen Allen interval relation values, corresponding to Allen's Figure 2 [allen1983; §3, Figures 1–2, p. 834](@cite). The IA32IARelations(IA_I) member list intentionally excludes equality, as in Figure 4." ALLEN_RELATIONS
 @doc "Relation family targeting one designated world." AtWorldRelation
 @doc "Allen interval relation: the first interval ends before the second begins." BEFORE
 @doc "The singleton Boolean algebra value; its carrier is `Bool` and it supplies Boolean truth operations." BOOLEAN
@@ -170,7 +170,7 @@ therefore throws an `ArgumentError` for `MINIMUM`.
 @doc "Allen interval relation: the first starts within and ends after the second." OVERLAPPED_BY
 @doc "Allen interval relation: the first starts before the second and ends within it." OVERLAPS
 @doc "RCC8 relation: the regions partially overlap." PO
-@doc "Tuple containing the eight compass point relation values." POINT2D_RELATIONS
+@doc "Tuple containing the strict eight-direction compass point relation values. The axial projection formulas match Montanari, Puppis, and Sala [montanari2015cone; §2, p. 3](@cite), while the diagonal values are a package vocabulary extension not attributed to that source; Compass Logic is defined over Cartesian products of linear orders by Marx and Reynolds [marx1999compass](@cite)." POINT2D_RELATIONS
 @doc "Tuple containing the one-dimensional point relation values." POINT_RELATIONS
 @doc "Point relation selecting immediate predecessors." PREDECESSOR
 @doc "First-order atomic formula with a predicate name and terms." Predicate
@@ -179,9 +179,9 @@ therefore throws an `ArgumentError` for `MINIMUM`.
 @doc "RCC5 relation: the first region is a proper part of the second." PP
 @doc "RCC5 inverse relation: the first region contains the second as a proper part." PPi
 @doc "RCC5 relation: the regions are disconnected (DC or EC)." DR
-@doc "Tuple containing all RCC5 relation values." RCC5_RELATIONS
-@doc "Tuple containing the seven non-equality RCC8 values." RCC8_BASICS
-@doc "Tuple containing all eight RCC8 relation values." RCC8_RELATIONS
+@doc "Aletheia's non-equality RCC5-style tuple `(DR, PO, PP, PPi)`. The coarsenings follow Randell, Cui, and Cohn [randell1992; §4, pp. 167–168](@cite); equality remains separate as `RCC_EQ`." RCC5_RELATIONS
+@doc "Tuple containing the seven non-equality RCC8 values; equality remains separate as `RCC_EQ` [randell1992; §4, Fig. 1, pp. 167–168](@cite)." RCC8_BASICS
+@doc "Tuple containing all eight RCC8 relation values, following the basis defined by Randell, Cui, and Cohn [randell1992; §4, Fig. 1, pp. 167–168](@cite) and the RCC8 account of Cohn et al. [cohn1997](@cite)." RCC8_RELATIONS
 @doc "RCC8 relation: the regions are equal." RCC_EQ
 @doc "Frame-class value requiring reflexivity." REFLEXIVE
 @doc "Relation family combining two axis relations for rectangles." RectangleRelation
