@@ -100,6 +100,40 @@ exposes the selected SoleData relation as `:R`, so an Aletheia formula can use
 leave it as `nothing` for a unimodal frame. The optional `vectorized=false`
 selects the scalar callback instead of the default batch callback.
 
+This adapter can evaluate a modal formula directly over a SoleData dataset:
+
+```jldoctest families
+using Aletheia, SoleData
+
+worlds = SoleData.World.(1:2)
+frame = SoleData.SimpleModalFrame(
+    worlds,
+    SoleData.SoleLogics.SimpleDiGraph([SoleData.SoleLogics.Edge(1, 2)]),
+)
+feature = SoleData.Feature("p")
+dataset = SoleData.ExplicitModalLogiset([
+    (Dict(worlds[1] => Dict(feature => 0.0), worlds[2] => Dict(feature => 1.0)), frame),
+    (Dict(worlds[1] => Dict(feature => 0.0), worlds[2] => Dict(feature => 0.0)), frame),
+])
+condition = SoleData.ScalarCondition(feature, >, 0.5)
+pool = Aletheia.FormulaPool(Aletheia.Signature((Aletheia.Diamond(:R),)))
+formula = Aletheia.branch(
+    pool, Aletheia.Diamond(:R), Aletheia.atom(pool, condition),
+)
+family = Aletheia.SoleDataFamily(dataset)
+
+println(Aletheia.instance_count(family))
+for i in Aletheia.eachinstance(family)
+    println("instance $i at world 1: ", Aletheia.check(formula, family, i, worlds[1]))
+end
+
+# output
+
+2
+instance 1 at world 1: true
+instance 2 at world 1: false
+```
+
 The extension does not cross SoleData's feature/channel, representative,
 one-step aggregation, or memo interfaces. Those hooks remain available to
 SoleData's own optimized `check` path. The [measured results](results.md)

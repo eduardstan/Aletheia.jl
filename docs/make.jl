@@ -3,6 +3,7 @@ Pkg.activate(@__DIR__)
 Pkg.develop(path=dirname(@__DIR__))
 Pkg.instantiate()
 
+import SoleData
 using Aletheia
 using Documenter
 using DocumenterCitations
