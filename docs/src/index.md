@@ -42,7 +42,7 @@ Venema, §§1.2–1.3 (pp. 9–26) [blackburn2001; §§1.2–1.3, pp. 9–26](@c
 ## Relationship to SoleLogics
 
 [SoleLogics.jl](https://github.com/aclai-lab/SoleLogics.jl) is the established
-Julia package for symbolic and modal logic, and the foundation of the Sole
+Julia package for symbolic and modal logic, and the foundation of the SoleLogics
 ecosystem (SoleData, SoleModels, SoleReasoners, SolePostHoc). Aletheia covers
 much of the same ground with a different representation: formulas are interned
 handles into an explicit pool rather than recursively typed trees, and truth

@@ -52,7 +52,7 @@ This follows the role of formula formation in the modal similarity-type
 presentation (Blackburn et al., §1.2, Definitions 1.11–1.12, pp. 9–12)
 [blackburn2001; §1.2, Definitions 1.11–1.12, pp. 9–12](@cite), while the
 pool/ID representation is an implementation choice documented by the syntax
-stage.
+layer.
 
 ## Why truth values are not formulas
 

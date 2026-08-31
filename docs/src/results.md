@@ -8,18 +8,17 @@ git clone https://github.com/aclai-lab/SoleLogics.jl /tmp/SoleLogics.jl
 SOLELOGICS_PATH=/tmp/SoleLogics.jl julia --project=benchmark benchmark/run.jl
 ```
 
-The quick run uses Julia 1.12.7 on `alderlake` with SoleLogics 0.13.7 and five
+The quick run uses Julia 1.12.7 with SoleLogics 0.13.7 and five
 seeds (`0xA1E7_2024`, `0x5EED_2025`, `0xC0FF_EE42`, `0x1234_5678`,
-`0x9ABC_DEF0`). It records uptime at start and end, retains **200 paired
-samples per seed** (2000 for contraction), and prints the seed set, paired
-medians, allocation counts, correctness gate, and wall clock. Sampling is
-paired and interleaved, with seed order rotated between rows. Per-seed load
-readings are retained in the raw run artefact.
+`0x9ABC_DEF0`). It retains **200 paired samples per seed** (2000 for
+contraction), and prints the seed set, paired medians, allocation counts, and
+correctness gate. Sampling is paired and interleaved, with seed order rotated
+between rows. Per-seed load readings are retained in the raw run artefact.
 
 Each section runs in a warmed child Julia process; GNU `timeout` kills a section
 at the printed hard bound (120 s quick, 180 s deep). `--deep` expands the size
 and ratio sweeps. A timeout is reported as data, not silently dropped. Cold-load rows are measured in fresh processes.
-This published run started at load **1.93**, ended at **1.54**, and recorded a peak of **2.35** (rise **-0.39**); the load and failure gates passed. All quick rows, including interval subset RCC5, measured across five seeds; no row timed out.
+The load and failure gates passed. All quick rows, including interval subset RCC5, measured across five seeds; no row timed out.
 The ratio is SoleLogics/Aletheia; allocations are `count / bytes`. Every ratio
 cell shows the median, mean ± standard deviation, and the observed per-seed
 range. The range is descriptive, not a confidence interval. `[no clear winner]`
@@ -226,14 +225,14 @@ construction and the Aletheia family adapter are outside the timed closures.
 This is narrow protocol evidence, not a general real-data speed claim.
 The protocol workers use the same median-time/allocation pairing as the
 consumer worker. A fresh SoleData checkout is unavailable in this measurement
-environment, so the numeric SoleData table is a recorded protocol result, not
-part of this quick benchmark; rerun the two protocol scripts with
-`SOLEDATA_PATH` before updating those cells. The full decision report is
+environment, so no numeric SoleData results are included in this quick
+benchmark; rerun the two protocol scripts with
+`SOLEDATA_PATH` before publishing updated results. The full decision report is
 published in [`data/soledata-protocol/`](https://github.com/eduardstan/Aletheia.jl/tree/main/data/soledata-protocol).
 
-## Routing a SoleModels rule check through Aletheia
+## SoleModels rule checks through Aletheia
 
-This is a narrow real-consumer trial, not a standalone evaluator ratio. Each
+This is a narrow real-consumer comparison, not a standalone evaluator ratio. Each
 case creates a supported SoleData dataset with a given number of instances and
 points, and seeded rules whose antecedents have a given depth, modal-node
 probability, and shared-subtree flag. Rule atoms are drawn from 12 scalar
@@ -283,21 +282,19 @@ Without sharing, the same first-use sample costs **4.356 ms and 58,539
 allocations / 6,727,592 bytes**; with it, the five-run median is **1.864 ms and
 24,067 / 3,017,992**. Steady-state allocations are unchanged.
 
-The full sweep has eighteen cases; six of them share this shape, and their
-first-use maxima ranged from 4.6 ms to 70.4 ms. Re-running with the last six
-cases first gave maxima of 4.1–4.8 ms across the same shapes, so the large
-tails are spread rather than a position effect. The full distributions,
-per-repetition logs, the run-order diagnostic, and the before/after
-optimisation record are published in
+The full sweep has eighteen cases; six of them share this shape. The large
+tails are spread rather than a position effect; the [run-order diagnostic](https://github.com/eduardstan/Aletheia.jl/tree/main/data/solemodels-consumer/order-diagnostic-late-first/)
+supports this conclusion. The full distributions and per-repetition logs are
+published in
 [`data/solemodels-consumer/`](https://github.com/eduardstan/Aletheia.jl/tree/main/data/solemodels-consumer).
 
 ## Bisimulation contraction: capability and scope
 
 Bisimulation contraction remains a library capability. The synthetic amortisation
 below shows when that capability can pay back its construction cost; it is not a
-claim that contraction improves real modal learners. Two independent learner
-probes found that real models compress only **1.02×–1.15×**: on continuous NATOPS
-models, the quotient is nearly the same size as the original. The incumbent's
+claim that contraction improves real modal learners. SoleData models compress only
+**1.02×–1.15×**: on continuous NATOPS
+models, the quotient is nearly the same size as the original. SoleData's
 `representatives` path instead visits about **5.6 worlds out of 1,326** per check
 (a roughly **238×** reduction), precisely because it need not preserve all modal
 truth. ModalDecisionTrees cannot accept a quotient: its memoset is keyed by
@@ -336,10 +333,9 @@ contraction pays for itself.
 | 48 | 1 | 0.021 | C=268.06 μs (mean 272.24 μs ± 17.73 μs) | P_orig=8.80 μs (mean 8.74 μs ± 1.12 μs) | P_quot=2.48 μs (mean 2.54 μs ± 642.3 ns) | K*=42.8 (mean 47.6 ± 17.4, range 33.6-76.1) |
 | 48 | 48 | 1.000 | C=1.97 ms (mean 1.97 ms ± 35.61 μs) | P_orig=6.44 μs (mean 6.72 μs ± 865.8 ns) | P_quot=35.20 μs (mean 35.42 μs ± 872.4 ns) | K*=∞ |
 
-Both contraction cells completed in this quick run. For the q=1 case, the
-observed K* median is 42.8 formulas (mean 47.6 ± 17.4; range 33.6–76.1).
-The already-minimal q=48 case never crosses over, so its K* remains ∞. The raw
-artefact records the per-seed measurements.
+For the q=1 case, the observed K* median is 42.8 formulas (mean 47.6 ± 17.4;
+range 33.6–76.1). The already-minimal q=48 case never crosses over, so its K*
+remains ∞.
 
 ## What these results tell you
 
@@ -360,19 +356,17 @@ reuses that evaluator path, but its magnitude varies by seed.
 check is too little work to repay Aletheia's model/valuation and DAG walk setup,
 while SoleLogics' direct `TruthDict` lookup is cheap. The `[no clear winner]`
 marker identifies ratios where the mean ± standard deviation band contains
-`1.00×`; it does not describe the observed range. The separate compatibility
-construction-from-recipe evidence reports **1.10×** in its Aletheia/native
-convention (about **0.91×** in this page's SoleLogics/Aletheia convention):
-compatibility wrappers, recipe conversion, and repooling are fixed costs even
-after the allocation-free traversal fix. The one cold real-dataset loss above
+`1.00×`; it does not describe the observed range. Compatibility wrappers,
+recipe conversion, and repooling are fixed costs even after eliminating
+traversal allocations. The one cold real-dataset loss above
 has the same shape: a small formula does not repay callback and adapter setup;
 memoized repeated checks remove that fixed-cost disadvantage.
 
 **Where a win does not generalise.** Contraction amortisation is workload
 specific: the K* table shows the crossover for a highly redundant model, while
 an already-minimal model makes contraction pure overhead. The learner evidence
-above narrows this further: real continuous models compress only **1.02×–1.15×**,
-and the existing `representatives` path is already much stronger. Hash-consed
+above narrows this further: SoleData models compress only **1.02×–1.15×**,
+and SoleData's `representatives` path is already much stronger. Hash-consed
 subterm sharing is likewise workload-specific. It helps when a workload
 repeatedly reuses subterms, but against the flat leftmost representation that
 SolePostHoc actually uses it costs **≈16.8× more allocations** and leaves a
