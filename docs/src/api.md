@@ -10,6 +10,7 @@ AletheiaCore
 AletheiaData
 AletheiaLearn
 AletheiaSole
+AletheiaCircuits
 Aletheia.SoleLogics
 ```
 
@@ -48,6 +49,15 @@ those names to the core namespace.
 
 ```@autodocs
 Modules = [Aletheia.SoleLogics, Aletheia.SoleLogics.ManyValuedLogics]
+Public = true
+Private = false
+Order = [:type, :function, :constant]
+```
+
+## Distribution-semantics circuits
+
+```@autodocs
+Modules = [AletheiaCircuits]
 Public = true
 Private = false
 Order = [:type, :function, :constant]

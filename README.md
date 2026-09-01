@@ -13,6 +13,8 @@ It is a foundation: it is **not** a prover and it is **not** a learner.
 - Evaluation, bisimulation and contraction, and the standard translation.
 - ILP foundations, a model-family API for evaluating one formula across many
   models, and an opt-in SoleLogics compatibility layer.
+- Finite distribution-semantics circuits with certified BDD compilation and
+  Float64 or exact Rational weighted model counting.
 
 ## Package layout
 
@@ -23,7 +25,9 @@ The repository is a Julia monorepo with a compatibility-preserving umbrella:
 - `AletheiaData` contains model families and scalar-data preparation.
 - `AletheiaLearn` contains clauses, refinement operators, and ILP foundations.
 - `AletheiaSole` contains the opt-in `SoleLogics` vocabulary and adapters.
-- `Aletheia` depends on all four focused packages and re-exports the historical
+- `AletheiaCircuits` contains the finite distribution-semantics front end,
+  certified event diagrams, and semiring WMC.
+- `Aletheia` depends on all five focused packages and re-exports the historical
   top-level API.
 
 Use a focused package when you want a smaller dependency surface:
@@ -33,6 +37,7 @@ using AletheiaCore
 using AletheiaData
 using AletheiaLearn
 using AletheiaSole.SoleLogics
+using AletheiaCircuits
 ```
 
 Existing applications can continue to use `using Aletheia`. The compatibility

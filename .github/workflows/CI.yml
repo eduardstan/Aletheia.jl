@@ -46,6 +46,9 @@ jobs:
       - name: Test AletheiaSole
         shell: bash
         run: julia --project=lib/AletheiaSole -e 'using Pkg; Pkg.test()'
+      - name: Test AletheiaCircuits
+        shell: bash
+        run: julia --project=lib/AletheiaCircuits -e 'using Pkg; Pkg.test()'
       - name: Test umbrella Aletheia
         shell: bash
         run: julia --project=. -e 'using Pkg; Pkg.test()'
@@ -87,7 +90,7 @@ jobs:
       - name: Run every package test suite with coverage
         shell: bash
         run: |
-          for package in AletheiaCore AletheiaData AletheiaLearn AletheiaSole; do
+          for package in AletheiaCore AletheiaData AletheiaLearn AletheiaSole AletheiaCircuits; do
             julia --project=lib/$package -e 'using Pkg; Pkg.test(coverage=true)'
           done
           julia --project=. -e 'using Pkg; Pkg.test(coverage=true)'

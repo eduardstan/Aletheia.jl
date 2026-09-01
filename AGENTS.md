@@ -39,6 +39,7 @@ When updating this file, preserve this bar for all agents and keep entries conci
 ## Semantics layer
 
 - `lib/AletheiaCore/src/semantics.jl` is the authoritative layer for `TruthAlgebra`, `Frame`, `Model`, and atom-only `interpret`; `lib/AletheiaCore/src/evaluation.jl` provides the shared DAG walk for `check` and `extension`.
+- `lib/AletheiaCircuits/src/` owns the finite distribution-semantics boundary: function-free ground acyclic programs compile to certified reduced ordered choice diagrams and use separate Float64/Rational semiring WMC; `lib/AletheiaCircuits/test/` is the differential/property specification.
 - Semantics and evaluation tests live in `lib/AletheiaCore/test/semantics.jl` and `lib/AletheiaCore/test/evaluation.jl`; validate each focused package and the umbrella with the commands in `docs/src/development.md`.
 - Scalar/data preparation is dependency-free in `lib/AletheiaData/src/scalar.jl`: `prepare_scalar` materialises world × instance × feature values, keeps aggregate and formula caches separate, and the optional SoleData mapping is in `lib/AletheiaSole/ext/AletheiaSoleDataExt.jl`.
 - Finite FLew tables and named non-chain algebras live in `lib/AletheiaCore/src/algebras.jl`; their integer carrier is one-based `UInt8` and construction derives implication while validating all axioms. `lib/AletheiaCore/test/algebras.jl` is the source-table and differential specification.
