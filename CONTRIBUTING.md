@@ -1,7 +1,9 @@
 # Contributing
 
 Thanks for helping build Aletheia. Before opening a pull request, please work
-from a clean checkout and run the relevant checks from the repository root.
+from a clean checkout and run the relevant checks from the repository root. On
+Julia 1.10, run `julia --project=. scripts/bootstrap.jl` first so local focused
+packages are developed into each test environment.
 
 ## Before your first pull request
 
@@ -9,11 +11,18 @@ from a clean checkout and run the relevant checks from the repository root.
   `julia --project=. -e 'using Pkg; Pkg.test()'`.
 - Build the citation-aware documentation with
   `julia --project=docs docs/make.jl`.
+- Review the [design decisions](docs/src/design-decisions.md) when a change
+  affects package boundaries, dependencies, compatibility, or graph and
+  circuit representations.
+- Format changed Julia source with
+  `julia --project=format -e 'using JuliaFormatter; format(["src", "lib", "test", "benchmark", "examples", "docs"])'`
+  and review the resulting diff.
 - If your change affects compatibility or semantics, run the differential
   comparison (it needs a SoleLogics checkout):
   `SOLELOGICS_PATH=/path/to/SoleLogics.jl julia --project=benchmark benchmark/differential.jl`.
-- Keep source coverage at **95% or higher**; CI enforces that floor. The
-  complete coverage commands and other validation details are in
+- Keep source coverage at **95% or higher**; CI enforces that floor across
+  every package. Run `Pkg.test(coverage=true)` in each `lib/Aletheia*/` project
+  before the coverage check. The complete validation details are in
   [Development and validation](docs/src/development.md).
 
 Performance claims must include the exact command that produced the numbers and

@@ -6,7 +6,7 @@
 # SoleLogics.jl/src/utils/frames/frames.jl (center/empty relations), and SoleLogics.jl/src/types/frames/worlds.jl (world aliases).
 
 struct VocabularyUnknownConnective end
-Aletheia.arity(::VocabularyUnknownConnective) = 1
+AletheiaSole.arity(::VocabularyUnknownConnective) = 1
 
 struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
 
@@ -29,11 +29,11 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
 
     # SoleLogics.jl/src/types/modal-logic.jl:278-287 documents the iterator
     # boundary for global and modal access; no vector is materialised here.
-    lazy = Aletheia.SoleLogics.accessibles(frame_small, :a, globalrel)
+    lazy = AletheiaSole.SoleLogics.accessibles(frame_small, :a, globalrel)
     @test lazy isa Base.Generator
     @test !(lazy isa AbstractVector)
     @test collect(lazy) == collect(worlds_small)
-    @test Aletheia.SoleLogics.accessibles(frame_small, globalrel) === worlds(frame_small)
+    @test AletheiaSole.SoleLogics.accessibles(frame_small, globalrel) === worlds(frame_small)
 
     # Converse properties from the SoleLogics relation traits.
     @test inverse(inverse(globalrel)) === globalrel
@@ -60,7 +60,7 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
     interval = interval_frame(4)
     @test emptyworld(interval) == Interval(-1, 0)
     @test centralworld(interval) == Interval(2, 4)
-    @test collect(Aletheia.SoleLogics.accessibles(interval, centralworld(interval), tocenterrel)) == [centralworld(interval)]
+    @test collect(AletheiaSole.SoleLogics.accessibles(interval, centralworld(interval), tocenterrel)) == [centralworld(interval)]
 
     # Exhaustive Boolean world-set collation over a three-world frame.
     allsets = [Set(worlds_small[i] for i in eachindex(worlds_small) if mask & (1 << (i - 1)) != 0)
@@ -146,15 +146,15 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
 
     # The nested opt-in module exports the same singleton/type vocabulary,
     # including the compatibility alias that was previously absent.
-    @test Aletheia.SoleLogics.globalrel === globalrel
-    @test Aletheia.SoleLogics.identityrel === identityrel
-    @test Aletheia.SoleLogics.tocenterrel === tocenterrel
-    @test Aletheia.SoleLogics.AbstractFrame === AbstractFrame
-    @test Aletheia.SoleLogics.AbstractWorld === AbstractWorld
-    @test Aletheia.SoleLogics.RCC8Relations ===
-        (Aletheia.SoleLogics.Topo_DC, Aletheia.SoleLogics.Topo_EC, Aletheia.SoleLogics.Topo_PO,
-        Aletheia.SoleLogics.Topo_TPP, Aletheia.SoleLogics.Topo_TPPi,
-        Aletheia.SoleLogics.Topo_NTPP, Aletheia.SoleLogics.Topo_NTPPi)
+    @test AletheiaSole.SoleLogics.globalrel === globalrel
+    @test AletheiaSole.SoleLogics.identityrel === identityrel
+    @test AletheiaSole.SoleLogics.tocenterrel === tocenterrel
+    @test AletheiaSole.SoleLogics.AbstractFrame === AbstractFrame
+    @test AletheiaSole.SoleLogics.AbstractWorld === AbstractWorld
+    @test AletheiaSole.SoleLogics.RCC8Relations ===
+        (AletheiaSole.SoleLogics.Topo_DC, AletheiaSole.SoleLogics.Topo_EC, AletheiaSole.SoleLogics.Topo_PO,
+        AletheiaSole.SoleLogics.Topo_TPP, AletheiaSole.SoleLogics.Topo_TPPi,
+        AletheiaSole.SoleLogics.Topo_NTPP, AletheiaSole.SoleLogics.Topo_NTPPi)
 
     # Exercise the complete SoleLogics value vocabulary, including display and
     # trait methods that consumers use for dispatch tables.
@@ -164,7 +164,7 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
         POINT_RELATIONS..., RCC8_RELATIONS..., RCC5_RELATIONS..., POINT2D_RELATIONS...)
     for relation_value in display_relations
         show(io, relation_value)
-        @test !isempty(Aletheia._relation_name(relation_value))
+        @test !isempty(AletheiaCore._relation_name(relation_value))
     end
     @test !isempty(String(take!(io)))
     @test arity(globalrel) == arity(identityrel) == arity(at_b) == arity(tocenterrel) == 2
@@ -216,7 +216,7 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
 
     # The world-set accessibility view is lazy and must survive re-iteration:
     # a shared `seen` set across passes silently drops already-yielded worlds.
-    reachable = Aletheia.SoleLogics.accessibles(frame_small, [:a, :b], :R)
+    reachable = AletheiaSole.SoleLogics.accessibles(frame_small, [:a, :b], :R)
     @test !(reachable isa AbstractVector)
     @test collect(reachable) == [:b, :c]
     @test !isempty(reachable)

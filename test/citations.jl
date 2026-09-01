@@ -3,10 +3,10 @@ normalized_occurs(needle, haystack) = occursin(normalize_eol(needle), normalize_
 
 @testset "citation integrity" begin
     @test normalized_occurs("a\nb", "a\r\nb")
-    semantics_source = read(joinpath(@__DIR__, "..", "src", "semantics.jl"), String)
+    semantics_source = read(joinpath(@__DIR__, "..", "lib", "AletheiaCore", "src", "semantics.jl"), String)
     @test !normalized_occurs("chain operation; see Goranko", semantics_source)
 
-    relations_source = read(joinpath(@__DIR__, "..", "src", "relations.jl"), String)
+    relations_source = read(joinpath(@__DIR__, "..", "lib", "AletheiaCore", "src", "relations.jl"), String)
     @test !normalized_occurs("Halpern", relations_source)
 
     learning = read(joinpath(@__DIR__, "..", "docs", "src", "learning.md"), String)
@@ -25,7 +25,7 @@ normalized_occurs(needle, haystack) = occursin(normalize_eol(needle), normalize_
     relation_docs = read(joinpath(@__DIR__, "..", "docs", "src", "relations.md"), String)
     @test normalized_occurs("transitivity with `4` [blackburn2001;", relation_docs)
 
-    bisimulation_source = read(joinpath(@__DIR__, "..", "src", "bisimulation.jl"), String)
+    bisimulation_source = read(joinpath(@__DIR__, "..", "lib", "AletheiaCore", "src", "bisimulation.jl"), String)
     @test normalized_occurs("derived implementation bounds", bisimulation_source)
     theory = read(joinpath(@__DIR__, "..", "docs", "src", "theory.md"), String)
     @test normalized_occurs("derived implementation bounds", theory)

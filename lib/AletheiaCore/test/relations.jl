@@ -30,24 +30,24 @@ const IA72IARelations = Aletheia.IA72IARelations
 const IA32IARelations = Aletheia.IA32IARelations
 const RCC5Relations = Aletheia.RCC5_RELATIONS
 const RCC8Relations = Aletheia.RCC8_RELATIONS
-const Topo_DR = Aletheia.SoleLogics.Topo_DR
-const Topo_PP = Aletheia.SoleLogics.Topo_PP
-const Topo_PPi = Aletheia.SoleLogics.Topo_PPi
-const Topo_TPP = Aletheia.SoleLogics.Topo_TPP
-const Topo_TPPi = Aletheia.SoleLogics.Topo_TPPi
-const Topo_NTPP = Aletheia.SoleLogics.Topo_NTPP
-const Topo_NTPPi = Aletheia.SoleLogics.Topo_NTPPi
+const Topo_DR = Aletheia.DR
+const Topo_PP = Aletheia.PPi
+const Topo_PPi = Aletheia.PP
+const Topo_TPP = Aletheia.TPPi
+const Topo_TPPi = Aletheia.TPP
+const Topo_NTPP = Aletheia.NTPPi
+const Topo_NTPPi = Aletheia.NTPP
 const Point2DRelation = Aletheia.Point2DRelation
 const POINT2D_RELATIONS = Aletheia.POINT2D_RELATIONS
-const Point2DRelations = Aletheia.SoleLogics.Point2DRelations
-const CL_N = Aletheia.SoleLogics.CL_N
-const CL_S = Aletheia.SoleLogics.CL_S
-const CL_E = Aletheia.SoleLogics.CL_E
-const CL_W = Aletheia.SoleLogics.CL_W
-const CL_NE = Aletheia.SoleLogics.CL_NE
-const CL_NW = Aletheia.SoleLogics.CL_NW
-const CL_SE = Aletheia.SoleLogics.CL_SE
-const CL_SW = Aletheia.SoleLogics.CL_SW
+const Point2DRelations = Aletheia.Point2DRelations
+const CL_N = Aletheia.CL_N
+const CL_S = Aletheia.CL_S
+const CL_E = Aletheia.CL_E
+const CL_W = Aletheia.CL_W
+const CL_NE = Aletheia.CL_NE
+const CL_NW = Aletheia.CL_NW
+const CL_SE = Aletheia.CL_SE
+const CL_SW = Aletheia.CL_SW
 const FullDimensionalFrame = Aletheia.FullDimensionalFrame
 const Full1DFrame = Aletheia.Full1DFrame
 const Full2DFrame = Aletheia.Full2DFrame
@@ -185,7 +185,7 @@ end
     @test length(RCC8_BASICS) == 7
     @test Topo_TPP === TPPi && Topo_NTPP === NTPPi
     @test RCC5Relations == (DR, PO, PP, PPi)
-    @test Aletheia.SoleLogics.Topo_PP === PPi && Aletheia.SoleLogics.Topo_PPi === PP
+    @test Aletheia.PPi === PPi && Aletheia.PP === PP
     @test inverse(Topo_DR) === Topo_DR && inverse(Topo_PP) === Topo_PPi
     @test all(inverse(inverse(r)) === r for r in (IA_AorO, IA_DorBorE, IA_AiorOi, IA_DiorBiorEi, IA_I,
         Topo_DR, Topo_PP, Topo_PPi))
@@ -194,8 +194,8 @@ end
     @test relation_holds(DR, I(1, 2), I(2, 3))
     @test relation_holds(PP, I(1, 2), I(1, 4))
     @test relation_holds(PPi, I(1, 4), I(1, 2))
-    @test !relation_holds(Aletheia.SoleLogics.Topo_PP, I(1, 2), I(1, 4))
-    @test relation_holds(Aletheia.SoleLogics.Topo_PP, I(1, 4), I(1, 2))
+    @test !relation_holds(Aletheia.PPi, I(1, 2), I(1, 4))
+    @test relation_holds(Aletheia.PPi, I(1, 4), I(1, 2))
     for r in RCC8_RELATIONS
         @test all(Set(relation_successors(r, source, interval_worlds)) ==
             Set(target for target in interval_worlds if relation_holds(r, source, target))

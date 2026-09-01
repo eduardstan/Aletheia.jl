@@ -39,6 +39,21 @@ The vocabulary follows the modal-logic distinction between a similarity type,
 its formulas, frames, models, and satisfaction. See Blackburn, de Rijke, and
 Venema, §§1.2–1.3 (pp. 9–26) [blackburn2001; §§1.2–1.3, pp. 9–26](@cite).
 
+## Package layout
+
+Aletheia is maintained as five Julia packages in one repository. The umbrella
+`Aletheia` package preserves the original all-in-one API, while focused users
+can depend on the layer they need:
+
+- `AletheiaCore` — pooled syntax, semantics, relations, and theory utilities;
+- `AletheiaData` — model-family and scalar-data protocols;
+- `AletheiaLearn` — ILP clauses, refinements, and learning-setting wrappers;
+- `AletheiaSole` — the opt-in `SoleLogics` compatibility vocabulary.
+
+The compatibility module is imported directly with `using AletheiaSole.SoleLogics`.
+Applications that already use `Aletheia` may keep using
+`Aletheia.SoleLogics`.
+
 ## Relationship to SoleLogics
 
 [SoleLogics.jl](https://github.com/aclai-lab/SoleLogics.jl) is the established

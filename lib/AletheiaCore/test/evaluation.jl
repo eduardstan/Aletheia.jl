@@ -129,12 +129,6 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
     batch_boolean_other = Model(frame, BOOLEAN, Dict(
         "p" => Set(world for world in worlds(frame) if rand(batch_rng, Bool)),
         "q" => Set(world for world in worlds(frame) if rand(batch_rng, Bool))))
-    batch_family = ModelFamily([batch_boolean, batch_boolean_other])
-    @test extension(batch_forms, batch_family) == [
-        [extension(formula, model) for model in batch_family.models] for formula in batch_forms]
-    @test extension(batch_forms, batch_family, 1) == extension(batch_forms, batch_boolean)
-    @test extension(Formula[], batch_boolean) == BitVector[]
-    @test extension(Formula[], batch_family) == Vector{Any}[]
     @test_throws ArgumentError extension([p, atom(FormulaPool(sig), "p")], batch_boolean)
     @test_throws ArgumentError extension([p, :not_a_formula], batch_boolean)
 

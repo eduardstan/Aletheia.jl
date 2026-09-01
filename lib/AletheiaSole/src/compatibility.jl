@@ -11,7 +11,8 @@ explicit errors for concepts with no faithful equivalent.
 """
 module SoleLogics
 
-import ..Aletheia
+import .._Aletheia
+const Aletheia = _Aletheia
 
 const children = Aletheia.children
 const value = Aletheia.value
@@ -1008,7 +1009,8 @@ const LTLFP_P = Aletheia.LESSER
 
 # A small, explicit nested replacement for SoleLogics.ManyValuedLogics.
 module ManyValuedLogics
-import ...Aletheia
+import ...AletheiaCore
+const Aletheia = AletheiaCore
 import ..Truth, ..BooleanTruth, ..istop, ..isbot, ..syntaxstring
 import Base: convert
 

@@ -6,8 +6,12 @@ semantics and formula evaluation.
 """
 module AletheiaSoleDataExt
 
-import Aletheia
+import AletheiaSole
+import AletheiaCore
+import AletheiaData
 import SoleData
+
+const Aletheia = AletheiaCore
 
 """A family of Aletheia models backed by a SoleData modal logiset.
 
@@ -21,7 +25,7 @@ Set `vectorized=false` to disable the optional batch atom callback.  This is a
 correctness option for comparing scalar callbacks; the default batch callback
 is the efficient path for `extension`.
 """
-struct SoleDataFamily{D,M,R} <: Aletheia.AbstractModelFamily
+struct SoleDataFamily{D,M,R} <: AletheiaData.AbstractModelFamily
     dataset::D
     models::M
     relation::R
@@ -77,11 +81,11 @@ function SoleDataFamily(dataset::SoleData.AbstractModalLogiset;
     SoleDataFamily(dataset, models, relation)
 end
 
-Aletheia.instance_count(family::SoleDataFamily) =
+AletheiaData.instance_count(family::SoleDataFamily) =
     SoleData.ninstances(family.dataset)
-Aletheia.eachinstance(family::SoleDataFamily) =
+AletheiaData.eachinstance(family::SoleDataFamily) =
     Base.OneTo(SoleData.ninstances(family.dataset))
-Aletheia.instance_model(family::SoleDataFamily, i_instance) =
+AletheiaData.instance_model(family::SoleDataFamily, i_instance) =
     family.models[i_instance]
 
 
@@ -92,7 +96,7 @@ Aletheia.instance_model(family::SoleDataFamily, i_instance) =
 struct _SoleDataSource{D}
     dataset::D
 end
-Aletheia.feature_value(source::_SoleDataSource, instance, world, feature) =
+AletheiaData.feature_value(source::_SoleDataSource, instance, world, feature) =
     SoleData.featvalue(feature, source.dataset, instance, world)
 
 function _sole_features(dataset, requested)
@@ -100,7 +104,7 @@ function _sole_features(dataset, requested)
 end
 
 """Prepare a SoleData modal logiset through Aletheia's scalar protocol."""
-function Aletheia.prepare_scalar(dataset::SoleData.AbstractModalLogiset;
+function AletheiaData.prepare_scalar(dataset::SoleData.AbstractModalLogiset;
         features=nothing, frames=nothing, relations=(), relation=nothing,
         precompute_features=true, precompute_aggregates=(), instances=nothing,
         worlds=nothing, version=nothing)
@@ -112,7 +116,7 @@ function Aletheia.prepare_scalar(dataset::SoleData.AbstractModalLogiset;
             SoleData.accessibles(fr, w) : SoleData.accessibles(fr, w, relation))
             for w in SoleData.allworlds(fr))); index=true) for fr in source_frames]
     feature_list = _sole_features(dataset, features)
-    Aletheia.prepare_scalar(_SoleDataSource(dataset); features=feature_list,
+    AletheiaData.prepare_scalar(_SoleDataSource(dataset); features=feature_list,
         frames=converted, relations=isempty(relations) ? (:R,) : relations,
         precompute_features=precompute_features,
         precompute_aggregates=precompute_aggregates, instances=labels,
@@ -122,8 +126,8 @@ end
 # Existing SoleData condition payloads remain usable in pooled atoms.  The
 # adapter deliberately delegates the single-world predicate to SoleData while
 # all formula and aggregate traversal stays in Aletheia.
-function Aletheia.scalar_check(condition::SoleData.AbstractScalarCondition,
-        data::Aletheia.PreparedScalarData, instance, world)
+function AletheiaData.scalar_check(condition::SoleData.AbstractScalarCondition,
+        data::AletheiaData.PreparedScalarData, instance, world)
     source = data.source
     source isa _SoleDataSource || throw(ArgumentError("prepared data was not built from SoleData"))
     SoleData.checkcondition(condition, source.dataset, instance, world)
@@ -135,8 +139,8 @@ end
 function __init__()
     Core.eval(Aletheia, :(const SoleDataFamily = $SoleDataFamily))
     Core.eval(Aletheia, :(export SoleDataFamily))
-    Core.eval(Aletheia.SoleLogics, :(const SoleDataFamily = $SoleDataFamily))
-    Core.eval(Aletheia.SoleLogics, :(export SoleDataFamily))
+    Core.eval(AletheiaSole.SoleLogics, :(const SoleDataFamily = $SoleDataFamily))
+    Core.eval(AletheiaSole.SoleLogics, :(export SoleDataFamily))
 end
 
 end

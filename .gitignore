@@ -4,3 +4,6 @@ references/*
 docs/build/
 
 Manifest.toml
+
+# Julia coverage output
+*.cov

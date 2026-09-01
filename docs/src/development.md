@@ -1,26 +1,70 @@
 # Development and validation
 
-Run these from the repository root. The package has no runtime dependencies,
-but the test, documentation, benchmark, and coverage environments are separate
-Julia projects. The first invocation of each command may spend extra time
-resolving and precompiling Julia packages.
+Run these commands from the repository root. `AletheiaCore` has no runtime
+dependencies; the test, documentation, benchmark, formatting, and coverage
+environments are separate Julia projects. The first invocation of each command
+may spend extra time resolving and precompiling Julia packages.
+
+On Julia 1.10, prepare the unregistered local package dependencies first (this
+is harmless on newer Julia versions):
+
+```sh
+julia --project=. scripts/bootstrap.jl
+```
 
 ## Package tests
+
+Run the focused suites when working on one layer:
+
+```sh
+julia --project=lib/AletheiaCore -e 'using Pkg; Pkg.test()'
+julia --project=lib/AletheiaData -e 'using Pkg; Pkg.test()'
+julia --project=lib/AletheiaLearn -e 'using Pkg; Pkg.test()'
+julia --project=lib/AletheiaSole -e 'using Pkg; Pkg.test()'
+```
+
+Then run the umbrella suite to verify the historical top-level API:
 
 ```sh
 julia --project=. -e 'using Pkg; Pkg.test()'
 ```
 
-A passing run ends with:
+A passing umbrella run ends with:
 
 ```text
 Aletheia tests passed
 ```
 
-It includes Aqua/JET checks and the runnable examples.
+It includes Aqua/JET checks and the runnable examples. `AletheiaSole` owns
+`SoleLogics`, so compatibility code is imported as `using AletheiaSole.SoleLogics`
+(or, through the umbrella, `using Aletheia.SoleLogics`).
+
+## Coverage
+
+Run coverage for each implementation package, then enforce the repository-wide
+95% line floor:
+
+```sh
+for package in AletheiaCore AletheiaData AletheiaLearn AletheiaSole; do
+  julia --project=lib/$package -e 'using Pkg; Pkg.test(coverage=true)'
+done
+julia --project=coverage -e 'using Pkg; Pkg.instantiate(); include("coverage/check.jl")'
+```
 
 !!! tip
     Do not assume a quiet Julia process is hung.
+
+## Formatting
+
+Julia source uses [JuliaFormatter](https://github.com/domluna/JuliaFormatter)
+with the repository settings in `.JuliaFormatter.toml`:
+
+```sh
+julia --project=format -e 'using JuliaFormatter; format(["src", "lib", "test", "benchmark", "examples", "docs"])'
+```
+
+Review the resulting diff before committing. The formatting environment is
+kept separate from the runtime packages.
 
 ## Documentation and doctests
 
