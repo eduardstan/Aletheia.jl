@@ -26,6 +26,7 @@ makedocs(
         "Home" => "index.md",
         "Quick start" => "quickstart.md",
         "Syntax and design" => "design.md",
+        "Design decisions" => "design-decisions.md",
         "Semantics and evaluation" => "semantics.md",
         "Many models, one formula" => "families.md",
         "Scalar data" => "scalar.md",

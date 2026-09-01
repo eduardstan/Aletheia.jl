@@ -11,6 +11,9 @@ packages are developed into each test environment.
   `julia --project=. -e 'using Pkg; Pkg.test()'`.
 - Build the citation-aware documentation with
   `julia --project=docs docs/make.jl`.
+- Review the [design decisions](docs/src/design-decisions.md) when a change
+  affects package boundaries, dependencies, compatibility, or graph and
+  circuit representations.
 - Format changed Julia source with
   `julia --project=format -e 'using JuliaFormatter; format(["src", "lib", "test", "benchmark", "examples", "docs"])'`
   and review the resulting diff.
