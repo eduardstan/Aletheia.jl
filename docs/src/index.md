@@ -64,6 +64,7 @@ work and which remain unsupported.
 - **[Semantics and evaluation](semantics.md)** — how does a formula get a truth
   value, in Boolean, Gödel, and Łukasiewicz models?
 - **[Many models, one formula](families.md)** — how do I evaluate one formula
+- **[Scalar data](scalar.md)** — how do I prepare dense feature values and evaluate threshold/modal formulas over data?
   across a whole dataset of models?
 - **[Finite FLew-algebras](algebras.md)** — what if my truth values are not a
   chain?
