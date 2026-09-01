@@ -20,6 +20,7 @@ makedocs(
         "Syntax and design" => "design.md",
         "Semantics and evaluation" => "semantics.md",
         "Many models, one formula" => "families.md",
+        "Scalar data" => "scalar.md",
         "Finite FLew-algebras" => "algebras.md",
         "Relations, frames, and frame classes" => "relations.md",
         "Theory utilities" => "theory.md",

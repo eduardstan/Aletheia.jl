@@ -243,6 +243,36 @@ uniform_frame
 isuniform
 ```
 
+## Scalar data evaluation
+
+```@docs
+AbstractScalarDataset
+AbstractScalarFeature
+AbstractScalarCondition
+AbstractAggregateMemo
+ThresholdCondition
+DenseFeatureStore
+PreparedScalarData
+AggregateMemoStore
+ScalarEvaluationCache
+ScalarRelationIndex
+prepare_scalar
+feature_value
+features
+instances
+world_index
+feature_index
+instance_index
+aggregate_value
+representative_worlds
+scalar_check
+scalar_atom_values
+scalar_valuation
+scalar_family
+batch_apply
+data_version
+```
+
 ## First-order logic and theory
 
 ```@docs

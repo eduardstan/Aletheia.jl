@@ -84,6 +84,51 @@ Aletheia.eachinstance(family::SoleDataFamily) =
 Aletheia.instance_model(family::SoleDataFamily, i_instance) =
     family.models[i_instance]
 
+
+# SoleData's `featvalue(feature, dataset, instance, world)` is adapted to the
+# core's source protocol.  The wrapper keeps SoleData out of Aletheia's core
+# and lets preparation copy dimensional or explicit stores into one dense
+# world × instance × feature layout.
+struct _SoleDataSource{D}
+    dataset::D
+end
+Aletheia.feature_value(source::_SoleDataSource, instance, world, feature) =
+    SoleData.featvalue(feature, source.dataset, instance, world)
+
+function _sole_features(dataset, requested)
+    requested === nothing || !isempty(requested) ? collect(requested) : collect(SoleData.features(dataset))
+end
+
+"""Prepare a SoleData modal logiset through Aletheia's scalar protocol."""
+function Aletheia.prepare_scalar(dataset::SoleData.AbstractModalLogiset;
+        features=nothing, frames=nothing, relations=(), relation=nothing,
+        precompute_features=true, precompute_aggregates=(), instances=nothing,
+        worlds=nothing, version=nothing)
+    n = SoleData.ninstances(dataset)
+    labels = instances === nothing ? collect(1:n) : collect(instances)
+    source_frames = [SoleData.frame(dataset, i) for i in labels]
+    converted = [Aletheia.Frame(collect(SoleData.allworlds(fr)),
+        Dict(:R => Dict(w => Tuple(isnothing(relation) ?
+            SoleData.accessibles(fr, w) : SoleData.accessibles(fr, w, relation))
+            for w in SoleData.allworlds(fr))); index=true) for fr in source_frames]
+    feature_list = _sole_features(dataset, features)
+    Aletheia.prepare_scalar(_SoleDataSource(dataset); features=feature_list,
+        frames=converted, relations=isempty(relations) ? (:R,) : relations,
+        precompute_features=precompute_features,
+        precompute_aggregates=precompute_aggregates, instances=labels,
+        worlds=worlds, version=version)
+end
+
+# Existing SoleData condition payloads remain usable in pooled atoms.  The
+# adapter deliberately delegates the single-world predicate to SoleData while
+# all formula and aggregate traversal stays in Aletheia.
+function Aletheia.scalar_check(condition::SoleData.AbstractScalarCondition,
+        data::Aletheia.PreparedScalarData, instance, world)
+    source = data.source
+    source isa _SoleDataSource || throw(ArgumentError("prepared data was not built from SoleData"))
+    SoleData.checkcondition(condition, source.dataset, instance, world)
+end
+
 # Install convenient aliases after the extension is loaded.  Parent modules are
 # closed during extension precompilation, so this belongs in `__init__` rather
 # than at top level.

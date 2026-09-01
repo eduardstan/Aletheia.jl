@@ -18,6 +18,7 @@ include("dimensional.jl")
 include("frameclasses.jl")
 include("evaluation.jl")
 include("dataset.jl")
+include("scalar.jl")
 include("firstorder.jl")
 include("ilp.jl")
 include("normalforms.jl")
@@ -66,6 +67,12 @@ export collateworlds
 export check, extension, describe, EvaluationCache, clear!
 export Valuation, Model, frame, algebra, valuation, interpret
 export AbstractModelFamily, ModelFamily, instance_count, eachinstance, instance_model
+export AbstractScalarDataset, AbstractScalarFeature, AbstractScalarCondition, AbstractAggregateMemo
+export ThresholdCondition, DenseFeatureStore, PreparedScalarData, AggregateMemoStore, ScalarEvaluationCache
+export ScalarRelationIndex, prepare_scalar, feature_value, scalar_check, scalar_atom_values
+export scalar_valuation, scalar_family, aggregate_value, representative_worlds, data_version
+export batch_apply, source, store, one_step_memos, relation_index, feature_index, instance_index
+export features, instances, world_index
 export instance_frame, uniform_frame, isuniform
 
 export FirstOrderTerm, FirstOrderFormula

@@ -39,6 +39,7 @@ When updating this file, preserve this bar for all agents and keep entries conci
 
 - `src/semantics.jl` is the authoritative layer for `TruthAlgebra`, `Frame`, `Model`, and atom-only `interpret`; `src/evaluation.jl` provides the shared DAG walk for `check` and `extension`.
 - Semantics and evaluation tests live in `test/semantics.jl` and `test/evaluation.jl`; validate package tests, coverage, and docs with the commands above.
+- Scalar/data preparation is dependency-free in `src/scalar.jl`: `prepare_scalar` materialises world × instance × feature values, keeps aggregate and formula caches separate, and the optional SoleData mapping is in `ext/AletheiaSoleDataExt.jl`.
 - Finite FLew tables and named non-chain algebras live in `src/algebras.jl`; their integer carrier is one-based `UInt8` and construction derives implication while validating all axioms. `test/algebras.jl` is the source-table and differential specification.
 
 - Theory APIs live in `src/firstorder.jl`, `src/bisimulation.jl`, `src/normalforms.jl`, and `src/prover.jl`; `test/theory.jl` covers their Boolean/classical boundaries. The first-order bridge and normal forms deliberately do not implement a prover or many-valued classical equivalence.
