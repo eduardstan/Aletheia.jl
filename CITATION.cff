@@ -1,6 +1,9 @@
 cff-version: 1.2.0
 message: "If you use Aletheia, please cite this repository."
 title: "Aletheia.jl"
+version: "0.2.0"
+license: MIT
+abstract: "A syntax-first Julia foundation for propositional, modal, many-valued, first-order logic, and inductive logic programming."
 authors:
   - family-names: Stan
     given-names: "Ionel Eduard"

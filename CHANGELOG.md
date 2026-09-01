@@ -1,10 +1,14 @@
 # Changelog
 
-All notable changes to Aletheia are documented here. The package is currently
-pre-release (`0.1.0-DEV`), so there is no released version yet.
+All notable changes to Aletheia are documented here. The umbrella and focused packages are currently
+pre-release (`0.2.0-DEV`), so there is no released version yet.
 
 ## Unreleased
 
+- Reshaped the repository into the umbrella `Aletheia` package and the focused
+  `AletheiaCore`, `AletheiaData`, `AletheiaLearn`, and `AletheiaSole` packages.
+  The umbrella keeps the historical public API; `SoleLogics` is owned by
+  `AletheiaSole` and remains available as `Aletheia.SoleLogics`.
 - Added an implicit default-pool path. `atom(value)`,
   `branch(connective, children...)`, and `parse(Formula, source)` use
   `DEFAULT_POOL`, a single pool over `DEFAULT_SIGNATURE` (`¬`, `∧`, `⊗`, `∨`,

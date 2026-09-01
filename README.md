@@ -14,6 +14,30 @@ It is a foundation: it is **not** a prover and it is **not** a learner.
 - ILP foundations, a model-family API for evaluating one formula across many
   models, and an opt-in SoleLogics compatibility layer.
 
+## Package layout
+
+The repository is a Julia monorepo with a compatibility-preserving umbrella:
+
+- `AletheiaCore` contains pooled syntax, semantics, relations, theory utilities,
+  and proof-search interfaces. It has no runtime dependencies.
+- `AletheiaData` contains model families and scalar-data preparation.
+- `AletheiaLearn` contains clauses, refinement operators, and ILP foundations.
+- `AletheiaSole` contains the opt-in `SoleLogics` vocabulary and adapters.
+- `Aletheia` depends on all four focused packages and re-exports the historical
+  top-level API.
+
+Use a focused package when you want a smaller dependency surface:
+
+```julia
+using AletheiaCore
+using AletheiaData
+using AletheiaLearn
+using AletheiaSole.SoleLogics
+```
+
+Existing applications can continue to use `using Aletheia`. The compatibility
+namespace remains available as `Aletheia.SoleLogics` through the umbrella.
+
 ## Try it in two minutes
 
 From a terminal, clone the repository and run the first result:

@@ -5,6 +5,7 @@ Pkg.instantiate()
 
 import SoleData
 using Aletheia
+import AletheiaCore, AletheiaData, AletheiaLearn, AletheiaSole
 using Documenter
 using DocumenterCitations
 
@@ -13,7 +14,7 @@ bibliography = CitationBibliography(joinpath(@__DIR__, "src", "refs.bib"))
 makedocs(
     sitename = "Aletheia.jl",
     checkdocs = :exports,
-    modules = [Aletheia, Aletheia.SoleLogics],
+    modules = [Aletheia, AletheiaCore, AletheiaData, AletheiaLearn, AletheiaSole, Aletheia.SoleLogics],
     pages = [
         "Home" => "index.md",
         "Quick start" => "quickstart.md",

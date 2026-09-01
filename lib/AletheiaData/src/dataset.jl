@@ -52,6 +52,12 @@ function _same_frame(left::Frame, right::Frame)
         world_index(left) == world_index(right)
 end
 
+"""
+    uniform_frame(family)
+
+Return the shared frame when every instance has an equal frame, or `nothing`
+for an empty or non-uniform family.
+"""
 function uniform_frame(family::AbstractModelFamily)
     state = iterate(eachinstance(family))
     state === nothing && return nothing

@@ -19,9 +19,9 @@ jobs:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     name: Julia ${{ matrix.julia-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    # The slowest observed full-matrix job took 8m45s; 15 minutes leaves
-    # substantial headroom for runner and cache variability on every job.
-    timeout-minutes: 15
+    # Focused suites run before the umbrella suite; 20 minutes leaves
+    # substantial headroom for precompilation and runner variability.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix: ${{ github.event_name == 'push' && fromJSON('{"julia-version":["1.12"],"os":["ubuntu-latest"]}') || fromJSON('{"julia-version":["1.10","1.11","1.12"],"os":["ubuntu-latest","windows-latest"]}') }}
@@ -31,7 +31,24 @@ jobs:
         with:
           version: ${{ matrix.julia-version }}
       - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-runtest@v1
+      - name: Resolve local package workspace
+        shell: bash
+        run: julia --project=. scripts/bootstrap.jl
+      - name: Test AletheiaCore
+        shell: bash
+        run: julia --project=lib/AletheiaCore -e 'using Pkg; Pkg.test()'
+      - name: Test AletheiaData
+        shell: bash
+        run: julia --project=lib/AletheiaData -e 'using Pkg; Pkg.test()'
+      - name: Test AletheiaLearn
+        shell: bash
+        run: julia --project=lib/AletheiaLearn -e 'using Pkg; Pkg.test()'
+      - name: Test AletheiaSole
+        shell: bash
+        run: julia --project=lib/AletheiaSole -e 'using Pkg; Pkg.test()'
+      - name: Test umbrella Aletheia
+        shell: bash
+        run: julia --project=. -e 'using Pkg; Pkg.test()'
 
   documentation:
     # Main pushes publish docs; pull requests and manual runs still build them.
@@ -57,16 +74,23 @@ jobs:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     name: Line coverage
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
           version: "1.12"
       - uses: julia-actions/cache@v2
-      - name: Run tests with coverage
+      - name: Resolve local package workspace
         shell: bash
-        run: julia --project=. -e 'using Pkg; Pkg.test(coverage=true)'
+        run: julia --project=. scripts/bootstrap.jl
+      - name: Run every package test suite with coverage
+        shell: bash
+        run: |
+          for package in AletheiaCore AletheiaData AletheiaLearn AletheiaSole; do
+            julia --project=lib/$package -e 'using Pkg; Pkg.test(coverage=true)'
+          done
+          julia --project=. -e 'using Pkg; Pkg.test(coverage=true)'
       - name: Enforce line coverage
         shell: bash
         run: julia --project=coverage -e 'using Pkg; Pkg.instantiate(); include("coverage/check.jl")'

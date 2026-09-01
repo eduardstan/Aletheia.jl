@@ -1,5 +1,5 @@
 module CompatibilityClient
-using Aletheia.SoleLogics
+using AletheiaSole.SoleLogics
 
 function basic()
     p, q = Atom("p"), Atom("q")
@@ -14,16 +14,16 @@ end
 end
 
 @testset "SoleLogics compatibility" begin
-    @test Aletheia.SoleLogics isa Module
+    @test AletheiaSole.SoleLogics isa Module
     @test !isdefined(Aletheia, :parseformula)
     @test !isdefined(Aletheia, :SyntaxTree)
-    @test !(:SoleLogics in names(Aletheia, all=false))
+    @test :SoleLogics in names(AletheiaSole, all=false)
 
     p, q, conjunction, parsed = CompatibilityClient.basic()
     @test p isa CompatibilityClient.Atom
     @test q isa CompatibilityClient.Atom
-    @test conjunction isa Aletheia.Formula
-    @test CompatibilityClient.token(conjunction).native === Aletheia.:∧
+    @test conjunction isa AletheiaSole.Formula
+    @test CompatibilityClient.token(conjunction).native === AletheiaSole.:∧
     @test CompatibilityClient.children(conjunction) == (p, q)
     @test CompatibilityClient.value(p) == "p"
     @test CompatibilityClient.tree(conjunction) === conjunction
@@ -36,7 +36,7 @@ end
     @test CompatibilityClient.leaves(conjunction) == [p, q]
     @test CompatibilityClient.formulas(conjunction) == [p, q, conjunction]
     @test CompatibilityClient.subformulas(conjunction) == [p, q, conjunction]
-    @test [c.native for c in CompatibilityClient.connectives(conjunction)] == [Aletheia.:∧]
+    @test [c.native for c in CompatibilityClient.connectives(conjunction)] == [AletheiaSole.:∧]
     @test CompatibilityClient.ntokens(conjunction) == 3
     @test CompatibilityClient.natoms(conjunction) == 2
     @test CompatibilityClient.nleaves(conjunction) == 2
@@ -47,20 +47,20 @@ end
     @test CompatibilityClient.grandchildren(conjunction) == (p, q)
     @test CompatibilityClient.nconjuncts(conjunction) == 2
     @test CompatibilityClient.syntaxstring(parsed) == "¬p ∨ q"
-    @test CompatibilityClient.dual(Aletheia.:∧) === Aletheia.:∨
-    @test CompatibilityClient.hasdual(Aletheia.:∧)
-    @test CompatibilityClient.relation(Aletheia.Diamond(:G)) == :G
-    @test CompatibilityClient.op(conjunction).native === Aletheia.:∧
+    @test CompatibilityClient.dual(AletheiaSole.:∧) === AletheiaSole.:∨
+    @test CompatibilityClient.hasdual(AletheiaSole.:∧)
+    @test CompatibilityClient.relation(AletheiaSole.Diamond(:G)) == :G
+    @test CompatibilityClient.op(conjunction).native === AletheiaSole.:∧
     @test CompatibilityClient.token(p) === p
     @test CompatibilityClient.token(CompatibilityClient.⊤) === CompatibilityClient.⊤
-    @test [c.native for c in CompatibilityClient.operators(conjunction)] == [Aletheia.:∧]
+    @test [c.native for c in CompatibilityClient.operators(conjunction)] == [AletheiaSole.:∧]
     @test CompatibilityClient.atom("r") isa CompatibilityClient.Atom
-    compat_pool = CompatibilityClient.FormulaPool(CompatibilityClient.Signature((Aletheia.:∧,)))
+    compat_pool = CompatibilityClient.FormulaPool(CompatibilityClient.Signature((AletheiaSole.:∧,)))
     compat_p, compat_q = CompatibilityClient.atom(compat_pool, "s"), CompatibilityClient.atom(compat_pool, "t")
     @test compat_p isa CompatibilityClient.Atom
-    @test CompatibilityClient.branch(compat_pool, Aletheia.:∧, compat_p, compat_q) isa Aletheia.Formula
-    @test CompatibilityClient.branch(Aletheia.:∧, p, q) isa Aletheia.Formula
-    @test CompatibilityClient.syntaxstring(Aletheia.:∧) == "∧"
+    @test CompatibilityClient.branch(compat_pool, AletheiaSole.:∧, compat_p, compat_q) isa AletheiaSole.Formula
+    @test CompatibilityClient.branch(AletheiaSole.:∧, p, q) isa AletheiaSole.Formula
+    @test CompatibilityClient.syntaxstring(AletheiaSole.:∧) == "∧"
     @test CompatibilityClient.syntaxstring(17) == "17"
     @test CompatibilityClient.value(CompatibilityClient.⊤)
     @test CompatibilityClient.syntaxstring(CompatibilityClient.⊤) == "⊤"
@@ -73,17 +73,17 @@ end
     @test CompatibilityClient.truths(CompatibilityClient.⊤) == [CompatibilityClient.⊤]
     @test CompatibilityClient.leaves(CompatibilityClient.⊤) == [CompatibilityClient.⊤]
     modal = CompatibilityClient.SyntaxBranch(CompatibilityClient.diamond(CompatibilityClient.IA_L), p)
-    @test modal isa Aletheia.Formula
+    @test modal isa AletheiaSole.Formula
     @test CompatibilityClient.relation(CompatibilityClient.token(modal)) == CompatibilityClient.IA_L
     nested_modal = CompatibilityClient.SyntaxBranch(CompatibilityClient.diamond(CompatibilityClient.IA_L), conjunction)
-    @test nested_modal isa Aletheia.Formula
+    @test nested_modal isa AletheiaSole.Formula
     @test_throws ArgumentError CompatibilityClient.SyntaxBranch(CompatibilityClient.diamond(CompatibilityClient.IA_L))
-    @test_throws ArgumentError CompatibilityClient.SyntaxBranch(Aletheia.:∧, 1)
-    @test CompatibilityClient.Interval(1, 2) == Aletheia.Interval(1, 2)
-    @test CompatibilityClient.Interval2D === Aletheia.Interval2D
-    @test CompatibilityClient.Point1D(1) == Aletheia.Point(1)
-    @test CompatibilityClient.FullDimensionalFrame === Aletheia.FullDimensionalFrame
-    @test CompatibilityClient.allworlds(Aletheia.point_frame(1:2)) == [1, 2]
+    @test_throws ArgumentError CompatibilityClient.SyntaxBranch(AletheiaSole.:∧, 1)
+    @test CompatibilityClient.Interval(1, 2) == AletheiaSole.Interval(1, 2)
+    @test CompatibilityClient.Interval2D === AletheiaCore.Interval2D
+    @test CompatibilityClient.Point1D(1) == AletheiaSole.Point(1)
+    @test CompatibilityClient.FullDimensionalFrame === AletheiaCore.FullDimensionalFrame
+    @test CompatibilityClient.allworlds(AletheiaSole.point_frame(1:2)) == [1, 2]
     world_frame = CompatibilityClient.FullDimensionalFrame((1,), CompatibilityClient.Interval; index=true)
     world = first(CompatibilityClient.allworlds(world_frame))
     model = CompatibilityClient.KripkeStructure(world_frame, Dict("p" => Set([world])))
@@ -94,12 +94,12 @@ end
     MV = CompatibilityClient.ManyValuedLogics
     @test CompatibilityClient.check(MV.FiniteTruth(1), model, world) === true
     @test CompatibilityClient.check(MV.FiniteTruth(2), model, world) === false
-    finite_frame = Aletheia.Frame((1,), Dict())
-    finite_model = Aletheia.Model(finite_frame, Aletheia.G4, Dict("p" => UInt8(3)))
+    finite_frame = AletheiaSole.Frame((1,), Dict())
+    finite_model = AletheiaSole.Model(finite_frame, AletheiaSole.G4, Dict("p" => UInt8(3)))
     finite_formula = CompatibilityClient.:∧(MV.α, CompatibilityClient.Atom("p"))
     @test CompatibilityClient.check(finite_formula, finite_model, 1) == UInt8(3)
     @test CompatibilityClient.check(MV.β, finite_model, 1) == UInt8(4)
-    godel_model = Aletheia.Model(finite_frame, Aletheia.GodelAlgebra(4), Dict("p" => 1.0))
+    godel_model = AletheiaSole.Model(finite_frame, AletheiaSole.GodelAlgebra(4), Dict("p" => 1.0))
     @test_throws ArgumentError CompatibilityClient.check(MV.α, godel_model, 1)
     @test Set(CompatibilityClient.collateworlds(world_frame,
         CompatibilityClient.token(conjunction), (Set([world]), Set([world])))) == Set([world])
@@ -116,12 +116,12 @@ end
          CompatibilityClient.ManyValuedLogics.FiniteTruth(2),
          CompatibilityClient.ManyValuedLogics.FiniteTruth(3),
          CompatibilityClient.ManyValuedLogics.FiniteTruth(4))
-    @test CompatibilityClient.parseformula(CompatibilityClient.SyntaxTree, "⟨before⟩p", [CompatibilityClient.diamond(CompatibilityClient.IA_L)]) isa Aletheia.Formula
-    @test CompatibilityClient.parseformula(CompatibilityClient.SyntaxTree, "p") isa Aletheia.Formula
-    @test CompatibilityClient.parseformula("⟨before⟩p", [CompatibilityClient.diamond(CompatibilityClient.IA_L)]) isa Aletheia.Formula
-    @test CompatibilityClient.custom_parse() isa Aletheia.Formula
-    @test CompatibilityClient.dnf(parsed) isa Aletheia.Formula
-    @test CompatibilityClient.cnf(parsed) isa Aletheia.Formula
+    @test CompatibilityClient.parseformula(CompatibilityClient.SyntaxTree, "⟨before⟩p", [CompatibilityClient.diamond(CompatibilityClient.IA_L)]) isa AletheiaSole.Formula
+    @test CompatibilityClient.parseformula(CompatibilityClient.SyntaxTree, "p") isa AletheiaSole.Formula
+    @test CompatibilityClient.parseformula("⟨before⟩p", [CompatibilityClient.diamond(CompatibilityClient.IA_L)]) isa AletheiaSole.Formula
+    @test CompatibilityClient.custom_parse() isa AletheiaSole.Formula
+    @test CompatibilityClient.dnf(parsed) isa AletheiaSole.Formula
+    @test CompatibilityClient.cnf(parsed) isa AletheiaSole.Formula
 
     @test CompatibilityClient.TOP isa CompatibilityClient.Truth
     @test CompatibilityClient.istop(CompatibilityClient.⊤)
@@ -133,7 +133,7 @@ end
     @test CompatibilityClient.nchildren(truth_first) == 2
     @test CompatibilityClient.children(truth_first)[2] == p
     @test CompatibilityClient.SyntaxBranch(CompatibilityClient.:¬,
-        CompatibilityClient.⊤) isa Aletheia.Formula
+        CompatibilityClient.⊤) isa AletheiaSole.Formula
     @test CompatibilityClient.SyntaxBranch(CompatibilityClient.:¬, CompatibilityClient.⊤) ==
         CompatibilityClient.SyntaxBranch(CompatibilityClient.:¬, CompatibilityClient.⊤)
     @test CompatibilityClient.SyntaxBranch(CompatibilityClient.:∧, CompatibilityClient.⊤,
@@ -168,8 +168,8 @@ end
     @test MV.G4.implication(MV.α, MV.β) == MV.FiniteTruth(1)
     @test MV.G4.join[MV.α, MV.α] == MV.G4.join(MV.α, MV.α)
     @test CompatibilityClient.token(CompatibilityClient.:∧(p, p)) in MV.BASE_MANY_VALUED_CONNECTIVES
-    @test MV.precedeq(Aletheia.G4, MV.α, MV.β)
-    @test MV.maximalmembers(Aletheia.H4, MV.α) == [MV.β]
+    @test MV.precedeq(AletheiaSole.G4, MV.α, MV.β)
+    @test MV.maximalmembers(AletheiaSole.H4, MV.α) == [MV.β]
     @test MV.precedeq(MV.G4, MV.α, MV.β)
     @test MV.succeedeq(MV.G4, MV.β, MV.α)
     @test MV.precedes(MV.G4, MV.α, MV.β)
@@ -189,15 +189,15 @@ end
     @test_throws ArgumentError MV.FiniteTruth(256)
     @test_throws ArgumentError MV.getdomain(nothing)
     @test_throws MethodError MV.booleanalgebra()
-    @test CompatibilityClient.IARelations == (Aletheia.IA_A, Aletheia.IA_L, Aletheia.IA_B, Aletheia.IA_E, Aletheia.IA_D, Aletheia.IA_O, Aletheia.IA_Ai, Aletheia.IA_Li, Aletheia.IA_Bi, Aletheia.IA_Ei, Aletheia.IA_Di, Aletheia.IA_Oi)
-    @test CompatibilityClient.box(CompatibilityClient.IA_L) isa Aletheia.Box
-    @test CompatibilityClient.name(Aletheia.:∧) == :∧
-    @test CompatibilityClient.RCC5Relations == (Aletheia.DR, Aletheia.PO, Aletheia.PPi, Aletheia.PP)
-    @test CompatibilityClient.IA3Relations == Aletheia.IA3Relations
-    @test CompatibilityClient.IA7Relations == Aletheia.IA7Relations
-    @test CompatibilityClient.Topo_PP === Aletheia.PPi
-    @test CompatibilityClient.Topo_PPi === Aletheia.PP
-    @test CompatibilityClient.Point2DRelations == Aletheia.POINT2D_RELATIONS
+    @test CompatibilityClient.IARelations == (AletheiaCore.IA_A, AletheiaCore.IA_L, AletheiaCore.IA_B, AletheiaCore.IA_E, AletheiaCore.IA_D, AletheiaCore.IA_O, AletheiaCore.IA_Ai, AletheiaCore.IA_Li, AletheiaCore.IA_Bi, AletheiaCore.IA_Ei, AletheiaCore.IA_Di, AletheiaCore.IA_Oi)
+    @test CompatibilityClient.box(CompatibilityClient.IA_L) isa AletheiaSole.Box
+    @test CompatibilityClient.name(AletheiaSole.:∧) == :∧
+    @test CompatibilityClient.RCC5Relations == (AletheiaSole.DR, AletheiaSole.PO, AletheiaSole.PPi, AletheiaSole.PP)
+    @test CompatibilityClient.IA3Relations == AletheiaCore.IA3Relations
+    @test CompatibilityClient.IA7Relations == AletheiaCore.IA7Relations
+    @test CompatibilityClient.Topo_PP === AletheiaSole.PPi
+    @test CompatibilityClient.Topo_PPi === AletheiaSole.PP
+    @test CompatibilityClient.Point2DRelations == AletheiaCore.POINT2D_RELATIONS
     @test_throws MethodError CompatibilityClient.Literal()
     @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.precedeq(1, 2)
     @test_throws ArgumentError CompatibilityClient.ManyValuedLogics.succeedeq(1, 2)
@@ -214,7 +214,7 @@ end
     # presentation conventions: plain text without colour, colour with it.
     @test !occursin('\e', g3_show)
     @test occursin('\e', sprint(io -> show(IOContext(io, :color => true), MIME"text/plain"(), MV.G3)))
-    big = MV.FiniteFLewAlgebra(Aletheia._chain_flew(11, :godel))
+    big = MV.FiniteFLewAlgebra(AletheiaCore._chain_flew(11, :godel))
     @test occursin("Join: 11×11 carrier table", sprint(show, MIME"text/plain"(), big))
     @test occursin("Join: " * string(big.join.table),
         sprint(io -> show(IOContext(io, :limit => false), MIME"text/plain"(), big)))
@@ -227,10 +227,10 @@ end
     meet_table = [1 2; 2 2]
     direct = MV.FiniteFLewAlgebra(join_table, meet_table, meet_table, 2, 1)
     @test direct isa MV.FiniteFLewAlgebra{2}
-    @test direct.native isa Aletheia.FiniteFLewAlgebra{2}
+    @test direct.native isa AletheiaSole.FiniteFLewAlgebra{2}
     @test MV.getdomain(direct) == (MV.FiniteTruth(1), MV.FiniteTruth(2))
     @test MV.getdomain(direct.native) == MV.getdomain(direct)
-    @test MV.getdomain(Aletheia.G4) == MV.getdomain(MV.G4)
+    @test MV.getdomain(AletheiaSole.G4) == MV.getdomain(MV.G4)
     wrapped_ops = MV.FiniteFLewAlgebra{2}(direct.join, direct.meet, direct.monoid, 2, 1)
     @test wrapped_ops.monoid(MV.FiniteTruth(1), MV.FiniteTruth(2)) == MV.FiniteTruth(2)
     flat_join = [1, 1, 1, 2]
@@ -241,7 +241,7 @@ end
     callable = MV.FiniteFLewAlgebra{2}(operation(join_table), operation(meet_table),
         operation(meet_table), MV.FiniteTruth(2), MV.FiniteTruth(1))
     @test callable.monoid(MV.FiniteTruth(2), MV.FiniteTruth(1)) == MV.FiniteTruth(2)
-    @test MV.FiniteFLewAlgebra(Aletheia.BooleanFLewAlgebra) isa MV.FiniteFLewAlgebra
+    @test MV.FiniteFLewAlgebra(AletheiaSole.BooleanFLewAlgebra) isa MV.FiniteFLewAlgebra
     @test_throws ArgumentError MV.FiniteFLewAlgebra([1, 2, 3], join_table, meet_table, 2, 1)
     @test_throws ArgumentError MV.FiniteFLewAlgebra{2}(:bad, join_table, meet_table, 2, 1)
     @test_throws ArgumentError MV.FiniteFLewAlgebra{2}([1, 2, 3], join_table, meet_table, 2, 1)
@@ -254,7 +254,7 @@ end
 
 
 module DistinctUnsupportedClient
-using Aletheia.SoleLogics
+using AletheiaSole.SoleLogics
 marker_method(::typeof(AbstractInterpretationSet)) = :interpretation
 end
 
@@ -271,20 +271,20 @@ end
     end
     walk_compatibility(conjunction)
     @test @inferred(CompatibilityClient.children(conjunction)) isa
-        Aletheia.SoleLogics._CompatChildren
+        AletheiaSole.SoleLogics._CompatChildren
     @test @allocated(walk_compatibility(conjunction)) == 0
     CompatibilityClient.Branch(CompatibilityClient.:∧, p, q)
     @test @allocated(CompatibilityClient.Branch(CompatibilityClient.:∧, p, q)) < 4096
-    @test CompatibilityClient.:¬(p) isa Aletheia.Formula
+    @test CompatibilityClient.:¬(p) isa AletheiaSole.Formula
     @test CompatibilityClient.:¬(p) === CompatibilityClient.:¬(p)
-    @test CompatibilityClient.Branch(CompatibilityClient.:∧, (p, q)) isa Aletheia.Formula
-    @test Aletheia.SoleLogics._compat_branch(Aletheia.:∧, (p, q)) isa Aletheia.Formula
-    modal_connective = Aletheia.Diamond(:coverage)
-    modal_pool = CompatibilityClient.FormulaPool(CompatibilityClient.Signature((Aletheia.:∧, modal_connective)))
+    @test CompatibilityClient.Branch(CompatibilityClient.:∧, (p, q)) isa AletheiaSole.Formula
+    @test AletheiaSole.SoleLogics._compat_branch(AletheiaSole.:∧, (p, q)) isa AletheiaSole.Formula
+    modal_connective = AletheiaSole.Diamond(:coverage)
+    modal_pool = CompatibilityClient.FormulaPool(CompatibilityClient.Signature((AletheiaSole.:∧, modal_connective)))
     modal_atom = CompatibilityClient.atom(modal_pool, "modal")
-    @test Aletheia.SoleLogics._compat_branch(modal_connective, modal_atom) isa Aletheia.Formula
+    @test AletheiaSole.SoleLogics._compat_branch(modal_connective, modal_atom) isa AletheiaSole.Formula
     constant_formula = CompatibilityClient.:→(p, CompatibilityClient.⊥)
-    @test constant_formula isa Aletheia.Formula
+    @test constant_formula isa AletheiaSole.Formula
     @test CompatibilityClient.token(first(collect(CompatibilityClient.children(constant_formula)))) isa CompatibilityClient.Atom
     @test CompatibilityClient.token(collect(CompatibilityClient.children(constant_formula))[2]) === CompatibilityClient.⊥
     @test CompatibilityClient.truths(constant_formula) == [CompatibilityClient.⊥]
@@ -293,16 +293,16 @@ end
     @test CompatibilityClient.nleaves(constant_formula) == 2
 
     # Exercise the legacy/native pool merge path and both cached tree walks.
-    native_pool = Aletheia.FormulaPool(Aletheia.Signature((Aletheia.:∧,)))
-    native_atom = Aletheia.atom(native_pool, "native")
-    @test CompatibilityClient.Branch(CompatibilityClient.:∧, native_atom, p) isa Aletheia.Formula
+    native_pool = AletheiaSole.FormulaPool(AletheiaSole.Signature((AletheiaSole.:∧,)))
+    native_atom = AletheiaSole.atom(native_pool, "native")
+    @test CompatibilityClient.Branch(CompatibilityClient.:∧, native_atom, p) isa AletheiaSole.Formula
     merged = CompatibilityClient.Branch(CompatibilityClient.:∧, p, native_atom)
-    @test merged isa Aletheia.Formula
-    other_pool = CompatibilityClient.FormulaPool(CompatibilityClient.Signature((Aletheia.:∧,)))
+    @test merged isa AletheiaSole.Formula
+    other_pool = CompatibilityClient.FormulaPool(CompatibilityClient.Signature((AletheiaSole.:∧,)))
     other_atom = CompatibilityClient.atom(other_pool, "other")
-    @test CompatibilityClient.Branch(CompatibilityClient.:∧, p, other_atom) isa Aletheia.Formula
-    native_branch = Aletheia.branch(native_pool, Aletheia.:∧, native_atom, native_atom)
-    @test CompatibilityClient.Branch(CompatibilityClient.:∧, p, native_branch) isa Aletheia.Formula
+    @test CompatibilityClient.Branch(CompatibilityClient.:∧, p, other_atom) isa AletheiaSole.Formula
+    native_branch = AletheiaSole.branch(native_pool, AletheiaSole.:∧, native_atom, native_atom)
+    @test CompatibilityClient.Branch(CompatibilityClient.:∧, p, native_branch) isa AletheiaSole.Formula
     @test_throws MethodError CompatibilityClient.Branch(CompatibilityClient.:∧, p, 1)
     CompatibilityClient.formulas(merged)
     @test CompatibilityClient.formulas(merged) === CompatibilityClient.formulas(merged)
@@ -332,36 +332,36 @@ end
         CompatibilityClient.HS_O, CompatibilityClient.HS_Ai, CompatibilityClient.HS_Li,
         CompatibilityClient.HS_Bi, CompatibilityClient.HS_Ei, CompatibilityClient.HS_Di,
         CompatibilityClient.HS_Oi) ===
-        (Aletheia.IA_A, Aletheia.IA_L, Aletheia.IA_B, Aletheia.IA_E, Aletheia.IA_D,
-        Aletheia.IA_O, Aletheia.IA_Ai, Aletheia.IA_Li, Aletheia.IA_Bi, Aletheia.IA_Ei,
-        Aletheia.IA_Di, Aletheia.IA_Oi)
+        (AletheiaCore.IA_A, AletheiaCore.IA_L, AletheiaCore.IA_B, AletheiaCore.IA_E, AletheiaCore.IA_D,
+        AletheiaCore.IA_O, AletheiaCore.IA_Ai, AletheiaCore.IA_Li, AletheiaCore.IA_Bi, AletheiaCore.IA_Ei,
+        AletheiaCore.IA_Di, AletheiaCore.IA_Oi)
 
     # SoleLogics defines LRCC8_Rec_* as these Topo_* aliases.
     @test (CompatibilityClient.LRCC8_Rec_DC, CompatibilityClient.LRCC8_Rec_EC,
         CompatibilityClient.LRCC8_Rec_PO, CompatibilityClient.LRCC8_Rec_TPP,
         CompatibilityClient.LRCC8_Rec_TPPi, CompatibilityClient.LRCC8_Rec_NTPP,
         CompatibilityClient.LRCC8_Rec_NTPPi) ===
-        (Aletheia.DC, Aletheia.EC, Aletheia.PO, Aletheia.TPPi,
-        Aletheia.TPP, Aletheia.NTPPi, Aletheia.NTPP)
+        (AletheiaSole.DC, AletheiaSole.EC, AletheiaSole.PO, AletheiaSole.TPPi,
+        AletheiaSole.TPP, AletheiaSole.NTPPi, AletheiaSole.NTPP)
 
     # SoleLogics defines LTLFP_F = GreaterRel and LTLFP_P = LesserRel.
-    @test CompatibilityClient.LTLFP_F === Aletheia.GREATER
-    @test CompatibilityClient.LTLFP_P === Aletheia.LESSER
+    @test CompatibilityClient.LTLFP_F === AletheiaSole.GREATER
+    @test CompatibilityClient.LTLFP_P === AletheiaSole.LESSER
 
     # Compass names now follow Aletheia's landed 2D point relation constants.
     @test (CompatibilityClient.CL_N, CompatibilityClient.CL_S,
         CompatibilityClient.CL_E, CompatibilityClient.CL_W,
         CompatibilityClient.CL_NE, CompatibilityClient.CL_NW,
         CompatibilityClient.CL_SE, CompatibilityClient.CL_SW) ===
-        (Aletheia.CL_N, Aletheia.CL_S, Aletheia.CL_E, Aletheia.CL_W,
-        Aletheia.CL_NE, Aletheia.CL_NW, Aletheia.CL_SE, Aletheia.CL_SW)
+        (AletheiaCore.CL_N, AletheiaCore.CL_S, AletheiaCore.CL_E, AletheiaCore.CL_W,
+        AletheiaCore.CL_NE, AletheiaCore.CL_NW, AletheiaCore.CL_SE, AletheiaCore.CL_SW)
 end
 
 # The chain below is SolePostHoc's own conversion code from
 # `src/shared_utils.jl`, kept verbatim in shape: it reads `.grandchildren`,
 # `.ispos` and `.atom`, and builds branches from `NamedConnective{:sym}()`.
 module LeftmostClient
-using Aletheia.SoleLogics
+using AletheiaSole.SoleLogics
 
 function to_syntaxbranch(form, connective, convert)
     forms = form.grandchildren
@@ -385,13 +385,13 @@ end
         CompatibilityClient.Atom("r")
     conjunctive = CompatibilityClient.LeftmostConjunctiveForm([p, q])
     @test conjunctive isa CompatibilityClient.LeftmostLinearForm
-    @test conjunctive isa Aletheia.Formula
+    @test conjunctive isa AletheiaSole.Formula
     @test CompatibilityClient.grandchildren(conjunctive) == [p, q]
     @test CompatibilityClient.ngrandchildren(conjunctive) == 2
     @test CompatibilityClient.nconjuncts(conjunctive) == 2
     @test CompatibilityClient.conjuncts(conjunctive) == [p, q]
-    @test CompatibilityClient.connective(conjunctive) === Aletheia.:∧
-    @test CompatibilityClient.token(conjunctive).native === Aletheia.:∧
+    @test CompatibilityClient.connective(conjunctive) === AletheiaSole.:∧
+    @test CompatibilityClient.token(conjunctive).native === AletheiaSole.:∧
     @test conjunctive[1] == p
     @test CompatibilityClient.syntaxstring(conjunctive) == "p ∧ q"
     @test CompatibilityClient.syntaxstring(CompatibilityClient.tree(conjunctive)) == "p ∧ q"
@@ -413,9 +413,9 @@ end
 
     # A tree flattens back into a container over one connective.
     flattened = CompatibilityClient.LeftmostLinearForm(nested)
-    @test CompatibilityClient.connective(flattened) === Aletheia.:∧
+    @test CompatibilityClient.connective(flattened) === AletheiaSole.:∧
     @test CompatibilityClient.grandchildren(flattened) == [p, q, r]
-    @test CompatibilityClient.LeftmostLinearForm(Aletheia.:∧, [p, q]) ==
+    @test CompatibilityClient.LeftmostLinearForm(AletheiaSole.:∧, [p, q]) ==
         CompatibilityClient.LeftmostConjunctiveForm([p, q])
 
     @test_throws ArgumentError CompatibilityClient.LeftmostConjunctiveForm(
@@ -433,9 +433,9 @@ end
     @test CompatibilityClient.hasdual(literal)
     @test CompatibilityClient.syntaxstring(negative) == "¬p"
     @test CompatibilityClient.Literal(
-        CompatibilityClient.SyntaxBranch(Aletheia.:¬, p)) == negative
+        CompatibilityClient.SyntaxBranch(AletheiaSole.:¬, p)) == negative
     @test_throws ArgumentError CompatibilityClient.Literal(
-        CompatibilityClient.SyntaxBranch(Aletheia.:∧, p, q))
+        CompatibilityClient.SyntaxBranch(AletheiaSole.:∧, p, q))
 
     # Sole's dnf/cnf return leftmost containers of literals.
     formula = CompatibilityClient.parseformula("(p ∧ q) ∨ (¬r ∧ q)")
@@ -450,16 +450,16 @@ end
 
     # SolePostHoc's rule-extraction chain, end to end.
     rebuilt = LeftmostClient.dnf_to_syntaxbranch(normal)
-    @test rebuilt isa Aletheia.Formula
+    @test rebuilt isa AletheiaSole.Formula
     @test CompatibilityClient.tree(normal) == rebuilt
     @test CompatibilityClient.syntaxstring(rebuilt) == "p ∧ q ∨ ¬r ∧ q"
-    @test CompatibilityClient.NamedConnective{:∧}().native === Aletheia.:∧
+    @test CompatibilityClient.NamedConnective{:∧}().native === AletheiaSole.:∧
     @test_throws ArgumentError CompatibilityClient.NamedConnective{:⊻}()
 
     # Containers evaluate by folding into the ordinary DAG.
-    frame = Aletheia.Frame((:w,), Dict{Symbol,Any}())
-    model = Aletheia.Model(frame, Aletheia.BOOLEAN,
-        Aletheia.Valuation(Dict(("p", :w) => true, ("q", :w) => true, ("r", :w) => false)))
+    frame = AletheiaSole.Frame((:w,), Dict{Symbol,Any}())
+    model = AletheiaSole.Model(frame, AletheiaSole.BOOLEAN,
+        AletheiaSole.Valuation(Dict(("p", :w) => true, ("q", :w) => true, ("r", :w) => false)))
     @test CompatibilityClient.check(
         CompatibilityClient.LeftmostConjunctiveForm([p, q]), model, :w)
     @test !CompatibilityClient.check(
@@ -469,10 +469,10 @@ end
         CompatibilityClient.check(rebuilt, model, :w)
 
     # Aletheia connective values are Sole operators for dispatch purposes.
-    @test Aletheia.:∧ isa CompatibilityClient.Operator
+    @test AletheiaSole.:∧ isa CompatibilityClient.Operator
     @test Vector{CompatibilityClient.Connective}(
-        [Aletheia.:∨, Aletheia.:∧, Aletheia.:→]) isa Vector
-    @test CompatibilityClient.AbstractSyntaxStructure === Aletheia.Formula
+        [AletheiaSole.:∨, AletheiaSole.:∧, AletheiaSole.:→]) isa Vector
+    @test CompatibilityClient.AbstractSyntaxStructure === AletheiaSole.Formula
 end
 
 @testset "alphabets and random generation" begin
@@ -492,23 +492,23 @@ end
     @test CompatibilityClient.randatom(MersenneTwister(1), explicit) in [p, q, r]
     @test CompatibilityClient.randatom(explicit) in [p, q, r]
 
-    operators = [Aletheia.:¬, Aletheia.:∧, Aletheia.:∨]
+    operators = [AletheiaSole.:¬, AletheiaSole.:∧, AletheiaSole.:∨]
     generated = CompatibilityClient.randformula(MersenneTwister(7), 3, explicit, operators)
-    @test generated isa Aletheia.Formula
+    @test generated isa AletheiaSole.Formula
     @test CompatibilityClient.height(generated) <= 3
     @test generated == CompatibilityClient.randformula(MersenneTwister(7), 3, explicit, operators)
     full = CompatibilityClient.randformula(MersenneTwister(11), 3, [p, q, r], operators;
         mode=:full)
     @test CompatibilityClient.height(full) == 3
-    @test CompatibilityClient.randformula(3, explicit, operators) isa Aletheia.Formula
+    @test CompatibilityClient.randformula(3, explicit, operators) isa AletheiaSole.Formula
 
     # SoleReasoners passes a basecase picker and operator weights.
     weighted = CompatibilityClient.randformula(MersenneTwister(3), 2, explicit, operators;
         opweights=[0, 1, 0], basecase=rng -> p, mode=:full)
     @test CompatibilityClient.syntaxstring(weighted) == "p ∧ p ∧ (p ∧ p)"
     modal = CompatibilityClient.randformula(MersenneTwister(5), 2, explicit,
-        [Aletheia.Diamond(Aletheia.IA_L)]; mode=:full)
-    @test CompatibilityClient.token(modal) == Aletheia.Diamond(Aletheia.IA_L)
+        [AletheiaSole.Diamond(AletheiaCore.IA_L)]; mode=:full)
+    @test CompatibilityClient.token(modal) == AletheiaSole.Diamond(AletheiaCore.IA_L)
     @test CompatibilityClient.height(modal) == 2
 
     @test_throws ArgumentError CompatibilityClient.randformula(
@@ -530,7 +530,7 @@ end
     p = CompatibilityClient.Atom("p")
     bot, top = CompatibilityClient.⊥, CompatibilityClient.⊤
 
-    conjunction = CompatibilityClient.SyntaxBranch(Aletheia.:∧, bot, bot)
+    conjunction = CompatibilityClient.SyntaxBranch(AletheiaSole.:∧, bot, bot)
     child = CompatibilityClient.children(conjunction)[1]
     @test child isa CompatibilityClient.Truth
     @test child === bot
@@ -539,7 +539,7 @@ end
     # the consumer's own closure-rule predicate
     @test (MV.α, child) isa Tuple{CompatibilityClient.Truth,CompatibilityClient.Truth}
 
-    mixed = CompatibilityClient.SyntaxBranch(Aletheia.:∧, p, top)
+    mixed = CompatibilityClient.SyntaxBranch(AletheiaSole.:∧, p, top)
     @test CompatibilityClient.children(mixed)[1] === p
     @test CompatibilityClient.children(mixed)[2] === top
     @test (MV.α, CompatibilityClient.children(mixed)[2]) isa
@@ -548,18 +548,18 @@ end
         Tuple{CompatibilityClient.Truth,CompatibilityClient.Truth})
 
     # finite tableau carriers travel the same path
-    finite = CompatibilityClient.SyntaxBranch(Aletheia.:∨, p, MV.α)
+    finite = CompatibilityClient.SyntaxBranch(AletheiaSole.:∨, p, MV.α)
     finite_child = CompatibilityClient.children(finite)[2]
     @test finite_child isa MV.FiniteTruth
     @test finite_child === MV.α
 
     # a child handed back this way rebuilds the identical formula
-    @test CompatibilityClient.SyntaxBranch(Aletheia.:∧,
+    @test CompatibilityClient.SyntaxBranch(AletheiaSole.:∧,
         CompatibilityClient.children(mixed)...) == mixed
 
     # flattened and normal-form views keep the truth value too
     @test CompatibilityClient.conjuncts(mixed) == [p, top]
-    normal = CompatibilityClient.dnf(CompatibilityClient.SyntaxBranch(Aletheia.:∧, p, bot))
+    normal = CompatibilityClient.dnf(CompatibilityClient.SyntaxBranch(AletheiaSole.:∧, p, bot))
     literals = CompatibilityClient.grandchildren(
         CompatibilityClient.grandchildren(normal)[1])
     @test any(literal -> literal.atom isa CompatibilityClient.Truth, literals)
@@ -571,11 +571,11 @@ end
     @test CompatibilityClient.nleaves(mixed) == 2
 
     # and evaluation is unchanged: a truth leaf is still an algebra constant
-    frame = Aletheia.Frame((:w,), Dict{Symbol,Any}())
-    model = Aletheia.Model(frame, Aletheia.BOOLEAN,
-        Aletheia.Valuation(Dict(("p", :w) => true)))
+    frame = AletheiaSole.Frame((:w,), Dict{Symbol,Any}())
+    model = AletheiaSole.Model(frame, AletheiaSole.BOOLEAN,
+        AletheiaSole.Valuation(Dict(("p", :w) => true)))
     @test CompatibilityClient.check(mixed, model, :w)
     @test !CompatibilityClient.check(
-        CompatibilityClient.SyntaxBranch(Aletheia.:∧, p, bot), model, :w)
+        CompatibilityClient.SyntaxBranch(AletheiaSole.:∧, p, bot), model, :w)
     @test CompatibilityClient.check(bot, model, :w) == false
 end

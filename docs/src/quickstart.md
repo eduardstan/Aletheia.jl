@@ -14,7 +14,7 @@ repository. In the Julia package manager, use the repository URL (or
 pkg> add https://github.com/eduardstan/Aletheia.jl.git
 ```
 
-The package has no runtime dependencies.
+`AletheiaCore` has no runtime dependencies. The umbrella package assembles the focused packages; optional SoleData integration remains an extension.
 
 ## Build a formula
 

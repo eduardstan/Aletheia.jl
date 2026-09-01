@@ -754,10 +754,15 @@ const NOT = NEGATION
 const AND = CONJUNCTION
 const OR = DISJUNCTION
 const IMPLIES = IMPLICATION
+"""The prefix negation connective (`¬`)."""
 const ¬ = NEGATION
+"""The conjunction connective (`∧`)."""
 const ∧ = CONJUNCTION
+"""The fusion connective (`⊗`)."""
 const ⊗ = FUSION
+"""The disjunction connective (`∨`)."""
 const ∨ = DISJUNCTION
+"""The implication connective (`→`)."""
 const → = IMPLICATION
 
 """Return the modal relation carried by a [`Diamond`](@ref) or [`Box`](@ref)."""

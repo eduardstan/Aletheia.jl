@@ -1,6 +1,6 @@
 """Compatibility alias for the installed SoleData extension.
 
-The implementation lives in `ext/AletheiaSoleDataExt.jl`; keeping this file as
+The implementation lives in `lib/AletheiaSole/ext/AletheiaSoleDataExt.jl`; keeping this file as
 an alias means the benchmark exercises the package adapter rather than a local
 copy.
 """

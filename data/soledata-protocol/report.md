@@ -45,7 +45,7 @@ with interval frames and IA3 relations.  The fair gate covered 80 formulas and
 
 ## Package adapter and seam result
 
-The adapter now lives in `ext/AletheiaSoleDataExt.jl` and is enabled only when
+The adapter now lives in `lib/AletheiaSole/ext/AletheiaSoleDataExt.jl` and is enabled only when
 SoleData is loaded. It defines `Aletheia.SoleDataFamily <: AbstractModelFamily`.
 For each instance it reads `SoleData.frame(X, i)`, converts that frame's worlds
 and accessibility to an Aletheia `Frame`, and installs a
