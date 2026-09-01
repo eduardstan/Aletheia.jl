@@ -63,3 +63,8 @@ is complete, existing interfaces remain the stable boundary for graph work.
 
 **Consequence.** Future graph algorithms can share a canonical ecosystem
 abstraction without forcing a premature runtime dependency on the core.
+
+
+## Typed graph bridge
+
+The graph layer uses typed entities and relations, keeps edge provenance in replayable path records, and maps the graph to Aletheia's existing `Frame`/`Model` and `ValuationCallback` boundaries. Path validity, source provenance, and logical entailment remain separate contracts. A description-logic profile is explicitly deferred rather than inferred from graph paths.

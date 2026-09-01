@@ -2,12 +2,17 @@
 module Aletheia
 
 using AletheiaCore
+import AletheiaGraphs
+using AletheiaGraphs: AbstractKGEntity, AbstractKGRelation, KGEntity, KGRelation, KGProvenance, KGEdge, KnowledgeGraph, KGPath, KGSubgraph, paths, subgraphs, path_valid, path_validity, path_provenance, concept_atoms, concept_extension
 using AletheiaData
 using AletheiaLearn
 using AletheiaSole
 
 const SoleLogics = AletheiaSole.SoleLogics
 export SoleLogics
+
+export AbstractKGEntity, AbstractKGRelation, KGEntity, KGRelation, KGProvenance, KGEdge, KnowledgeGraph, KGPath, KGSubgraph
+export paths, subgraphs, path_valid, path_validity, path_provenance, concept_atoms, concept_extension
 
 export Signature, Formula, FormulaPool, Atom, Branch, DEFAULT_SIGNATURE, DEFAULT_POOL, atom, branch, children, nchildren, value
 export operator, head, pool, id, isatom, isbranch, dag, subterms, nsubterms, signature, connectives, arity
