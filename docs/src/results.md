@@ -389,6 +389,52 @@ consumer, first decide whether you are measuring cold adapter construction,
 steady reuse, or fresh-family churn; this page provides evidence for each, not a
 universal speedup.
 
+## Deployed-model apply paths
+
+This is a separate apply-path experiment against the fully optimized Sole
+stack. The fixture is one seeded `ModalDecisionTrees` model trained on a
+16-instance, 8-point supported scalar dataset. The same translated formula
+roots, source data, and world order are used by every mode. The differential
+gate compares every formula extension, antecedent mask, and prediction before
+any timing.
+
+The Sole rows name the path being measured. **Sole formula-check** calls
+`SoleData.check` with full memoization and one-step memoization enabled,
+including global precomputation and explicit relational-precompute=false.
+**Deployed modal-tree apply** calls `ModalDecisionTrees.apply`, whose direct
+`modalstep`/`checkcondition` hot path bypasses SoleData formula memos.
+**Decision-list apply** calls `SoleModels.apply` and therefore routes antecedent
+checks through `SoleLogics.check`. Aletheia's rows use a prepared model family
+and the same converted roots: **scalar callback** disables the batch callback,
+while **vectorized batch callback** supplies it. Preparation and frame/model
+conversion are reported separately.
+
+The five seed medians shown here are aggregated by median across seeds
+(`0xA1E7_2024`, `0x5EED_2025`, `0xC0FF_EE42`, `0x1234_5678`, and
+`0x9ABC_DEF0`); the paired allocation/byte observation is the one nearest that
+aggregate median. The raw artifact records five time/allocation-paired samples for timed phases,
+the sample nearest the median with its allocations and bytes, fixed seeds, cache controls,
+Julia/package versions, child niceness, and uptime before and after each
+section. It also records fresh-dataset churn separately from first use and warm
+reuse. The published values below are scope-limited.
+
+| mode | steady/cold first-use (ms; allocations / bytes) | fresh-dataset churn (ms; allocations / bytes) |
+| --- | ---: | ---: |
+| Sole formula-check | 10.293; 103,127 / 4,028,208 | 18.209; 222,979 / 10,762,672 |
+| supported-cold (construction + first check) | 17.882; 223,554 / 10,934,424 | 17.787; 223,554 / 10,934,424 |
+| supported-warm | 10.094; 103,127 / 4,028,208 | 19.353; 222,979 / 10,762,672 |
+| deployed modal-tree apply | 0.065; 470 / 33,984 | 0.067; 470 / 33,984 |
+| decision-list apply | 4.322; 36,515 / 1,415,584 | 10.306; 109,330 / 6,100,048 |
+| Aletheia scalar callback | 0.981; 14,358 / 3,759,088 | 16.636; 117,494 / 21,367,024 |
+| Aletheia vectorized batch callback | 0.649; 7,414 / 1,274,480 | 14.423; 110,550 / 18,882,416 |
+
+The construction and first-use values are intentionally not folded into warm
+reuse. This is a result for the declared workload and mode, never
+"universally faster". Reproduce it with the package paths and command in
+[`benchmark/README.md`](https://github.com/eduardstan/Aletheia.jl/blob/main/benchmark/README.md);
+this run is publishable because both recorded gates pass. The full per-seed output is retained in
+[`data/benchmark-run/deployed-apply.txt`](https://github.com/eduardstan/Aletheia.jl/blob/main/data/benchmark-run/deployed-apply.txt).
+
 ## Correctness and coverage
 
 `benchmark/differential.jl` uses the same fixed seed and passes its syntax and

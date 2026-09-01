@@ -7,7 +7,7 @@ then hands the complete rule set to `Aletheia.extension` through
 """
 module DecisionListBatchAdapter
 
-export batch_checkantecedents, batch_apply
+export batch_checkantecedents, batch_apply, prepare, apply_prepared
 
 using Aletheia
 import SoleData
@@ -24,6 +24,13 @@ struct _BatchRelation{R}
 end
 Aletheia.notation(relation::_BatchRelation) = String(relation.label)
 Base.show(io::IO, relation::_BatchRelation) = print(io, relation.label)
+
+struct PreparedDecisionList
+    rules::Vector{Any}
+    family::Any
+    formulas::Vector{Any}
+    ninstances::Int
+end
 
 function _native_connective(token, relation_map)
     token == SoleLogics.:¬ && return Aletheia.:¬
@@ -78,7 +85,7 @@ function _source_dataset(dataset)
     dataset isa SoleData.MultiLogiset ? SoleData.modality(dataset, 1) : dataset
 end
 
-function _model_family(dataset, relation_names)
+function _model_family(dataset, relation_names; vectorized=true)
     models = Any[]
     for i_instance in 1:SoleData.ninstances(dataset)
         source_frame = SoleData.frame(dataset, i_instance)
@@ -92,47 +99,66 @@ function _model_family(dataset, relation_names)
         native_frame = Aletheia.Frame(source_worlds, adjacency; index=true)
         scalar = (condition, world) -> condition isa _BatchTruth ? condition.value :
             SoleData.checkcondition(condition, dataset, i_instance, world)
-        vectorized = (condition, worlds) -> BitVector(scalar(condition, world) for world in worlds)
-        valuation = Aletheia.ValuationCallback(scalar; vectorized=vectorized)
+        batch = vectorized ? ((condition, worlds) -> BitVector(scalar(condition, world) for world in worlds)) : nothing
+        valuation = Aletheia.ValuationCallback(scalar; vectorized=batch)
         push!(models, Aletheia.Model(native_frame, Aletheia.BOOLEAN, valuation))
     end
     Aletheia.ModelFamily(models)
 end
 
-"""Return one Boolean mask per rule, using one pooled batch per instance."""
-function batch_checkantecedents(rules::AbstractVector, dataset)
+"""Prepare conversion and the model family outside a timed apply call."""
+function _prepare_rules(rules::AbstractVector, dataset; vectorized=true)
     source = _source_dataset(dataset)
+    rules = Any[rules...]
     relation_map = Dict{Any,Any}()
     shapes = [_shape(SoleModels.antecedent(rule), relation_map) for rule in rules]
     connectives = Any[]
     foreach(shape -> _collect_connectives!(connectives, shape), shapes)
     isempty(connectives) && push!(connectives, Aletheia.:¬)
     pool = Aletheia.FormulaPool(Aletheia.Signature(unique(connectives)))
-    formulas = [_intern(pool, shape) for shape in shapes]
+    formulas = Any[_intern(pool, shape) for shape in shapes]
     relation_names = Any[]
     for connective in connectives
-        connective isa Union{Aletheia.Diamond,Aletheia.Box} && push!(relation_names, Aletheia.relation(connective))
+        connective isa Union{Aletheia.Diamond,Aletheia.Box} &&
+            push!(relation_names, Aletheia.relation(connective))
     end
-    family = _model_family(source, unique(relation_names))
-    extensions = Aletheia.extension(formulas, family)
+    family = _model_family(source, unique(relation_names); vectorized=vectorized)
+    PreparedDecisionList(rules, family, formulas, SoleData.ninstances(source))
+end
+
+prepare(model::SoleModels.DecisionList, dataset; vectorized=true) =
+    _prepare_rules(SoleModels.rulebase(model), dataset; vectorized=vectorized)
+
+"""Return one Boolean mask per rule from a prepared decision list."""
+function batch_checkantecedents(state::PreparedDecisionList)
+    extensions = Aletheia.extension(state.formulas, state.family)
     [BitVector(any(values) for values in per_instance) for per_instance in extensions]
 end
 
-batch_checkantecedents(model::SoleModels.DecisionList, dataset) =
-    batch_checkantecedents(SoleModels.rulebase(model), dataset)
+function batch_checkantecedents(rules::AbstractVector, dataset; vectorized=true)
+    batch_checkantecedents(_prepare_rules(rules, dataset; vectorized=vectorized))
+end
 
-"""Apply a DecisionList after evaluating all of its antecedents in one batch."""
-function batch_apply(model::SoleModels.DecisionList, dataset)
-    masks = batch_checkantecedents(model, dataset)
-    predictions = Vector{Any}(undef, SoleData.ninstances(_source_dataset(dataset)))
-    rules = SoleModels.rulebase(model)
+batch_checkantecedents(model::SoleModels.DecisionList, dataset; vectorized=true) =
+    batch_checkantecedents(prepare(model, dataset; vectorized=vectorized))
+
+"""Apply a prepared decision list after evaluating its antecedents in one batch."""
+function apply_prepared(state::PreparedDecisionList, model::SoleModels.DecisionList)
+    masks = batch_checkantecedents(state)
+    predictions = Vector{Any}(undef, state.ninstances)
     for instance in eachindex(predictions)
         rule_position = findfirst(mask -> mask[instance], masks)
         chosen = rule_position === nothing ? SoleModels.defaultconsequent(model) :
-            SoleModels.consequent(rules[rule_position])
+            SoleModels.consequent(state.rules[rule_position])
         predictions[instance] = SoleModels.outcome(chosen)
     end
     predictions
+end
+
+"""Apply a DecisionList, including conversion and family construction."""
+function batch_apply(model::SoleModels.DecisionList, dataset; vectorized=true)
+    state = prepare(model, dataset; vectorized=vectorized)
+    apply_prepared(state, model)
 end
 
 end
