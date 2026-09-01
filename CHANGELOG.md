@@ -36,3 +36,8 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
 - Added generated-input relation properties covering the converse law,
   involution, Allen/RCC8 JEPD, fast-path/predicate agreement, and the IA3/IA7
   coarsening unions.
+
+
+## Unreleased
+
+- Added `AletheiaGraphs`, a provenance-preserving typed knowledge-graph adapter for Aletheia frames, models, paths, subgraphs, and crisp/fuzzy concept extensions.

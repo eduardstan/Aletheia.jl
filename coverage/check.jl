@@ -9,7 +9,7 @@ ENV["DISABLE_AMEND_COVERAGE_FROM_SRC"] = "yes"
 source_roots = vcat(
     [joinpath(root, "src")],
     [joinpath(root, "lib", package, "src") for package in
-        ("AletheiaCore", "AletheiaData", "AletheiaLearn", "AletheiaSole")],
+        ("AletheiaCore", "AletheiaData", "AletheiaLearn", "AletheiaSole", "AletheiaGraphs")],
 )
 files = reduce(vcat, (process_folder(path) for path in source_roots))
 covered, total = get_summary(files)
