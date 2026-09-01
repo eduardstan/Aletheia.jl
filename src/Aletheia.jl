@@ -2,6 +2,24 @@
 module Aletheia
 
 using AletheiaCore
+using AletheiaGraphs: AletheiaGraphs
+using AletheiaGraphs:
+    AbstractKGEntity,
+    AbstractKGRelation,
+    KGEntity,
+    KGRelation,
+    KGProvenance,
+    KGEdge,
+    KnowledgeGraph,
+    KGPath,
+    KGSubgraph,
+    paths,
+    subgraphs,
+    path_valid,
+    path_validity,
+    path_provenance,
+    concept_atoms,
+    concept_extension
 using AletheiaData
 using AletheiaLearn
 using AletheiaSole
@@ -13,7 +31,23 @@ export SoleLogics
 # Distribution-semantics circuits are an explicit optional layer.  The two
 # names `domain` and `evaluate` remain owned by the historical umbrella API;
 # use `AletheiaCircuits.domain` and `AletheiaCircuits.evaluate` when needed.
-export AletheiaCircuits
+export AletheiaCircuits, AletheiaGraphs
+export AbstractKGEntity,
+    AbstractKGRelation,
+    KGEntity,
+    KGRelation,
+    KGProvenance,
+    KGEdge,
+    KnowledgeGraph,
+    KGPath,
+    KGSubgraph,
+    paths,
+    subgraphs,
+    path_valid,
+    path_validity,
+    path_provenance,
+    concept_atoms,
+    concept_extension
 const ChoiceVariable = AletheiaCircuits.ChoiceVariable
 const AbstractChoiceVariable = AletheiaCircuits.AbstractChoiceVariable
 const ChoiceAlternative = AletheiaCircuits.ChoiceAlternative

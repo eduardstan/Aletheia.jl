@@ -27,7 +27,8 @@ The repository is a Julia monorepo with a compatibility-preserving umbrella:
 - `AletheiaSole` contains the opt-in `SoleLogics` vocabulary and adapters.
 - `AletheiaCircuits` contains the finite distribution-semantics front end,
   certified event diagrams, and semiring WMC.
-- `Aletheia` depends on all five focused packages and re-exports the historical
+- `AletheiaGraphs` contains typed knowledge graphs and relational frame adapters.
+- `Aletheia` depends on all six focused packages and re-exports the historical
   top-level API.
 
 Use a focused package when you want a smaller dependency surface:
@@ -38,6 +39,7 @@ using AletheiaData
 using AletheiaLearn
 using AletheiaSole.SoleLogics
 using AletheiaCircuits
+using AletheiaGraphs
 ```
 
 Existing applications can continue to use `using Aletheia`. The compatibility

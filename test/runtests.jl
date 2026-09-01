@@ -324,6 +324,23 @@ using Aletheia
         expected,
         Set([
             :AletheiaCircuits,
+            :AletheiaGraphs,
+            :AbstractKGEntity,
+            :AbstractKGRelation,
+            :KGEntity,
+            :KGRelation,
+            :KGProvenance,
+            :KGEdge,
+            :KnowledgeGraph,
+            :KGPath,
+            :KGSubgraph,
+            :paths,
+            :subgraphs,
+            :path_valid,
+            :path_validity,
+            :path_provenance,
+            :concept_atoms,
+            :concept_extension,
             :ChoiceVariable,
             :AbstractChoiceVariable,
             :ChoiceAlternative,
@@ -401,6 +418,7 @@ using Aletheia
     @test Aletheia.AletheiaLearn isa Module
     @test Aletheia.AletheiaSole isa Module
     @test Aletheia.AletheiaCircuits isa Module
+    @test Aletheia.AletheiaGraphs isa Module
 end
 
 include("umbrella_presentation.jl")

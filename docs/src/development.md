@@ -22,6 +22,7 @@ julia --project=lib/AletheiaData -e 'using Pkg; Pkg.test()'
 julia --project=lib/AletheiaLearn -e 'using Pkg; Pkg.test()'
 julia --project=lib/AletheiaSole -e 'using Pkg; Pkg.test()'
 julia --project=lib/AletheiaCircuits -e 'using Pkg; Pkg.test()'
+julia --project=lib/AletheiaGraphs -e 'using Pkg; Pkg.test()'
 ```
 
 Then run the umbrella suite to verify the historical top-level API:
@@ -46,7 +47,7 @@ Run coverage for each implementation package, then enforce the repository-wide
 95% line floor:
 
 ```sh
-for package in AletheiaCore AletheiaData AletheiaLearn AletheiaSole AletheiaCircuits; do
+for package in AletheiaCore AletheiaData AletheiaLearn AletheiaSole AletheiaCircuits AletheiaGraphs; do
   julia --project=lib/$package -e 'using Pkg; Pkg.test(coverage=true)'
 done
 julia --project=coverage -e 'using Pkg; Pkg.instantiate(); include("coverage/check.jl")'

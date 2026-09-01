@@ -11,6 +11,7 @@ AletheiaData
 AletheiaLearn
 AletheiaSole
 AletheiaCircuits
+AletheiaGraphs
 Aletheia.SoleLogics
 ```
 
@@ -58,6 +59,15 @@ Order = [:type, :function, :constant]
 
 ```@autodocs
 Modules = [AletheiaCircuits]
+Public = true
+Private = false
+Order = [:type, :function, :constant]
+```
+
+## Typed knowledge graphs
+
+```@autodocs
+Modules = [AletheiaGraphs]
 Public = true
 Private = false
 Order = [:type, :function, :constant]

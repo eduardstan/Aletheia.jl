@@ -3,7 +3,12 @@ using Pkg
 
 const REPO = normpath(joinpath(@__DIR__, ".."))
 const PACKAGES = (
-    "AletheiaCore", "AletheiaData", "AletheiaLearn", "AletheiaSole", "AletheiaCircuits"
+    "AletheiaCore",
+    "AletheiaData",
+    "AletheiaLearn",
+    "AletheiaSole",
+    "AletheiaCircuits",
+    "AletheiaGraphs",
 )
 const DEPENDENCIES = Dict(
     "AletheiaCore" => (),
@@ -11,6 +16,7 @@ const DEPENDENCIES = Dict(
     "AletheiaLearn" => ("AletheiaCore",),
     "AletheiaSole" => ("AletheiaCore", "AletheiaData"),
     "AletheiaCircuits" => ("AletheiaCore",),
+    "AletheiaGraphs" => ("AletheiaCore",),
 )
 
 if VERSION < v"1.11"

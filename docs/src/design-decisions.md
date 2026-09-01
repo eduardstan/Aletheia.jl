@@ -10,7 +10,7 @@ contributors.
 semantics, data preparation, learning, or compatibility features.
 
 **Choice.** The repository is split into `AletheiaCore`, `AletheiaData`,
-`AletheiaLearn`, `AletheiaSole`, and `AletheiaCircuits`. The core package has no runtime
+`AletheiaLearn`, `AletheiaSole`, `AletheiaCircuits`, and `AletheiaGraphs`. The core package has no runtime
 dependencies, while the `Aletheia` umbrella preserves the historical API.
 
 **Consequence.** Applications can depend on one focused layer, and existing
@@ -54,6 +54,15 @@ semantics.
 **Consequence.** Circuit evaluation remains auditable and independent of
 engine availability and licensing. The certificate makes ordering, support,
 determinism, smoothness, and source provenance explicit.
+
+## Typed graph bridge
+
+The graph layer uses typed entities and relations, keeps edge provenance in
+replayable path records, and maps the graph to Aletheia's existing
+`Frame`/`Model` and `ValuationCallback` boundaries. Path validity, source
+provenance, and logical entailment remain separate contracts. A
+description-logic profile is explicitly deferred rather than inferred from
+graph paths.
 
 ## 2026-09-01 — Graphs.jl as the graph backbone
 

@@ -41,7 +41,7 @@ Venema, §§1.2–1.3 (pp. 9–26) [blackburn2001; §§1.2–1.3, pp. 9–26](@c
 
 ## Package layout
 
-Aletheia is maintained as five Julia packages in one repository. The umbrella
+Aletheia is maintained as six Julia packages in one repository. The umbrella
 `Aletheia` package preserves the original all-in-one API, while focused users
 can depend on the layer they need:
 
@@ -51,6 +51,8 @@ can depend on the layer they need:
 - `AletheiaSole` — the opt-in `SoleLogics` compatibility vocabulary;
 - `AletheiaCircuits` — finite distribution-semantics programs, certified event
   diagrams, and Float64 or exact Rational weighted model counting.
+- `AletheiaGraphs` — typed knowledge graphs, provenance-preserving paths,
+  and relational frame adapters.
 
 The compatibility module is imported directly with `using AletheiaSole.SoleLogics`.
 Applications that already use `Aletheia` may keep using
