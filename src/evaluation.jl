@@ -271,6 +271,37 @@ function _evaluate(formula::Formula, model::Model, ::Type{E})::E where E
     values[end]
 end
 
+# Build one dependency-ordered evaluator for all roots.  Formula ids are local
+# to a pool, so the pool's ids are the natural union-DAG key.
+function _batch_evaluation_nodes(formulas::AbstractVector{<:Formula})
+    formula_pool = pool(first(formulas))
+    ids = Int[]
+    for formula in formulas
+        append!(ids, subterms(formula))
+    end
+    sort!(unique!(ids))
+    positions = Dict(id => slot for (slot, id) in enumerate(ids))
+    nodes = Vector{_EvaluationNode}(undef, length(ids))
+    for (slot, node_id) in enumerate(ids)
+        node = dag(formula_pool, node_id)
+        children = ntuple(i -> positions[node.children[i]], length(node.children))
+        nodes[slot] = _EvaluationNode(node.id, node.kind, node.payload, children)
+    end
+    nodes, positions
+end
+
+function _batch_evaluate(formulas::AbstractVector{<:Formula}, model::Model, ::Type{E})::Vector{E} where E
+    nodes, positions = _batch_evaluation_nodes(formulas)
+    values = Vector{E}(undef, length(nodes))
+    plan = _evaluation_plan(nodes, model)
+    root_slots = [positions[id(formula)] for formula in formulas]
+    for (slot, node) in enumerate(nodes)
+        values[slot] = _node_extension(node, first(formulas), model, values, plan, E)
+    end
+    # Each returned extension is independent, including repeated roots.
+    [deepcopy(values[slot]) for slot in root_slots]
+end
+
 """
     EvaluationCache(model)
 
@@ -418,6 +449,94 @@ every other algebra returns a vector whose element type is the algebra's carrier
 To construct a rich display view of the extension, pass the result and model to
 `Extension` or [`describe`](@ref).
 """
+function _batch_formulas(formulas::AbstractVector)
+    normalized = Formula[]
+    for (position, formula) in enumerate(formulas)
+        formula isa Atom || formula isa Branch || throw(ArgumentError(
+            "batch formulas[$position] must be an Aletheia Atom or Branch, got $(typeof(formula))"))
+        push!(normalized, formula)
+    end
+    isempty(normalized) && return normalized
+    formula_pool = pool(first(normalized))
+    for (position, formula) in enumerate(normalized)
+        pool(formula) === formula_pool || throw(ArgumentError(
+            "batch formulas must belong to one FormulaPool (formulas[$position] does not)"))
+    end
+    normalized
+end
+
+function _batch_evaluate_with_cache(formulas::Vector{Formula}, model::Model, ::Type{E}, ::Nothing)::Vector{E} where E
+    _batch_evaluate(formulas, model, E)
+end
+
+function _batch_evaluate_with_cache(formulas::Vector{Formula}, model::Model, ::Type{E}, cache::EvaluationCache)::Vector{E} where E
+    cache.model === model || throw(ArgumentError("evaluation cache belongs to a different model"))
+    lock(cache.lock)
+    try
+        formula_pool = pool(first(formulas))
+        if cache.pool === nothing
+            cache.pool = formula_pool
+        elseif cache.pool !== formula_pool
+            throw(ArgumentError("evaluation cache cannot mix formula pools"))
+        end
+        results = Vector{E}(undef, length(formulas))
+        missing_formulas = Formula[]
+        missing_positions = Int[]
+        for (position, formula) in enumerate(formulas)
+            key = id(formula)
+            if haskey(cache.values, key)
+                value = cache.values[key]
+                value isa E || throw(ArgumentError(
+                    "evaluation cache contains a result for a different carrier type"))
+                results[position] = deepcopy(value)
+            else
+                push!(missing_formulas, formula)
+                push!(missing_positions, position)
+            end
+        end
+        isempty(missing_formulas) && return results
+        computed = _batch_evaluate(missing_formulas, model, E)
+        for (computed_position, result_position) in enumerate(missing_positions)
+            value = computed[computed_position]
+            cache.values[id(formulas[result_position])] = value
+            results[result_position] = deepcopy(value)
+        end
+        results
+    finally
+        unlock(cache.lock)
+    end
+end
+
+function _batch_evaluate_with_cache(formulas::Vector{Formula}, model::Model, ::Type{E}, cache)::Vector{E} where E
+    throw(ArgumentError("cache must be nothing or an EvaluationCache"))
+end
+
+"""
+    extension(formulas, model)
+
+Evaluate a vector of formulas in one shared pooled-DAG pass and return one
+extension per formula, in input order.  All formulas must belong to the same
+[`FormulaPool`](@ref).  A Boolean model returns `Vector{BitVector}`; a model
+with carrier `T` returns `Vector{Vector{T}}`.  Repeated pooled subformulas,
+including atoms, are evaluated once per model.  The `cache` keyword has the
+same model and pool restrictions as the single-formula method.
+
+For a model family, `extension(formulas, family)` returns one vector per
+formula, each containing that formula's extensions in instance order.  The
+shared pass is run once for each instance.
+"""
+function extension(formulas::AbstractVector, model::Model{Bool,A}; cache=nothing) where {A<:BooleanAlgebra}
+    normalized = _batch_formulas(formulas)
+    isempty(normalized) && return BitVector[]
+    _batch_evaluate_with_cache(normalized, model, BitVector, cache)
+end
+
+function extension(formulas::AbstractVector, model::Model{T}; cache=nothing) where T
+    normalized = _batch_formulas(formulas)
+    isempty(normalized) && return Vector{T}[]
+    _batch_evaluate_with_cache(normalized, model, Vector{T}, cache)
+end
+
 function extension(formula::Formula, model::Model{Bool,A}; cache=nothing) where {A<:BooleanAlgebra}
     values = _evaluate_with_cache(formula, model, BitVector, cache)
     cache === nothing ? values : deepcopy(values)
