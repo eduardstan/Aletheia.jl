@@ -76,6 +76,42 @@ extension(formula::Formula, family::AbstractModelFamily, instance) =
 extension(formula::Formula, family::AbstractModelFamily) =
     [extension(formula, family, instance) for instance in eachinstance(family)]
 
+"""
+    extension(formulas, family)
+
+Evaluate all formulas with one shared pooled-DAG pass per family instance.
+The result is one vector per formula, and each vector contains extensions in
+instance order.  This is the family counterpart of
+[`extension(formulas, model)`](@ref).
+"""
+function extension(formulas::AbstractVector, family::AbstractModelFamily)
+    normalized = _batch_formulas(formulas)
+    isempty(normalized) && return Vector{Any}[]
+    instances = eachinstance(family)
+    state = iterate(instances)
+    state === nothing && return [Any[] for _ in normalized]
+    first_instance, iterator_state = state
+    first_batch = extension(normalized, instance_model(family, first_instance))
+    results = [Vector{typeof(first_batch[position])}() for position in eachindex(normalized)]
+    for position in eachindex(normalized)
+        push!(results[position], first_batch[position])
+    end
+    while true
+        state = iterate(instances, iterator_state)
+        state === nothing && break
+        instance, iterator_state = state
+        batch = extension(normalized, instance_model(family, instance))
+        for position in eachindex(normalized)
+            push!(results[position], batch[position])
+        end
+    end
+    results
+end
+
+"""Evaluate all formulas for one instance of a model family."""
+extension(formulas::AbstractVector, family::AbstractModelFamily, instance) =
+    extension(formulas, instance_model(family, instance))
+
 """Check a formula at one world of one instance in a model family."""
 check(formula::Formula, family::AbstractModelFamily, instance, world) =
     check(formula, instance_model(family, instance), world)

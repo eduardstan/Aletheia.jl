@@ -96,6 +96,65 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
     @test extension(shared, counted) == BitVector([false, true, false])
     @test calls[] == 2 * length(worlds(frame))
 
+    # A fixed seed keeps the batch exactness corpus reproducible.
+    Random.seed!(0xA1E7)
+    function batch_random_formula(rng, pool, p, q, depth)
+        depth == 0 && return rand(rng, (p, q))
+        connective = rand(rng, (¬, ∧, ∨, →, Diamond(:G), Box(:G)))
+        arity(connective) == 1 ?
+            branch(pool, connective, batch_random_formula(rng, pool, p, q, depth - 1)) :
+            branch(pool, connective,
+                batch_random_formula(rng, pool, p, q, depth - 1),
+                batch_random_formula(rng, pool, p, q, depth - 1))
+    end
+    batch_rng = Random.default_rng()
+    batch_forms = [batch_random_formula(batch_rng, pool, p, q, rand(batch_rng, 0:3)) for _ in 1:12]
+    batch_boolean = Model(frame, BOOLEAN, Dict(
+        "p" => Set(world for world in worlds(frame) if rand(batch_rng, Bool)),
+        "q" => Set(world for world in worlds(frame) if rand(batch_rng, Bool))))
+    batch_godel = Model(frame, GodelAlgebra(3), Dict(
+        name => Dict(world => rand(batch_rng, (0.0, 0.5, 1.0)) for world in worlds(frame))
+        for name in ("p", "q")))
+    @test extension(batch_forms, batch_boolean) == [extension(formula, batch_boolean) for formula in batch_forms]
+    @test extension(batch_forms, batch_godel) == [extension(formula, batch_godel) for formula in batch_forms]
+    batch_calls = Ref(0)
+    counted_batch = Model(frame, BOOLEAN, Aletheia.ValuationCallback(
+        (value, world) -> (batch_calls[] += 1; value == "p" ? world != :w3 : world != :w1)))
+    batch_shared = [conjunction, disjunction, branch(pool, →, p, q)]
+    batch_shared_result = extension(batch_shared, counted_batch)
+    plain_counted = Model(frame, BOOLEAN, Dict("p" => Set([:w1, :w2]), "q" => Set([:w2, :w3])))
+    @test batch_shared_result == [extension(formula, plain_counted) for formula in batch_shared]
+    @test batch_calls[] == 2 * length(worlds(frame))
+
+    batch_boolean_other = Model(frame, BOOLEAN, Dict(
+        "p" => Set(world for world in worlds(frame) if rand(batch_rng, Bool)),
+        "q" => Set(world for world in worlds(frame) if rand(batch_rng, Bool))))
+    batch_family = ModelFamily([batch_boolean, batch_boolean_other])
+    @test extension(batch_forms, batch_family) == [
+        [extension(formula, model) for model in batch_family.models] for formula in batch_forms]
+    @test extension(batch_forms, batch_family, 1) == extension(batch_forms, batch_boolean)
+    @test extension(Formula[], batch_boolean) == BitVector[]
+    @test extension(Formula[], batch_family) == Vector{Any}[]
+    @test_throws ArgumentError extension([p, atom(FormulaPool(sig), "p")], batch_boolean)
+    @test_throws ArgumentError extension([p, :not_a_formula], batch_boolean)
+
+    batch_cache = EvaluationCache(batch_boolean)
+    batch_boolean_result = extension(batch_shared, batch_boolean)
+    @test extension(batch_shared, batch_boolean; cache=batch_cache) == batch_boolean_result
+    @test extension(batch_shared, batch_boolean; cache=batch_cache) == batch_boolean_result
+    batch_new = branch(pool, ∧, p, branch(pool, ∨, q, p))
+    @test extension([batch_shared[1], batch_new], batch_boolean; cache=batch_cache) ==
+        [extension(formula, batch_boolean) for formula in [batch_shared[1], batch_new]]
+    @test_throws ArgumentError extension(batch_shared, batch_boolean_other; cache=batch_cache)
+    other_batch_pool = FormulaPool(sig)
+    other_batch_p = atom(other_batch_pool, "p")
+    @test_throws ArgumentError extension([other_batch_p], batch_boolean; cache=batch_cache)
+    batch_cache.values[id(batch_shared[1])] = [0.5, 0.5, 0.5]
+    @test_throws ArgumentError extension([batch_shared[1]], batch_boolean; cache=batch_cache)
+    @test clear!(batch_cache) === batch_cache
+    @test_throws ArgumentError extension(p, batch_boolean; cache=:invalid)
+    @test_throws ArgumentError extension([p], batch_boolean; cache=:invalid)
+
     symbolic = Model(one, SymbolAlgebra(), Dict("p" => :atom, "q" => :atom))
     @test check(p, symbolic, :only) === :atom
     @test check(notp, symbolic, :only) === :negation
