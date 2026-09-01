@@ -8,6 +8,7 @@
 - [ ] `AletheiaData`
 - [ ] `AletheiaLearn`
 - [ ] `AletheiaSole`
+- [ ] `AletheiaCircuits`
 - [ ] Umbrella `Aletheia`
 - [ ] Documentation or repository tooling only
 

@@ -10,7 +10,7 @@ contributors.
 semantics, data preparation, learning, or compatibility features.
 
 **Choice.** The repository is split into `AletheiaCore`, `AletheiaData`,
-`AletheiaLearn`, and `AletheiaSole`. The core package has no runtime
+`AletheiaLearn`, `AletheiaSole`, `AletheiaCircuits`, and `AletheiaGraphs`. The core package has no runtime
 dependencies, while the `Aletheia` umbrella preserves the historical API.
 
 **Consequence.** Applications can depend on one focused layer, and existing
@@ -46,12 +46,23 @@ strict, and optional capabilities do not enlarge every installation.
 repeatable circuit-level operations without making an external engine part of
 its runtime contract.
 
-**Choice.** An owned certified circuit representation is planned. External
-circuit engines will be used as test oracles, not as the source of Aletheia's
-runtime semantics.
+**Choice.** `AletheiaCircuits` owns a certified reduced ordered choice diagram
+for its finite distribution-semantics fragment. External circuit engines may
+serve as test oracles, but they are not the source of Aletheia's runtime
+semantics.
 
-**Consequence.** The public design can evolve toward certified circuits while
-keeping the current packages independent of engine availability and licensing.
+**Consequence.** Circuit evaluation remains auditable and independent of
+engine availability and licensing. The certificate makes ordering, support,
+determinism, smoothness, and source provenance explicit.
+
+## Typed graph bridge
+
+The graph layer uses typed entities and relations, keeps edge provenance in
+replayable path records, and maps the graph to Aletheia's existing
+`Frame`/`Model` and `ValuationCallback` boundaries. Path validity, source
+provenance, and logical entailment remain separate contracts. A
+description-logic profile is explicitly deferred rather than inferred from
+graph paths.
 
 ## 2026-09-01 — Graphs.jl as the graph backbone
 
@@ -65,6 +76,20 @@ is complete, existing interfaces remain the stable boundary for graph work.
 abstraction without forcing a premature runtime dependency on the core.
 
 
-## Typed graph bridge
+## 2026-09-01 — Finite distribution semantics stays outside `TruthAlgebra`
 
-The graph layer uses typed entities and relations, keeps edge provenance in replayable path records, and maps the graph to Aletheia's existing `Frame`/`Model` and `ValuationCallback` boundaries. Path validity, source provenance, and logical entailment remain separate contracts. A description-logic profile is explicitly deferred rather than inferred from graph paths.
+**Context.** A probability is a measure over selected two-valued program
+worlds, while `TruthAlgebra` evaluates a formula at one world. Conflating the
+two would make normalization and circuit guarantees invisible.
+
+**Choice.** `AletheiaCircuits` is a focused package with only a finite,
+function-free, ground, acyclic fragment. It compiles events to an owned
+reduced ordered choice decision diagram and evaluates only a certified circuit
+through a closed nonnegative probability semiring. The umbrella re-exports
+this package because it is a stable user-facing layer, while the focused
+package remains directly usable.
+
+**Consequence.** WMC and positive-denominator conditional probability are
+exact claims for the declared fragment. Function symbols, cycles, unnormalized
+choices, and zero-mass evidence fail with typed exceptions. Gradients, EM,
+and general AMC remain deliberately outside this contract.

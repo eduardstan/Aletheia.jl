@@ -1,0 +1,31 @@
+name = "AletheiaCircuits"
+uuid = "f2f2c2cc-9ec4-4b98-ae6d-f76c6e1f4e8a"
+version = "0.2.0"
+authors = ["Ionel Eduard STAN"]
+
+[deps]
+AletheiaCore = "454358c0-307f-42e0-96b9-2536c30efc25"
+
+[compat]
+AletheiaCore = "0.2"
+julia = "1.10"
+Aqua = "0.8"
+JET = "0.9, 0.10, 0.11, 0.12"
+AllocCheck = "0.2"
+Interfaces = "0.3"
+Supposition = "0.3"
+Test = "1"
+
+[extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
+AllocCheck = "9b6a8646-10ed-4001-bbdc-1d2f46dfbb1a"
+Interfaces = "85a1e053-f937-4924-92a5-1367d23b7b87"
+Supposition = "5a0628fe-1738-4658-9b6d-0b7605a9755b"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Aqua", "JET", "AllocCheck", "Interfaces", "Supposition", "Test"]
+
+[sources]
+AletheiaCore = {path = "../AletheiaCore"}

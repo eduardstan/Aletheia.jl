@@ -9,6 +9,7 @@ AletheiaGraphs = "a4b1a79e-6d5e-4d0f-9c1d-2c6c8e2f4a31"
 AletheiaData = "74ea9182-2ae2-40c1-8d48-286e4f6c8d81"
 AletheiaLearn = "dd9ab238-975a-464e-adea-60655e279e0b"
 AletheiaSole = "668d19f0-cf9f-4c81-ba74-1183708b87c8"
+AletheiaCircuits = "f2f2c2cc-9ec4-4b98-ae6d-f76c6e1f4e8a"
 
 [compat]
 AletheiaCore = "0.2"
@@ -16,6 +17,7 @@ AletheiaGraphs = "0.2"
 AletheiaData = "0.2"
 AletheiaLearn = "0.2"
 AletheiaSole = "0.2"
+AletheiaCircuits = "0.2"
 Aqua = "0.8"
 AllocCheck = "0.2"
 Coverage = "1"
@@ -45,3 +47,4 @@ AletheiaCore = {path = "lib/AletheiaCore"}
 AletheiaData = {path = "lib/AletheiaData"}
 AletheiaLearn = {path = "lib/AletheiaLearn"}
 AletheiaSole = {path = "lib/AletheiaSole"}
+AletheiaCircuits = {path = "lib/AletheiaCircuits"}

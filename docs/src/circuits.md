@@ -1,0 +1,48 @@
+# Distribution-semantics circuits
+
+A probabilistic logic program describes a distribution over ordinary
+(two-valued) worlds. Each independent choice selects one normalized outcome;
+ground rules then close the selected facts under an acyclic dependency order.
+For a query event `q`, weighted model counting sums the weights of worlds in
+which `q` holds. Conditional probability is the ratio of the joint event to
+the positive-mass evidence event. This is the finite distribution-semantics
+view described by Riguzzi, chapters 2 and 8 [riguzzi2023](@cite).
+
+## Supported fragment
+
+`AletheiaCircuits` supports exactly finite, function-free programs with ground
+rules, independent finite choices, normalized nonnegative weights, and an
+acyclic rule dependency graph. Consequences are two-valued. Queries and
+evidence can use atoms and explicit `Not`, `And`, and `Or` event expressions.
+The front end enumerates the finite primitive choices to build a reduced
+ordered choice decision diagram. Enumeration is a simple, auditable grounding
+strategy for this fragment. The resulting circuit certificate records the
+choice order, every node's support, disjoint decision branches, and source
+provenance.
+
+A circuit must be certified before the semiring evaluator will enter it. The
+probability evaluator is intentionally not a `TruthAlgebra`: truth values at a
+world and a measure over worlds are different semantic objects. WMC uses the
+closed nonnegative `Float64Profile()` by default, or exact `RationalProfile()`.
+
+```@example circuits
+using AletheiaCircuits
+rain = ProbabilisticFact(:rain, 3 // 10)
+program = DSProgram([rain], [GroundRule(:wet, (:rain,))])
+query = compile_event(program, :wet)
+evidence = compile_event(program, :rain)
+wmc(query; semiring=RationalProfile())
+```
+
+```@example circuits
+conditional_probability(query, evidence; semiring=RationalProfile())
+```
+
+The package rejects function symbols, variables, cycles, unnormalized choices,
+unsupported circuit backends, and zero-mass evidence with typed exceptions.
+It does not claim support for continuous variables, infinite grounding,
+cyclic or general locally stratified programs, modal probabilistic semantics,
+gradients, reverse evaluation, EM, or arbitrary AMC backends. Those features
+would require new contracts and separate validation. The semiring vocabulary
+follows algebraic model counting, while the finite distribution-semantics
+scope follows Riguzzi, chapters 2, 3, 8, and 12 [riguzzi2023](@cite).

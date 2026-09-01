@@ -5,8 +5,15 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
 
 ## Unreleased
 
+- Added the focused `AletheiaCircuits` package for finite distribution
+  semantics: normalized independent choices, ground acyclic rules, certified
+  reduced ordered event diagrams, and separate Float64/Rational WMC and
+  conditional-probability evaluation. Unsupported features and zero-mass
+  evidence are rejected with typed errors.
+
 - Reshaped the repository into the umbrella `Aletheia` package and the focused
-  `AletheiaCore`, `AletheiaData`, `AletheiaLearn`, and `AletheiaSole` packages.
+  `AletheiaCore`, `AletheiaData`, `AletheiaLearn`, `AletheiaSole`,
+  `AletheiaCircuits`, and `AletheiaGraphs` packages.
   The umbrella keeps the historical public API; `SoleLogics` is owned by
   `AletheiaSole` and remains available as `Aletheia.SoleLogics`.
 - Added an implicit default-pool path. `atom(value)`,
@@ -36,8 +43,6 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
 - Added generated-input relation properties covering the converse law,
   involution, Allen/RCC8 JEPD, fast-path/predicate agreement, and the IA3/IA7
   coarsening unions.
-
-
-## Unreleased
-
-- Added `AletheiaGraphs`, a provenance-preserving typed knowledge-graph adapter for Aletheia frames, models, paths, subgraphs, and crisp/fuzzy concept extensions.
+- Added `AletheiaGraphs`, a provenance-preserving typed knowledge-graph adapter
+  for Aletheia frames, models, paths, subgraphs, and crisp/fuzzy concept
+  extensions.

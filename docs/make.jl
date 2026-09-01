@@ -1,7 +1,14 @@
 using Pkg
 Pkg.activate(@__DIR__)
 repo = dirname(@__DIR__)
-packages = ("AletheiaCore", "AletheiaData", "AletheiaLearn", "AletheiaSole", "AletheiaGraphs")
+packages = (
+    "AletheiaCore",
+    "AletheiaData",
+    "AletheiaLearn",
+    "AletheiaSole",
+    "AletheiaCircuits",
+    "AletheiaGraphs",
+)
 # Develop the umbrella and all focused packages in one resolution. The focused
 # packages are not registered, and Pkg.develop does not consult a developed
 # package's [sources] table when resolving its unregistered dependents.
@@ -12,7 +19,7 @@ Pkg.instantiate()
 
 import SoleData
 using Aletheia
-import AletheiaCore, AletheiaData, AletheiaLearn, AletheiaSole, AletheiaGraphs
+import AletheiaCore, AletheiaData, AletheiaLearn, AletheiaSole, AletheiaCircuits, AletheiaGraphs
 using Documenter
 using DocumenterCitations
 
@@ -21,7 +28,16 @@ bibliography = CitationBibliography(joinpath(@__DIR__, "src", "refs.bib"))
 makedocs(
     sitename = "Aletheia.jl",
     checkdocs = :exports,
-    modules = [Aletheia, AletheiaCore, AletheiaData, AletheiaLearn, AletheiaSole, AletheiaGraphs, Aletheia.SoleLogics],
+    modules = [
+        Aletheia,
+        AletheiaCore,
+        AletheiaData,
+        AletheiaLearn,
+        AletheiaSole,
+        AletheiaCircuits,
+        AletheiaGraphs,
+        Aletheia.SoleLogics,
+    ],
     pages = [
         "Home" => "index.md",
         "Quick start" => "quickstart.md",
@@ -31,6 +47,7 @@ makedocs(
         "Many models, one formula" => "families.md",
         "Scalar data" => "scalar.md",
         "Finite FLew-algebras" => "algebras.md",
+        "Distribution-semantics circuits" => "circuits.md",
         "Relations, frames, and frame classes" => "relations.md",
         "Knowledge graphs" => "graphs.md",
         "Theory utilities" => "theory.md",

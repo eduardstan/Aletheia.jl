@@ -17,7 +17,7 @@ labels: bug
 ## Environment
 
 - Julia version:
-- Aletheia package (`Aletheia`, `AletheiaCore`, `AletheiaData`, `AletheiaLearn`, or `AletheiaSole`) and version:
+- Aletheia package (`Aletheia`, `AletheiaCore`, `AletheiaData`, `AletheiaLearn`, `AletheiaSole`, or `AletheiaCircuits`) and version:
 - Operating system:
 
 ## Additional context
