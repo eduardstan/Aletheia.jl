@@ -100,3 +100,9 @@
         query, compile_event(altered, :y)
     )
 end
+
+
+@testset "rational profile converts Float64 weights" begin
+    p = DSProgram(choices=[ChoiceVariable(:c, (:yes, :no), (0.1, 0.9))])
+    @test wmc(compile_event(p, :yes); semiring=RationalProfile()) == 1//10
+end

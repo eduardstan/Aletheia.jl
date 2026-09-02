@@ -62,12 +62,11 @@ struct SKERoundTrip
 end
 
 function _encoded(encoder, atom, world)
-    encoder === nothing && return world
-    applicable(encoder, atom, world) && return encoder(atom, world)
-    applicable(encoder, world) && return encoder(world)
-    return throw(
-        NeSyContractError(:encoder, "encoder must accept (atom, world) or (world)")
-    )
+    try
+        return AletheiaAudit._encoded_input(encoder, atom, world)
+    catch
+        throw(NeSyContractError(:encoder, "encoder must accept (atom, world) or (world)"))
+    end
 end
 function _raw(network, encoder, atom, world)
     return network(_encoded(encoder, atom, world))
@@ -207,7 +206,6 @@ function ske_roundtrip(
     algebra=BOOLEAN,
     artifact=:rule,
     profile=nothing,
-    trace=true,
     provenance=Provenance(),
 )
     cs = _nesy_cases(cases)

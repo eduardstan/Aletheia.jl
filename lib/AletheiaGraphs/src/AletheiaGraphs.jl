@@ -122,8 +122,9 @@ function KnowledgeGraph(entities, relations, edges; provenance=())
     relation_set = Set(rs)
     for edge in gs
         edge isa KGEdge || throw(ArgumentError("edges must be KGEdge values"))
-        haskey(entity_by_id, edge.source.id) && haskey(entity_by_id, edge.target.id) ||
-            throw(ArgumentError("every edge endpoint must belong to the graph"))
+        haskey(entity_by_id, edge.source.id) && isequal(entity_by_id[edge.source.id], edge.source) &&
+            haskey(entity_by_id, edge.target.id) && isequal(entity_by_id[edge.target.id], edge.target) ||
+            throw(ArgumentError("every edge endpoint must match a graph entity by full identity (id and value)"))
         edge.relation in relation_set ||
             throw(ArgumentError("every edge relation must belong to the graph"))
         _kind_matches(edge.relation.domain, edge.source.kind) ||

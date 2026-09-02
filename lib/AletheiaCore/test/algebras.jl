@@ -125,3 +125,14 @@
     expect_bad([1 1 1 1; 1 2 3 4; 1 3 3 1; 1 4 1 4],
         [1 2 3 4; 2 2 2 2; 3 2 3 2; 4 2 2 4], drastic, "residuum")
 end
+
+
+@testset "finite carrier validation is shared by semantics and operations" begin
+    @test_throws ArgumentError meet(H4, true, UInt8(1))
+    @test_throws ArgumentError meet(H4, UInt8(0), UInt8(1))
+    pool = FormulaPool(Signature((Diamond(:R),)))
+    f = atom(pool, :p)
+    model = Model(Frame([:w]), H4, Valuation(Dict((:w, :p) => UInt8(0))))
+    @test_throws ArgumentError interpret(f, model, :w)
+    @test_throws ArgumentError collect(extension(f, model))
+end

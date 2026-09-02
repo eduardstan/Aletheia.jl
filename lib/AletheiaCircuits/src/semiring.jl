@@ -42,7 +42,8 @@ ProbabilityProfile(::Type{T}) where {T} = ProbabilityProfile{T}()
 """The probability semiring used for WMC.
 
 `Float64` is the practical profile. `Rational{Int}` gives exact finite-world
-answers when the program weights are rational.
+answers; Float64 weights are converted with `rationalize` using an eight-ulp
+tolerance before rational evaluation.
 
 # Examples
 ```jldoctest
@@ -110,7 +111,8 @@ function _as_carrier(::ProbabilitySemiring{T}, value) where {T}
     converted = if value isa T
         value
     elseif T <: Rational && value isa AbstractFloat
-        rationalize(T, value)
+        # Float64 inputs are converted to the nearest rational within an eight-ulp tolerance.
+        convert(T, rationalize(Int, value; tol=eps(value) * 8))
     else
         try
             convert(T, value)

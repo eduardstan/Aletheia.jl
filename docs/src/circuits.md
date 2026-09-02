@@ -27,7 +27,8 @@ A circuit must be certified before the semiring evaluator will enter it. The
 probability evaluator is intentionally not a `TruthAlgebra`: truth values at a
 world and a measure over worlds are different semantic objects
 [riguzzi2023; chs. 2 and 8](@cite). WMC uses the closed nonnegative
-`Float64Profile()` by default, or exact `RationalProfile()`, following the
+`Float64Profile()` by default, or exact `RationalProfile()` (Float64 weights are
+converted with `rationalize` using an eight-ulp tolerance), following the
 semiring abstraction of algebraic model counting [kimmig2017](@cite).
 
 ```@example circuits
@@ -43,8 +44,10 @@ wmc(query; semiring=RationalProfile())
 conditional_probability(query, evidence; semiring=RationalProfile())
 ```
 
-The package rejects function symbols, variables, cycles, unnormalized choices,
-unsupported circuit backends, and zero-mass evidence with typed exceptions.
+The package rejects function symbols, variables, native opaque values, infinite
+domains, invalid rule heads, cycles, unnormalized choices, unsupported circuit
+backends, and zero-mass evidence with typed exceptions. Boolean values are reserved
+for event constants and cannot be choice alternatives.
 It does not claim support for continuous variables, infinite grounding,
 cyclic or general locally stratified programs, modal probabilistic semantics,
 gradients, reverse evaluation, EM, or arbitrary AMC backends. Those features

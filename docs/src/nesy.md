@@ -23,8 +23,9 @@ keeps distribution semantics distinct from `TruthAlgebra`, as in Riguzzi's
 account of probabilistic logic programming [riguzzi2023](@cite).
 
 `ske_roundtrip` performs exact enumerative extraction on a declared finite case
-set, evaluates the artifact through the audit protocol, and returns its
-verification, metrics, and audit record. Unknown cases remain uncovered. A
+set, using the same encoder dispatch path for extraction and network evaluation. It
+evaluates the artifact through the audit protocol and returns its verification,
+metrics, and audit record. Unknown cases remain uncovered. A
 semantic-loss call is intentionally disabled and raises `SemanticLossError`
 until a gradient-soundness profile is proven.
 

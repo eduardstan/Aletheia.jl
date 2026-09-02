@@ -176,6 +176,15 @@ end
     )
 end
 
+@testset "round trips share overloaded encoder dispatch" begin
+    encoder(x::Symbol) = 1
+    encoder(a, x::Symbol) = 2
+    network(x) = x == 1
+    result = ske_roundtrip(network, encoder, [:case])
+    @test result.extracted(:case) == false
+    @test result.verification.valid
+end
+
 @testset "AletheiaNeSy quality" begin
     Aqua.test_all(AletheiaNeSy)
     JET.test_package(
