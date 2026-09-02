@@ -13,7 +13,6 @@ true
 ```
 """
 abstract type FirstOrderTerm end
-
 """A first-order variable term.
 
 # Examples
@@ -75,7 +74,6 @@ true
 ```
 """
 abstract type FirstOrderFormula end
-
 """A first-order predicate formula.
 
 # Examples
@@ -92,7 +90,6 @@ struct Predicate <: FirstOrderFormula
 end
 Predicate(name, arguments::AbstractVector) = Predicate(name, tuple(arguments...))
 Predicate(name, arguments::FirstOrderTerm...) = Predicate(name, arguments)
-
 """A first-order equality formula.
 
 # Examples
@@ -107,7 +104,6 @@ struct Equality <: FirstOrderFormula
     left::FirstOrderTerm
     right::FirstOrderTerm
 end
-
 """First-order negation.
 
 # Examples
@@ -121,7 +117,6 @@ julia> FONegation(Predicate(:P, Variable(:x)))
 struct FONegation <: FirstOrderFormula
     child::FirstOrderFormula
 end
-
 """First-order conjunction.
 
 # Examples
@@ -136,7 +131,6 @@ struct FOConjunction <: FirstOrderFormula
     left::FirstOrderFormula
     right::FirstOrderFormula
 end
-
 """First-order disjunction.
 
 # Examples
@@ -151,7 +145,6 @@ struct FODisjunction <: FirstOrderFormula
     left::FirstOrderFormula
     right::FirstOrderFormula
 end
-
 """First-order implication.
 
 # Examples
@@ -166,7 +159,6 @@ struct FOImplication <: FirstOrderFormula
     left::FirstOrderFormula
     right::FirstOrderFormula
 end
-
 """First-order existential quantification.
 
 # Examples
@@ -181,7 +173,6 @@ struct Exists <: FirstOrderFormula
     variable::Variable
     body::FirstOrderFormula
 end
-
 """First-order universal quantification.
 
 # Examples
@@ -217,26 +208,18 @@ Base.show(io::IO, c::Constant) = print(io, _fo_constant_text(c.value))
 function _fo_term_text(term)
     term isa Variable && return string(term.name)
     term isa Constant && return _fo_constant_text(term.value)
-    term isa FunctionTerm && return "$(term.name)(" *
-           join((_fo_term_text(t) for t in term.arguments), ", ") *
-           ")"
-    return string(typeof(term))
+    term isa FunctionTerm && return "$(term.name)(" * join((_fo_term_text(t) for t in term.arguments), ", ") * ")"
+    string(typeof(term))
 end
 Base.show(io::IO, t::FunctionTerm) = print(io, _fo_term_text(t))
 function _fo_text(formula::FirstOrderFormula, parent::Symbol=:root)
     if formula isa Predicate
-        return "$(formula.name)(" *
-               join((_fo_term_text(t) for t in formula.arguments), ", ") *
-               ")"
+        return "$(formula.name)(" * join((_fo_term_text(t) for t in formula.arguments), ", ") * ")"
     elseif formula isa Equality
         return "$( _fo_term_text(formula.left) ) = $( _fo_term_text(formula.right) )"
     elseif formula isa FONegation
         text = "¬" * _fo_text(formula.child, :not)
-        return if formula.child isa Predicate || formula.child isa Equality
-            text
-        else
-            "¬(" * _fo_text(formula.child) * ")"
-        end
+        return formula.child isa Predicate || formula.child isa Equality ? text : "¬(" * _fo_text(formula.child) * ")"
     elseif formula isa FOConjunction
         return _fo_join(formula, "∧", :and, parent)
     elseif formula isa FODisjunction
@@ -248,18 +231,14 @@ function _fo_text(formula::FirstOrderFormula, parent::Symbol=:root)
     elseif formula isa Forall
         return "∀$(formula.variable). " * _fo_text(formula.body)
     end
-    return string(typeof(formula))
+    string(typeof(formula))
 end
 function _fo_child_text(formula)
-    return if formula isa Predicate || formula isa Equality
-        _fo_text(formula)
-    else
-        "(" * _fo_text(formula) * ")"
-    end
+    formula isa Predicate || formula isa Equality ? _fo_text(formula) : "(" * _fo_text(formula) * ")"
 end
 function _fo_join(formula, token, kind, parent)
     text = _fo_child_text(formula.left) * " $token " * _fo_child_text(formula.right)
-    return parent == :root ? text : "(" * text * ")"
+    parent == :root ? text : "(" * text * ")"
 end
 Base.show(io::IO, f::FirstOrderFormula) = print(io, _fo_text(f))
 Base.string(f::FirstOrderFormula) = _fo_text(f)
@@ -280,48 +259,36 @@ struct FirstOrderInterpretation{D,P,E,F}
     equality::E
     functions::F
 end
-function FirstOrderInterpretation(
-    domain; predicates=Dict(), equality=(==), functions=Dict()
-)
-    return FirstOrderInterpretation(
-        domain, predicates; equality=equality, functions=functions
-    )
-end
+FirstOrderInterpretation(domain; predicates=Dict(), equality=(==), functions=Dict()) =
+    FirstOrderInterpretation(domain, predicates; equality=equality, functions=functions)
 
 function FirstOrderInterpretation(domain, predicates; equality=(==), functions=Dict())
     values = tuple(domain...)
     isempty(values) && throw(ArgumentError("a first-order domain must be non-empty"))
-    return FirstOrderInterpretation{
-        typeof(values),typeof(predicates),typeof(equality),typeof(functions)
-    }(
-        values, predicates, equality, functions
-    )
+    FirstOrderInterpretation{typeof(values),typeof(predicates),typeof(equality),typeof(functions)}(
+        values, predicates, equality, functions)
 end
-function FirstOrderInterpretation(domain, predicates, equality)
-    return FirstOrderInterpretation(domain, predicates; equality=equality)
-end
+FirstOrderInterpretation(domain, predicates, equality) =
+    FirstOrderInterpretation(domain, predicates; equality=equality)
 const FOInterpretation = FirstOrderInterpretation
 const FOModel = FirstOrderInterpretation
 domain(interpretation::FirstOrderInterpretation) = interpretation.domain
 
 function _assignment_value(assignment, name::Symbol)
     assignment isa AbstractDict && haskey(assignment, name) && return assignment[name]
-    assignment isa NamedTuple &&
-        hasproperty(assignment, name) &&
-        return getproperty(assignment, name)
-    return throw(KeyError(name))
+    assignment isa NamedTuple && hasproperty(assignment, name) && return getproperty(assignment, name)
+    throw(KeyError(name))
 end
 function _term_value(term::Variable, interpretation, assignment)
     value = _assignment_value(assignment, term.name)
-    value in interpretation.domain ||
-        throw(ArgumentError("assignment value is outside the first-order domain"))
-    return value
+    value in interpretation.domain || throw(ArgumentError("assignment value is outside the first-order domain"))
+    value
 end
 _term_value(term::Constant, interpretation, assignment) = term.value
 function _function_value(table, args)
     table isa Function && return table(args...)
     table isa AbstractDict && haskey(table, args) && return table[args]
-    return throw(KeyError(args))
+    throw(KeyError(args))
 end
 function _term_value(term::FunctionTerm, interpretation, assignment)
     args = Tuple(_term_value(t, interpretation, assignment) for t in term.arguments)
@@ -333,18 +300,15 @@ function _term_value(term::FunctionTerm, interpretation, assignment)
     elseif table isa Function
         return table(term.name, args...)
     end
-    return throw(KeyError(term.name))
+    throw(KeyError(term.name))
 end
 
 function _predicate_value(table, args)
     table isa Function && return Bool(table(args...))
     table isa AbstractSet && return length(args) == 1 ? (args[1] in table) : (args in table)
     table isa AbstractDict && (haskey(table, args) && return Bool(table[args]))
-    table isa AbstractDict &&
-        length(args) == 1 &&
-        haskey(table, args[1]) &&
-        return Bool(table[args[1]])
-    return throw(KeyError(args))
+    table isa AbstractDict && length(args) == 1 && haskey(table, args[1]) && return Bool(table[args[1]])
+    throw(KeyError(args))
 end
 function _predicate_value(interpretation::FirstOrderInterpretation, name, args)
     predicates = interpretation.predicates
@@ -354,7 +318,7 @@ function _predicate_value(interpretation::FirstOrderInterpretation, name, args)
         haskey(predicates, name) && return _predicate_value(predicates[name], args)
     end
     predicates isa Function && return Bool(predicates(name, args...))
-    return throw(KeyError(name))
+    throw(KeyError(name))
 end
 
 """Evaluate a first-order formula in a finite interpretation.
@@ -367,62 +331,35 @@ julia> isdefined(AletheiaCore, Symbol("evaluate"))
 true
 ```
 """
-function evaluate(
-    formula::FirstOrderFormula,
-    interpretation::FirstOrderInterpretation,
-    assignment=Dict{Symbol,Any}(),
-)
+function evaluate(formula::FirstOrderFormula, interpretation::FirstOrderInterpretation,
+                  assignment=Dict{Symbol,Any}())
     if formula isa Predicate
-        return _predicate_value(
-            interpretation,
-            formula.name,
-            Tuple(_term_value(t, interpretation, assignment) for t in formula.arguments),
-        )
+        return _predicate_value(interpretation, formula.name,
+                                Tuple(_term_value(t, interpretation, assignment) for t in formula.arguments))
     elseif formula isa Equality
-        return interpretation.equality(
-            _term_value(formula.left, interpretation, assignment),
-            _term_value(formula.right, interpretation, assignment),
-        )
+        return interpretation.equality(_term_value(formula.left, interpretation, assignment),
+                                      _term_value(formula.right, interpretation, assignment))
     elseif formula isa FONegation
         return !evaluate(formula.child, interpretation, assignment)
     elseif formula isa FOConjunction
-        return evaluate(formula.left, interpretation, assignment) &&
-               evaluate(formula.right, interpretation, assignment)
+        return evaluate(formula.left, interpretation, assignment) && evaluate(formula.right, interpretation, assignment)
     elseif formula isa FODisjunction
-        return evaluate(formula.left, interpretation, assignment) ||
-               evaluate(formula.right, interpretation, assignment)
+        return evaluate(formula.left, interpretation, assignment) || evaluate(formula.right, interpretation, assignment)
     elseif formula isa FOImplication
-        return !evaluate(formula.left, interpretation, assignment) ||
-               evaluate(formula.right, interpretation, assignment)
+        return !evaluate(formula.left, interpretation, assignment) || evaluate(formula.right, interpretation, assignment)
     elseif formula isa Exists || formula isa Forall
         variable, body = formula.variable, formula.body
-        base_assignment = if assignment isa NamedTuple
-            Dict{Symbol,Any}(pairs(assignment))
-        else
-            Dict{Symbol,Any}(assignment)
-        end
-        values = (
-            let next = copy(base_assignment)
-                next[variable.name] = value
-                next
-            end for value in interpretation.domain
-        )
-        return if formula isa Exists
-            any(evaluate(body, interpretation, a) for a in values)
-        else
+        base_assignment = assignment isa NamedTuple ? Dict{Symbol,Any}(pairs(assignment)) : Dict{Symbol,Any}(assignment)
+        values = (let next = copy(base_assignment); next[variable.name] = value; next end
+                  for value in interpretation.domain)
+        return formula isa Exists ? any(evaluate(body, interpretation, a) for a in values) :
             all(evaluate(body, interpretation, a) for a in values)
-        end
     end
-    return throw(ArgumentError("unsupported first-order formula $(typeof(formula))"))
+    throw(ArgumentError("unsupported first-order formula $(typeof(formula))"))
 end
 
-function interpret(
-    formula::FirstOrderFormula,
-    interpretation::FirstOrderInterpretation,
-    assignment=Dict{Symbol,Any}(),
-)
-    return evaluate(formula, interpretation, assignment)
-end
+interpret(formula::FirstOrderFormula, interpretation::FirstOrderInterpretation, assignment=Dict{Symbol,Any}()) =
+    evaluate(formula, interpretation, assignment)
 
 struct _TranslationState
     counter::Base.RefValue{Int}
@@ -431,13 +368,13 @@ struct _TranslationState
 end
 function _fresh_variable!(state::_TranslationState, prefix::Symbol)
     state.counter[] += 1
-    return Variable(Symbol(prefix, "_", state.counter[]))
+    Variable(Symbol(prefix, "_", state.counter[]))
 end
 function _predicate_name(f, value)
-    return f isa Function ? f(value) : value
+    f isa Function ? f(value) : value
 end
 function _standard_translation(formula::Atom, world::Variable, state::_TranslationState)
-    return Predicate(_predicate_name(state.atom_predicate, value(formula)), world)
+    Predicate(_predicate_name(state.atom_predicate, value(formula)), world)
 end
 function _standard_translation(formula::Branch, world::Variable, state::_TranslationState)
     c = operator(formula)
@@ -445,40 +382,21 @@ function _standard_translation(formula::Branch, world::Variable, state::_Transla
     if c isa Negation
         return FONegation(_standard_translation(child[1], world, state))
     elseif c isa Conjunction
-        return FOConjunction(
-            _standard_translation(child[1], world, state),
-            _standard_translation(child[2], world, state),
-        )
+        return FOConjunction(_standard_translation(child[1], world, state), _standard_translation(child[2], world, state))
     elseif c isa Disjunction
-        return FODisjunction(
-            _standard_translation(child[1], world, state),
-            _standard_translation(child[2], world, state),
-        )
+        return FODisjunction(_standard_translation(child[1], world, state), _standard_translation(child[2], world, state))
     elseif c isa Implication
-        return FOImplication(
-            _standard_translation(child[1], world, state),
-            _standard_translation(child[2], world, state),
-        )
+        return FOImplication(_standard_translation(child[1], world, state), _standard_translation(child[2], world, state))
     elseif c isa Diamond
         next = _fresh_variable!(state, world.name)
-        edge = Predicate(
-            _predicate_name(state.relation_predicate, relation(c)), world, next
-        )
-        return Exists(
-            next, FOConjunction(edge, _standard_translation(child[1], next, state))
-        )
+        edge = Predicate(_predicate_name(state.relation_predicate, relation(c)), world, next)
+        return Exists(next, FOConjunction(edge, _standard_translation(child[1], next, state)))
     elseif c isa Box
         next = _fresh_variable!(state, world.name)
-        edge = Predicate(
-            _predicate_name(state.relation_predicate, relation(c)), world, next
-        )
-        return Forall(
-            next, FOImplication(edge, _standard_translation(child[1], next, state))
-        )
+        edge = Predicate(_predicate_name(state.relation_predicate, relation(c)), world, next)
+        return Forall(next, FOImplication(edge, _standard_translation(child[1], next, state)))
     end
-    return throw(
-        ArgumentError("standard translation has no clause for connective $(repr(c))")
-    )
+    throw(ArgumentError("standard translation has no clause for connective $(repr(c))"))
 end
 
 """
@@ -499,19 +417,14 @@ julia> isdefined(AletheiaCore, Symbol("standard_translation"))
 true
 ```
 """
-function standard_translation(
-    formula::Formula;
-    world=Variable(:x),
-    world_variable=nothing,
-    atom_predicate=identity,
-    relation_predicate=identity,
-)
+function standard_translation(formula::Formula; world=Variable(:x), world_variable=nothing,
+                              atom_predicate=identity, relation_predicate=identity)
     root = world_variable === nothing ? world : world_variable
     root isa Symbol && (root = Variable(root))
     root isa AbstractString && (root = Variable(root))
     root isa Variable || throw(ArgumentError("world must be a Variable, Symbol, or string"))
     state = _TranslationState(Ref(0), atom_predicate, relation_predicate)
-    return _standard_translation(formula, root, state)
+    _standard_translation(formula, root, state)
 end
 standard_translation(formula::Formula, world) = standard_translation(formula; world=world)
 const standardtranslate = standard_translation
@@ -532,18 +445,11 @@ julia> isdefined(AletheiaCore, Symbol("first_order_interpretation"))
 true
 ```
 """
-function first_order_interpretation(
-    model::Model;
-    atoms=nothing,
-    relations=nothing,
-    atom_predicate=identity,
-    relation_predicate=identity,
-)
-    algebra(model) isa BooleanAlgebra ||
-        throw(ArgumentError("standard translation interpretations are Boolean"))
+function first_order_interpretation(model::Model; atoms=nothing, relations=nothing,
+                                    atom_predicate=identity, relation_predicate=identity)
+    algebra(model) isa BooleanAlgebra || throw(ArgumentError("standard translation interpretations are Boolean"))
     atom_names = atoms === nothing ? _valuation_atoms(model) : collect(atoms)
-    relation_names =
-        relations === nothing ? _model_relation_names(frame(model)) : collect(relations)
+    relation_names = relations === nothing ? _model_relation_names(frame(model)) : collect(relations)
     predicates = Dict{Any,Any}()
     for name in atom_names
         payload = name isa Atom ? value(name) : name
@@ -552,10 +458,9 @@ function first_order_interpretation(
     end
     for name in relation_names
         mapped = _predicate_name(relation_predicate, name)
-        predicates[(mapped, 2)] =
-            (source, target) -> target in accessible(frame(model), source, name)
+        predicates[(mapped, 2)] = (source, target) -> target in accessible(frame(model), source, name)
     end
-    return FirstOrderInterpretation(worlds(frame(model)), predicates)
+    FirstOrderInterpretation(worlds(frame(model)), predicates)
 end
 const firstorder = first_order_interpretation
 
@@ -564,5 +469,5 @@ function _atom_truth(model, name, world)
         return interpret(name, model, world)
     end
     p = FormulaPool(Signature((¬,)))
-    return interpret(atom(p, name), model, world)
+    interpret(atom(p, name), model, world)
 end

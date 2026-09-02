@@ -31,7 +31,7 @@ julia> instance_count(fam)
 ```
 """
 function instance_count(family::AbstractModelFamily)
-    return throw(MethodError(instance_count, (family,)))
+    throw(MethodError(instance_count, (family,)))
 end
 
 """
@@ -65,7 +65,7 @@ julia> instance_model(fam, 1)
 ```
 """
 function instance_model(family::AbstractModelFamily, instance)
-    return throw(MethodError(instance_model, (family, instance)))
+    throw(MethodError(instance_model, (family, instance)))
 end
 
 """
@@ -83,9 +83,7 @@ julia> instance_frame(fam, 1) isa AbstractFrame
 true
 ```
 """
-function instance_frame(family::AbstractModelFamily, instance)
-    return frame(instance_model(family, instance))
-end
+instance_frame(family::AbstractModelFamily, instance) = frame(instance_model(family, instance))
 
 """
     ModelFamily(models)
@@ -116,13 +114,12 @@ instance_model(family::ModelFamily, instance) = family.models[instance]
     uniform_frame(family)
 
 Return the shared frame when every instance has an equal frame, or `nothing`
-for an empty or non-uniform family. Equality is checked on the frames rather
+for an empty or non-uniform family.  Equality is checked on the frames rather
 than assumed from the family type.
 """
 function _same_frame(left::Frame, right::Frame)
-    return worlds(left) == worlds(right) &&
-           relations(left) == relations(right) &&
-           world_index(left) == world_index(right)
+    worlds(left) == worlds(right) && relations(left) == relations(right) &&
+        world_index(left) == world_index(right)
 end
 
 """
@@ -178,14 +175,12 @@ true
 isuniform(family::AbstractModelFamily) = !isnothing(uniform_frame(family))
 
 """Evaluate a formula's extension for one instance in a model family."""
-function extension(formula::Formula, family::AbstractModelFamily, instance)
-    return extension(formula, instance_model(family, instance))
-end
+extension(formula::Formula, family::AbstractModelFamily, instance) =
+    extension(formula, instance_model(family, instance))
 
 """Evaluate a formula's extension for every instance, in instance order."""
-function extension(formula::Formula, family::AbstractModelFamily)
-    return [extension(formula, family, instance) for instance in eachinstance(family)]
-end
+extension(formula::Formula, family::AbstractModelFamily) =
+    [extension(formula, family, instance) for instance in eachinstance(family)]
 
 """
     extension(formulas, family)
@@ -203,9 +198,7 @@ function extension(formulas::AbstractVector, family::AbstractModelFamily)
     state === nothing && return [Any[] for _ in normalized]
     first_instance, iterator_state = state
     first_batch = extension(normalized, instance_model(family, first_instance))
-    results = [
-        Vector{typeof(first_batch[position])}() for position in eachindex(normalized)
-    ]
+    results = [Vector{typeof(first_batch[position])}() for position in eachindex(normalized)]
     for position in eachindex(normalized)
         push!(results[position], first_batch[position])
     end
@@ -218,15 +211,13 @@ function extension(formulas::AbstractVector, family::AbstractModelFamily)
             push!(results[position], batch[position])
         end
     end
-    return results
+    results
 end
 
 """Evaluate all formulas for one instance of a model family."""
-function extension(formulas::AbstractVector, family::AbstractModelFamily, instance)
-    return extension(formulas, instance_model(family, instance))
-end
+extension(formulas::AbstractVector, family::AbstractModelFamily, instance) =
+    extension(formulas, instance_model(family, instance))
 
 """Check a formula at one world of one instance in a model family."""
-function check(formula::Formula, family::AbstractModelFamily, instance, world)
-    return check(formula, instance_model(family, instance), world)
-end
+check(formula::Formula, family::AbstractModelFamily, instance, world) =
+    check(formula, instance_model(family, instance), world)

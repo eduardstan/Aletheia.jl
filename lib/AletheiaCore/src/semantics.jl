@@ -91,6 +91,8 @@ true
 """
 abstract type TruthAlgebra{T} end
 
+"""Return the carrier type `T` of a truth algebra."""
+truth_type(::Type{<:TruthAlgebra{T}}) where T = T
 """Return the carrier type `T` of a truth algebra.
 
 # Examples
@@ -101,7 +103,6 @@ julia> isdefined(AletheiaCore, Symbol("truth_type"))
 true
 ```
 """
-truth_type(::Type{<:TruthAlgebra{T}}) where {T} = T
 truth_type(algebra::TruthAlgebra) = truth_type(typeof(algebra))
 
 """Return the carrier representation of `algebra`.
@@ -135,7 +136,7 @@ true
 ```
 """
 function top(algebra::TruthAlgebra)
-    return throw(MethodError(top, (algebra,)))
+    throw(MethodError(top, (algebra,)))
 end
 
 """Return the least truth value of `algebra`.
@@ -149,7 +150,7 @@ true
 ```
 """
 function bottom(algebra::TruthAlgebra)
-    return throw(MethodError(bottom, (algebra,)))
+    throw(MethodError(bottom, (algebra,)))
 end
 
 """Short alias for [`bottom`](@ref).
@@ -166,12 +167,12 @@ bot(algebra::TruthAlgebra) = bottom(algebra)
 
 """Meet operation of `algebra`."""
 function meet(algebra::TruthAlgebra, left, right)
-    return throw(MethodError(meet, (algebra, left, right)))
+    throw(MethodError(meet, (algebra, left, right)))
 end
 
 """Monoid fusion operation of `algebra`."""
 function fusion(algebra::TruthAlgebra, left, right)
-    return throw(MethodError(fusion, (algebra, left, right)))
+    throw(MethodError(fusion, (algebra, left, right)))
 end
 
 """Join operation of `algebra`.
@@ -185,7 +186,7 @@ true
 ```
 """
 function join(algebra::TruthAlgebra, left, right)
-    return throw(MethodError(join, (algebra, left, right)))
+    throw(MethodError(join, (algebra, left, right)))
 end
 
 """Residual implication operation of `algebra`.
@@ -199,7 +200,7 @@ true
 ```
 """
 function implication(algebra::TruthAlgebra, left, right)
-    return throw(MethodError(implication, (algebra, left, right)))
+    throw(MethodError(implication, (algebra, left, right)))
 end
 
 """Negation operation of `algebra`.
@@ -213,7 +214,7 @@ true
 ```
 """
 function negation(algebra::TruthAlgebra, value)
-    return throw(MethodError(negation, (algebra, value)))
+    throw(MethodError(negation, (algebra, value)))
 end
 
 """Alias for [`implication`](@ref)."""
@@ -265,7 +266,7 @@ negation(::BooleanAlgebra, value::Bool) = !value
 @inline function _unit_value(value::Real)
     result = Float64(value)
     0.0 <= result <= 1.0 || throw(ArgumentError("truth values must lie in [0, 1]"))
-    return result
+    result
 end
 
 @inline function _chain_value(value::Real, n::Int)
@@ -278,7 +279,7 @@ end
             throw(ArgumentError("truth value $result is not on the $n-element chain"))
         return round(result / step) * step
     end
-    return result
+    result
 end
 
 """
@@ -305,17 +306,17 @@ true
 ```
 """
 struct GodelAlgebra{N} <: TruthAlgebra{Float64}
-    function GodelAlgebra{N}() where {N}
+    function GodelAlgebra{N}() where N
         N isa Integer && N >= 0 || throw(ArgumentError("chain size must be non-negative"))
         N == 1 && throw(ArgumentError("a finite chain must have at least two values"))
-        return new{N}()
+        new{N}()
     end
 end
 
 GodelAlgebra() = GodelAlgebra{0}()
 function GodelAlgebra(n::Integer)
     n >= 2 || throw(ArgumentError("a finite chain must have at least two values"))
-    return GodelAlgebra{Int(n)}()
+    GodelAlgebra{Int(n)}()
 end
 
 """
@@ -343,17 +344,17 @@ true
 ```
 """
 struct LukasiewiczAlgebra{N} <: TruthAlgebra{Float64}
-    function LukasiewiczAlgebra{N}() where {N}
+    function LukasiewiczAlgebra{N}() where N
         N isa Integer && N >= 0 || throw(ArgumentError("chain size must be non-negative"))
         N == 1 && throw(ArgumentError("a finite chain must have at least two values"))
-        return new{N}()
+        new{N}()
     end
 end
 
 LukasiewiczAlgebra() = LukasiewiczAlgebra{0}()
 function LukasiewiczAlgebra(n::Integer)
     n >= 2 || throw(ArgumentError("a finite chain must have at least two values"))
-    return LukasiewiczAlgebra{Int(n)}()
+    LukasiewiczAlgebra{Int(n)}()
 end
 
 # ASCII names are the stable API; these aliases keep the mathematical names
@@ -366,56 +367,43 @@ const ŁukasiewiczAlgebra = LukasiewiczAlgebra
 truth_type(::Type{<:GodelAlgebra}) = Float64
 truth_type(::Type{<:LukasiewiczAlgebra}) = Float64
 
-@inline _godel_value(::GodelAlgebra{N}, value::Real) where {N} = _chain_value(value, N)
-@inline function _lukasiewicz_value(::LukasiewiczAlgebra{N}, value::Real) where {N}
-    return _chain_value(value, N)
-end
+@inline _godel_value(::GodelAlgebra{N}, value::Real) where N = _chain_value(value, N)
+@inline _lukasiewicz_value(::LukasiewiczAlgebra{N}, value::Real) where N = _chain_value(value, N)
 @inline function _snap_chain(value::Float64, n::Int)
     n == 0 && return value
     step = 1.0 / (n - 1)
-    return round(value / step) * step
+    round(value / step) * step
 end
-@inline function _lukasiewicz_result(::LukasiewiczAlgebra{N}, value::Float64) where {N}
-    return _snap_chain(value, N)
-end
+@inline _lukasiewicz_result(::LukasiewiczAlgebra{N}, value::Float64) where N = _snap_chain(value, N)
 
 top(::GodelAlgebra) = 1.0
 bottom(::GodelAlgebra) = 0.0
-function meet(algebra::GodelAlgebra, left::Real, right::Real)
-    return min(_godel_value(algebra, left), _godel_value(algebra, right))
-end
-function fusion(algebra::GodelAlgebra, left::Real, right::Real)
-    return min(_godel_value(algebra, left), _godel_value(algebra, right))
-end
-function join(algebra::GodelAlgebra, left::Real, right::Real)
-    return max(_godel_value(algebra, left), _godel_value(algebra, right))
-end
+meet(algebra::GodelAlgebra, left::Real, right::Real) = min(_godel_value(algebra, left), _godel_value(algebra, right))
+fusion(algebra::GodelAlgebra, left::Real, right::Real) = min(_godel_value(algebra, left), _godel_value(algebra, right))
+join(algebra::GodelAlgebra, left::Real, right::Real) = max(_godel_value(algebra, left), _godel_value(algebra, right))
 function implication(algebra::GodelAlgebra, left::Real, right::Real)
     x, y = _godel_value(algebra, left), _godel_value(algebra, right)
-    return x <= y ? 1.0 : y
+    x <= y ? 1.0 : y
 end
 function negation(algebra::GodelAlgebra, value::Real)
-    return _godel_value(algebra, value) == 0.0 ? 1.0 : 0.0
+    _godel_value(algebra, value) == 0.0 ? 1.0 : 0.0
 end
 
 top(::LukasiewiczAlgebra) = 1.0
 bottom(::LukasiewiczAlgebra) = 0.0
-function meet(algebra::LukasiewiczAlgebra, left::Real, right::Real)
-    return min(_lukasiewicz_value(algebra, left), _lukasiewicz_value(algebra, right))
-end
+meet(algebra::LukasiewiczAlgebra, left::Real, right::Real) =
+    min(_lukasiewicz_value(algebra, left), _lukasiewicz_value(algebra, right))
 function fusion(algebra::LukasiewiczAlgebra, left::Real, right::Real)
     x, y = _lukasiewicz_value(algebra, left), _lukasiewicz_value(algebra, right)
-    return _lukasiewicz_result(algebra, max(0.0, x + y - 1.0))
+    _lukasiewicz_result(algebra, max(0.0, x + y - 1.0))
 end
-function join(algebra::LukasiewiczAlgebra, left::Real, right::Real)
-    return max(_lukasiewicz_value(algebra, left), _lukasiewicz_value(algebra, right))
-end
+join(algebra::LukasiewiczAlgebra, left::Real, right::Real) = max(_lukasiewicz_value(algebra, left), _lukasiewicz_value(algebra, right))
 function implication(algebra::LukasiewiczAlgebra, left::Real, right::Real)
     x, y = _lukasiewicz_value(algebra, left), _lukasiewicz_value(algebra, right)
-    return _lukasiewicz_result(algebra, min(1.0, 1.0 - x + y))
+    _lukasiewicz_result(algebra, min(1.0, 1.0 - x + y))
 end
 function negation(algebra::LukasiewiczAlgebra, value::Real)
-    return _lukasiewicz_result(algebra, 1.0 - _lukasiewicz_value(algebra, value))
+    _lukasiewicz_result(algebra, 1.0 - _lukasiewicz_value(algebra, value))
 end
 
 """Return the ordered finite levels of a chain algebra.
@@ -428,22 +416,13 @@ julia> isdefined(AletheiaCore, Symbol("levels"))
 true
 ```
 """
-function levels(::Union{GodelAlgebra{N},LukasiewiczAlgebra{N}}) where {N}
+function levels(::Union{GodelAlgebra{N},LukasiewiczAlgebra{N}}) where N
     N == 0 && throw(ArgumentError("the unit-interval algebra has infinitely many levels"))
-    return (Float64(i) / (N - 1) for i in 0:(N - 1))
+    (Float64(i) / (N - 1) for i in 0:(N - 1))
 end
 
-"""Return whether `algebra` is a finite chain rather than the unit interval.
-
-# Examples
-```jldoctest
-julia> using AletheiaCore
-
-julia> isdefined(AletheiaCore, Symbol("isfinitechain"))
-true
-```
-"""
-isfinitechain(::Union{GodelAlgebra{N},LukasiewiczAlgebra{N}}) where {N} = N != 0
+"""Return whether `algebra` is a finite chain rather than the unit interval."""
+isfinitechain(::Union{GodelAlgebra{N},LukasiewiczAlgebra{N}}) where N = N != 0
 
 """Return the carrier values of `algebra`.
 
@@ -506,9 +485,8 @@ end
 function _world_tuple(worlds)
     result = tuple(worlds...)
     isempty(result) && throw(ArgumentError("a frame must contain at least one world"))
-    length(unique(result)) == length(result) ||
-        throw(ArgumentError("worlds must be unique"))
-    return result
+    length(unique(result)) == length(result) || throw(ArgumentError("worlds must be unique"))
+    result
 end
 
 function _world_index(worldtuple::Tuple, requested)
@@ -517,31 +495,24 @@ function _world_index(worldtuple::Tuple, requested)
     if requested === true
         return Dict(world => position for (position, world) in enumerate(worldtuple))
     end
-    requested isa AbstractDict ||
-        throw(ArgumentError("index must be false, true, or a dictionary"))
+    requested isa AbstractDict || throw(ArgumentError("index must be false, true, or a dictionary"))
     result = Dict(requested)
-    all(world -> haskey(result, world), worldtuple) ||
-        throw(ArgumentError("world index must contain every world"))
+    all(world -> haskey(result, world), worldtuple) || throw(ArgumentError("world index must contain every world"))
     positions = Int[]
     for world in worldtuple
-        result[world] isa Integer ||
-            throw(ArgumentError("world index positions must be integers"))
+        result[world] isa Integer || throw(ArgumentError("world index positions must be integers"))
         push!(positions, Int(result[world]))
     end
-    sort!(positions) == collect(1:length(worldtuple)) || throw(
-        ArgumentError("world index positions must be a permutation of 1:length(worlds)")
-    )
-    return result
+    sort!(positions) == collect(1:length(worldtuple)) ||
+        throw(ArgumentError("world index positions must be a permutation of 1:length(worlds)"))
+    result
 end
 
 @inline _is_world(worlds::Tuple, value) = any(world -> isequal(world, value), worlds)
 
 function _targets(worlds::Tuple, target)
     _is_world(worlds, target) && return (target,)
-    if target isa AbstractString ||
-       target isa Symbol ||
-       target isa Number ||
-       target isa Char
+    if target isa AbstractString || target isa Symbol || target isa Number || target isa Char
         return (target,)
     end
     try
@@ -552,17 +523,16 @@ function _targets(worlds::Tuple, target)
 end
 
 function _check_targets(worlds::Tuple, source, targets)
-    _is_world(worlds, source) ||
-        throw(ArgumentError("relation source $(repr(source)) is not a world"))
+    _is_world(worlds, source) || throw(ArgumentError("relation source $(repr(source)) is not a world"))
     result = _targets(worlds, targets)
     all(target -> _is_world(worlds, target), result) ||
         throw(ArgumentError("accessibility targets must be worlds"))
-    return result
+    result
 end
 
 function _edge_list(adjacency)
     adjacency isa AbstractVector || adjacency isa AbstractSet || return false
-    return all(edge -> edge isa Pair || (edge isa Tuple && length(edge) == 2), adjacency)
+    all(edge -> edge isa Pair || (edge isa Tuple && length(edge) == 2), adjacency)
 end
 
 function _normalize_adjacency(adjacency, worlds::Tuple)
@@ -583,21 +553,13 @@ function _normalize_adjacency(adjacency, worlds::Tuple)
         end
         return result
     else
-        throw(
-            ArgumentError(
-                "each accessibility relation must be a world map, function, or edge list"
-            ),
-        )
+        throw(ArgumentError("each accessibility relation must be a world map, function, or edge list"))
     end
 end
 
 function _normalize_relations(relations, worlds::Tuple)
-    relations isa AbstractDict ||
-        relations isa Function ||
-        relations isa _RelationProvider ||
-        throw(
-            ArgumentError("relations must be a dictionary, function, or relation provider")
-        )
+    relations isa AbstractDict || relations isa Function || relations isa _RelationProvider ||
+        throw(ArgumentError("relations must be a dictionary, function, or relation provider"))
     if relations isa Function || relations isa _RelationProvider
         return relations
     end
@@ -605,7 +567,7 @@ function _normalize_relations(relations, worlds::Tuple)
     for (name, adjacency) in relations
         result[name] = _normalize_adjacency(adjacency, worlds)
     end
-    return result
+    result
 end
 
 function Frame(worlds, relations; index=false, world_index=nothing)
@@ -613,22 +575,15 @@ function Frame(worlds, relations; index=false, world_index=nothing)
     requested = world_index === nothing ? index : world_index
     normalized = _normalize_relations(relations, worldtuple)
     indexed = _world_index(worldtuple, requested)
-    positions = if indexed === nothing
-        Dict{Any,Int}(world => position for (position, world) in enumerate(worldtuple))
-    else
+    positions = indexed === nothing ?
+        Dict{Any,Int}(world => position for (position, world) in enumerate(worldtuple)) :
         Dict{Any,Int}(world => Int(indexed[world]) for world in worldtuple)
-    end
-    cache = _ModelEvaluationCache(
-        positions, Dict{Any,_RelationAdjacency}(), ReentrantLock()
-    )
-    return Frame{typeof(worldtuple),typeof(normalized),typeof(indexed)}(
-        worldtuple, normalized, indexed, cache
-    )
+    cache = _ModelEvaluationCache(positions, Dict{Any,_RelationAdjacency}(), ReentrantLock())
+    Frame{typeof(worldtuple),typeof(normalized),typeof(indexed)}(
+        worldtuple, normalized, indexed, cache)
 end
 
-function Frame(worlds; index=false, world_index=nothing)
-    return Frame(worlds, Dict(); index=index, world_index=world_index)
-end
+Frame(worlds; index=false, world_index=nothing) = Frame(worlds, Dict(); index=index, world_index=world_index)
 """Return the worlds of a frame in stable enumeration order.
 
 # Examples
@@ -694,17 +649,16 @@ function world_position(frame::Frame, world)
     end
     position = findfirst(candidate -> isequal(candidate, world), frame.worlds)
     position === nothing && throw(KeyError(world))
-    return position
+    position
 end
 
 function _relation_targets(frame::Frame, world, relation_name)
     _is_world(frame.worlds, world) || throw(KeyError(world))
-    return _stored_relation_targets(frame, world, relation_name)
+    _stored_relation_targets(frame, world, relation_name)
 end
 
-function _has_stored_relation(frame::Frame, relation)
-    return frame.relations isa AbstractDict && haskey(frame.relations, relation)
-end
+_has_stored_relation(frame::Frame, relation) =
+    frame.relations isa AbstractDict && haskey(frame.relations, relation)
 
 function _stored_relation_targets(frame::Frame, world, relation_name)
     stored = frame.relations
@@ -721,7 +675,7 @@ function _stored_relation_targets(frame::Frame, world, relation_name)
     if adjacency isa Function
         return adjacency(world)
     end
-    return haskey(adjacency, world) ? adjacency[world] : ()
+    haskey(adjacency, world) ? adjacency[world] : ()
 end
 
 """
@@ -744,7 +698,7 @@ function accessible(frame::Frame, world, relation_name)
     targets = _relation_targets(frame, world, relation_name)
     targets isa AbstractString && return (target for target in (targets,))
     targets isa Nothing && throw(ArgumentError("accessibility must return an iterable"))
-    return (target for target in targets)
+    (target for target in targets)
 end
 
 """Return the lazy worlds accessible from `world` via `relation`."""
@@ -758,9 +712,7 @@ end
 Base.IteratorSize(::Type{<:_DistinctWorlds}) = Base.SizeUnknown()
 Base.IteratorEltype(::Type{<:_DistinctWorlds}) = Base.EltypeUnknown()
 Base.iterate(distinct::_DistinctWorlds) = _next_distinct(distinct, Set{Any}(), ())
-function Base.iterate(distinct::_DistinctWorlds, state)
-    return _next_distinct(distinct, state[1], (state[2],))
-end
+Base.iterate(distinct::_DistinctWorlds, state) = _next_distinct(distinct, state[1], (state[2],))
 
 function _next_distinct(distinct::_DistinctWorlds, seen, inner)
     while true
@@ -776,10 +728,7 @@ end
 
 """Return distinct worlds reachable from a world vector, lazily."""
 function accessibles(frame::Frame, world_set::AbstractVector, relation_name)
-    return _DistinctWorlds((
-        target for source in world_set for
-        target in accessible(frame, source, relation_name)
-    ))
+    _DistinctWorlds((target for source in world_set for target in accessible(frame, source, relation_name)))
 end
 
 """Return the worlds satisfying a Boolean connective from child extensions.
@@ -798,11 +747,8 @@ true
 """
 function collateworlds(frame::AbstractFrame, connective, truth_sets::Tuple)
     expected = arity(connective)
-    length(truth_sets) == expected || throw(
-        ArgumentError(
-            "cannot collate $(length(truth_sets)) truth sets for $(typeof(connective)) with arity $expected",
-        ),
-    )
+    length(truth_sets) == expected || throw(ArgumentError(
+        "cannot collate $(length(truth_sets)) truth sets for $(typeof(connective)) with arity $expected"))
     frame_worlds = worlds(frame)
     if connective isa Conjunction
         return collect(intersect(truth_sets[1], truth_sets[2]))
@@ -814,41 +760,24 @@ function collateworlds(frame::AbstractFrame, connective, truth_sets::Tuple)
         return collect(setdiff(collect(frame_worlds), truth_sets[1]))
     elseif connective isa Diamond
         relation_name = relation(connective)
-        relation_name isa GlobalRelation &&
-            return isempty(truth_sets[1]) ? eltype(frame_worlds)[] : collect(frame_worlds)
-        return [
-            world for world in frame_worlds if
-            any(target -> target in truth_sets[1], accessible(frame, world, relation_name))
-        ]
+        relation_name isa GlobalRelation && return isempty(truth_sets[1]) ? eltype(frame_worlds)[] : collect(frame_worlds)
+        return [world for world in frame_worlds if any(target -> target in truth_sets[1],
+            accessible(frame, world, relation_name))]
     elseif connective isa Box
         relation_name = relation(connective)
-        relation_name isa GlobalRelation &&
-            return if length(truth_sets[1]) == length(frame_worlds)
-                collect(frame_worlds)
-            else
-                eltype(frame_worlds)[]
-            end
-        return [
-            world for world in frame_worlds if
-            all(target -> target in truth_sets[1], accessible(frame, world, relation_name))
-        ]
+        relation_name isa GlobalRelation && return length(truth_sets[1]) == length(frame_worlds) ?
+            collect(frame_worlds) : eltype(frame_worlds)[]
+        return [world for world in frame_worlds if all(target -> target in truth_sets[1],
+            accessible(frame, world, relation_name))]
     end
-    return throw(ArgumentError("no world collation for connective $(repr(connective))"))
+    throw(ArgumentError("no world collation for connective $(repr(connective))"))
 end
 
 Base.iterate(frame::Frame, state...) = iterate(frame.worlds, state...)
 Base.length(frame::Frame) = length(frame.worlds)
 
-function Base.show(io::IO, frame::Frame)
-    return print(
-        io,
-        "Frame(",
-        length(frame.worlds),
-        " world",
-        length(frame.worlds) == 1 ? "" : "s",
-        ")",
-    )
-end
+Base.show(io::IO, frame::Frame) =
+    print(io, "Frame(", length(frame.worlds), " world", length(frame.worlds) == 1 ? "" : "s", ")")
 
 """Print the `Worlds (n): …` line of a frame or model, bounded by the IO context."""
 function _display_worlds(io::IO, frame::Frame)
@@ -856,7 +785,7 @@ function _display_worlds(io::IO, frame::Frame)
     shown, elided = _display_bounded(io, frame.worlds, DISPLAY_ITEMS)
     _display_label(io, 2, "Worlds ($nw)")
     print(io, join(repr.(shown), ", "))
-    return _display_elision(io, elided)
+    _display_elision(io, elided)
 end
 
 """Print the relation section of a frame or model, bounded by the IO context."""
@@ -864,9 +793,9 @@ function _display_relations(io::IO, frame::Frame)
     if !(frame.relations isa AbstractDict)
         _display_label(io, 2, "Relations")
         print(io, "<callable>")
-        return nothing
+        return
     end
-    isempty(frame.relations) && return nothing
+    isempty(frame.relations) && return
     _display_label(io, 2, "Relations", ":")
     for (name, adj) in frame.relations
         _display_label(io, 4, repr(name))
@@ -877,8 +806,7 @@ function _display_relations(io::IO, frame::Frame)
         edges = String[]
         for world in frame.worlds
             targets = _relation_targets(frame, world, name)
-            isempty(targets) ||
-                push!(edges, "$(repr(world)) → $(join(repr.(targets), ", "))")
+            isempty(targets) || push!(edges, "$(repr(world)) → $(join(repr.(targets), ", "))")
         end
         if isempty(edges)
             print(io, "(none)")
@@ -900,7 +828,7 @@ function Base.show(io::IO, ::MIME"text/plain", frame::Frame)
     end
     _display_header(io, "Frame", "$nw world$(nw == 1 ? "" : "s"), $relation_summary")
     _display_worlds(io, frame)
-    return _display_relations(io, frame)
+    _display_relations(io, frame)
 end
 
 """
@@ -947,9 +875,8 @@ struct ValuationCallback{S,B}
     vectorized::B
 end
 
-function ValuationCallback(scalar; vectorized=nothing)
-    return ValuationCallback{typeof(scalar),typeof(vectorized)}(scalar, vectorized)
-end
+ValuationCallback(scalar; vectorized=nothing) =
+    ValuationCallback{typeof(scalar),typeof(vectorized)}(scalar, vectorized)
 
 (valuation::ValuationCallback)(atom_value, world) = valuation.scalar(atom_value, world)
 
@@ -974,11 +901,11 @@ function _nested_value(data, world)
 end
 
 function _lookup_valuation(data::Valuation, atom_value, world)
-    return data(atom_value, world)
+    data(atom_value, world)
 end
 
 function _lookup_valuation(data::Function, atom_value, world)
-    return data(atom_value, world)
+    data(atom_value, world)
 end
 
 function _lookup_valuation(data::AbstractDict, atom_value, world)
@@ -988,7 +915,7 @@ function _lookup_valuation(data::AbstractDict, atom_value, world)
     haskey(data, pair2) && return data[pair2]
     haskey(data, atom_value) && return _nested_value(data[atom_value], world)
     haskey(data, world) && return _nested_value(data[world], atom_value)
-    return throw(KeyError((atom_value, world)))
+    throw(KeyError((atom_value, world)))
 end
 
 function _lookup_valuation(data, atom_value, world)
@@ -1011,7 +938,7 @@ function _lookup_atom(data::AbstractDict, atom::Atom, world)
         nested isa AbstractDict && haskey(nested, atom) && return nested[atom]
         return _nested_value(nested, value(atom))
     end
-    return _lookup_valuation(data, value(atom), world)
+    _lookup_valuation(data, value(atom), world)
 end
 
 function _lookup_atom(data::Valuation, atom::Atom, world)
@@ -1025,28 +952,27 @@ function _lookup_atom(data::Valuation, atom::Atom, world)
             return _nested_value(nested, value(atom))
         end
     end
-    return _lookup_valuation(data, value(atom), world)
+    _lookup_valuation(data, value(atom), world)
 end
 _lookup_atom(data, atom::Atom, world) = _lookup_valuation(data, value(atom), world)
 _lookup_atom(data::ValuationCallback, atom::Atom, world) = data(value(atom), world)
 
 function (valuation::Valuation)(atom_value, world)
-    return _lookup_valuation(valuation.data, atom_value, world)
+    _lookup_valuation(valuation.data, atom_value, world)
 end
 
 """Return atom values in the supplied world order, using a batch callback when available."""
 function atom_values(valuation, atom::Atom, worlds)
-    return [_lookup_atom(valuation, atom, world) for world in worlds]
+    [ _lookup_atom(valuation, atom, world) for world in worlds ]
 end
 
 function atom_values(valuation::ValuationCallback, atom::Atom, worlds)
     batch = valuation.vectorized
-    return if batch === nothing
-        [valuation.scalar(value(atom), world) for world in worlds]
-    else
+    batch === nothing ?
+        [valuation.scalar(value(atom), world) for world in worlds] :
         collect(batch(value(atom), worlds))
-    end
 end
+
 
 """
     Model(frame, algebra, valuation)
@@ -1074,21 +1000,14 @@ struct Model{T,A<:TruthAlgebra{T},F<:Frame,V}
 end
 
 function Model(frame::Frame, algebra::TruthAlgebra, valuation)
-    return Model(frame, algebra, valuation, frame.cache)
+    Model(frame, algebra, valuation, frame.cache)
 end
 
-function Model(frame::Frame, valuation::AbstractDict, algebra::TruthAlgebra)
-    return Model(frame, algebra, valuation)
-end
-function Model(frame::Frame, valuation::Function, algebra::TruthAlgebra)
-    return Model(frame, algebra, valuation)
-end
-function Model(frame::Frame, valuation::Valuation, algebra::TruthAlgebra)
-    return Model(frame, algebra, valuation)
-end
-function Model(frame::Frame, valuation; algebra::TruthAlgebra=BOOLEAN)
-    return Model(frame, algebra, valuation)
-end
+
+Model(frame::Frame, valuation::AbstractDict, algebra::TruthAlgebra) = Model(frame, algebra, valuation)
+Model(frame::Frame, valuation::Function, algebra::TruthAlgebra) = Model(frame, algebra, valuation)
+Model(frame::Frame, valuation::Valuation, algebra::TruthAlgebra) = Model(frame, algebra, valuation)
+Model(frame::Frame, valuation; algebra::TruthAlgebra=BOOLEAN) = Model(frame, algebra, valuation)
 
 """Return the frame underlying `model`.
 
@@ -1126,31 +1045,17 @@ true
 """
 valuation(model::Model) = model.valuation
 
-"""Forward [`accessible`](@ref) from a model to its underlying frame.
-
-# Examples
-```jldoctest
-julia> using AletheiaCore
-
-julia> isdefined(AletheiaCore, Symbol("accessible"))
-true
-```
-"""
-function accessible(model::Model, world, relation_name)
-    return accessible(model.frame, world, relation_name)
-end
+"""Forward [`accessible`](@ref) from a model to its underlying frame."""
+accessible(model::Model, world, relation_name) = accessible(model.frame, world, relation_name)
 
 function _check_world(frame::Frame, world)
     _is_world(frame.worlds, world) || throw(KeyError(world))
-    return world
+    world
 end
 
 @inline _validate_atom_value(::TruthAlgebra, value) = value
-@inline function _validate_atom_value(
-    ::Union{GodelAlgebra{N},LukasiewiczAlgebra{N}}, value::Float64
-) where {N}
-    return _chain_value(value, N)
-end
+@inline _validate_atom_value(::Union{GodelAlgebra{N},LukasiewiczAlgebra{N}}, value::Float64) where N =
+    _chain_value(value, N)
 
 """
     interpret(atom, model, world)
@@ -1169,36 +1074,24 @@ julia> isdefined(AletheiaCore, Symbol("interpret"))
 true
 ```
 """
-function interpret(atom::Atom, model::Model{T}, world)::T where {T}
+function interpret(atom::Atom, model::Model{T}, world)::T where T
     _check_world(model.frame, world)
     raw = _lookup_atom(model.valuation, atom, world)
     raw isa T || throw(ArgumentError("valuation returned $(typeof(raw)); expected $T"))
-    return _validate_atom_value(model.algebra, raw)
+    _validate_atom_value(model.algebra, raw)
 end
 
-function Base.show(io::IO, model::Model)
-    return print(
-        io,
-        "Model(",
-        length(frame(model).worlds),
-        " world",
-        length(frame(model).worlds) == 1 ? "" : "s",
-        ", ",
-        algebra(model),
-        ")",
-    )
-end
+Base.show(io::IO, model::Model) =
+    print(io, "Model(", length(frame(model).worlds), " world", length(frame(model).worlds) == 1 ? "" : "s", ", ", algebra(model), ")")
 
 # Rich model headers use a reader-facing algebra description rather than
 # exposing implementation parameters such as the unit-interval sentinel.
 _model_algebra_summary(algebra) = sprint(show, algebra)
 
-function _format_valuation_summary(
-    val_data, worlds_tuple, fmt=string, limit::Int=typemax(Int)
-)
+function _format_valuation_summary(val_data, worlds_tuple, fmt=string, limit::Int=typemax(Int))
     lines = String[]
     if val_data isa AbstractDict
-        atom_map = Dict{Any,Dict{Any,Any}}()
+        atom_map = Dict{Any, Dict{Any, Any}}()
         for (k, v) in val_data
             if k isa Tuple && length(k) == 2
                 w1_idx = findfirst(w -> isequal(w, k[1]), worlds_tuple)
@@ -1258,7 +1151,7 @@ function _format_valuation_summary(
             end
         end
     end
-    return lines
+    lines
 end
 
 function Base.show(io::IO, ::MIME"text/plain", model::Model)
@@ -1271,20 +1164,15 @@ function Base.show(io::IO, ::MIME"text/plain", model::Model)
     else
         "relations supplied on demand"
     end
-    _display_header(
-        io,
-        "Model",
-        "$nw world$(nw == 1 ? "" : "s"), $relation_summary, $(_model_algebra_summary(alg))",
-    )
+    _display_header(io, "Model", "$nw world$(nw == 1 ? "" : "s"), $relation_summary, $(_model_algebra_summary(alg))")
     _display_worlds(io, f)
     _display_relations(io, f)
 
     val = valuation(model)
     val_data = val isa Valuation ? val.data : val
     if val_data isa AbstractDict && !isempty(val_data)
-        lines = _format_valuation_summary(
-            val_data, f.worlds, value -> _display_truth(alg, value), _display_limit(io)
-        )
+        lines = _format_valuation_summary(val_data, f.worlds, value -> _display_truth(alg, value),
+            _display_limit(io))
         shown, elided = _display_bounded(io, lines, DISPLAY_ITEMS)
         _display_label(io, 2, "Valuation", ":")
         for line in shown

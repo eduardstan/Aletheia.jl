@@ -1,13 +1,28 @@
-abstract type AbstractChoiceVariable end
-
-"""A primitive finite choice with mutually exclusive alternatives.
+"""
+The abstract supertype for finite primitive choices.
 
 # Examples
 ```jldoctest
 julia> using AletheiaCircuits
 
-julia> isdefined(AletheiaCircuits, Symbol("ChoiceVariable"))
+julia> AbstractChoiceVariable isa Type
 true
+```
+"""
+abstract type AbstractChoiceVariable end
+
+"""Create a normalized finite choice variable.
+
+The alternatives are mutually exclusive outcomes and `weights` are their
+probabilities.  The alternatives may be atoms, `nothing` (no atom), or any
+other finite ground value.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))
+ChoiceVariable{Symbol, Tuple{Symbol, Symbol}, Tuple{Float64, Float64}}(:c1, (:a, :b), (0.4, 0.6))
 ```
 """
 struct ChoiceVariable{I,A<:Tuple,W<:Tuple} <: AbstractChoiceVariable
@@ -68,14 +83,6 @@ end
 The alternatives are mutually exclusive outcomes and `weights` are their
 probabilities.  The alternatives may be atoms, `nothing` (no atom), or any
 other finite ground value.
-
-# Examples
-```jldoctest
-julia> using AletheiaCircuits
-
-julia> ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))
-ChoiceVariable{Symbol, Tuple{Symbol, Symbol}, Tuple{Float64, Float64}}(:c1, (:a, :b), (0.4, 0.6))
-```
 """
 function ChoiceVariable(id, alternatives, weights)
     a = alternatives isa Tuple ? alternatives : tuple(alternatives...)
@@ -85,8 +92,47 @@ function ChoiceVariable(id, alternatives, weights)
 end
 ChoiceVariable(id, alternatives; weights) = ChoiceVariable(id, alternatives, weights)
 
+"""
+Return the alternatives of a choice variable.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> c = ChoiceVariable(:c1, (:a, :b), (0.4, 0.6));
+
+julia> alternatives(c)
+(:a, :b)
+```
+"""
 alternatives(choice::ChoiceVariable) = choice.alternatives
+"""
+Return the normalized outcome weights of a choice variable.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> c = ChoiceVariable(:c1, (:a, :b), (0.4, 0.6));
+
+julia> weights(c)
+(0.4, 0.6)
+```
+"""
 weights(choice::ChoiceVariable) = choice.weights
+"""
+Return a choice variable's stable identifier.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> c = ChoiceVariable(:c1, (:a, :b), (0.4, 0.6));
+
+julia> choice_id(c)
+:c1
+```
+"""
 choice_id(choice::ChoiceVariable) = choice.id
 Base.length(choice::ChoiceVariable) = length(choice.alternatives)
 Base.iterate(choice::ChoiceVariable, state...) = iterate(choice.alternatives, state...)
@@ -196,23 +242,111 @@ EventNot{Symbol}(:a)
 struct EventNot{T}
     child::T
 end
+"""
+An event expression that conjoins child expressions.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> EventAnd((:a, :b))
+EventAnd{Tuple{Symbol, Symbol}}((:a, :b))
+```
+"""
 struct EventAnd{T<:Tuple}
     children::T
 end
+"""
+An event expression that disjoins child expressions.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> EventOr((:a, :b))
+EventOr{Tuple{Symbol, Symbol}}((:a, :b))
+```
+"""
 struct EventOr{T<:Tuple}
     children::T
 end
+"""
+Create a negated event expression.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> Not(:a)
+EventNot{Symbol}(:a)
+```
+"""
 Not(value) = EventNot(value)
+"""
+Create a conjunction event expression.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> And(:a, :b)
+EventAnd{Tuple{Symbol, Symbol}}((:a, :b))
+```
+"""
 function And(values...)
     xs = length(values) == 1 && values[1] isa Tuple ? values[1] : values
     return EventAnd(tuple(xs...))
 end
+"""
+Create a disjunction event expression.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> Or(:a, :b)
+EventOr{Tuple{Symbol, Symbol}}((:a, :b))
+```
+"""
 function Or(values...)
     xs = length(values) == 1 && values[1] isa Tuple ? values[1] : values
     return EventOr(tuple(xs...))
 end
+"""
+Create a negated event expression through the named helper.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> not_event(:a)
+EventNot{Symbol}(:a)
+```
+"""
 not_event(value) = Not(value)
+"""
+Create a conjunction event expression through the named helper.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> and_event(:a, :b)
+EventAnd{Tuple{Symbol, Symbol}}((:a, :b))
+```
+"""
 and_event(values...) = And(values...)
+"""
+Create a disjunction event expression through the named helper.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> or_event(:a, :b)
+EventOr{Tuple{Symbol, Symbol}}((:a, :b))
+```
+"""
 or_event(values...) = Or(values...)
 
 """A finite, function-free, acyclic distribution-semantics profile.
@@ -253,6 +387,17 @@ struct DSQuery{Q,E}
 end
 DSQuery(query; evidence=nothing) = DSQuery{typeof(query),typeof(evidence)}(query, evidence)
 
+"""
+The abstract supertype for distribution-semantics programs.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> AbstractDSProgram isa Type
+true
+```
+"""
 abstract type AbstractDSProgram end
 
 """A finite distribution-semantics program.
@@ -345,12 +490,75 @@ function DSProgram(entries, rules; domain=(), probabilistic_facts=(), facts=())
     )
 end
 
+"""
+Return the independent primitive choices in a program.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> choices(prog)
+(ChoiceVariable{Symbol, Tuple{Symbol, Symbol}, Tuple{Float64, Float64}}(:c1, (:a, :b), (0.4, 0.6)),)
+```
+"""
 choices(program::DSProgram) = program.choices
+"""
+Return the source probabilistic facts in a program.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(probabilistic_facts=[ProbabilisticFact(:f1, 0.3)]);
+
+julia> facts(prog)
+(ProbabilisticFact{Symbol, Float64}(:f1, 0.3),)
+```
+"""
 facts(program::DSProgram) = program.facts
+"""
+Return the ground rules in a program.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(rules=[GroundRule(:a, (:b,))]);
+
+julia> rules(prog)
+(GroundRule{Symbol, Tuple{Symbol}}(:a, (:b,)),)
+```
+"""
 rules(program::DSProgram) = program.rules
+"""
+Return the finite domain tuple carried by a program.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(domain=(:a, :b));
+
+julia> domain(prog)
+(:a, :b)
+```
+"""
 domain(program::DSProgram) = program.domain
 
 # The alias keeps `world` lightweight while documenting its contract in the API.
+"""
+A two-valued finite world represented by its true ground atoms.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> DSWorld isa Type
+true
+```
+"""
 const DSWorld = Set{Any}
 
 function _first_feature(values)
@@ -606,8 +814,8 @@ function _assignment(program::DSProgram, total_choice)
                     total_choice[c]
                 else
                     throw(
-                        GroundingError(:total_choice, "missing selection for $(repr(c.id))")
-                    )
+                    GroundingError(:total_choice, "missing selection for $(repr(c.id))")
+                )
                 end,
             ) for c in program.choices
         ]
@@ -666,14 +874,19 @@ function world(program::DSProgram, total_choice)
     return atoms
 end
 
-"""Enumerate total choices as dictionaries from choice identifiers to outcomes.
+"""
+Return all finite primitive total choices.
 
 # Examples
 ```jldoctest
 julia> using AletheiaCircuits
 
-julia> isdefined(AletheiaCircuits, Symbol("total_choices"))
-true
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> total_choices(prog)
+2-element Vector{Dict{Any, Any}}:
+ Dict(:c1 => :a)
+ Dict(:c1 => :b)
 ```
 """
 function total_choices(program::DSProgram)
@@ -695,14 +908,17 @@ function total_choices(program::DSProgram)
     return result
 end
 
-"""Return the product weight of a primitive total choice.
+"""
+Return the product probability of one total choice.
 
 # Examples
 ```jldoctest
 julia> using AletheiaCircuits
 
-julia> isdefined(AletheiaCircuits, Symbol("choice_probability"))
-true
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> choice_probability(prog, Dict(:c1 => :a))
+0.4
 ```
 """
 function choice_probability(program::DSProgram, total_choice; T=nothing)

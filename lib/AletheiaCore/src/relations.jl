@@ -98,7 +98,7 @@ true
 ```
 """
 function relation_holds(relation, source, target)
-    return throw(MethodError(relation_holds, (relation, source, target)))
+    throw(MethodError(relation_holds, (relation, source, target)))
 end
 
 """Domain-aware relation predicate used by bounded generated frames.
@@ -106,15 +106,6 @@ end
 The default preserves the three-argument protocol. Relation families whose
 meaning depends on the finite world domain can specialize this four-argument
 form without putting a mutable domain into a relation value.
-
-
-# Examples
-```jldoctest
-julia> using AletheiaCore
-
-julia> isdefined(AletheiaCore, Symbol("relation_holds"))
-true
-```
 """
 relation_holds(relation, source, target, worlds) = relation_holds(relation, source, target)
 
@@ -156,7 +147,7 @@ true
 ```
 """
 function inverse(relation)
-    return throw(MethodError(inverse, (relation,)))
+    throw(MethodError(inverse, (relation,)))
 end
 """Return the converse relation of `relation`.
 
@@ -170,6 +161,7 @@ after
 """
 converse(relation) = inverse(relation)
 
+# A generic identity relation is useful when a frame needs equality explicitly.
 """A generic identity relation family.
 
 # Examples
@@ -182,7 +174,6 @@ true
 """
 struct IdentityRelation <: RelationFamily end
 const IdentityRel = IdentityRelation
-
 """The identity relation singleton value (`IDENTITY`).
 
 # Examples
@@ -198,6 +189,9 @@ const ID = IDENTITY
 relation_holds(::IdentityRelation, source, target) = isequal(source, target)
 inverse(relation::IdentityRelation) = relation
 
+# Relations used by the SoleLogics-compatible frame vocabulary.  They are values rather
+# than syntax connectives; modal connectives carry one of these values in
+# their relation field.
 """The global relation family.
 
 # Examples
@@ -210,7 +204,6 @@ true
 """
 struct GlobalRelation <: RelationFamily end
 const GlobalRel = GlobalRelation
-
 """The global accessibility relation singleton (`globalrel`).
 
 # Examples
@@ -256,7 +249,6 @@ true
 """
 struct ToCenterRelation <: RelationFamily end
 const ToCenterRel = ToCenterRelation
-
 """The to-center relation singleton (`tocenterrel`).
 
 # Examples
@@ -276,13 +268,13 @@ syntaxstring(::ToCenterRelation; kwargs...) = "◉"
 # target through `centralworld`. There is therefore nothing for a converse to
 # be the converse of, and `inverse` says so rather than raising a bare
 # no-method error.
-function inverse(::ToCenterRelation)
-    return throw(ArgumentError("`inverse(tocenterrel)` is undefined: \
-`tocenterrel` has no source/target predicate — a frame defines its target through \
-`centralworld` — so there is no relation for `inverse` to return. No relation in this \
-vocabulary is its converse."))
-end
+inverse(::ToCenterRelation) = throw(ArgumentError("`inverse(tocenterrel)` is undefined: \
+    `tocenterrel` has no source/target predicate — a frame defines its target through \
+    `centralworld` — so there is no relation for `inverse` to return. No relation in this \
+    vocabulary is its converse."))
 
+# SoleLogics names and Aletheia's established relation protocol use different
+# spellings for identity; retain both as the same singleton value.
 """The identity relation singleton alias (`identityrel`).
 
 # Examples
@@ -329,20 +321,16 @@ function _natural_targets(frame::Frame, world, relation, natural)
     relation isa ToCenterRelation && return natural()
     (frame.relations isa Function || frame.relations isa _RelationProvider) &&
         return _stored_relation_targets(frame, world, relation)
-    return natural()
+    natural()
 end
-function _relation_targets(frame::Frame, world, relation::GlobalRelation)
-    return _natural_targets(frame, world, relation, () -> frame.worlds)
-end
-function _relation_targets(frame::Frame, world, relation::IdentityRelation)
-    return _natural_targets(frame, world, relation, () -> (world,))
-end
-function _relation_targets(frame::Frame, world, relation::AtWorldRelation)
-    return _natural_targets(frame, world, relation, () -> (relation.w,))
-end
-function _relation_targets(frame::Frame, world, relation::ToCenterRelation)
-    return _natural_targets(frame, world, relation, () -> (centralworld(frame),))
-end
+_relation_targets(frame::Frame, world, relation::GlobalRelation) =
+    _natural_targets(frame, world, relation, () -> frame.worlds)
+_relation_targets(frame::Frame, world, relation::IdentityRelation) =
+    _natural_targets(frame, world, relation, () -> (world,))
+_relation_targets(frame::Frame, world, relation::AtWorldRelation) =
+    _natural_targets(frame, world, relation, () -> (relation.w,))
+_relation_targets(frame::Frame, world, relation::ToCenterRelation) =
+    _natural_targets(frame, world, relation, () -> (centralworld(frame),))
 accessibles(frame::Frame, ::GlobalRelation) = worlds(frame)
 
 # ---------------------------------------------------------------------------
@@ -564,9 +552,8 @@ const IA_AiorOi = IA_AiorOiRelation()
 const IA_DiorBiorEi = IA_DiorBiorEiRelation()
 const IA_I = IA_IRelation()
 
-const IA7Relation = Union{
-    IA_AorORelation,IA_AiorOiRelation,IA_DorBorERelation,IA_DiorBiorEiRelation
-}
+const IA7Relation = Union{IA_AorORelation, IA_AiorOiRelation,
+    IA_DorBorERelation, IA_DiorBiorEiRelation}
 const IA3Relation = IA_IRelation
 
 const IA7Relations = (IA_AorO, IA_L, IA_DorBorE, IA_AiorOi, IA_Li, IA_DiorBiorEi)
@@ -576,29 +563,16 @@ IA72IARelations(::IA_AorORelation) = (IA_A, IA_O)
 IA72IARelations(::IA_AiorOiRelation) = (IA_Ai, IA_Oi)
 IA72IARelations(::IA_DorBorERelation) = (IA_D, IA_B, IA_E)
 IA72IARelations(::IA_DiorBiorEiRelation) = (IA_Di, IA_Bi, IA_Ei)
-function IA32IARelations(::IA_IRelation)
-    return (IA_A, IA_O, IA_D, IA_B, IA_E, IA_Ai, IA_Oi, IA_Di, IA_Bi, IA_Ei)
-end
+IA32IARelations(::IA_IRelation) = (IA_A, IA_O, IA_D, IA_B, IA_E,
+    IA_Ai, IA_Oi, IA_Di, IA_Bi, IA_Ei)
 
-function relation_holds(::IA_AorORelation, a, b)
-    return relation_holds(IA_A, a, b) || relation_holds(IA_O, a, b)
-end
-function relation_holds(::IA_DorBorERelation, a, b)
-    return relation_holds(IA_D, a, b) ||
-           relation_holds(IA_B, a, b) ||
-           relation_holds(IA_E, a, b)
-end
-function relation_holds(::IA_AiorOiRelation, a, b)
-    return relation_holds(IA_Ai, a, b) || relation_holds(IA_Oi, a, b)
-end
-function relation_holds(::IA_DiorBiorEiRelation, a, b)
-    return relation_holds(IA_Di, a, b) ||
-           relation_holds(IA_Bi, a, b) ||
-           relation_holds(IA_Ei, a, b)
-end
-function relation_holds(::IA_IRelation, a, b)
-    return any(r -> relation_holds(r, a, b), IA32IARelations(IA_I))
-end
+relation_holds(::IA_AorORelation, a, b) = relation_holds(IA_A, a, b) || relation_holds(IA_O, a, b)
+relation_holds(::IA_DorBorERelation, a, b) = relation_holds(IA_D, a, b) ||
+    relation_holds(IA_B, a, b) || relation_holds(IA_E, a, b)
+relation_holds(::IA_AiorOiRelation, a, b) = relation_holds(IA_Ai, a, b) || relation_holds(IA_Oi, a, b)
+relation_holds(::IA_DiorBiorEiRelation, a, b) = relation_holds(IA_Di, a, b) ||
+    relation_holds(IA_Bi, a, b) || relation_holds(IA_Ei, a, b)
+relation_holds(::IA_IRelation, a, b) = any(r -> relation_holds(r, a, b), IA32IARelations(IA_I))
 
 inverse(::IA_AorORelation) = IA_AiorOi
 inverse(::IA_DorBorERelation) = IA_DiorBiorEi
@@ -616,21 +590,8 @@ julia> isdefined(AletheiaCore, Symbol("ALLEN_RELATIONS"))
 true
 ```
 """
-const ALLEN_RELATIONS = (
-    BEFORE,
-    MEETS,
-    OVERLAPS,
-    STARTS,
-    DURING,
-    FINISHES,
-    EQUALS,
-    AFTER,
-    MET_BY,
-    OVERLAPPED_BY,
-    STARTED_BY,
-    CONTAINS,
-    FINISHED_BY,
-)
+const ALLEN_RELATIONS = (BEFORE, MEETS, OVERLAPS, STARTS, DURING, FINISHES, EQUALS,
+    AFTER, MET_BY, OVERLAPPED_BY, STARTED_BY, CONTAINS, FINISHED_BY)
 const IntervalRelations = ALLEN_RELATIONS
 const IARelations = ALLEN_RELATIONS
 
@@ -794,15 +755,11 @@ relation_holds(::LesserRelation, a::Real, b::Real) = b < a
 # both the converse contract above and `isgrounding`, so `inverse` refuses, and
 # it says why rather than leaving the caller a bare no-method error.
 function _no_converse(name, boundary)
-    return throw(
-        ArgumentError(
-            "`inverse($name)` is undefined: `$name` relates every source to the \
-$boundary world of the domain, so its converse relates that one world to every \
-target. That relation is not part of this vocabulary, and returning `$name` would be \
-a wrong converse. The point relations that do have one are `SUCCESSOR`/`PREDECESSOR` \
-and `GREATER`/`LESSER`."
-        ),
-    )
+    throw(ArgumentError("`inverse($name)` is undefined: `$name` relates every source to the \
+        $boundary world of the domain, so its converse relates that one world to every \
+        target. That relation is not part of this vocabulary, and returning `$name` would be \
+        a wrong converse. The point relations that do have one are `SUCCESSOR`/`PREDECESSOR` \
+        and `GREATER`/`LESSER`."))
 end
 inverse(::MinimumRelation) = _no_converse("MINIMUM", "first")
 inverse(::MaximumRelation) = _no_converse("MAXIMUM", "last")
@@ -970,23 +927,15 @@ const NON_TANGENTIAL_PROPER_PART_INVERSE = NTPPi
 # RCC8 on one-dimensional closed intervals. End-point contact is EC, while
 # strict separation is DC; this is the interval realization used by Sole.
 relation_holds(::DisconnectedRelation, a, b) = _right(a) < _left(b) || _right(b) < _left(a)
-function relation_holds(::ExternallyConnectedRelation, a, b)
-    return !relation_holds(DC, a, b) && (_right(a) == _left(b) || _right(b) == _left(a))
-end
-function relation_holds(::PartiallyOverlappingRelation, a, b)
-    return !relation_holds(DC, a, b) &&
-           !relation_holds(EC, a, b) &&
-           !_contains_interval(a, b) &&
-           !_contains_interval(b, a) &&
-           !relation_holds(RCC_EQ, a, b)
-end
-function relation_holds(::TangentialProperPartRelation, a, b)
-    return _proper_subset(a, b) && (_left(a) == _left(b) || _right(a) == _right(b))
-end
+relation_holds(::ExternallyConnectedRelation, a, b) =
+    !relation_holds(DC, a, b) && (_right(a) == _left(b) || _right(b) == _left(a))
+relation_holds(::PartiallyOverlappingRelation, a, b) =
+    !relation_holds(DC, a, b) && !relation_holds(EC, a, b) &&
+    !_contains_interval(a, b) && !_contains_interval(b, a) && !relation_holds(RCC_EQ, a, b)
+relation_holds(::TangentialProperPartRelation, a, b) =
+    _proper_subset(a, b) && (_left(a) == _left(b) || _right(a) == _right(b))
 relation_holds(::TangentialProperPartInverseRelation, a, b) = relation_holds(TPP, b, a)
-function relation_holds(::NonTangentialProperPartRelation, a, b)
-    return _left(b) < _left(a) && _right(a) < _right(b)
-end
+relation_holds(::NonTangentialProperPartRelation, a, b) = _left(b) < _left(a) && _right(a) < _right(b)
 relation_holds(::NonTangentialProperPartInverseRelation, a, b) = relation_holds(NTPP, b, a)
 relation_holds(::RCCEqualsRelation, a, b) = _left(a) == _left(b) && _right(a) == _right(b)
 
@@ -1061,19 +1010,12 @@ julia> isdefined(AletheiaCore, Symbol("RCC5Relation"))
 true
 ```
 """
-const RCC5Relation = Union{
-    RCC5DisjointRelation,typeof(PO),RCC5ProperPartRelation,RCC5ProperPartInverseRelation
-}
+const RCC5Relation = Union{RCC5DisjointRelation, typeof(PO), RCC5ProperPartRelation,
+    RCC5ProperPartInverseRelation}
 
-function relation_holds(::RCC5DisjointRelation, a, b)
-    return relation_holds(DC, a, b) || relation_holds(EC, a, b)
-end
-function relation_holds(::RCC5ProperPartRelation, a, b)
-    return relation_holds(TPP, a, b) || relation_holds(NTPP, a, b)
-end
-function relation_holds(::RCC5ProperPartInverseRelation, a, b)
-    return relation_holds(TPPi, a, b) || relation_holds(NTPPi, a, b)
-end
+relation_holds(::RCC5DisjointRelation, a, b) = relation_holds(DC, a, b) || relation_holds(EC, a, b)
+relation_holds(::RCC5ProperPartRelation, a, b) = relation_holds(TPP, a, b) || relation_holds(NTPP, a, b)
+relation_holds(::RCC5ProperPartInverseRelation, a, b) = relation_holds(TPPi, a, b) || relation_holds(NTPPi, a, b)
 inverse(::RCC5DisjointRelation) = DR
 inverse(::RCC5ProperPartRelation) = PPi
 inverse(::RCC5ProperPartInverseRelation) = PP
@@ -1094,10 +1036,10 @@ struct ClosestNorthWestRelation <: Point2DRelation end
 struct ClosestSouthEastRelation <: Point2DRelation end
 struct ClosestSouthWestRelation <: Point2DRelation end
 
-const CL_N = ClosestNorthRelation()
-const CL_S = ClosestSouthRelation()
-const CL_E = ClosestEastRelation()
-const CL_W = ClosestWestRelation()
+const CL_N  = ClosestNorthRelation()
+const CL_S  = ClosestSouthRelation()
+const CL_E  = ClosestEastRelation()
+const CL_W  = ClosestWestRelation()
 const CL_NE = ClosestNorthEastRelation()
 const CL_NW = ClosestNorthWestRelation()
 const CL_SE = ClosestSouthEastRelation()

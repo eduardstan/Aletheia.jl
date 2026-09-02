@@ -18,10 +18,7 @@ true
 function arity(connective)
     if connective isa Negation
         1
-    elseif connective isa Conjunction ||
-           connective isa Fusion ||
-           connective isa Disjunction ||
-           connective isa Implication
+    elseif connective isa Conjunction || connective isa Fusion || connective isa Disjunction || connective isa Implication
         2
     elseif connective isa Diamond || connective isa Box
         1
@@ -78,11 +75,8 @@ true
 ```
 """
 function hasdual(connective)
-    return connective isa Negation ||
-           connective isa Conjunction ||
-           connective isa Disjunction ||
-           connective isa Diamond ||
-           connective isa Box
+    connective isa Negation || connective isa Conjunction || connective isa Disjunction ||
+        connective isa Diamond || connective isa Box
 end
 
 """
@@ -153,7 +147,7 @@ Return whether a connective is commutative.  Commutativity is recorded as a
 trait for later normalization stages; it never changes syntax or equality.
 """
 function commutative(connective)
-    return connective isa Conjunction || connective isa Fusion || connective isa Disjunction
+    connective isa Conjunction || connective isa Fusion || connective isa Disjunction
 end
 
 """
@@ -163,7 +157,7 @@ Return whether a connective is a modality.  This is a syntactic trait and has
 no semantic consequence in the syntax layer.
 """
 function modality(connective)
-    return connective isa Diamond || connective isa Box
+    connective isa Diamond || connective isa Box
 end
 
 """
@@ -238,57 +232,42 @@ struct Signature{C<:Tuple,A<:Tuple}
     connectives::C
     arities::A
     function Signature(cs::C, as::A) where {C<:Tuple,A<:Tuple}
-        length(cs) == length(as) ||
-            throw(ArgumentError("connectives and arities must have equal lengths"))
+        length(cs) == length(as) || throw(ArgumentError("connectives and arities must have equal lengths"))
         isempty(cs) && throw(ArgumentError("a signature must contain a connective"))
-        checked = ntuple(
-            i -> begin
-                n = as[i]
-                n isa Integer && n >= 0 ||
-                    throw(ArgumentError("arity must be a non-negative integer"))
-                Int(n)
-            end,
-            length(as),
-        )
+        checked = ntuple(i -> begin
+            n = as[i]
+            n isa Integer && n >= 0 || throw(ArgumentError("arity must be a non-negative integer"))
+            Int(n)
+        end, length(as))
         trait_arities = ntuple(i -> arity(cs[i]), length(cs))
-        trait_arities == checked ||
-            throw(ArgumentError("declared arities disagree with arity traits"))
+        trait_arities == checked || throw(ArgumentError("declared arities disagree with arity traits"))
         texts = map(notation, cs)
         all(text -> text isa AbstractString && !isempty(text), texts) ||
             throw(ArgumentError("connective notation must be non-empty text"))
-        all(
-            text ->
-                all(c -> !isspace(c) && c != '(' && c != ')' && c != ',' && c != '"', text),
-            texts,
-        ) || throw(
-            ArgumentError("connective notation cannot contain whitespace or delimiters")
-        )
+        all(text -> all(c -> !isspace(c) && c != '(' && c != ')' && c != ',' && c != '"', text), texts) ||
+            throw(ArgumentError("connective notation cannot contain whitespace or delimiters"))
         length(unique(texts)) == length(cs) ||
             throw(ArgumentError("connective notation must be unique within a signature"))
-        return new{C,typeof(checked)}(cs, checked)
+        new{C,typeof(checked)}(cs, checked)
     end
 end
 
 function Signature(cs::AbstractVector)
-    return Signature(tuple(cs...))
+    Signature(tuple(cs...))
 end
 
 function Signature(cs::AbstractVector, as::AbstractVector)
-    return Signature(tuple(cs...), tuple(as...))
+    Signature(tuple(cs...), tuple(as...))
 end
 
 function Signature(cs::Tuple)
     isempty(cs) && throw(ArgumentError("a signature must contain a connective"))
-    as = ntuple(
-        i -> begin
-            n = arity(cs[i])
-            n isa Integer && n >= 0 ||
-                throw(ArgumentError("arity must be a non-negative integer"))
-            Int(n)
-        end,
-        length(cs),
-    )
-    return Signature(cs, as)
+    as = ntuple(i -> begin
+        n = arity(cs[i])
+        n isa Integer && n >= 0 || throw(ArgumentError("arity must be a non-negative integer"))
+        Int(n)
+    end, length(cs))
+    Signature(cs, as)
 end
 
 """Return the connectives in a [`Signature`](@ref), in declaration order.
@@ -303,21 +282,12 @@ true
 """
 connectives(signature::Signature) = signature.connectives
 
-"""Return the arity declared for `connective` in `signature`.
-
-# Examples
-```jldoctest
-julia> using AletheiaCore
-
-julia> isdefined(AletheiaCore, Symbol("arity"))
-true
-```
-"""
+"""Return the arity declared for `connective` in `signature`."""
 function arity(signature::Signature, connective)
     for i in eachindex(signature.connectives)
         isequal(signature.connectives[i], connective) && return signature.arities[i]
     end
-    return throw(ArgumentError("connective $(repr(connective)) is not in the signature"))
+    throw(ArgumentError("connective $(repr(connective)) is not in the signature"))
 end
 
 """Return whether `connective` belongs to `signature`.
@@ -331,7 +301,7 @@ true
 ```
 """
 function hasconnective(signature::Signature, connective)
-    return any(c -> isequal(c, connective), signature.connectives)
+    any(c -> isequal(c, connective), signature.connectives)
 end
 
 # Hash-consed payloads must not be mutable.  The check is recursive so an
@@ -381,7 +351,7 @@ function _payload_is_immutable_dynamic(value, seen)
     for i in 1:fieldcount(T)
         _payload_is_immutable_dynamic(getfield(value, i), seen) || return false
     end
-    return true
+    true
 end
 
 # Retain the explicit-seen form for internal callers that need to share a
@@ -389,17 +359,17 @@ end
 # whenever the payload type is statically closed.
 _payload_is_immutable(value, seen) = _payload_is_immutable_dynamic(value, seen)
 
-@generated function _payload_is_immutable(value::T) where {T}
+@generated function _payload_is_immutable(value::T) where T
     status = _payload_static_immutability(T)
     status === true && return :(true)
     status === false && return :(false)
-    return :(_payload_is_immutable_dynamic(value, IdDict{Any,Nothing}()))
+    :(_payload_is_immutable_dynamic(value, IdDict{Any,Nothing}()))
 end
 
 function _require_immutable_payload(value, role::AbstractString)
     _payload_is_immutable(value) ||
         throw(ArgumentError("$role must be immutable; mutable payloads cannot be interned"))
-    return value
+    value
 end
 
 # Internal pool records use ids in their key; no formula tree is ever used as a
@@ -434,7 +404,7 @@ mutable struct FormulaPool{S<:Signature}
 end
 
 function FormulaPool(signature::Signature)
-    return FormulaPool(signature, Dict{Any,Int}(), _PoolNode[], ReentrantLock())
+    FormulaPool(signature, Dict{Any,Int}(), _PoolNode[], ReentrantLock())
 end
 
 """Return the signature associated with a formula pool.
@@ -500,10 +470,8 @@ struct Atom{V,P<:FormulaPool} <: Formula
     value::V
 
     # Internal reconstruction from an already-validated pool node.
-    function Atom(
-        pool::P, id::Int, value::V, ::_TrustedFormulaHandle
-    ) where {V,P<:FormulaPool}
-        return new{V,P}(pool, id, value)
+    function Atom(pool::P, id::Int, value::V, ::_TrustedFormulaHandle) where {V,P<:FormulaPool}
+        new{V,P}(pool, id, value)
     end
 
     function Atom(pool::P, id::Int, value::V) where {V,P<:FormulaPool}
@@ -513,13 +481,14 @@ struct Atom{V,P<:FormulaPool} <: Formula
             1 <= id <= length(pool.nodes) ||
                 throw(ArgumentError("atom id $id is not present in its FormulaPool"))
             node = pool.nodes[id]
-            node.kind == 0x01 || throw(ArgumentError("formula id $id is not an atom"))
+            node.kind == 0x01 ||
+                throw(ArgumentError("formula id $id is not an atom"))
             isequal(node.payload, value) ||
                 throw(ArgumentError("atom payload does not match formula id $id"))
         finally
             unlock(pool.lock)
         end
-        return new{V,P}(pool, id, value)
+        new{V,P}(pool, id, value)
     end
 end
 
@@ -553,22 +522,19 @@ struct Branch{C,N,P<:FormulaPool} <: Formula
     children::NTuple{N,Int}
 
     # Internal reconstruction from an already-validated pool node.
-    function Branch(
-        pool::P, id::Int, connective::C, children::NTuple{N,Int}, ::_TrustedFormulaHandle
-    ) where {C,N,P<:FormulaPool}
-        return new{C,N,P}(pool, id, connective, children)
+    function Branch(pool::P, id::Int, connective::C, children::NTuple{N,Int}, ::_TrustedFormulaHandle) where {C,N,P<:FormulaPool}
+        new{C,N,P}(pool, id, connective, children)
     end
 
-    function Branch(
-        pool::P, id::Int, connective::C, children::NTuple{N,Int}
-    ) where {C,N,P<:FormulaPool}
+    function Branch(pool::P, id::Int, connective::C, children::NTuple{N,Int}) where {C,N,P<:FormulaPool}
         _require_immutable_payload(connective, "branch connective")
         lock(pool.lock)
         try
             1 <= id <= length(pool.nodes) ||
                 throw(ArgumentError("branch id $id is not present in its FormulaPool"))
             node = pool.nodes[id]
-            node.kind == 0x02 || throw(ArgumentError("formula id $id is not a branch"))
+            node.kind == 0x02 ||
+                throw(ArgumentError("formula id $id is not a branch"))
             isequal(node.payload, connective) ||
                 throw(ArgumentError("branch connective does not match formula id $id"))
             node.children == children ||
@@ -578,32 +544,14 @@ struct Branch{C,N,P<:FormulaPool} <: Formula
         finally
             unlock(pool.lock)
         end
-        return new{C,N,P}(pool, id, connective, children)
+        new{C,N,P}(pool, id, connective, children)
     end
 end
 
-"""Return the signature of an atom.
-
-# Examples
-```jldoctest
-julia> using AletheiaCore
-
-julia> isdefined(AletheiaCore, Symbol("signature"))
-true
-```
-"""
+"""Return the signature of an atom."""
 signature(formula::Atom) = signature(formula.pool)
 
-"""Return the signature of a branch.
-
-# Examples
-```jldoctest
-julia> using AletheiaCore
-
-julia> isdefined(AletheiaCore, Symbol("signature"))
-true
-```
-"""
+"""Return the signature of a branch."""
 signature(formula::Branch) = signature(formula.pool)
 
 @inline _formula_pool(atom::Atom) = atom.pool
@@ -691,22 +639,13 @@ true
 nchildren(::Atom) = 0
 nchildren(branch::Branch) = length(branch.children)
 
-"""Return the number of immediate children; retained as an alias for `nchildren`.
-
-# Examples
-```jldoctest
-julia> using AletheiaCore
-
-julia> isdefined(AletheiaCore, Symbol("arity"))
-true
-```
-"""
+"""Return the number of immediate children; retained as an alias for `nchildren`."""
 arity(formula::Atom) = nchildren(formula)
 arity(formula::Branch) = nchildren(formula)
 
-function _branch_from_ids(pool::FormulaPool, id::Int, connective, ids, ::Val{N}) where {N}
+function _branch_from_ids(pool::FormulaPool, id::Int, connective, ids, ::Val{N}) where N
     typed_ids = ntuple(i -> ids[i], N)
-    return Branch(pool, id, connective, typed_ids, _trusted_formula_handle)
+    Branch(pool, id, connective, typed_ids, _trusted_formula_handle)
 end
 
 function _formula_unlocked(pool::FormulaPool, id::Int)
@@ -795,9 +734,8 @@ true
 function isgrounded(formula::Formula)
     isatom(formula) && return false
     connective = operator(formula)
-    return (
-        connective isa AbstractRelationalConnective && isgrounding(relation(connective))
-    ) || all(isgrounded, children(formula))
+    (connective isa AbstractRelationalConnective && isgrounding(relation(connective))) ||
+        all(isgrounded, children(formula))
 end
 
 function _intern!(pool::FormulaPool, kind::UInt8, payload, childids::Tuple{Vararg{Int}})
@@ -817,7 +755,12 @@ function _intern!(pool::FormulaPool, kind::UInt8, payload, childids::Tuple{Varar
     end
 end
 
-"""Intern an atom, returning the canonical atom value for this pool and payload.
+"""
+    atom(value)
+
+Intern `value` as an atom in [`DEFAULT_POOL`](@ref).  Equivalent to
+`atom(DEFAULT_POOL, value)`.
+
 
 # Examples
 ```jldoctest
@@ -829,7 +772,7 @@ true
 """
 function atom(pool::FormulaPool, value)
     atom_id = _intern!(pool, 0x01, value, ())
-    return Atom(pool, atom_id, value, _trusted_formula_handle)
+    Atom(pool, atom_id, value, _trusted_formula_handle)
 end
 
 # This method makes the type constructor spelling useful; the full-field
@@ -837,22 +780,24 @@ end
 Atom(pool::FormulaPool, value) = atom(pool, value)
 
 function _branch_children(pool::FormulaPool, childtuple::Tuple)
-    ids = ntuple(
-        i -> begin
-            child = childtuple[i]
-            (child isa Atom || child isa Branch) ||
-                throw(ArgumentError("branch children must be formulas"))
-            _formula_pool(child) === pool || throw(
-                ArgumentError("all children must belong to the same FormulaPool")
-            )
-            _formula_id(child)
-        end,
-        length(childtuple),
-    )
-    return ids
+    ids = ntuple(i -> begin
+        child = childtuple[i]
+        (child isa Atom || child isa Branch) || throw(ArgumentError("branch children must be formulas"))
+        _formula_pool(child) === pool || throw(ArgumentError("all children must belong to the same FormulaPool"))
+        _formula_id(child)
+    end, length(childtuple))
+    ids
 end
 
-"""Intern a branch from a tuple of immediate children.
+"""
+    branch(connective, children...)
+
+Intern a connective application in [`DEFAULT_POOL`](@ref).  Equivalent to
+`branch(DEFAULT_POOL, connective, children...)`; every child must already
+belong to the default pool.  Only the vararg spelling is given a pool-free
+form: `branch(pool, childtuple)` and `branch(connective, childtuple)` would be
+ambiguous, and the explicit path owns the tuple spelling.
+
 
 # Examples
 ```jldoctest
@@ -863,26 +808,14 @@ true
 ```
 """
 function branch(pool::FormulaPool, connective, childtuple::Tuple)
-    arity(pool.signature, connective) == length(childtuple) || throw(
-        ArgumentError(
-            "$(repr(connective)) expects $(arity(pool.signature, connective)) children, got $(length(childtuple))",
-        ),
-    )
+    arity(pool.signature, connective) == length(childtuple) ||
+        throw(ArgumentError("$(repr(connective)) expects $(arity(pool.signature, connective)) children, got $(length(childtuple))"))
     ids = _branch_children(pool, childtuple)
     branch_id = _intern!(pool, 0x02, connective, ids)
-    return _branch_from_ids(pool, branch_id, connective, ids, Val(length(ids)))
+    _branch_from_ids(pool, branch_id, connective, ids, Val(length(ids)))
 end
 
-"""Intern a branch from vararg immediate children.
-
-# Examples
-```jldoctest
-julia> using AletheiaCore
-
-julia> isdefined(AletheiaCore, Symbol("branch"))
-true
-```
-"""
+"""Intern a branch from vararg immediate children."""
 branch(pool::FormulaPool, connective, children...) = branch(pool, connective, children)
 
 # See the Atom constructor note above.
@@ -928,30 +861,21 @@ function subterms(pool::FormulaPool)
 end
 
 function _reachable!(pool::FormulaPool, current::Int, seen::Set{Int})
-    current in seen && return nothing
+    current in seen && return
     push!(seen, current)
     node = pool.nodes[current]
     for child in node.children
         _reachable!(pool, child, seen)
     end
-    return nothing
+    nothing
 end
 
-"""Return the distinct ids in a formula's subterm DAG, dependency first.
-
-# Examples
-```jldoctest
-julia> using AletheiaCore
-
-julia> isdefined(AletheiaCore, Symbol("subterms"))
-true
-```
-"""
+"""Return the distinct ids in a formula's subterm DAG, dependency first."""
 function subterms(formula::Atom)
-    return _subterms(formula)
+    _subterms(formula)
 end
 function subterms(formula::Branch)
-    return _subterms(formula)
+    _subterms(formula)
 end
 
 function _subterms(formula)
@@ -965,19 +889,10 @@ function _subterms(formula)
     end
     result = collect(seen)
     sort!(result)
-    return result
+    result
 end
 
-"""Return the number of distinct subterms reachable from `formula`.
-
-# Examples
-```jldoctest
-julia> using AletheiaCore
-
-julia> isdefined(AletheiaCore, Symbol("nsubterms"))
-true
-```
-"""
+"""Return the number of distinct subterms reachable from `formula`."""
 nsubterms(formula::Atom) = length(subterms(formula))
 nsubterms(formula::Branch) = length(subterms(formula))
 
@@ -1004,7 +919,7 @@ function _dag_node(pool::FormulaPool, i::Int)
     end
 end
 
-"""Return the complete pool DAG in dependency order.
+"""Return the subterm DAG reachable from `formula`, in dependency order.
 
 # Examples
 ```jldoctest
@@ -1023,21 +938,12 @@ function dag(pool::FormulaPool)
     end
 end
 
-"""Return the subterm DAG reachable from `formula`, in dependency order.
-
-# Examples
-```jldoctest
-julia> using AletheiaCore
-
-julia> isdefined(AletheiaCore, Symbol("dag"))
-true
-```
-"""
+"""Return the subterm DAG reachable from `formula`, in dependency order."""
 function dag(formula::Atom)
-    return _dag_formula(formula)
+    _dag_formula(formula)
 end
 function dag(formula::Branch)
-    return _dag_formula(formula)
+    _dag_formula(formula)
 end
 
 function _dag_formula(formula)
@@ -1051,16 +957,7 @@ function _dag_formula(formula)
     end
 end
 
-"""Return the DAG node for an id in `pool`.
-
-# Examples
-```jldoctest
-julia> using AletheiaCore
-
-julia> isdefined(AletheiaCore, Symbol("dag"))
-true
-```
-"""
+"""Return the DAG node for an id in `pool`."""
 function dag(pool::FormulaPool, i::Integer)
     lock(pool.lock)
     try
@@ -1085,9 +982,7 @@ Base.hash(a::Branch, h::UInt) = hash(objectid(a.pool), hash(a.id, h))
 
 # Built-in syntax-only connectives.  Their values are ordinary structs; the
 # modal values carry their relation as data rather than encoding it in a type.
-"""Stateless syntax marker for classical negation."""
 struct Negation end
-"""Stateless syntax marker for classical conjunction."""
 struct Conjunction end
 """Stateless syntax marker for multiplicative conjunction (fusion).
 
@@ -1100,9 +995,7 @@ true
 ```
 """
 struct Fusion end
-"""Stateless syntax marker for classical disjunction."""
 struct Disjunction end
-"""Stateless syntax marker for classical implication."""
 struct Implication end
 
 """Abstract vocabulary shared by relational modal connectives.
@@ -1156,7 +1049,6 @@ end
 # SoleLogics-compatible modal/connective predicates.  These predicates
 # intentionally default to `false` for non-connective values and
 # classify a diamond as any modal connective that is not a box.
-
 """
 Return whether a connective or type represents a modal operator.
 
@@ -1172,7 +1064,6 @@ ismodal(::Any) = false
 ismodal(::Type{<:Diamond}) = true
 ismodal(::Type{<:Box}) = true
 ismodal(connective::AbstractRelationalConnective) = ismodal(typeof(connective))
-
 """
 Return whether a connective has arity 1.
 
@@ -1185,7 +1076,6 @@ true
 ```
 """
 isunary(connective) = arity(connective) == 1
-
 """
 Return whether a connective or type represents a box modal operator.
 
@@ -1201,7 +1091,6 @@ isbox(::Any) = false
 isbox(::Type{<:Diamond}) = false
 isbox(::Type{<:Box}) = true
 isbox(connective::AbstractRelationalConnective) = isbox(typeof(connective))
-
 """
 Return whether a connective or type represents a diamond modal operator.
 
@@ -1228,7 +1117,6 @@ julia> NEGATION
 ```
 """
 const NEGATION = Negation()
-
 """The conjunction connective (`∧`).
 
 # Examples
@@ -1240,7 +1128,6 @@ julia> CONJUNCTION
 ```
 """
 const CONJUNCTION = Conjunction()
-
 """The fusion connective (`⊗`).
 
 # Examples
@@ -1252,7 +1139,6 @@ julia> FUSION
 ```
 """
 const FUSION = Fusion()
-
 """The disjunction connective (`∨`).
 
 # Examples
@@ -1264,7 +1150,6 @@ julia> DISJUNCTION
 ```
 """
 const DISJUNCTION = Disjunction()
-
 """The implication connective (`→`).
 
 # Examples
@@ -1276,7 +1161,6 @@ julia> IMPLICATION
 ```
 """
 const IMPLICATION = Implication()
-
 """The prefix negation connective (`NOT`).
 
 # Examples
@@ -1288,7 +1172,6 @@ julia> AletheiaCore.NOT
 ```
 """
 const NOT = NEGATION
-
 """The conjunction connective (`AND`).
 
 # Examples
@@ -1300,7 +1183,6 @@ julia> AletheiaCore.AND
 ```
 """
 const AND = CONJUNCTION
-
 """The disjunction connective (`OR`).
 
 # Examples
@@ -1312,7 +1194,6 @@ julia> AletheiaCore.OR
 ```
 """
 const OR = DISJUNCTION
-
 """The implication connective (`IMPLIES`).
 
 # Examples
@@ -1324,65 +1205,15 @@ julia> AletheiaCore.IMPLIES
 ```
 """
 const IMPLIES = IMPLICATION
-
-"""The prefix negation connective (`¬`).
-
-# Examples
-```jldoctest
-julia> using AletheiaCore
-
-julia> ¬
-¬
-```
-"""
+"""The prefix negation connective (`¬`)."""
 const ¬ = NEGATION
-
-"""The conjunction connective (`∧`).
-
-# Examples
-```jldoctest
-julia> using AletheiaCore
-
-julia> ∧
-∧
-```
-"""
+"""The conjunction connective (`∧`)."""
 const ∧ = CONJUNCTION
-
-"""The fusion connective (`⊗`).
-
-# Examples
-```jldoctest
-julia> using AletheiaCore
-
-julia> ⊗
-⊗
-```
-"""
+"""The fusion connective (`⊗`)."""
 const ⊗ = FUSION
-
-"""The disjunction connective (`∨`).
-
-# Examples
-```jldoctest
-julia> using AletheiaCore
-
-julia> ∨
-∨
-```
-"""
+"""The disjunction connective (`∨`)."""
 const ∨ = DISJUNCTION
-
-"""The implication connective (`→`).
-
-# Examples
-```jldoctest
-julia> using AletheiaCore
-
-julia> →
-→
-```
-"""
+"""The implication connective (`→`)."""
 const → = IMPLICATION
 
 """Return the modal relation carried by a [`Diamond`](@ref) or [`Box`](@ref).
@@ -1401,13 +1232,11 @@ relation(modal::Box) = modal.relation
 function _atom_text(value, pool::FormulaPool)
     text = string(value)
     spellings = notation.(pool.signature.connectives)
-    safe =
-        !isempty(text) &&
-        all(c -> !isspace(c) && c != '(' && c != ')' && c != ',' && c != '"', text) &&
+    safe = !isempty(text) && all(c -> !isspace(c) && c != '(' && c != ')' && c != ',' && c != '"', text) &&
         all(spelling -> !occursin(spelling, text), spellings)
     safe && return text
     escaped = replace(replace(text, "\\" => "\\\\"), "\"" => "\\\"")
-    return "\"$(escaped)\""
+    "\"$(escaped)\""
 end
 
 function _needs_parentheses(parent, child, position::Symbol)
@@ -1420,11 +1249,11 @@ function _needs_parentheses(parent, child, position::Symbol)
     assoc == :none && return true
     assoc == :left && position == :right && return true
     assoc == :right && position == :left && return true
-    return false
+    false
 end
 
 function _print_formula(formula::Atom, parent, position::Symbol)
-    return _atom_text(formula.value, formula.pool)
+    _atom_text(formula.value, formula.pool)
 end
 
 function _print_formula(formula::Branch, parent, position::Symbol)
@@ -1444,9 +1273,7 @@ function _print_formula(formula::Branch, parent, position::Symbol)
         rt = _print_formula(right, c, :right)
         "$(lt) $(token) $(rt)"
     else
-        "$(token)(" *
-        join((_print_formula(ch, nothing, :only) for ch in formula_children), ", ") *
-        ")"
+        "$(token)(" * join((_print_formula(ch, nothing, :only) for ch in formula_children), ", ") * ")"
     end
     if parent !== nothing && _needs_parentheses(parent, formula, position)
         "(" * result * ")"
@@ -1519,9 +1346,7 @@ julia> isdefined(AletheiaCore, Symbol("DEFAULT_SIGNATURE"))
 true
 ```
 """
-const DEFAULT_SIGNATURE = Signature((
-    NEGATION, CONJUNCTION, FUSION, DISJUNCTION, IMPLICATION
-))
+const DEFAULT_SIGNATURE = Signature((NEGATION, CONJUNCTION, FUSION, DISJUNCTION, IMPLICATION))
 
 """
     DEFAULT_POOL
@@ -1561,15 +1386,6 @@ const DEFAULT_POOL = FormulaPool(DEFAULT_SIGNATURE)
 
 Intern `value` as an atom in [`DEFAULT_POOL`](@ref).  Equivalent to
 `atom(DEFAULT_POOL, value)`.
-
-
-# Examples
-```jldoctest
-julia> using AletheiaCore
-
-julia> isdefined(AletheiaCore, Symbol("atom"))
-true
-```
 """
 atom(value) = atom(DEFAULT_POOL, value)
 
@@ -1581,15 +1397,6 @@ Intern a connective application in [`DEFAULT_POOL`](@ref).  Equivalent to
 belong to the default pool.  Only the vararg spelling is given a pool-free
 form: `branch(pool, childtuple)` and `branch(connective, childtuple)` would be
 ambiguous, and the explicit path owns the tuple spelling.
-
-
-# Examples
-```jldoctest
-julia> using AletheiaCore
-
-julia> isdefined(AletheiaCore, Symbol("branch"))
-true
-```
 """
 branch(connective, children...) = branch(DEFAULT_POOL, connective, children)
 
@@ -1604,17 +1411,11 @@ branch(connective, children...) = branch(DEFAULT_POOL, connective, children)
 # ambiguous with them.
 const _PooledFormula = Union{Atom,Branch}
 
-function (connective::Negation)(formula::_PooledFormula)
-    return branch(_formula_pool(formula), connective, (formula,))
-end
-function (connective::Union{Conjunction,Disjunction,Implication})(
-    left::_PooledFormula, right::_PooledFormula
-)
-    return branch(_formula_pool(left), connective, (left, right))
-end
-function (connective::Fusion)(left::_PooledFormula, right::_PooledFormula)
-    return branch(_formula_pool(left), connective, (left, right))
-end
-function (connective::Union{Diamond,Box})(formula::_PooledFormula)
-    return branch(_formula_pool(formula), connective, (formula,))
-end
+(connective::Negation)(formula::_PooledFormula) =
+    branch(_formula_pool(formula), connective, (formula,))
+(connective::Union{Conjunction,Disjunction,Implication})(left::_PooledFormula, right::_PooledFormula) =
+    branch(_formula_pool(left), connective, (left, right))
+(connective::Fusion)(left::_PooledFormula, right::_PooledFormula) =
+    branch(_formula_pool(left), connective, (left, right))
+(connective::Union{Diamond,Box})(formula::_PooledFormula) =
+    branch(_formula_pool(formula), connective, (formula,))

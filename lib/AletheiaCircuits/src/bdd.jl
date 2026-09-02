@@ -9,7 +9,29 @@ true
 ```
 """
 abstract type AbstractEvent end
+"""
+The abstract supertype for event circuits.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> AbstractEventCircuit isa Type
+true
+```
+"""
 abstract type AbstractEventCircuit end
+"""
+The abstract supertype for circuit nodes.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> CircuitNode isa Type
+true
+```
+"""
 abstract type CircuitNode end
 
 """One node in a reduced ordered (possibly multi-outcome) choice diagram.
@@ -123,8 +145,53 @@ function CertifiedCircuit(
     )
 end
 
+"""
+Return the node table of a circuit.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> ev = compile_event(prog, :a);
+
+julia> nodes(ev.circuit) isa Vector{BDDNode}
+true
+```
+"""
 nodes(circuit::AbstractEventCircuit) = circuit.nodes
+"""
+Return root node indices of a circuit.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> ev = compile_event(prog, :a);
+
+julia> roots(ev.circuit)
+(3,)
+```
+"""
 roots(circuit::AbstractEventCircuit) = circuit.roots
+"""
+Return the variable order recorded by a certificate.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> ev = compile_event(prog, :a);
+
+julia> variable_order(ev.circuit)
+(:c1,)
+```
+"""
 variable_order(circuit::CertifiedCircuit) = circuit.certificate.variable_order
 variable_order(circuit::BDD) = circuit.variables
 
@@ -399,9 +466,9 @@ function _raw_bdd(program::DSProgram, assignments, truth)
             children[1]
         else
             begin
-                push!(ns, BDDNode(level, childtuple))
-                length(ns)
-            end
+            push!(ns, BDDNode(level, childtuple))
+            length(ns)
+        end
         end
         memo[key] = nodeid
         return nodeid
@@ -580,6 +647,19 @@ function compile_event(
         etruth,
     )
 end
+"""
+Compile a query event; this is the named front-end alias for `compile_event`.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> query_event(prog, :a) isa CompiledEvent
+true
+```
+"""
 function query_event(
     program::DSProgram,
     query;
@@ -629,11 +709,7 @@ function _same_program(left::CompiledEvent, right::CompiledEvent)
 end
 
 function _event_truth(event::CompiledEvent)
-    return if event.evidence_truth === nothing
-        event.query_truth
-    else
-        event.query_truth .& event.evidence_truth
-    end
+    event.evidence_truth === nothing ? event.query_truth : event.query_truth .& event.evidence_truth
 end
 
 function _joint(left::CompiledEvent, right::CompiledEvent)

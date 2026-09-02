@@ -75,25 +75,27 @@ function ProbabilitySemiring(profile::ProbabilityProfile{T}) where {T}
 end
 ProbabilitySemiring(::Type{T}) where {T} = ProbabilitySemiring{T}()
 
-"""Return the default Float64 probability profile.
+"""
+Construct a Float64 closed nonnegative probability semiring.
 
 # Examples
 ```jldoctest
 julia> using AletheiaCircuits
 
-julia> isdefined(AletheiaCircuits, Symbol("Float64Profile"))
-true
+julia> Float64Profile()
+ProbabilitySemiring{Float64}(:float64)
 ```
 """
 Float64Profile() = ProbabilitySemiring{Float64}(:float64)
-"""Return the exact Rational probability profile.
+"""
+Construct an exact Rational closed nonnegative probability semiring.
 
 # Examples
 ```jldoctest
 julia> using AletheiaCircuits
 
-julia> isdefined(AletheiaCircuits, Symbol("RationalProfile"))
-true
+julia> RationalProfile()
+ProbabilitySemiring{Rational{Int64}}(:rational)
 ```
 """
 RationalProfile() = ProbabilitySemiring{Rational{Int}}(:rational)
