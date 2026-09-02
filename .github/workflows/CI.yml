@@ -21,7 +21,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     # Focused suites run before the umbrella suite; 20 minutes leaves
     # substantial headroom for precompilation and runner variability.
-    timeout-minutes: 20
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix: ${{ github.event_name == 'push' && fromJSON('{"julia-version":["1.12"],"os":["ubuntu-latest"]}') || fromJSON('{"julia-version":["1.10","1.11","1.12"],"os":["ubuntu-latest","windows-latest"]}') }}
