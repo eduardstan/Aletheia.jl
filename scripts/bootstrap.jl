@@ -9,6 +9,8 @@ const PACKAGES = (
     "AletheiaSole",
     "AletheiaCircuits",
     "AletheiaGraphs",
+    "AletheiaAudit",
+    "AletheiaNeSy",
 )
 const DEPENDENCIES = Dict(
     "AletheiaCore" => (),
@@ -17,6 +19,8 @@ const DEPENDENCIES = Dict(
     "AletheiaSole" => ("AletheiaCore", "AletheiaData"),
     "AletheiaCircuits" => ("AletheiaCore",),
     "AletheiaGraphs" => ("AletheiaCore",),
+    "AletheiaAudit" => ("AletheiaCore",),
+    "AletheiaNeSy" => ("AletheiaCore", "AletheiaData", "AletheiaAudit"),
 )
 
 if VERSION < v"1.11"

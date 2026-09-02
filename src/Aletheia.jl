@@ -24,6 +24,8 @@ using AletheiaData
 using AletheiaLearn
 using AletheiaSole
 using AletheiaCircuits: AletheiaCircuits
+using AletheiaAudit
+using AletheiaNeSy
 
 const SoleLogics = AletheiaSole.SoleLogics
 export SoleLogics
@@ -32,6 +34,14 @@ export SoleLogics
 # names `domain` and `evaluate` remain owned by the historical umbrella API;
 # use `AletheiaCircuits.domain` and `AletheiaCircuits.evaluate` when needed.
 export AletheiaCircuits, AletheiaGraphs
+export SymbolicArtifact, ArtifactState, ArtifactOperation, ArtifactCase, Provenance,
+    TraceStep, ExecutionTrace, VerificationReport, MetricValue, MetricBundle, AuditRecord,
+    ArtifactRule, RuleArtifact, TreeArtifact, eval_artifact, extract_artifact, inject!,
+    verify_artifact, metric_bundle, audit, replay, serialize_trace, deserialize_trace,
+    stable_hash, provenance, rules, nodes, test_interface
+export NeSyContractError, InvalidNeuralValueError, MalformedCaseError, SemanticLossError,
+    ChoiceLabelError, NeuralLeafValuation, SKERoundTrip, neural_valuation,
+    neural_choice_labels, ske_roundtrip, semantic_loss
 export AbstractKGEntity,
     AbstractKGRelation,
     KGEntity,

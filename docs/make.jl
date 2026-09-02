@@ -8,6 +8,8 @@ packages = (
     "AletheiaSole",
     "AletheiaCircuits",
     "AletheiaGraphs",
+    "AletheiaAudit",
+    "AletheiaNeSy",
 )
 # Develop the umbrella and all focused packages in one resolution. The focused
 # packages are not registered, and Pkg.develop does not consult a developed
@@ -19,7 +21,7 @@ Pkg.instantiate()
 
 import SoleData
 using Aletheia
-import AletheiaCore, AletheiaData, AletheiaLearn, AletheiaSole, AletheiaCircuits, AletheiaGraphs
+import AletheiaCore, AletheiaData, AletheiaLearn, AletheiaSole, AletheiaCircuits, AletheiaGraphs, AletheiaAudit, AletheiaNeSy
 using Documenter
 using DocumenterCitations
 
@@ -36,6 +38,8 @@ makedocs(
         AletheiaSole,
         AletheiaCircuits,
         AletheiaGraphs,
+        AletheiaAudit,
+        AletheiaNeSy,
         Aletheia.SoleLogics,
     ],
     pages = [
@@ -50,6 +54,8 @@ makedocs(
         "Distribution-semantics circuits" => "circuits.md",
         "Relations, frames, and frame classes" => "relations.md",
         "Knowledge graphs" => "graphs.md",
+        "Audit artifacts" => "audit.md",
+        "Neural-symbolic interface" => "nesy.md",
         "Theory utilities" => "theory.md",
         "Learning from interpretations" => "learning.md",
         "Measured results" => "results.md",
