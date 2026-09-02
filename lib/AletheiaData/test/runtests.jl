@@ -14,6 +14,8 @@ include("scalar_extended.jl")
     if pkgversion(JET) < v"0.11"
         JET.test_package(AletheiaData; target_defined_modules=true)
     else
-        JET.test_package(AletheiaData; target_modules=(AletheiaData,), analyze_from_definitions=true)
+        JET.test_package(
+            AletheiaData; target_modules=(AletheiaData,), analyze_from_definitions=true
+        )
     end
 end

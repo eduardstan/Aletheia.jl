@@ -42,13 +42,16 @@ struct EmptyFamily <: AbstractModelFamily end
     @test uniform_frame(uniform) == frame
     @test extension(p, uniform) == [BitVector([false, true]), BitVector([false, true])]
 
-    gcallback = Aletheia.ValuationCallback((name, world) -> 0.5;
-        vectorized=(name, worlds) -> [0.5, 1.0])
+    gcallback = Aletheia.ValuationCallback(
+        (name, world) -> 0.5; vectorized=(name, worlds) -> [0.5, 1.0]
+    )
     gmodel = Model(frame, GodelAlgebra(3), gcallback)
     @test extension(p, gmodel) == [0.5, 1.0]
 
     @test uniform_frame(ModelFamily(Model[])) === nothing
-    bad = Aletheia.ValuationCallback((name, world) -> true; vectorized=(name, worlds) -> Bool[])
+    bad = Aletheia.ValuationCallback(
+        (name, world) -> true; vectorized=(name, worlds) -> Bool[]
+    )
     @test_throws ArgumentError extension(p, Model(frame, BOOLEAN, bad))
 
     @test_throws MethodError instance_count(EmptyFamily())

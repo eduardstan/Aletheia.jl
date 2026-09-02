@@ -3,34 +3,106 @@
 """
     AbstractModelFamily
 
-A family of logical instances.  Implementations provide `instance_count` and
+A family of logical instances. Implementations provide `instance_count` and
 `instance_model`; the latter returns an Aletheia [`Model`](@ref) for one
-instance.  A model's frame may differ between instances.
+instance. A model's frame may differ between instances.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> ModelFamily([]) isa AbstractModelFamily
+true
+```
 """
 abstract type AbstractModelFamily end
 
-"""Return the number of instances in `family`."""
+"""
+Return the number of instances in `family`.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> fam = ModelFamily([1, 2, 3]);
+
+julia> instance_count(fam)
+3
+```
+"""
 function instance_count(family::AbstractModelFamily)
-    throw(MethodError(instance_count, (family,)))
+    return throw(MethodError(instance_count, (family,)))
 end
 
-"""Iterate stable instance handles (by default, one-based integer handles)."""
+"""
+Iterate stable instance handles (by default, one-based integer handles).
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> fam = ModelFamily([10, 20]);
+
+julia> collect(eachinstance(fam))
+2-element Vector{Int64}:
+ 1
+ 2
+```
+"""
 eachinstance(family::AbstractModelFamily) = Base.OneTo(instance_count(family))
 
-"""Return the Aletheia model corresponding to one instance handle."""
+"""
+Return the Aletheia model corresponding to one instance handle.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> fam = ModelFamily([:m1, :m2]);
+
+julia> instance_model(fam, 1)
+:m1
+```
+"""
 function instance_model(family::AbstractModelFamily, instance)
-    throw(MethodError(instance_model, (family, instance)))
+    return throw(MethodError(instance_model, (family, instance)))
 end
 
-"""Return the frame corresponding to one instance handle."""
-instance_frame(family::AbstractModelFamily, instance) = frame(instance_model(family, instance))
+"""
+Return the frame corresponding to one instance handle.
+
+# Examples
+```jldoctest
+julia> using AletheiaData, AletheiaCore
+
+julia> m = Model(Frame([:w1], Dict(); index=true), BOOLEAN, (a, w) -> true);
+
+julia> fam = ModelFamily([m]);
+
+julia> instance_frame(fam, 1) isa AbstractFrame
+true
+```
+"""
+function instance_frame(family::AbstractModelFamily, instance)
+    return frame(instance_model(family, instance))
+end
 
 """
     ModelFamily(models)
 
-A concrete family for an indexable collection of Aletheia models.  It is useful
+A concrete family for an indexable collection of Aletheia models. It is useful
 for callers that already materialize models and is also the reference protocol
 implementation for adapters.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> fam = ModelFamily([:a, :b]);
+
+julia> instance_count(fam)
+2
+```
 """
 struct ModelFamily{M} <: AbstractModelFamily
     models::M
@@ -44,12 +116,13 @@ instance_model(family::ModelFamily, instance) = family.models[instance]
     uniform_frame(family)
 
 Return the shared frame when every instance has an equal frame, or `nothing`
-for an empty or non-uniform family.  Equality is checked on the frames rather
+for an empty or non-uniform family. Equality is checked on the frames rather
 than assumed from the family type.
 """
 function _same_frame(left::Frame, right::Frame)
-    worlds(left) == worlds(right) && relations(left) == relations(right) &&
-        world_index(left) == world_index(right)
+    return worlds(left) == worlds(right) &&
+               relations(left) == relations(right) &&
+               world_index(left) == world_index(right)
 end
 
 """
@@ -57,6 +130,20 @@ end
 
 Return the shared frame when every instance has an equal frame, or `nothing`
 for an empty or non-uniform family.
+
+# Examples
+```jldoctest
+julia> using AletheiaData, AletheiaCore
+
+julia> f = Frame([:w1], Dict(); index=true);
+
+julia> m = Model(f, BOOLEAN, (a, w) -> true);
+
+julia> fam = ModelFamily([m, m]);
+
+julia> uniform_frame(fam) === f
+true
+```
 """
 function uniform_frame(family::AbstractModelFamily)
     state = iterate(eachinstance(family))
@@ -71,16 +158,34 @@ function uniform_frame(family::AbstractModelFamily)
     end
 end
 
-"""Whether all instances in `family` use one equal frame."""
+"""
+Whether all instances in `family` use one equal frame.
+
+# Examples
+```jldoctest
+julia> using AletheiaData, AletheiaCore
+
+julia> f = Frame([:w1], Dict(); index=true);
+
+julia> m = Model(f, BOOLEAN, (a, w) -> true);
+
+julia> fam = ModelFamily([m, m]);
+
+julia> isuniform(fam)
+true
+```
+"""
 isuniform(family::AbstractModelFamily) = !isnothing(uniform_frame(family))
 
 """Evaluate a formula's extension for one instance in a model family."""
-extension(formula::Formula, family::AbstractModelFamily, instance) =
-    extension(formula, instance_model(family, instance))
+function extension(formula::Formula, family::AbstractModelFamily, instance)
+    return extension(formula, instance_model(family, instance))
+end
 
 """Evaluate a formula's extension for every instance, in instance order."""
-extension(formula::Formula, family::AbstractModelFamily) =
-    [extension(formula, family, instance) for instance in eachinstance(family)]
+function extension(formula::Formula, family::AbstractModelFamily)
+    return [extension(formula, family, instance) for instance in eachinstance(family)]
+end
 
 """
     extension(formulas, family)
@@ -98,7 +203,9 @@ function extension(formulas::AbstractVector, family::AbstractModelFamily)
     state === nothing && return [Any[] for _ in normalized]
     first_instance, iterator_state = state
     first_batch = extension(normalized, instance_model(family, first_instance))
-    results = [Vector{typeof(first_batch[position])}() for position in eachindex(normalized)]
+    results = [
+        Vector{typeof(first_batch[position])}() for position in eachindex(normalized)
+    ]
     for position in eachindex(normalized)
         push!(results[position], first_batch[position])
     end
@@ -111,13 +218,15 @@ function extension(formulas::AbstractVector, family::AbstractModelFamily)
             push!(results[position], batch[position])
         end
     end
-    results
+    return results
 end
 
 """Evaluate all formulas for one instance of a model family."""
-extension(formulas::AbstractVector, family::AbstractModelFamily, instance) =
-    extension(formulas, instance_model(family, instance))
+function extension(formulas::AbstractVector, family::AbstractModelFamily, instance)
+    return extension(formulas, instance_model(family, instance))
+end
 
 """Check a formula at one world of one instance in a model family."""
-check(formula::Formula, family::AbstractModelFamily, instance, world) =
-    check(formula, instance_model(family, instance), world)
+function check(formula::Formula, family::AbstractModelFamily, instance, world)
+    return check(formula, instance_model(family, instance), world)
+end

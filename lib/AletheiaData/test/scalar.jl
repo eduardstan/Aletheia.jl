@@ -4,8 +4,13 @@
     end
     AletheiaData.feature_value(s::TestSource, i, w, ::Val{:x}) = s.values[(i, w)]
     fr = Frame((:a, :b), Dict(:R => Dict(:a => [:b], :b => [])); index=true)
-    data = prepare_scalar(TestSource(Dict((1, :a) => 0.2, (1, :b) => 0.8));
-        features=[Val(:x)], frames=[fr], instances=[1], relations=(:R,))
+    data = prepare_scalar(
+        TestSource(Dict((1, :a) => 0.2, (1, :b) => 0.8));
+        features=[Val(:x)],
+        frames=[fr],
+        instances=[1],
+        relations=(:R,),
+    )
     @test feature_value(data, 1, :b, Val(:x)) == 0.8
     condition = ThresholdCondition(Val(:x), >=, 0.5)
     @test scalar_check(condition, data, 1, :b)
