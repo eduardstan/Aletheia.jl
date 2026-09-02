@@ -131,10 +131,10 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
         end
         shared_buffer
     end
-    shared_model = Model(frame, BOOLEAN, ValuationCallback(
+    shared_model = Model(frame, BOOLEAN, Aletheia.ValuationCallback(
         (value, world) -> value == "p" ? world != :w3 : world != :w1;
         vectorized=shared_batch))
-    scalar_model = Model(frame, BOOLEAN, ValuationCallback(
+    scalar_model = Model(frame, BOOLEAN, Aletheia.ValuationCallback(
         (value, world) -> value == "p" ? world != :w3 : world != :w1))
     @test extension([conjunction], shared_model) == extension([conjunction], scalar_model)
     plain_counted = Model(frame, BOOLEAN, Dict("p" => Set([:w1, :w2]), "q" => Set([:w2, :w3])))
