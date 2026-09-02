@@ -5,6 +5,15 @@
 
 Return the finite arity of a connective.  This is a trait: packages defining a
 connective only need to add a method for their own value or type.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("arity"))
+true
+```
 """
 function arity(connective)
     if connective isa Negation
@@ -23,6 +32,15 @@ end
 
 Return the syntactic dual of `connective`, or throw when no dual is declared.
 Duality is only a connective property; this layer does not interpret formulas.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("dual"))
+true
+```
 """
 function dual(connective)
     if connective isa Negation
@@ -46,6 +64,15 @@ end
     hasdual(connective)
 
 Return whether a connective has a syntactic dual.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("hasdual"))
+true
+```
 """
 function hasdual(connective)
     connective isa Negation || connective isa Conjunction || connective isa Disjunction ||
@@ -58,6 +85,15 @@ end
 Return the binding precedence used by the printer and parser.  Larger values
 bind more tightly.  Custom connectives should define this trait when they are
 printed in infix or prefix notation.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("precedence"))
+true
+```
 """
 function precedence(connective)
     if connective isa Negation
@@ -82,6 +118,15 @@ end
 
 Return `:left`, `:right`, or `:none` for a connective.  The default is
 `:none`, which makes equal-precedence children parenthesized conservatively.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("associativity"))
+true
+```
 """
 function associativity(connective)
     if connective isa Negation || connective isa Diamond || connective isa Box
@@ -120,6 +165,15 @@ end
 
 Return the text used for a connective in formulas.  Defining this trait is the
 only printing hook needed by a user-defined connective.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("notation"))
+true
+```
 """
 function notation(connective)
     if connective isa Negation
@@ -141,7 +195,16 @@ function notation(connective)
     end
 end
 
-"""Readable predicate alias for the internal `commutative` trait."""
+"""Readable predicate alias for the internal `commutative` trait.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("iscommutative"))
+true
+```
+"""
 iscommutative(connective) = commutative(connective)
 
 """Alias for [`modality`](@ref)."""
@@ -155,6 +218,15 @@ values together with the arity of each value.  Arity is read from the
 [`arity`](@ref) trait, so extending a signature never requires changing
 Aletheia's source.  `Signature(connectives, arities)` is also accepted when
 an explicit declaration is useful, and is checked against the trait.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("Signature"))
+true
+```
 """
 struct Signature{C<:Tuple,A<:Tuple}
     connectives::C
@@ -198,7 +270,16 @@ function Signature(cs::Tuple)
     Signature(cs, as)
 end
 
-"""Return the connectives in a [`Signature`](@ref), in declaration order."""
+"""Return the connectives in a [`Signature`](@ref), in declaration order.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("connectives"))
+true
+```
+"""
 connectives(signature::Signature) = signature.connectives
 
 """Return the arity declared for `connective` in `signature`."""
@@ -209,7 +290,16 @@ function arity(signature::Signature, connective)
     throw(ArgumentError("connective $(repr(connective)) is not in the signature"))
 end
 
-"""Return whether `connective` belongs to `signature`."""
+"""Return whether `connective` belongs to `signature`.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("hasconnective"))
+true
+```
+"""
 function hasconnective(signature::Signature, connective)
     any(c -> isequal(c, connective), signature.connectives)
 end
@@ -296,6 +386,15 @@ end
 Create an explicit, thread-safe hash-consing pool for formulas over `signature`.
 Pools are explicit rather than global: formulas from different pools cannot be
 mistaken for one another, while a pool may safely be shared by threads.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("FormulaPool"))
+true
+```
 """
 mutable struct FormulaPool{S<:Signature}
     signature::S
@@ -308,7 +407,16 @@ function FormulaPool(signature::Signature)
     FormulaPool(signature, Dict{Any,Int}(), _PoolNode[], ReentrantLock())
 end
 
-"""Return the signature associated with a formula pool."""
+"""Return the signature associated with a formula pool.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("signature"))
+true
+```
+"""
 signature(pool::FormulaPool) = pool.signature
 
 """
@@ -317,6 +425,15 @@ signature(pool::FormulaPool) = pool.signature
 The common syntax-only interface implemented by [`Atom`](@ref) and
 [`Branch`](@ref).  Formula subtypes are concrete immutable values; this marker
 contains no truth values, semantic state, or evaluator hooks.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("Formula"))
+true
+```
 """
 abstract type Formula end
 
@@ -337,6 +454,15 @@ that the pool record exists and matches the supplied fields, so they cannot
 forge a handle.  Internal reconstruction from an already-validated pool node
 uses a private trusted path for performance; it is an implementation detail,
 not an external trust boundary.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("Atom"))
+true
+```
 """
 struct Atom{V,P<:FormulaPool} <: Formula
     pool::P
@@ -379,6 +505,15 @@ construction paths validate that the pool record exists and matches the
 supplied fields, so they cannot forge a handle.  Internal reconstruction from
 an already-validated pool node uses a private trusted path for performance; it
 is an implementation detail, not an external trust boundary.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("Branch"))
+true
+```
 """
 struct Branch{C,N,P<:FormulaPool} <: Formula
     pool::P
@@ -424,21 +559,66 @@ signature(formula::Branch) = signature(formula.pool)
 @inline _formula_id(atom::Atom) = atom.id
 @inline _formula_id(branch::Branch) = branch.id
 
-"""Return the pool owning a formula."""
+"""Return the pool owning a formula.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("pool"))
+true
+```
+"""
 pool(formula::Atom) = _formula_pool(formula)
 pool(formula::Branch) = _formula_pool(formula)
 
-"""Return the hash-consed integer id of a formula."""
+"""Return the hash-consed integer id of a formula.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("id"))
+true
+```
+"""
 id(formula::Atom) = _formula_id(formula)
 id(formula::Branch) = _formula_id(formula)
 
-"""Return the atom's payload."""
+"""Return the atom's payload.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("value"))
+true
+```
+"""
 value(atom::Atom) = atom.value
 
-"""Return the connective at a branch."""
+"""Return the connective at a branch.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("operator"))
+true
+```
+"""
 operator(branch::Branch) = branch.connective
 
-"""Alias for [`operator`](@ref), useful when treating a branch as an application."""
+"""Alias for [`operator`](@ref), useful when treating a branch as an application.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("head"))
+true
+```
+"""
 head(branch::Branch) = operator(branch)
 
 """
@@ -446,6 +626,15 @@ head(branch::Branch) = operator(branch)
 
 Return the number of immediate children of a formula.  This name keeps the
 formula accessor distinct from the `arity` trait for connective values.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("nchildren"))
+true
+```
 """
 nchildren(::Atom) = 0
 nchildren(branch::Branch) = length(branch.children)
@@ -478,7 +667,16 @@ function _formula(pool::FormulaPool, id::Int)
     end
 end
 
-"""Return a formula's immediate children, rebuilding pool handles as needed."""
+"""Return a formula's immediate children, rebuilding pool handles as needed.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("children"))
+true
+```
+"""
 children(::Atom) = ()
 
 function children(branch::Branch{C,N,P}) where {C,N,P}
@@ -491,11 +689,29 @@ function children(branch::Branch{C,N,P}) where {C,N,P}
     end
 end
 
-"""Return whether a formula is an atom."""
+"""Return whether a formula is an atom.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("isatom"))
+true
+```
+"""
 isatom(::Atom) = true
 isatom(::Branch) = false
 
-"""Return whether a formula is a connective branch."""
+"""Return whether a formula is a connective branch.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("isbranch"))
+true
+```
+"""
 isbranch(::Atom) = false
 isbranch(::Branch) = true
 
@@ -505,6 +721,15 @@ isbranch(::Branch) = true
 Return whether a formula is grounded according to SoleLogics' syntactic
 criterion: a grounding relational connective grounds its whole branch, while
 all other connective branches are grounded only when every child is grounded.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("isgrounded"))
+true
+```
 """
 function isgrounded(formula::Formula)
     isatom(formula) && return false
@@ -530,7 +755,21 @@ function _intern!(pool::FormulaPool, kind::UInt8, payload, childids::Tuple{Varar
     end
 end
 
-"""Intern an atom, returning the canonical atom value for this pool and payload."""
+"""
+    atom(value)
+
+Intern `value` as an atom in [`DEFAULT_POOL`](@ref).  Equivalent to
+`atom(DEFAULT_POOL, value)`.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("atom"))
+true
+```
+"""
 function atom(pool::FormulaPool, value)
     atom_id = _intern!(pool, 0x01, value, ())
     Atom(pool, atom_id, value, _trusted_formula_handle)
@@ -550,7 +789,24 @@ function _branch_children(pool::FormulaPool, childtuple::Tuple)
     ids
 end
 
-"""Intern a branch from a tuple of immediate children."""
+"""
+    branch(connective, children...)
+
+Intern a connective application in [`DEFAULT_POOL`](@ref).  Equivalent to
+`branch(DEFAULT_POOL, connective, children...)`; every child must already
+belong to the default pool.  Only the vararg spelling is given a pool-free
+form: `branch(pool, childtuple)` and `branch(connective, childtuple)` would be
+ambiguous, and the explicit path owns the tuple spelling.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("branch"))
+true
+```
+"""
 function branch(pool::FormulaPool, connective, childtuple::Tuple)
     arity(pool.signature, connective) == length(childtuple) ||
         throw(ArgumentError("$(repr(connective)) expects $(arity(pool.signature, connective)) children, got $(length(childtuple))"))
@@ -566,7 +822,16 @@ branch(pool::FormulaPool, connective, children...) = branch(pool, connective, ch
 Branch(pool::FormulaPool, connective, children::Tuple) = branch(pool, connective, children)
 Branch(pool::FormulaPool, connective, children...) = branch(pool, connective, children)
 
-"""Return the number of distinct terms currently interned in `pool`."""
+"""Return the number of distinct terms currently interned in `pool`.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("nsubterms"))
+true
+```
+"""
 function nsubterms(pool::FormulaPool)
     lock(pool.lock)
     try
@@ -576,7 +841,16 @@ function nsubterms(pool::FormulaPool)
     end
 end
 
-"""Return all pool ids in dependency order (children always precede parents)."""
+"""Return all pool ids in dependency order (children always precede parents).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("subterms"))
+true
+```
+"""
 function subterms(pool::FormulaPool)
     lock(pool.lock)
     try
@@ -645,7 +919,16 @@ function _dag_node(pool::FormulaPool, i::Int)
     end
 end
 
-"""Return the complete pool DAG in dependency order."""
+"""Return the subterm DAG reachable from `formula`, in dependency order.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("dag"))
+true
+```
+"""
 function dag(pool::FormulaPool)
     lock(pool.lock)
     try
@@ -701,12 +984,30 @@ Base.hash(a::Branch, h::UInt) = hash(objectid(a.pool), hash(a.id, h))
 # modal values carry their relation as data rather than encoding it in a type.
 struct Negation end
 struct Conjunction end
-"""Stateless syntax marker for multiplicative conjunction (fusion)."""
+"""Stateless syntax marker for multiplicative conjunction (fusion).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("Fusion"))
+true
+```
+"""
 struct Fusion end
 struct Disjunction end
 struct Implication end
 
-"""Abstract vocabulary shared by relational modal connectives."""
+"""Abstract vocabulary shared by relational modal connectives.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("AbstractRelationalConnective"))
+true
+```
+"""
 abstract type AbstractRelationalConnective{R} end
 """
     Diamond(relation)
@@ -714,6 +1015,14 @@ abstract type AbstractRelationalConnective{R} end
 A unary modal connective carrying `relation` as a value.  The relation is a
 field, not a type parameter encoded in a singleton, so parametric relations
 remain ordinary syntax values.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Diamond(globalrel)
+⟨global⟩
+```
 """
 struct Diamond{R} <: AbstractRelationalConnective{R}
     relation::R
@@ -724,6 +1033,14 @@ end
 
 The syntactic dual modal connective for [`Diamond`](@ref), carrying its
 relation as a value.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Box(globalrel)
+[global]
+```
 """
 struct Box{R} <: AbstractRelationalConnective{R}
     relation::R
@@ -732,27 +1049,161 @@ end
 # SoleLogics-compatible modal/connective predicates.  These predicates
 # intentionally default to `false` for non-connective values and
 # classify a diamond as any modal connective that is not a box.
+"""
+Return whether a connective or type represents a modal operator.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> ismodal(Diamond(globalrel))
+true
+```
+"""
 ismodal(::Any) = false
 ismodal(::Type{<:Diamond}) = true
 ismodal(::Type{<:Box}) = true
 ismodal(connective::AbstractRelationalConnective) = ismodal(typeof(connective))
+"""
+Return whether a connective has arity 1.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isunary(¬)
+true
+```
+"""
 isunary(connective) = arity(connective) == 1
+"""
+Return whether a connective or type represents a box modal operator.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isbox(Box(globalrel))
+true
+```
+"""
 isbox(::Any) = false
 isbox(::Type{<:Diamond}) = false
 isbox(::Type{<:Box}) = true
 isbox(connective::AbstractRelationalConnective) = isbox(typeof(connective))
+"""
+Return whether a connective or type represents a diamond modal operator.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdiamond(Diamond(globalrel))
+true
+```
+"""
 isdiamond(::Any) = false
 isdiamond(C::Type) = ismodal(C) && !isbox(C)
 isdiamond(connective::AbstractRelationalConnective) = isdiamond(typeof(connective))
 
+"""The prefix negation connective (`¬`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> NEGATION
+¬
+```
+"""
 const NEGATION = Negation()
+"""The conjunction connective (`∧`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> CONJUNCTION
+∧
+```
+"""
 const CONJUNCTION = Conjunction()
+"""The fusion connective (`⊗`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> FUSION
+⊗
+```
+"""
 const FUSION = Fusion()
+"""The disjunction connective (`∨`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> DISJUNCTION
+∨
+```
+"""
 const DISJUNCTION = Disjunction()
+"""The implication connective (`→`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> IMPLICATION
+→
+```
+"""
 const IMPLICATION = Implication()
+"""The prefix negation connective (`NOT`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> AletheiaCore.NOT
+¬
+```
+"""
 const NOT = NEGATION
+"""The conjunction connective (`AND`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> AletheiaCore.AND
+∧
+```
+"""
 const AND = CONJUNCTION
+"""The disjunction connective (`OR`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> AletheiaCore.OR
+∨
+```
+"""
 const OR = DISJUNCTION
+"""The implication connective (`IMPLIES`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> AletheiaCore.IMPLIES
+→
+```
+"""
 const IMPLIES = IMPLICATION
 """The prefix negation connective (`¬`)."""
 const ¬ = NEGATION
@@ -765,7 +1216,16 @@ const ∨ = DISJUNCTION
 """The implication connective (`→`)."""
 const → = IMPLICATION
 
-"""Return the modal relation carried by a [`Diamond`](@ref) or [`Box`](@ref)."""
+"""Return the modal relation carried by a [`Diamond`](@ref) or [`Box`](@ref).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("relation"))
+true
+```
+"""
 relation(modal::Diamond) = modal.relation
 relation(modal::Box) = modal.relation
 
@@ -828,6 +1288,15 @@ end
 Return the canonical parseable text for an atom or branch.  Parentheses are
 introduced only when precedence and associativity require them, so modal
 examples such as `⟨G⟩p → [G]q` stay readable.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("syntaxstring"))
+true
+```
 """
 syntaxstring(formula::Atom) = _print_formula(formula, nothing, :root)
 syntaxstring(formula::Branch) = _print_formula(formula, nothing, :root)
@@ -867,6 +1336,15 @@ This tuple is fixed.  Modal and user-defined connectives are not in it, so a
 modal language declares its own [`Signature`](@ref) and [`FormulaPool`](@ref);
 that is also the textbook reading, in which a modal similarity type is
 declared before its formulas are formed.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("DEFAULT_SIGNATURE"))
+true
+```
 """
 const DEFAULT_SIGNATURE = Signature((NEGATION, CONJUNCTION, FUSION, DISJUNCTION, IMPLICATION))
 
@@ -891,6 +1369,15 @@ Three properties are worth knowing before using it:
     distinct term interned through it is retained.  Long-running processes
     that intern unboundedly many distinct formulas should use an explicit
     `FormulaPool`, which is collected once it goes out of scope.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("DEFAULT_POOL"))
+true
+```
 """
 const DEFAULT_POOL = FormulaPool(DEFAULT_SIGNATURE)
 

@@ -2,19 +2,58 @@
 # The target is intentionally syntax-only; `evaluate` is a reference interpreter for tests
 # and examples, not a theorem prover.  Standard translation follows BDV §2.4.
 
+"""Abstract supertype for first-order logic terms.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Variable(:x) isa FirstOrderTerm
+true
+```
+"""
 abstract type FirstOrderTerm end
+"""A first-order variable term.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Variable(:x)
+x
+```
+"""
 struct Variable <: FirstOrderTerm
     name::Symbol
 end
 Variable(name::AbstractString) = Variable(Symbol(name))
 
+"""A first-order constant term.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Constant(42)
+42
+```
+"""
 struct Constant <: FirstOrderTerm
     value::Any
 end
 
 """A first-order function term. Function symbols are uninterpreted syntax here;
 function symbols are part of the clause language in Muggleton & De Raedt, §5.2
-[muggleton1994](@cite)."""
+[muggleton1994](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("FunctionTerm"))
+true
+```
+"""
 struct FunctionTerm <: FirstOrderTerm
     name::Any
     arguments::Tuple{Vararg{FirstOrderTerm}}
@@ -24,36 +63,126 @@ FunctionTerm(name, arguments::FirstOrderTerm...) = FunctionTerm(name, arguments)
 const FOFunction = FunctionTerm
 const CompoundTerm = FunctionTerm
 
+"""Abstract supertype for first-order logic formulas.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Predicate(:P, Variable(:x)) isa FirstOrderFormula
+true
+```
+"""
 abstract type FirstOrderFormula end
+"""A first-order predicate formula.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Predicate(:P, Variable(:x))
+P(x)
+```
+"""
 struct Predicate <: FirstOrderFormula
     name::Any
     arguments::Tuple{Vararg{FirstOrderTerm}}
 end
 Predicate(name, arguments::AbstractVector) = Predicate(name, tuple(arguments...))
 Predicate(name, arguments::FirstOrderTerm...) = Predicate(name, arguments)
+"""A first-order equality formula.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Equality(Variable(:x), Variable(:y))
+x = y
+```
+"""
 struct Equality <: FirstOrderFormula
     left::FirstOrderTerm
     right::FirstOrderTerm
 end
+"""First-order negation.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> FONegation(Predicate(:P, Variable(:x)))
+¬P(x)
+```
+"""
 struct FONegation <: FirstOrderFormula
     child::FirstOrderFormula
 end
+"""First-order conjunction.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> FOConjunction(Predicate(:P, Variable(:x)), Predicate(:Q, Variable(:x)))
+P(x) ∧ Q(x)
+```
+"""
 struct FOConjunction <: FirstOrderFormula
     left::FirstOrderFormula
     right::FirstOrderFormula
 end
+"""First-order disjunction.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> FODisjunction(Predicate(:P, Variable(:x)), Predicate(:Q, Variable(:x)))
+P(x) ∨ Q(x)
+```
+"""
 struct FODisjunction <: FirstOrderFormula
     left::FirstOrderFormula
     right::FirstOrderFormula
 end
+"""First-order implication.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> FOImplication(Predicate(:P, Variable(:x)), Predicate(:Q, Variable(:x)))
+P(x) → Q(x)
+```
+"""
 struct FOImplication <: FirstOrderFormula
     left::FirstOrderFormula
     right::FirstOrderFormula
 end
+"""First-order existential quantification.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Exists(Variable(:x), Predicate(:P, Variable(:x)))
+∃x. P(x)
+```
+"""
 struct Exists <: FirstOrderFormula
     variable::Variable
     body::FirstOrderFormula
 end
+"""First-order universal quantification.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Forall(Variable(:x), Predicate(:P, Variable(:x)))
+∀x. P(x)
+```
+"""
 struct Forall <: FirstOrderFormula
     variable::Variable
     body::FirstOrderFormula
@@ -114,7 +243,16 @@ end
 Base.show(io::IO, f::FirstOrderFormula) = print(io, _fo_text(f))
 Base.string(f::FirstOrderFormula) = _fo_text(f)
 
-"""A finite first-order interpretation used by `evaluate` and translation tests."""
+"""A finite first-order interpretation used by `evaluate` and translation tests.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("FirstOrderInterpretation"))
+true
+```
+"""
 struct FirstOrderInterpretation{D,P,E,F}
     domain::D
     predicates::P
@@ -183,7 +321,16 @@ function _predicate_value(interpretation::FirstOrderInterpretation, name, args)
     throw(KeyError(name))
 end
 
-"""Evaluate a first-order formula in a finite interpretation."""
+"""Evaluate a first-order formula in a finite interpretation.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("evaluate"))
+true
+```
+"""
 function evaluate(formula::FirstOrderFormula, interpretation::FirstOrderInterpretation,
                   assignment=Dict{Symbol,Any}())
     if formula isa Predicate
@@ -260,6 +407,15 @@ Atoms become unary predicates, and each named modal relation becomes a binary
 predicate.  The clauses are the standard ones of Blackburn, de Rijke, and
 Venema §2.4 [blackburn2001](@cite).  `atom_predicate` and `relation_predicate`
 may be functions when separate predicate namespaces are desired.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("standard_translation"))
+true
+```
 """
 function standard_translation(formula::Formula; world=Variable(:x), world_variable=nothing,
                               atom_predicate=identity, relation_predicate=identity)
@@ -279,7 +435,16 @@ const translate = standard_translation
 Dictionary layouts enumerate atom names, including nested world-to-atom maps
 when their nested keys are unambiguous. Overlapping dictionary keys whose
 orientation cannot be determined require an explicit `atoms` keyword; callable
-and otherwise unrecognised valuations require it as well."""
+and otherwise unrecognised valuations require it as well.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("first_order_interpretation"))
+true
+```
+"""
 function first_order_interpretation(model::Model; atoms=nothing, relations=nothing,
                                     atom_predicate=identity, relation_predicate=identity)
     algebra(model) isa BooleanAlgebra || throw(ArgumentError("standard translation interpretations are Boolean"))

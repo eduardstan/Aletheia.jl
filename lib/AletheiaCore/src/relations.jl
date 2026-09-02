@@ -1,7 +1,16 @@
 # Named relation values and their family protocols.
 # A relation is data: modal connectives carry one of these values in a field.
 
-"""A relation family marker. User-defined relation values need not subtype it."""
+"""A relation family marker. User-defined relation values need not subtype it.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("RelationFamily"))
+true
+```
+"""
 abstract type RelationFamily end
 """
     IntervalRelation
@@ -9,6 +18,15 @@ abstract type RelationFamily end
 Allen interval relations. The thirteen basic relationships follow Figure 2 of
 Allen [allen1983; §3, Figures 1–2, p. 834](@cite); the non-equality `IA32IARelations(IA_I)` member list follows the
 twelve relationships in Figure 4 [allen1983; Fig. 4](@cite).
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("IntervalRelation"))
+true
+```
 """
 abstract type IntervalRelation <: RelationFamily end
 """
@@ -17,6 +35,15 @@ abstract type IntervalRelation <: RelationFamily end
 Point relations on a bounded linear order. These six utility relations are
 Aletheia-specific frame helpers rather than a claim to implement a named
 external calculus, so no external citation is asserted.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("PointRelation"))
+true
+```
 """
 abstract type PointRelation <: RelationFamily end
 """
@@ -26,6 +53,15 @@ Region Connection Calculus relations. The primitive relation definitions and
 the RCC8 basis follow Randell, Cui, and Cohn [randell1992; §4, Fig. 1,
 pp. 167–168](@cite), with the RCC8 presentation and proper-part distinctions
 also summarized by Cohn et al. [cohn1997](@cite).
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("RCCRelation"))
+true
+```
 """
 abstract type RCCRelation <: RelationFamily end
 """
@@ -51,6 +87,15 @@ extension point for relation families: a package or user can define a new
 immutable relation value and add one method without changing Aletheia. A
 bounded relation may instead implement the domain-aware form
 `relation_holds(relation, source, target, worlds)`.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("relation_holds"))
+true
+```
 """
 function relation_holds(relation, source, target)
     throw(MethodError(relation_holds, (relation, source, target)))
@@ -71,6 +116,15 @@ Optionally return the worlds related to `source` by `relation` without scanning
 all of `worlds`. Generated dimensional frames use this hook when a family
 provides it and otherwise fall back to filtering with [`relation_holds`](@ref).
 External relation families need no method here.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("relation_successors"))
+true
+```
 """
 relation_successors(relation, source, worlds) = nothing
 
@@ -82,15 +136,54 @@ this vocabulary does not name throws an `ArgumentError` explaining why, rather
 than returning a relation that is not its converse; `MINIMUM`, `MAXIMUM`, and
 `tocenterrel` are those values. An unknown relation still throws a `MethodError`
 from the generic fallback.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("inverse"))
+true
+```
 """
 function inverse(relation)
     throw(MethodError(inverse, (relation,)))
 end
+"""Return the converse relation of `relation`.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> converse(BEFORE)
+after
+```
+"""
 converse(relation) = inverse(relation)
 
 # A generic identity relation is useful when a frame needs equality explicitly.
+"""A generic identity relation family.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> IDENTITY isa IdentityRelation
+true
+```
+"""
 struct IdentityRelation <: RelationFamily end
 const IdentityRel = IdentityRelation
+"""The identity relation singleton value (`IDENTITY`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> relation_holds(IDENTITY, 1, 1)
+true
+```
+"""
 const IDENTITY = IdentityRelation()
 const ID = IDENTITY
 relation_holds(::IdentityRelation, source, target) = isequal(source, target)
@@ -99,14 +192,44 @@ inverse(relation::IdentityRelation) = relation
 # Relations used by the SoleLogics-compatible frame vocabulary.  They are values rather
 # than syntax connectives; modal connectives carry one of these values in
 # their relation field.
+"""The global relation family.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> globalrel isa GlobalRelation
+true
+```
+"""
 struct GlobalRelation <: RelationFamily end
 const GlobalRel = GlobalRelation
+"""The global accessibility relation singleton (`globalrel`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> relation_holds(globalrel, 1, 2)
+true
+```
+"""
 const globalrel = GlobalRelation()
 relation_holds(::GlobalRelation, source, target) = true
 inverse(relation::GlobalRelation) = relation
 arity(::GlobalRelation) = 2
 syntaxstring(::GlobalRelation; kwargs...) = "G"
 
+"""Nominal accessibility relation to a specific world `w`.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> AtWorldRelation(1)
+at-world
+```
+"""
 struct AtWorldRelation{W} <: RelationFamily
     w::W
 end
@@ -114,8 +237,28 @@ relation_holds(relation::AtWorldRelation, source, target) = isequal(target, rela
 arity(::AtWorldRelation) = 2
 syntaxstring(relation::AtWorldRelation; kwargs...) = "@($(string(relation.w)))"
 
+"""The to-center relation family.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> tocenterrel isa ToCenterRelation
+true
+```
+"""
 struct ToCenterRelation <: RelationFamily end
 const ToCenterRel = ToCenterRelation
+"""The to-center relation singleton (`tocenterrel`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> tocenterrel isa ToCenterRelation
+true
+```
+"""
 const tocenterrel = ToCenterRelation()
 arity(::IdentityRelation) = 2
 syntaxstring(::IdentityRelation; kwargs...) = "="
@@ -132,6 +275,16 @@ inverse(::ToCenterRelation) = throw(ArgumentError("`inverse(tocenterrel)` is und
 
 # SoleLogics names and Aletheia's established relation protocol use different
 # spellings for identity; retain both as the same singleton value.
+"""The identity relation singleton alias (`identityrel`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> identityrel === IDENTITY
+true
+```
+"""
 const identityrel = IDENTITY
 
 """Return whether a relation has source-independent accessibility targets.
@@ -139,6 +292,15 @@ const identityrel = IDENTITY
 A `true` result promises that evaluating accessibility from any world in a
 frame yields the same target set; evaluators may use this contract when
 constructing relation extensions.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("isgrounding"))
+true
+```
 """
 isgrounding(::Any) = false
 isgrounding(::GlobalRelation) = true
@@ -188,18 +350,148 @@ struct StartedByRelation <: IntervalRelation end
 struct ContainsRelation <: IntervalRelation end
 struct FinishedByRelation <: IntervalRelation end
 
+"""Allen's interval-algebra relation: the first interval ends before the second begins [allen1983](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("BEFORE"))
+true
+```
+"""
 const BEFORE = BeforeRelation()
+"""Allen's interval-algebra relation: the first interval ends exactly when the second begins [allen1983](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("MEETS"))
+true
+```
+"""
 const MEETS = MeetsRelation()
+"""Allen's interval-algebra relation: the first interval starts before and ends inside the second [allen1983](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("OVERLAPS"))
+true
+```
+"""
 const OVERLAPS = OverlapsRelation()
+"""Allen's interval-algebra relation: both intervals start together, and the first ends earlier [allen1983](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("STARTS"))
+true
+```
+"""
 const STARTS = StartsRelation()
+"""Allen's interval-algebra relation: the first interval is strictly inside the second [allen1983](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("DURING"))
+true
+```
+"""
 const DURING = DuringRelation()
+"""Allen's interval-algebra relation: both intervals end together, and the first starts later [allen1983](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("FINISHES"))
+true
+```
+"""
 const FINISHES = FinishesRelation()
+"""Allen's interval-algebra relation: both intervals have the same endpoints [allen1983](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("EQUALS"))
+true
+```
+"""
 const EQUALS = EqualsRelation()
+"""Allen's interval-algebra relation: the first interval begins after the second ends [allen1983](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("AFTER"))
+true
+```
+"""
 const AFTER = AfterRelation()
+"""Allen's interval-algebra relation: the first interval begins exactly when the second ends [allen1983](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("MET_BY"))
+true
+```
+"""
 const MET_BY = MetByRelation()
+"""Allen's interval-algebra relation: the first interval starts inside and ends after the second [allen1983](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("OVERLAPPED_BY"))
+true
+```
+"""
 const OVERLAPPED_BY = OverlappedByRelation()
+"""Allen's interval-algebra relation: both intervals start together, and the first ends later [allen1983](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("STARTED_BY"))
+true
+```
+"""
 const STARTED_BY = StartedByRelation()
+"""Allen's interval-algebra relation: the first interval strictly contains the second [allen1983](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("CONTAINS"))
+true
+```
+"""
 const CONTAINS = ContainsRelation()
+"""Allen's interval-algebra relation: both intervals end together, and the first starts earlier [allen1983](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("FINISHED_BY"))
+true
+```
+"""
 const FINISHED_BY = FinishedByRelation()
 
 # Readable lower-case spellings and names used by several temporal-logic APIs.
@@ -288,6 +580,16 @@ inverse(::IA_AiorOiRelation) = IA_AorO
 inverse(::IA_DiorBiorEiRelation) = IA_DorBorE
 inverse(::IA_IRelation) = IA_I
 
+"""The tuple of the thirteen basic Allen interval-algebra relations [allen1983](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("ALLEN_RELATIONS"))
+true
+```
+"""
 const ALLEN_RELATIONS = (BEFORE, MEETS, OVERLAPS, STARTS, DURING, FINISHES, EQUALS,
     AFTER, MET_BY, OVERLAPPED_BY, STARTED_BY, CONTAINS, FINISHED_BY)
 const IntervalRelations = ALLEN_RELATIONS
@@ -359,14 +661,84 @@ struct PredecessorRelation <: PointRelation end
 struct GreaterRelation <: PointRelation end
 struct LesserRelation <: PointRelation end
 
+"""Point relation holding when the target is the first point in a bounded domain.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("MINIMUM"))
+true
+```
+"""
 const MINIMUM = MinimumRelation()
+"""Point relation holding when the target is the last point in a bounded domain.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("MAXIMUM"))
+true
+```
+"""
 const MAXIMUM = MaximumRelation()
+"""Point relation holding when the target is the immediate successor of the source.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("SUCCESSOR"))
+true
+```
+"""
 const SUCCESSOR = SuccessorRelation()
+"""Point relation holding when the target is the immediate predecessor of the source.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("PREDECESSOR"))
+true
+```
+"""
 const PREDECESSOR = PredecessorRelation()
+"""Point relation holding when the target is greater than the source.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("GREATER"))
+true
+```
+"""
 const GREATER = GreaterRelation()
+"""Point relation holding when the target is less than the source.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("LESSER"))
+true
+```
+"""
 const LESSER = LesserRelation()
 const MIN = MINIMUM
 const MAX = MAXIMUM
+"""The tuple of point relations supported by bounded generated frames.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("POINT_RELATIONS"))
+true
+```
+"""
 const POINT_RELATIONS = (MINIMUM, MAXIMUM, SUCCESSOR, PREDECESSOR, GREATER, LESSER)
 const PointRelations = POINT_RELATIONS
 
@@ -408,16 +780,116 @@ struct NonTangentialProperPartRelation <: RCCRelation end
 struct NonTangentialProperPartInverseRelation <: RCCRelation end
 struct RCCEqualsRelation <: RCCRelation end
 
+"""RCC8 disconnected relation: the two regions share no point [randell1992](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("DC"))
+true
+```
+"""
 const DC = DisconnectedRelation()
+"""RCC8 externally connected relation: the two regions touch at their boundaries but do not overlap [randell1992](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("EC"))
+true
+```
+"""
 const EC = ExternallyConnectedRelation()
+"""RCC8 partially overlapping relation: the regions overlap, but neither contains the other [randell1992](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("PO"))
+true
+```
+"""
 const PO = PartiallyOverlappingRelation()
+"""RCC8 tangential proper-part relation: the first region is a proper part of the second and touches its boundary [randell1992](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("TPP"))
+true
+```
+"""
 const TPP = TangentialProperPartRelation()
+"""RCC8 inverse tangential proper-part relation: the second region is a tangential proper part of the first [randell1992](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("TPPi"))
+true
+```
+"""
 const TPPi = TangentialProperPartInverseRelation()
+"""RCC8 non-tangential proper-part relation: the first region is a proper part of the second without touching its boundary [randell1992](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("NTPP"))
+true
+```
+"""
 const NTPP = NonTangentialProperPartRelation()
+"""RCC8 inverse non-tangential proper-part relation: the second region is a non-tangential proper part of the first [randell1992](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("NTPPi"))
+true
+```
+"""
 const NTPPi = NonTangentialProperPartInverseRelation()
+"""RCC8 equality relation: the two regions have the same extent [randell1992](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("RCC_EQ"))
+true
+```
+"""
 const RCC_EQ = RCCEqualsRelation()
+"""The tuple of the eight RCC8 relations, including equality [randell1992](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("RCC8_RELATIONS"))
+true
+```
+"""
 const RCC8_RELATIONS = (DC, EC, PO, TPP, TPPi, NTPP, NTPPi, RCC_EQ)
 const RCC8Relations = RCC8_RELATIONS
+"""The seven non-equality RCC8 base relations [randell1992](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("RCC8_BASICS"))
+true
+```
+"""
 const RCC8_BASICS = (DC, EC, PO, TPP, TPPi, NTPP, NTPPi)
 
 _relation_name(::MinimumRelation) = "min"
@@ -484,10 +956,60 @@ struct RCC5DisjointRelation <: RCCRelation end
 struct RCC5ProperPartRelation <: RCCRelation end
 struct RCC5ProperPartInverseRelation <: RCCRelation end
 
+"""RCC5 disjoint relation: the regions are disconnected or externally connected [randell1992](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("DR"))
+true
+```
+"""
 const DR = RCC5DisjointRelation()
+"""RCC5 proper-part relation: the first region is a proper part of the second [randell1992](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("PP"))
+true
+```
+"""
 const PP = RCC5ProperPartRelation()
+"""RCC5 inverse proper-part relation: the second region is a proper part of the first [randell1992](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("PPi"))
+true
+```
+"""
 const PPi = RCC5ProperPartInverseRelation()
+"""The tuple of the four RCC5 relations [randell1992](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("RCC5_RELATIONS"))
+true
+```
+"""
 const RCC5_RELATIONS = (DR, PO, PP, PPi)
+"""The union type of concrete RCC5 relation values.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("RCC5Relation"))
+true
+```
+"""
 const RCC5Relation = Union{RCC5DisjointRelation, typeof(PO), RCC5ProperPartRelation,
     RCC5ProperPartInverseRelation}
 

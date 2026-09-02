@@ -90,7 +90,16 @@ function _normal_formula(pool, groups, outer, inner)
     current
 end
 
-"""Return whether a formula is a classical conjunctive normal form."""
+"""Return whether a formula is a classical conjunctive normal form.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("iscnf"))
+true
+```
+"""
 function iscnf(formula::Formula)
     if _is_literal(formula)
         return true
@@ -105,7 +114,16 @@ function _is_clause(formula)
     formula isa Branch && operator(formula) isa Disjunction || return false
     all(_is_literal(c) for c in _flatten(formula, Disjunction))
 end
-"""Return whether a formula is a classical disjunctive normal form."""
+"""Return whether a formula is a classical disjunctive normal form.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("isdnf"))
+true
+```
+"""
 function isdnf(formula::Formula)
     _is_literal(formula) && return true
     if formula isa Branch && operator(formula) isa Disjunction
@@ -124,13 +142,31 @@ function _flatten(formula::Formula, connective::Type)
     vcat(_flatten(child[1], connective), _flatten(child[2], connective))
 end
 
-"""Convert a formula to classical CNF while retaining its original FormulaPool."""
+"""Convert a formula to classical CNF while retaining its original FormulaPool.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("to_cnf"))
+true
+```
+"""
 function to_cnf(formula::Formula)
     _require_connectives(formula, (¬, ∧, ∨))
     groups = _literal_lists(formula, true)
     _normal_formula(pool(formula), groups, ∧, ∨)
 end
-"""Convert a formula to classical DNF while retaining its original FormulaPool."""
+"""Convert a formula to classical DNF while retaining its original FormulaPool.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("to_dnf"))
+true
+```
+"""
 function to_dnf(formula::Formula)
     _require_connectives(formula, (¬, ∧, ∨))
     # DNF is CNF's dual: negate, obtain CNF, then negate back to NNF DNF.

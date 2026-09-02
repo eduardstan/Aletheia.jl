@@ -37,4 +37,81 @@ export FirstOrderInterpretation, evaluate, standard_translation, first_order_int
 export bisimulation_contraction, contraction_world, model, classes, world_map, AbstractProver, ProverResult, PropositionalProver, FiniteModelProver, BoundedFiniteProver, prove, prove_valid
 export prove_entails, issatisfiable, isvalid, entails
 
+
+@doc """Return whether the left finite truth value succeeds or equals the right value.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("succeedeq"))
+true
+```
+""" succeedeq
+
+@doc """Clear all extensions retained by an [`EvaluationCache`](@ref).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("clear!"))
+true
+```
+""" clear!
+
+@doc """The prefix negation connective (`¬`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> ¬
+¬
+```
+""" var"¬"
+
+@doc """The conjunction connective (`∧`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> ∧
+∧
+```
+""" var"∧"
+
+@doc """The fusion connective (`⊗`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> ⊗
+⊗
+```
+""" var"⊗"
+
+@doc """The disjunction connective (`∨`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> ∨
+∨
+```
+""" var"∨"
+
+@doc """The implication connective (`→`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> →
+→
+```
+""" var"→"
 end

@@ -3,34 +3,104 @@
 """
     AbstractModelFamily
 
-A family of logical instances.  Implementations provide `instance_count` and
+A family of logical instances. Implementations provide `instance_count` and
 `instance_model`; the latter returns an Aletheia [`Model`](@ref) for one
-instance.  A model's frame may differ between instances.
+instance. A model's frame may differ between instances.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> ModelFamily([]) isa AbstractModelFamily
+true
+```
 """
 abstract type AbstractModelFamily end
 
-"""Return the number of instances in `family`."""
+"""
+Return the number of instances in `family`.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> fam = ModelFamily([1, 2, 3]);
+
+julia> instance_count(fam)
+3
+```
+"""
 function instance_count(family::AbstractModelFamily)
     throw(MethodError(instance_count, (family,)))
 end
 
-"""Iterate stable instance handles (by default, one-based integer handles)."""
+"""
+Iterate stable instance handles (by default, one-based integer handles).
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> fam = ModelFamily([10, 20]);
+
+julia> collect(eachinstance(fam))
+2-element Vector{Int64}:
+ 1
+ 2
+```
+"""
 eachinstance(family::AbstractModelFamily) = Base.OneTo(instance_count(family))
 
-"""Return the Aletheia model corresponding to one instance handle."""
+"""
+Return the Aletheia model corresponding to one instance handle.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> fam = ModelFamily([:m1, :m2]);
+
+julia> instance_model(fam, 1)
+:m1
+```
+"""
 function instance_model(family::AbstractModelFamily, instance)
     throw(MethodError(instance_model, (family, instance)))
 end
 
-"""Return the frame corresponding to one instance handle."""
+"""
+Return the frame corresponding to one instance handle.
+
+# Examples
+```jldoctest
+julia> using AletheiaData, AletheiaCore
+
+julia> m = Model(Frame([:w1], Dict(); index=true), BOOLEAN, (a, w) -> true);
+
+julia> fam = ModelFamily([m]);
+
+julia> instance_frame(fam, 1) isa AbstractFrame
+true
+```
+"""
 instance_frame(family::AbstractModelFamily, instance) = frame(instance_model(family, instance))
 
 """
     ModelFamily(models)
 
-A concrete family for an indexable collection of Aletheia models.  It is useful
+A concrete family for an indexable collection of Aletheia models. It is useful
 for callers that already materialize models and is also the reference protocol
 implementation for adapters.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> fam = ModelFamily([:a, :b]);
+
+julia> instance_count(fam)
+2
+```
 """
 struct ModelFamily{M} <: AbstractModelFamily
     models::M
@@ -57,6 +127,20 @@ end
 
 Return the shared frame when every instance has an equal frame, or `nothing`
 for an empty or non-uniform family.
+
+# Examples
+```jldoctest
+julia> using AletheiaData, AletheiaCore
+
+julia> f = Frame([:w1], Dict(); index=true);
+
+julia> m = Model(f, BOOLEAN, (a, w) -> true);
+
+julia> fam = ModelFamily([m, m]);
+
+julia> uniform_frame(fam) === f
+true
+```
 """
 function uniform_frame(family::AbstractModelFamily)
     state = iterate(eachinstance(family))
@@ -71,7 +155,23 @@ function uniform_frame(family::AbstractModelFamily)
     end
 end
 
-"""Whether all instances in `family` use one equal frame."""
+"""
+Whether all instances in `family` use one equal frame.
+
+# Examples
+```jldoctest
+julia> using AletheiaData, AletheiaCore
+
+julia> f = Frame([:w1], Dict(); index=true);
+
+julia> m = Model(f, BOOLEAN, (a, w) -> true);
+
+julia> fam = ModelFamily([m, m]);
+
+julia> isuniform(fam)
+true
+```
+"""
 isuniform(family::AbstractModelFamily) = !isnothing(uniform_frame(family))
 
 """Evaluate a formula's extension for one instance in a model family."""

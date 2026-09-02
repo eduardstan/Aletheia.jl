@@ -1,18 +1,107 @@
 # Frame-condition traits and named normal modal systems.
 
-"""A named class of finite relational frames."""
+"""A named class of finite relational frames.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> FrameClass(:K, ())
+K
+```
+"""
 struct FrameClass
     name::Symbol
     conditions::Tuple{Vararg{Symbol}}
 end
 
+"""The basic normal modal system K (no frame conditions).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> K isa FrameClass
+true
+```
+"""
 const K = FrameClass(:K, ())
+"""The system T (reflexive frames).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> T isa FrameClass
+true
+```
+"""
 const T = FrameClass(:T, (:reflexive,))
+"""The system S4 (reflexive and transitive frames).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> S4 isa FrameClass
+true
+```
+"""
 const S4 = FrameClass(:S4, (:reflexive, :transitive))
+"""The system S5 (equivalence frames).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> S5 isa FrameClass
+true
+```
+"""
 const S5 = FrameClass(:S5, (:reflexive, :transitive, :symmetric))
+"""The class of reflexive frames.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> REFLEXIVE isa FrameClass
+true
+```
+"""
 const REFLEXIVE = FrameClass(:reflexive, (:reflexive,))
+"""The class of transitive frames.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> TRANSITIVE isa FrameClass
+true
+```
+"""
 const TRANSITIVE = FrameClass(:transitive, (:transitive,))
+"""The class of symmetric frames.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> SYMMETRIC isa FrameClass
+true
+```
+"""
 const SYMMETRIC = FrameClass(:symmetric, (:symmetric,))
+"""The class of serial frames.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> SERIAL isa FrameClass
+true
+```
+"""
 const SERIAL = FrameClass(:serial, (:serial,))
 const REFLEXIVITY = REFLEXIVE
 const TRANSITIVITY = TRANSITIVE
@@ -28,12 +117,30 @@ function _class_targets(frame::Frame, relation)
     Tuple(keys(stored))
 end
 
-"""Check reflexivity of a named accessibility relation on a finite frame."""
+"""Check reflexivity of a named accessibility relation on a finite frame.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("isreflexive"))
+true
+```
+"""
 function isreflexive(frame::Frame, relation=nothing)
     targets = _class_targets(frame, relation)
     !isempty(targets) && all(all(w -> any(v -> isequal(v, w), accessible(frame, w, r)), worlds(frame)) for r in targets)
 end
-"""Check transitivity of a named accessibility relation on a finite frame."""
+"""Check transitivity of a named accessibility relation on a finite frame.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("istransitive"))
+true
+```
+"""
 function istransitive(frame::Frame, relation=nothing)
     targets = _class_targets(frame, relation)
     !isempty(targets) && all(begin
@@ -41,26 +148,93 @@ function istransitive(frame::Frame, relation=nothing)
                                       accessible(frame, v, r)), accessible(frame, w, r)), worlds(frame))
     end for r in targets)
 end
-"""Check symmetry of a named accessibility relation on a finite frame."""
+"""Check symmetry of a named accessibility relation on a finite frame.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("issymmetric"))
+true
+```
+"""
 function issymmetric(frame::Frame, relation=nothing)
     targets = _class_targets(frame, relation)
     !isempty(targets) && all(all(begin
         all(v -> any(x -> isequal(x, w), accessible(frame, v, r)), accessible(frame, w, r))
     end for w in worlds(frame)) for r in targets)
 end
-"""Check seriality of a named accessibility relation on a finite frame."""
+"""Check seriality of a named accessibility relation on a finite frame.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("isserial"))
+true
+```
+"""
 function isserial(frame::Frame, relation=nothing)
     targets = _class_targets(frame, relation)
     !isempty(targets) && all(all(!isempty(collect(accessible(frame, w, r))) for w in worlds(frame)) for r in targets)
 end
 
 # Natural-language aliases.
+"""Check reflexivity of a frame relation.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("reflexive"))
+true
+```
+"""
 reflexive(frame, relation=nothing) = isreflexive(frame, relation)
+"""Check transitivity of a frame relation.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("transitive"))
+true
+```
+"""
 transitive(frame, relation=nothing) = istransitive(frame, relation)
+"""Check symmetry of a frame relation.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("symmetric"))
+true
+```
+"""
 symmetric(frame, relation=nothing) = issymmetric(frame, relation)
+"""Check seriality of a frame relation.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("serial"))
+true
+```
+"""
 serial(frame, relation=nothing) = isserial(frame, relation)
 
-"""Return whether `frame` satisfies a named class for `relation`."""
+"""Return whether `frame` satisfies a named class for `relation`.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("satisfies"))
+true
+```
+"""
 function satisfies(frame::Frame, class::FrameClass, relation=nothing)
     class.name === :K && return true
     all(condition -> condition === :reflexive ? isreflexive(frame, relation) :
@@ -103,6 +277,16 @@ function _primitive_axioms(pool::FormulaPool, condition::Symbol, relation, atom_
         throw(ArgumentError("unknown frame condition $condition"))
     end
 end
+"""Construct the correspondence axiom formulas for a frame class.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("axioms"))
+true
+```
+"""
 function axioms(pool::FormulaPool, class::FrameClass; relation=:R, atom_value="p")
     if class.name === :K
         p = _axiom_atom(pool, atom_value)
@@ -119,6 +303,16 @@ function axioms(pool::FormulaPool, class::FrameClass; relation=:R, atom_value="p
     end
     Tuple(result)
 end
+"""Construct the first correspondence axiom formula for a frame class.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("axiom"))
+true
+```
+"""
 function axiom(pool::FormulaPool, class::FrameClass; relation=:R, atom_value="p")
     forms = axioms(pool, class; relation=relation, atom_value=atom_value)
     isempty(forms) && throw(ArgumentError(
@@ -132,7 +326,16 @@ function axiom(pool::FormulaPool, class::FrameClass; relation=:R, atom_value="p"
     result
 end
 
-"""Check a class axiom in a particular model at every world."""
+"""Check a class axiom in a particular model at every world.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("validates"))
+true
+```
+"""
 function validates(model::Model, formula::Formula)
     all(check(formula, model, world) == top(algebra(model)) for world in worlds(frame(model)))
 end

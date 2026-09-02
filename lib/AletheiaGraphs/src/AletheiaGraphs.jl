@@ -1,4 +1,14 @@
-"""Typed knowledge graphs and their relational Kripke adapter."""
+"""
+Typed knowledge graphs and their relational Kripke adapter.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> e = KGEntity(:e1)
+KGEntity{Symbol, Symbol, @NamedTuple{}}(:e1, :entity, NamedTuple())
+```
+"""
 module AletheiaGraphs
 
 using AletheiaCore

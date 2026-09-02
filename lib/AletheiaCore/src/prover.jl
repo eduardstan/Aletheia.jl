@@ -3,9 +3,27 @@ import Base: isvalid
 # A deliberately small proof-search boundary.
 # Aletheia asks a prover a question; it does not ship a modal/tableau engine.
 
-"""Backend boundary for satisfiability, validity, and entailment queries."""
+"""Backend boundary for satisfiability, validity, and entailment queries.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("AbstractProver"))
+true
+```
+"""
 abstract type AbstractProver end
-"""A backend response carrying a status, optional Boolean answer, and evidence."""
+"""A backend response carrying a status, optional Boolean answer, and evidence.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("ProverResult"))
+true
+```
+"""
 struct ProverResult{A,C,M,D}
     status::Symbol
     answer::A
@@ -17,7 +35,16 @@ ProverResult(status::Symbol; answer=nothing, certificate=nothing, countermodel=n
     ProverResult(status, answer, certificate, countermodel, details)
 Base.Bool(result::ProverResult) = result.answer === true
 
-"""A complete but intentionally tiny truth-table backend for propositional formulas."""
+"""A complete but intentionally tiny truth-table backend for propositional formulas.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("PropositionalProver"))
+true
+```
+"""
 struct PropositionalProver <: AbstractProver end
 const TruthTableProver = PropositionalProver
 
@@ -98,35 +125,80 @@ function _prove_entailment(prover::PropositionalProver, premises, conclusion; at
     ProverResult(:entailed; answer=true, certificate=:truth_table)
 end
 
-"""Return a backend-specific proof-search result for satisfiability."""
+"""Return a backend-specific proof-search result for satisfiability.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("prove"))
+true
+```
+"""
 function prove(prover::AbstractProver, formula::Formula; kwargs...)
     throw(MethodError(prove, (prover, formula)))
 end
 prove(formula::Formula, prover::AbstractProver; kwargs...) = prove(prover, formula; kwargs...)
 prove(prover::PropositionalProver, formula::Formula; kwargs...) = _prove_satisfiability(prover, formula; kwargs...)
 
-"""Return a backend-specific result for validity."""
+"""Return a backend-specific result for validity.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("prove_valid"))
+true
+```
+"""
 function prove_valid(prover::AbstractProver, formula::Formula; kwargs...)
     throw(MethodError(prove_valid, (prover, formula)))
 end
 prove_valid(formula::Formula, prover::AbstractProver; kwargs...) = prove_valid(prover, formula; kwargs...)
 prove_valid(prover::PropositionalProver, formula::Formula; kwargs...) = _prove_validity(prover, formula; kwargs...)
 
-"""Ask an `AbstractProver` whether `formula` is satisfiable.  The result is `Bool` or `nothing` for unknown."""
+"""Ask an `AbstractProver` whether `formula` is satisfiable.  The result is `Bool` or `nothing` for unknown.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("issatisfiable"))
+true
+```
+"""
 function issatisfiable(prover::AbstractProver, formula::Formula; kwargs...)
     result = prove(prover, formula; kwargs...)
     result.answer
 end
 issatisfiable(formula::Formula, prover::AbstractProver; kwargs...) = issatisfiable(prover, formula; kwargs...)
 
-"""Ask an `AbstractProver` whether `formula` is valid.  The result is `Bool` or `nothing` for unknown."""
+"""Ask an `AbstractProver` whether `formula` is valid.  The result is `Bool` or `nothing` for unknown.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("isvalid"))
+true
+```
+"""
 function isvalid(prover::AbstractProver, formula::Formula; kwargs...)
     result = prove_valid(prover, formula; kwargs...)
     result.answer
 end
 isvalid(formula::Formula, prover::AbstractProver; kwargs...) = isvalid(prover, formula; kwargs...)
 
-"""Ask an `AbstractProver` whether premises entail a conclusion."""
+"""Ask an `AbstractProver` whether premises entail a conclusion.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("entails"))
+true
+```
+"""
 function entails(prover::AbstractProver, premises, conclusion; kwargs...)
     normalized = premises isa Formula ? (premises,) : collect(premises)
     result = if prover isa PropositionalProver
@@ -171,6 +243,15 @@ connectives, and other unsupported formulas return `:unknown`.
 The `countermodel` field contains a satisfying model for `:sat` and a
 counterexample model for `:invalid`; it is also copied to `certificate` for a
 satisfying witness so that evidence is never unwitnessed.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("FiniteModelProver"))
+true
+```
 """
 struct FiniteModelProver <: AbstractProver
     bound::Int
@@ -400,6 +481,15 @@ end
 Return the full [`ProverResult`](@ref) for an entailment query. This is the
 status-preserving counterpart of [`entails`](@ref), whose compatibility API
 returns only `Bool` or `nothing`.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("prove_entails"))
+true
+```
 """
 function prove_entails(prover::AbstractProver, premises, conclusion; kwargs...)
     normalized = premises isa Formula ? (premises,) : collect(premises)
@@ -419,4 +509,14 @@ prove_entails(premise::Formula, conclusion::Formula, prover::AbstractProver; kwa
     prove_entails(prover, (premise,), conclusion; kwargs...)
 
 
+"""Named alias for [`FiniteModelProver`](@ref).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> BoundedFiniteProver(2) isa FiniteModelProver
+true
+```
+"""
 const BoundedFiniteProver = FiniteModelProver

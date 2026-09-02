@@ -1,7 +1,25 @@
-"""Forward evaluation over a closed nonnegative commutative semiring."""
+"""Forward evaluation over a closed nonnegative commutative semiring.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> AbstractCommutativeSemiring isa Type
+true
+```
+"""
 abstract type AbstractCommutativeSemiring{T} end
 
-"""A named numeric profile for probability computation."""
+"""A named numeric profile for probability computation.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> ProbabilityProfile(Float64)
+ProbabilityProfile{Float64}(:float64)
+```
+"""
 struct ProbabilityProfile{T}
     name::Symbol
     function ProbabilityProfile{T}(name::Symbol) where {T}
@@ -25,6 +43,14 @@ ProbabilityProfile(::Type{T}) where {T} = ProbabilityProfile{T}()
 
 `Float64` is the practical profile. `Rational{Int}` gives exact finite-world
 answers when the program weights are rational.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> ProbabilitySemiring()
+ProbabilitySemiring{Float64}(:float64)
+```
 """
 struct ProbabilitySemiring{T} <: AbstractCommutativeSemiring{T}
     numeric_profile::Symbol
@@ -49,9 +75,29 @@ function ProbabilitySemiring(profile::ProbabilityProfile{T}) where {T}
 end
 ProbabilitySemiring(::Type{T}) where {T} = ProbabilitySemiring{T}()
 
-"""Return the default Float64 probability profile."""
+"""
+Construct a Float64 closed nonnegative probability semiring.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> Float64Profile()
+ProbabilitySemiring{Float64}(:float64)
+```
+"""
 Float64Profile() = ProbabilitySemiring{Float64}(:float64)
-"""Return the exact Rational probability profile."""
+"""
+Construct an exact Rational closed nonnegative probability semiring.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> RationalProfile()
+ProbabilitySemiring{Rational{Int64}}(:rational)
+```
+"""
 RationalProfile() = ProbabilitySemiring{Rational{Int}}(:rational)
 
 function _carrier(s::ProbabilitySemiring{T}) where {T}
@@ -81,12 +127,30 @@ function _as_carrier(::ProbabilitySemiring{T}, value) where {T}
     return converted
 end
 
-"""Add two values in a probability semiring."""
+"""Add two values in a probability semiring.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> add(ProbabilitySemiring(), 0.3, 0.4)
+0.7
+```
+"""
 function add(s::ProbabilitySemiring{T}, left, right) where {T}
     value = _as_carrier(s, left) + _as_carrier(s, right)
     return _as_carrier(s, value)
 end
-"""Multiply two values in a probability semiring."""
+"""Multiply two values in a probability semiring.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> mul(ProbabilitySemiring(), 0.3, 0.4)
+0.12
+```
+"""
 function mul(s::ProbabilitySemiring{T}, left, right) where {T}
     value = _as_carrier(s, left) * _as_carrier(s, right)
     return _as_carrier(s, value)
@@ -154,6 +218,16 @@ end
 For a multi-outcome choice use `ChoiceLiteral(ChoiceAlternative(id, index), true)`.
 For a binary choice, `ChoiceLiteral(id, true)` and `ChoiceLiteral(id, false)`
 select the positive and negative labels.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> lit = ChoiceLiteral(ChoiceAlternative(:c1, 1), true);
+
+julia> literal_label(ProbabilitySemiring(), lit, Dict(:c1 => (0.4, 0.6)))
+0.4
+```
 """
 function literal_label(s::ProbabilitySemiring, literal::ChoiceLiteral, labels)
     variable = literal.variable
@@ -164,7 +238,16 @@ function literal_label(s::ProbabilitySemiring, literal::ChoiceLiteral, labels)
     end
 end
 
-"""Sum labels for all outcomes of a choice omitted by a smooth decision."""
+"""Sum labels for all outcomes of a choice omitted by a smooth decision.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> neutral_sum(ProbabilitySemiring(), :c1, Dict(:c1 => (0.4, 0.6)))
+1.0
+```
+"""
 function neutral_sum(s::ProbabilitySemiring{T}, variable, labels) where {T}
     if variable isa ChoiceVariable
         return foldl(
@@ -240,7 +323,20 @@ function _evaluate_root(
     return include_skipped(result, 1, level(root) - 1)
 end
 
-"""Evaluate a certified circuit bottom-up with explicit semiring operations."""
+"""Evaluate a certified circuit bottom-up with explicit semiring operations.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> ev = compile_event(prog, :a);
+
+julia> evaluate(ev, ProbabilitySemiring())
+0.4
+```
+"""
 function evaluate(
     circuit::CertifiedCircuit, semiring::AbstractCommutativeSemiring; labels=nothing
 )
@@ -266,7 +362,20 @@ function evaluate(
     return evaluate(event.circuit, semiring; labels=labels)
 end
 
-"""Algebraic model counting for a certified event circuit."""
+"""Algebraic model counting for a certified event circuit.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> ev = compile_event(prog, :a);
+
+julia> amc(ev, ProbabilitySemiring())
+0.4
+```
+"""
 function amc(event::CompiledEvent, semiring::AbstractCommutativeSemiring; labels=nothing)
     labels === nothing && (labels = event.labels)
     return evaluate(event.circuit, semiring; labels=labels)
@@ -277,7 +386,20 @@ function amc(
     return evaluate(circuit, semiring; labels=labels)
 end
 
-"""Compute the weighted model count of a compiled event or certified circuit."""
+"""Compute the weighted model count of a compiled event or certified circuit.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> ev = compile_event(prog, :a);
+
+julia> wmc(ev)
+0.4
+```
+"""
 function wmc(event::CompiledEvent; labels=nothing, semiring=ProbabilitySemiring())
     labels === nothing && (labels = event.labels)
     return amc(event, semiring; labels=labels)
@@ -290,7 +412,22 @@ function _positive(value, semiring::ProbabilitySemiring)
     return value isa Real && isfinite(value) && value > zero(semiring)
 end
 
-"""Compute `P(query | evidence)` when the evidence has positive mass."""
+"""Compute `P(query | evidence)` when the evidence has positive mass.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> q = compile_event(prog, :a);
+
+julia> e = compile_event(prog, Or(:a, :b));
+
+julia> conditional_probability(q, e)
+0.4
+```
+"""
 function conditional_probability(
     query::CompiledEvent,
     evidence::CompiledEvent;

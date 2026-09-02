@@ -4,6 +4,17 @@ This page records the choices that shape Aletheia's public architecture. Each
 entry gives the context, the choice, and the consequence for users and
 contributors.
 
+## 2026-09-02 — API reference sizing
+
+**Context.** The exported-symbol documentation sweep outgrew Documenter’s
+single-page API reference default.
+
+**Choice.** The generated API page uses a 500 KiB `size_threshold` and a
+400 KiB warning threshold.
+
+**Consequence.** The current reference builds without an error while the
+warning signals when the reference should be split per package again.
+
 ## 2026-09-01 — Layered focused packages
 
 **Context.** Users need a small dependency surface when they use only syntax,

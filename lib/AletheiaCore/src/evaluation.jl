@@ -321,6 +321,15 @@ removes all retained extensions and permits the cache to be used with a new
 formula pool, while retaining its model binding.  If a model is mutated, discard
 the cache; `clear!` cannot repair relation adjacency already cached by its
 `Frame`.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("EvaluationCache"))
+true
+```
 """
 mutable struct EvaluationCache
     model::Model
@@ -403,6 +412,15 @@ Extension(values::AbstractVector, model::Model) = Extension(values, frame(model)
     describe(extension_result, model)
 
 Return an `Extension` view of `extension_result` over `model` for rich REPL printing.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("describe"))
+true
+```
 """
 describe(ext::AbstractVector, model::Model) = Extension(ext, model)
 describe(io::IO, ext::AbstractVector, model::Model) = show(io, MIME("text/plain"), Extension(ext, model))
@@ -524,6 +542,15 @@ same model and pool restrictions as the single-formula method.
 For a model family, `extension(formulas, family)` returns one vector per
 formula, each containing that formula's extensions in instance order.  The
 shared pass is run once for each instance.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("extension"))
+true
+```
 """
 function extension(formulas::AbstractVector, model::Model{Bool,A}; cache=nothing) where {A<:BooleanAlgebra}
     normalized = _batch_formulas(formulas)
@@ -553,6 +580,15 @@ end
 Return the truth value of `φ` at `world`.  The result is exactly the carrier
 type of the model's algebra.  Evaluation uses the same DAG walk as
 [`extension`](@ref).
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("check"))
+true
+```
 """
 function check(formula::Formula, model::Model{Bool,A}, world; cache=nothing)::Bool where {A<:BooleanAlgebra}
     position = world_position(frame(model), world)

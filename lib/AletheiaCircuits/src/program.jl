@@ -1,6 +1,30 @@
+"""
+The abstract supertype for finite primitive choices.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> AbstractChoiceVariable isa Type
+true
+```
+"""
 abstract type AbstractChoiceVariable end
 
-"""A primitive finite choice with mutually exclusive alternatives."""
+"""Create a normalized finite choice variable.
+
+The alternatives are mutually exclusive outcomes and `weights` are their
+probabilities.  The alternatives may be atoms, `nothing` (no atom), or any
+other finite ground value.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))
+ChoiceVariable{Symbol, Tuple{Symbol, Symbol}, Tuple{Float64, Float64}}(:c1, (:a, :b), (0.4, 0.6))
+```
+"""
 struct ChoiceVariable{I,A<:Tuple,W<:Tuple} <: AbstractChoiceVariable
     id::I
     alternatives::A
@@ -68,13 +92,63 @@ function ChoiceVariable(id, alternatives, weights)
 end
 ChoiceVariable(id, alternatives; weights) = ChoiceVariable(id, alternatives, weights)
 
+"""
+Return the alternatives of a choice variable.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> c = ChoiceVariable(:c1, (:a, :b), (0.4, 0.6));
+
+julia> alternatives(c)
+(:a, :b)
+```
+"""
 alternatives(choice::ChoiceVariable) = choice.alternatives
+"""
+Return the normalized outcome weights of a choice variable.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> c = ChoiceVariable(:c1, (:a, :b), (0.4, 0.6));
+
+julia> weights(c)
+(0.4, 0.6)
+```
+"""
 weights(choice::ChoiceVariable) = choice.weights
+"""
+Return a choice variable's stable identifier.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> c = ChoiceVariable(:c1, (:a, :b), (0.4, 0.6));
+
+julia> choice_id(c)
+:c1
+```
+"""
 choice_id(choice::ChoiceVariable) = choice.id
 Base.length(choice::ChoiceVariable) = length(choice.alternatives)
 Base.iterate(choice::ChoiceVariable, state...) = iterate(choice.alternatives, state...)
 
-"""An alternative of a finite choice, used as a circuit literal target."""
+"""An alternative of a finite choice, used as a circuit literal target.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> c = ChoiceVariable(:c1, (:a, :b), (0.4, 0.6));
+
+julia> ChoiceAlternative(c, 1)
+ChoiceAlternative{ChoiceVariable{Symbol, Tuple{Symbol, Symbol}, Tuple{Float64, Float64}}}(ChoiceVariable{Symbol, Tuple{Symbol, Symbol}, Tuple{Float64, Float64}}(:c1, (:a, :b), (0.4, 0.6)), 1)
+```
+"""
 struct ChoiceAlternative{V}
     variable::V
     index::Int
@@ -85,7 +159,18 @@ struct ChoiceAlternative{V}
     end
 end
 
-"""A signed primitive choice literal.  Positive literals select one outcome."""
+"""A signed primitive choice literal.  Positive literals select one outcome.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> c = ChoiceVariable(:c1, (:a, :b), (0.4, 0.6));
+
+julia> ChoiceLiteral(c, 1)
+ChoiceLiteral{ChoiceAlternative{ChoiceVariable{Symbol, Tuple{Symbol, Symbol}, Tuple{Float64, Float64}}}}(ChoiceAlternative{ChoiceVariable{Symbol, Tuple{Symbol, Symbol}, Tuple{Float64, Float64}}}(ChoiceVariable{Symbol, Tuple{Symbol, Symbol}, Tuple{Float64, Float64}}(:c1, (:a, :b), (0.4, 0.6)), 1), true)
+```
+"""
 struct ChoiceLiteral{V}
     variable::V
     polarity::Bool
@@ -94,7 +179,16 @@ function ChoiceLiteral(variable, index::Integer)
     return ChoiceLiteral(ChoiceAlternative(variable, index), true)
 end
 
-"""A probabilistic fact, expanded to an independent two-outcome choice."""
+"""A probabilistic fact, expanded to an independent two-outcome choice.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> ProbabilisticFact(:a, 0.3)
+ProbabilisticFact{Symbol, Float64}(:a, 0.3)
+```
+"""
 struct ProbabilisticFact{A,P}
     atom::A
     probability::P
@@ -109,7 +203,16 @@ struct ProbabilisticFact{A,P}
 end
 ProbabilisticFact(atom; probability) = ProbabilisticFact(atom, probability)
 
-"""A finite ground rule, read as `head :- body[1], ..., body[end]`."""
+"""A finite ground rule, read as `head :- body[1], ..., body[end]`.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> GroundRule(:a, (:b, :c))
+GroundRule{Symbol, Tuple{Symbol, Symbol}}(:a, (:b, :c))
+```
+"""
 struct GroundRule{H,B<:Tuple}
     head::H
     body::B
@@ -126,30 +229,136 @@ GroundRule(head, body::AbstractVector) = GroundRule(head, tuple(body...))
 GroundRule(head, body) = GroundRule(head, _body_tuple(body))
 GroundRule(head, first, rest...) = GroundRule(head, (first, rest...))
 
-"""Conjunction and disjunction are explicit event expressions for queries."""
+"""Conjunction and disjunction are explicit event expressions for queries.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> EventNot(:a)
+EventNot{Symbol}(:a)
+```
+"""
 struct EventNot{T}
     child::T
 end
+"""
+An event expression that conjoins child expressions.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> EventAnd((:a, :b))
+EventAnd{Tuple{Symbol, Symbol}}((:a, :b))
+```
+"""
 struct EventAnd{T<:Tuple}
     children::T
 end
+"""
+An event expression that disjoins child expressions.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> EventOr((:a, :b))
+EventOr{Tuple{Symbol, Symbol}}((:a, :b))
+```
+"""
 struct EventOr{T<:Tuple}
     children::T
 end
+"""
+Create a negated event expression.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> Not(:a)
+EventNot{Symbol}(:a)
+```
+"""
 Not(value) = EventNot(value)
+"""
+Create a conjunction event expression.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> And(:a, :b)
+EventAnd{Tuple{Symbol, Symbol}}((:a, :b))
+```
+"""
 function And(values...)
     xs = length(values) == 1 && values[1] isa Tuple ? values[1] : values
     return EventAnd(tuple(xs...))
 end
+"""
+Create a disjunction event expression.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> Or(:a, :b)
+EventOr{Tuple{Symbol, Symbol}}((:a, :b))
+```
+"""
 function Or(values...)
     xs = length(values) == 1 && values[1] isa Tuple ? values[1] : values
     return EventOr(tuple(xs...))
 end
+"""
+Create a negated event expression through the named helper.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> not_event(:a)
+EventNot{Symbol}(:a)
+```
+"""
 not_event(value) = Not(value)
+"""
+Create a conjunction event expression through the named helper.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> and_event(:a, :b)
+EventAnd{Tuple{Symbol, Symbol}}((:a, :b))
+```
+"""
 and_event(values...) = And(values...)
+"""
+Create a disjunction event expression through the named helper.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> or_event(:a, :b)
+EventOr{Tuple{Symbol, Symbol}}((:a, :b))
+```
+"""
 or_event(values...) = Or(values...)
 
-"""A finite, function-free, acyclic distribution-semantics profile."""
+"""A finite, function-free, acyclic distribution-semantics profile.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> DSProfile()
+DSProfile(true, true, true, false)
+```
+"""
 struct DSProfile
     function_free::Bool
     acyclic::Bool
@@ -162,13 +371,33 @@ function DSProfile(;
     return DSProfile(function_free, acyclic, finite, locally_stratified)
 end
 
-"""A query and optional evidence expression."""
+"""A query and optional evidence expression.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> DSQuery(:a; evidence=:b)
+DSQuery{Symbol, Symbol}(:a, :b)
+```
+"""
 struct DSQuery{Q,E}
     query::Q
     evidence::E
 end
 DSQuery(query; evidence=nothing) = DSQuery{typeof(query),typeof(evidence)}(query, evidence)
 
+"""
+The abstract supertype for distribution-semantics programs.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> AbstractDSProgram isa Type
+true
+```
+"""
 abstract type AbstractDSProgram end
 
 """A finite distribution-semantics program.
@@ -176,6 +405,14 @@ abstract type AbstractDSProgram end
 `choices` are independent normalized alternatives, `facts` are retained as
 source records, and `rules` are already ground.  Probabilistic facts passed in
 `choices` or through `probabilistic_facts` are expanded into choices.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))])
+DSProgram{Tuple{ChoiceVariable{Symbol, Tuple{Symbol, Symbol}, Tuple{Float64, Float64}}}, Tuple{}, Tuple{}, Tuple{}}((ChoiceVariable{Symbol, Tuple{Symbol, Symbol}, Tuple{Float64, Float64}}(:c1, (:a, :b), (0.4, 0.6)),), (), (), ())
+```
 """
 struct DSProgram{C,F,R,D} <: AbstractDSProgram
     choices::C
@@ -253,12 +490,75 @@ function DSProgram(entries, rules; domain=(), probabilistic_facts=(), facts=())
     )
 end
 
+"""
+Return the independent primitive choices in a program.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> choices(prog)
+(ChoiceVariable{Symbol, Tuple{Symbol, Symbol}, Tuple{Float64, Float64}}(:c1, (:a, :b), (0.4, 0.6)),)
+```
+"""
 choices(program::DSProgram) = program.choices
+"""
+Return the source probabilistic facts in a program.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(probabilistic_facts=[ProbabilisticFact(:f1, 0.3)]);
+
+julia> facts(prog)
+(ProbabilisticFact{Symbol, Float64}(:f1, 0.3),)
+```
+"""
 facts(program::DSProgram) = program.facts
+"""
+Return the ground rules in a program.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(rules=[GroundRule(:a, (:b,))]);
+
+julia> rules(prog)
+(GroundRule{Symbol, Tuple{Symbol}}(:a, (:b,)),)
+```
+"""
 rules(program::DSProgram) = program.rules
+"""
+Return the finite domain tuple carried by a program.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(domain=(:a, :b));
+
+julia> domain(prog)
+(:a, :b)
+```
+"""
 domain(program::DSProgram) = program.domain
 
 # The alias keeps `world` lightweight while documenting its contract in the API.
+"""
+A two-valued finite world represented by its true ground atoms.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> DSWorld isa Type
+true
+```
+"""
 const DSWorld = Set{Any}
 
 function _first_feature(values)
@@ -402,7 +702,18 @@ function _check_acyclic(program::DSProgram)
     return nothing
 end
 
-"""Validate the exact finite, function-free, acyclic program contract."""
+"""Validate the exact finite, function-free, acyclic program contract.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> validate_program(prog) === nothing
+true
+```
+"""
 function validate_program(program::DSProgram, profile::DSProfile=DSProfile())
     _validate_profile(profile)
     ids = Any[]
@@ -436,7 +747,18 @@ function validate_program(program::AbstractDSProgram, profile::DSProfile=DSProfi
     )
 end
 
-"""Ground and validate a finite program.  Ground rules are returned unchanged."""
+"""Ground and validate a finite program.  Ground rules are returned unchanged.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> ground(prog, :a) === prog
+true
+```
+"""
 function ground(program::DSProgram, query=nothing; profile::DSProfile=DSProfile())
     validate_program(program, profile)
     query === nothing || _validate_ground(query, "query")
@@ -518,7 +840,19 @@ function _expression_value(expression, atoms::Set{Any})
     return expression in atoms
 end
 
-"""Return the two-valued consequences of one primitive total choice."""
+"""Return the two-valued consequences of one primitive total choice.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> world(prog, Dict(:c1 => :a))
+Set{Any} with 1 element:
+  :a
+```
+"""
 function world(program::DSProgram, total_choice)
     validate_program(program)
     assignment = _assignment(program, total_choice)
@@ -540,7 +874,21 @@ function world(program::DSProgram, total_choice)
     return atoms
 end
 
-"""Enumerate total choices as dictionaries from choice identifiers to outcomes."""
+"""
+Return all finite primitive total choices.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> total_choices(prog)
+2-element Vector{Dict{Any, Any}}:
+ Dict(:c1 => :a)
+ Dict(:c1 => :b)
+```
+"""
 function total_choices(program::DSProgram)
     validate_program(program)
     result = Vector{Dict{Any,Any}}()
@@ -560,7 +908,19 @@ function total_choices(program::DSProgram)
     return result
 end
 
-"""Return the product weight of a primitive total choice."""
+"""
+Return the product probability of one total choice.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> choice_probability(prog, Dict(:c1 => :a))
+0.4
+```
+"""
 function choice_probability(program::DSProgram, total_choice; T=nothing)
     validate_program(program)
     assignment = _assignment(program, total_choice)

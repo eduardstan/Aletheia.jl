@@ -1,9 +1,49 @@
-"""Reduced ordered decision diagrams over finite choice variables."""
+"""Reduced ordered decision diagrams over finite choice variables.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> isdefined(AletheiaCircuits, Symbol("AbstractEvent"))
+true
+```
+"""
 abstract type AbstractEvent end
+"""
+The abstract supertype for event circuits.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> AbstractEventCircuit isa Type
+true
+```
+"""
 abstract type AbstractEventCircuit end
+"""
+The abstract supertype for circuit nodes.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> CircuitNode isa Type
+true
+```
+"""
 abstract type CircuitNode end
 
-"""One node in a reduced ordered (possibly multi-outcome) choice diagram."""
+"""One node in a reduced ordered (possibly multi-outcome) choice diagram.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> BDDNode(1, 1, 2)
+BDDNode(1, 1, 2, (1, 2))
+```
+"""
 struct BDDNode <: CircuitNode
     var::Int
     low::Int
@@ -25,7 +65,16 @@ function BDDNode(var::Integer, branches::Tuple)
 end
 BDDNode(var::Integer, branches::AbstractVector) = BDDNode(var, tuple(branches...))
 
-"""An uncertified raw BDD.  It must be passed through `validate` before evaluation."""
+"""An uncertified raw BDD.  It must be passed through `validate` before evaluation.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> BDD([BDDNode(0, 0, 0, ()), BDDNode(0, 0, 0, ())], (2,))
+BDD(BDDNode[BDDNode(0, 0, 0, ()), BDDNode(0, 0, 0, ())], (2,), (), ())
+```
+"""
 struct BDD <: AbstractEventCircuit
     nodes::Vector{BDDNode}
     roots::Tuple
@@ -41,7 +90,16 @@ function BDD(nodes, roots; variables=(), alternatives=())
     )
 end
 
-"""Certificate for a circuit's support, order, decomposition, determinism, and smoothness."""
+"""Certificate for a circuit's support, order, decomposition, determinism, and smoothness.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> CircuitCertificate(Dict(), (), Dict(), true, true)
+CircuitCertificate(Dict{Any, Any}(), (), Dict{Any, Any}(), true, true, Dict{Int64, Any}())
+```
+"""
 struct CircuitCertificate
     support::Any
     variable_order::Any
@@ -56,7 +114,18 @@ function CircuitCertificate(support, variable_order, decomposition, determinism,
     )
 end
 
-"""A circuit together with a certificate that can be checked independently."""
+"""A circuit together with a certificate that can be checked independently.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> cert = CircuitCertificate(Dict(), (), Dict(), true, true);
+
+julia> CertifiedCircuit(BDDNode[], (1,), cert) isa CertifiedCircuit
+true
+```
+"""
 struct CertifiedCircuit{N,R,C<:CircuitCertificate} <: AbstractEventCircuit
     nodes::N
     roots::R
@@ -76,8 +145,53 @@ function CertifiedCircuit(
     )
 end
 
+"""
+Return the node table of a circuit.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> ev = compile_event(prog, :a);
+
+julia> nodes(ev.circuit) isa Vector{BDDNode}
+true
+```
+"""
 nodes(circuit::AbstractEventCircuit) = circuit.nodes
+"""
+Return root node indices of a circuit.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> ev = compile_event(prog, :a);
+
+julia> roots(ev.circuit)
+(3,)
+```
+"""
 roots(circuit::AbstractEventCircuit) = circuit.roots
+"""
+Return the variable order recorded by a certificate.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> ev = compile_event(prog, :a);
+
+julia> variable_order(ev.circuit)
+(:c1,)
+```
+"""
 variable_order(circuit::CertifiedCircuit) = circuit.certificate.variable_order
 variable_order(circuit::BDD) = circuit.variables
 
@@ -119,7 +233,20 @@ function _support_map(circuit)
     return result
 end
 
-"""Return the certified choice support of a node."""
+"""Return the certified choice support of a node.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> ev = compile_event(prog, :a);
+
+julia> support(ev.circuit)
+(:c1,)
+```
+"""
 function support(circuit::CertifiedCircuit, node::Union{Integer,BDDNode})
     validate(circuit)
     index = _node_index(circuit, node)
@@ -136,7 +263,20 @@ function support(::BDD)
     return throw(UncertifiedCircuitError("raw BDDs have no trusted support certificate"))
 end
 
-"""Return source-level provenance attached to a certified node."""
+"""Return source-level provenance attached to a certified node.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> ev = compile_event(prog, :a);
+
+julia> source_provenance(ev.circuit) !== nothing
+true
+```
+"""
 function source_provenance(circuit::CertifiedCircuit, node::Union{Integer,BDDNode})
     validate(circuit)
     index = _node_index(circuit, node)
@@ -214,7 +354,20 @@ function _validate_shape(nodes, roots, variables, alternatives)
     return nothing
 end
 
-"""Validate a certificate and return it; evaluation only accepts this result."""
+"""Validate a certificate and return it; evaluation only accepts this result.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> ev = compile_event(prog, :a);
+
+julia> validate(ev.circuit) isa CircuitCertificate
+true
+```
+"""
 function validate(circuit::CertifiedCircuit)
     _validate_shape(circuit.nodes, circuit.roots, circuit.variables, circuit.alternatives)
     certificate = circuit.certificate
@@ -351,7 +504,16 @@ function _certify(raw::BDD, provenance)
     return circuit
 end
 
-"""The event represented by a query and optional evidence."""
+"""The event represented by a query and optional evidence.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> EventSpec(:a; evidence=:b)
+EventSpec{Symbol, Symbol}(:a, :b)
+```
+"""
 struct EventSpec{Q,E} <: AbstractEvent
     query::Q
     evidence::E
@@ -360,7 +522,20 @@ function EventSpec(query; evidence=nothing)
     return EventSpec{typeof(query),typeof(evidence)}(query, evidence)
 end
 
-"""A compiled event, with a certified BDD and replayable source metadata."""
+"""A compiled event, with a certified BDD and replayable source metadata.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> ev = compile_event(prog, :a);
+
+julia> ev isa CompiledEvent
+true
+```
+"""
 struct CompiledEvent{E,C,P,PR,L,A,TQ,TE} <: AbstractEvent
     event::E
     circuit::C
@@ -403,7 +578,18 @@ function _weighted_truth(program, assignments, truth, T)
     return total
 end
 
-"""Compile a finite query (and, when supplied, its joint evidence event)."""
+"""Compile a finite query (and, when supplied, its joint evidence event).
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> compile_event(prog, :a) isa CompiledEvent
+true
+```
+"""
 function compile_event(
     program::DSProgram,
     query;
@@ -461,6 +647,19 @@ function compile_event(
         etruth,
     )
 end
+"""
+Compile a query event; this is the named front-end alias for `compile_event`.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> prog = DSProgram(choices=[ChoiceVariable(:c1, (:a, :b), (0.4, 0.6))]);
+
+julia> query_event(prog, :a) isa CompiledEvent
+true
+```
+"""
 function query_event(
     program::DSProgram,
     query;

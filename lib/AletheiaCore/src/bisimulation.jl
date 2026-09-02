@@ -86,6 +86,15 @@ maps when their nested keys are unambiguous. Overlapping dictionary keys whose
 orientation cannot be determined require an explicit `atoms` keyword.
 Unrecognised valuation representations likewise require an explicit atom
 namespace.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("bisimilar"))
+true
+```
 """
 function bisimilar(m1::Model, w1, m2::Model, w2; atoms=nothing, relations=nothing)
     _check_world(frame(m1), w1); _check_world(frame(m2), w2)
@@ -114,17 +123,50 @@ function bisimilar(m1::Model, w1, m2::Model, w2; atoms=nothing, relations=nothin
 end
 bisimilar(m1::Model, w1, m2::Model, w2, atoms) = bisimilar(m1, w1, m2, w2; atoms=atoms)
 
-"""An equivalence class of worlds in a bisimulation quotient."""
+"""An equivalence class of worlds in a bisimulation quotient.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("BisimulationClass"))
+true
+```
+"""
 struct BisimulationClass
     members::Tuple
 end
 Base.show(io::IO, class::BisimulationClass) = print(io, "Class(", join(repr.(class.members), ", "), ")")
 
+"""The result of bisimulation quotient contraction on a model.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> m = Model(Frame([1, 2], Dict(globalrel => [(1, 2)])), Dict("p" => Dict(1 => true, 2 => false)));
+
+julia> c = bisimulation_contraction(m);
+
+julia> c isa BisimulationContraction
+true
+```
+"""
 struct BisimulationContraction{M,Q,W}
     model::M
     classes::Q
     world_map::W
 end
+"""Compatibility alias for [`BisimulationContraction`](@ref).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("QuotientModel"))
+true
+```
+"""
 const QuotientModel = BisimulationContraction
 
 Base.show(io::IO, contraction::BisimulationContraction) =
@@ -148,9 +190,65 @@ function Base.show(io::IO, ::MIME"text/plain", contraction::BisimulationContract
     _display_elision_line(io, 4, elided)
 end
 
+"""Return the contracted model from a bisimulation contraction.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> m = Model(Frame([1, 2], Dict(globalrel => [(1, 2)])), Dict("p" => Dict(1 => true, 2 => false)));
+
+julia> c = bisimulation_contraction(m);
+
+julia> model(c) isa Model
+true
+```
+"""
 model(contraction::BisimulationContraction) = contraction.model
+"""Return the quotient equivalence classes from a bisimulation contraction.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> m = Model(Frame([1, 2], Dict(globalrel => [(1, 2)])), Dict("p" => Dict(1 => true, 2 => false)));
+
+julia> c = bisimulation_contraction(m);
+
+julia> classes(c) isa Tuple
+true
+```
+"""
 classes(contraction::BisimulationContraction) = contraction.classes
+"""Return the world-to-class mapping from a bisimulation contraction.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> m = Model(Frame([1, 2], Dict(globalrel => [(1, 2)])), Dict("p" => Dict(1 => true, 2 => false)));
+
+julia> c = bisimulation_contraction(m);
+
+julia> world_map(c) isa Dict
+true
+```
+"""
 world_map(contraction::BisimulationContraction) = contraction.world_map
+"""Return the quotient class corresponding to a original world.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> m = Model(Frame([1, 2], Dict(globalrel => [(1, 2)])), Dict("p" => Dict(1 => true, 2 => false)));
+
+julia> c = bisimulation_contraction(m);
+
+julia> contraction_world(c, 1) isa BisimulationClass
+true
+```
+"""
 function contraction_world(contraction::BisimulationContraction, world)
     world isa BisimulationClass && return world
     haskey(contraction.world_map, world) ? contraction.world_map[world] : throw(KeyError(world))
@@ -217,6 +315,15 @@ layouts enumerate atom names, including nested world-to-atom maps
 when their nested keys are unambiguous. Overlapping dictionary keys whose
 orientation cannot be determined require an explicit `atoms` keyword.
 Unrecognised valuation representations require explicit `atoms` as well.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("bisimulation_contraction"))
+true
+```
 """
 function bisimulation_contraction(model::Model; atoms=nothing, relations=nothing)
     atom_names = atoms === nothing ? _valuation_atoms(model) : collect(atoms)

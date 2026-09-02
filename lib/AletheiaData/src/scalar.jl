@@ -4,16 +4,76 @@
 # SoleData.  Data packages can implement `feature_value` for their own source;
 # `prepare_scalar` then gives the pooled evaluator a stable dense representation.
 
-"""Protocol marker for data prepared for scalar formula evaluation."""
+"""
+Protocol marker for data prepared for scalar formula evaluation.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> store isa AbstractScalarDataset
+true
+```
+"""
 abstract type AbstractScalarDataset end
-"""Protocol marker for a feature readable at one world."""
+"""
+Protocol marker for a feature readable at one world.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> struct MyFeature <: AbstractScalarFeature end
+
+julia> MyFeature() isa AbstractScalarFeature
+true
+```
+"""
 abstract type AbstractScalarFeature end
-"""Protocol marker for immutable scalar atom payloads."""
+"""
+Protocol marker for immutable scalar atom payloads.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> cond = ThresholdCondition(:f1, >, 0.5);
+
+julia> cond isa AbstractScalarCondition
+true
+```
+"""
 abstract type AbstractScalarCondition end
-"""Protocol marker for one-step aggregate memo stores."""
+"""
+Protocol marker for one-step aggregate memo stores.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> memo = AggregateMemoStore();
+
+julia> memo isa AbstractAggregateMemo
+true
+```
+"""
 abstract type AbstractAggregateMemo end
 
-"""An immutable feature threshold used as a scalar formula atom payload."""
+"""
+An immutable feature threshold used as a scalar formula atom payload.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> cond = ThresholdCondition(:f1, >, 0.5);
+
+julia> cond.threshold
+0.5
+```
+"""
 struct ThresholdCondition{F,O,T} <: AbstractScalarCondition
     feature::F
     operator::O
@@ -36,7 +96,19 @@ threshold(condition::ThresholdCondition) = condition.threshold
 # Explicit index maps are kept with the store.  This makes lookup independent
 # of the concrete world and feature container, while preserving a documented
 # world × instance × feature value layout.
-"""Dense world × instance × feature storage with explicit coordinate maps."""
+"""
+Dense world × instance × feature storage with explicit coordinate maps.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> size(store)
+(1, 1, 1)
+```
+"""
 struct DenseFeatureStore{U,W,A,F,I} <: AbstractScalarDataset
     values::A
     worlds::Vector{W}
@@ -80,22 +152,119 @@ Base.getindex(store::DenseFeatureStore, instance, world, feature) =
         store.feature_positions[feature]]
 
 worlds(store::DenseFeatureStore) = Tuple(store.worlds)
-"""Return the ordered feature labels in a dense store."""
+"""
+Return the ordered feature labels in a dense store.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> features(store)
+(:f1,)
+```
+"""
 features(store::DenseFeatureStore) = Tuple(store.features)
-"""Return the ordered instance labels in a dense store."""
+"""
+Return the ordered instance labels in a dense store.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> AletheiaData.instances(store)
+(1,)
+```
+"""
 instances(store::DenseFeatureStore) = Tuple(store.instances)
-"""Return the one-based world coordinate in a dense store."""
+"""
+Return the one-based world coordinate in a dense store.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> world_index(store, :w1)
+1
+```
+"""
 world_index(store::DenseFeatureStore, world) = store.world_positions[world]
-"""Return the one-based feature coordinate in a dense store."""
+"""
+Return the one-based feature coordinate in a dense store.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> feature_index(store, :f1)
+1
+```
+"""
 feature_index(store::DenseFeatureStore, feature) = store.feature_positions[feature]
-"""Return the one-based instance coordinate in a dense store."""
+"""
+Return the one-based instance coordinate in a dense store.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> instance_index(store, 1)
+1
+```
+"""
 instance_index(store::DenseFeatureStore, instance) = store.instance_positions[instance]
+"""
+Return the data version of a dense store.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> data_version(store)
+0x0000000000000000
+```
+"""
 data_version(store::DenseFeatureStore) = store.version
 
-"""Read one prepared feature value without consulting the source data."""
+"""
+Read one prepared feature value without consulting the source data.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> feature_value(store, 1, :w1, :f1)
+0.0
+```
+"""
 feature_value(store::DenseFeatureStore, instance, world, feature) = store[instance, world, feature]
 
-"""Versioned global and relation-specific aggregate memo tables."""
+"""
+Versioned global and relation-specific aggregate memo tables.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> memo = AggregateMemoStore();
+
+julia> memo.version
+0x0000000000000000
+```
+"""
 mutable struct AggregateMemoStore <: AbstractAggregateMemo
     global_values::Dict{Any,Any}
     relational_values::Dict{Any,Any}
@@ -105,7 +274,19 @@ end
 AggregateMemoStore(version::Integer=0) =
     AggregateMemoStore(Dict{Any,Any}(), Dict{Any,Any}(), UInt64(version), ReentrantLock())
 
-"""Versioned cache for pooled scalar formula results."""
+"""
+Versioned cache for pooled scalar formula results.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> cache = ScalarEvaluationCache();
+
+julia> cache.version
+0x0000000000000000
+```
+"""
 mutable struct ScalarEvaluationCache
     version::UInt64
     values::Dict{Any,Any}
@@ -114,13 +295,39 @@ end
 ScalarEvaluationCache(version::Integer=0) =
     ScalarEvaluationCache(UInt64(version), Dict{Any,Any}(), ReentrantLock())
 
-"""Prepared frame list and declared relation vocabulary."""
+"""
+Prepared frame list and declared relation vocabulary.
+
+# Examples
+```jldoctest
+julia> using AletheiaData, AletheiaCore
+
+julia> index = ScalarRelationIndex([Frame([:w1], Dict(); index=true)], (globalrel,));
+
+julia> index.relations
+(global,)
+```
+"""
 struct ScalarRelationIndex{F}
     frames::Vector{F}
     relations::Tuple
 end
 
-"""Prepared source, dense feature store, relation index, and aggregate memos."""
+"""
+Prepared source, dense feature store, relation index, and aggregate memos.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> prep = prepare_scalar(store);
+
+julia> prep isa PreparedScalarData
+true
+```
+"""
 struct PreparedScalarData{D,S,M,R} <: AbstractScalarDataset
     source::D
     store::S
@@ -137,9 +344,69 @@ feature_value(data::PreparedScalarData, instance, world, feature) = begin
     value === missing ? feature_value(data.source, instance, world, feature) : value
 end
 
+"""
+Return the underlying source object of a prepared scalar dataset.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> prep = prepare_scalar(store);
+
+julia> source(prep) === store
+true
+```
+"""
 source(data::PreparedScalarData) = data.source
+"""
+Return the underlying dense feature store of a prepared scalar dataset.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> prep = prepare_scalar(store);
+
+julia> AletheiaData.store(prep) isa DenseFeatureStore
+true
+```
+"""
 store(data::PreparedScalarData) = data.store
+"""
+Return the aggregate memo store of a prepared scalar dataset.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> prep = prepare_scalar(store);
+
+julia> one_step_memos(prep) isa AggregateMemoStore
+true
+```
+"""
 one_step_memos(data::PreparedScalarData) = data.one_step_memos
+"""
+Return the scalar relation index of a prepared scalar dataset.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> prep = prepare_scalar(store);
+
+julia> relation_index(prep) isa ScalarRelationIndex
+true
+```
+"""
 relation_index(data::PreparedScalarData) = data.relation_index
 data_version(data::PreparedScalarData) = data.version
 
@@ -331,13 +598,26 @@ function _aggregate_specs(spec, features)
     unique(result)
 end
 
-"""Prepare selected scalar features into a world × instance × feature store.
+"""
+Prepare selected scalar features into a world × instance × feature store.
 
-`features` are evaluated once per instance/world.  `frames` may be one Frame or
-one frame per instance.  Global `minimum`/`maximum` values may be eagerly
+`features` are evaluated once per instance/world. `frames` may be one Frame or
+one frame per instance. Global `minimum`/`maximum` values may be eagerly
 prepared with `precompute_aggregates`; relation-specific values are filled on
-first use.  The source can expose an integer `version` (or specialize
+first use. The source can expose an integer `version` (or specialize
 `data_version`) to make stale prepared data fail closed.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> prep = prepare_scalar(store);
+
+julia> prep isa PreparedScalarData
+true
+```
 """
 function prepare_scalar(data; features=(), frames=nothing, relations=(),
         precompute_features=true, precompute_aggregates=(), instances=nothing,
@@ -438,11 +718,25 @@ function _successors(data::PreparedScalarData, instance, world, relation)
     collect(accessible(frame, world, relation))
 end
 
-"""Return exact representative worlds for a scalar aggregate.
+"""
+Return exact representative worlds for a scalar aggregate.
 
-The generic implementation uses every accessible world.  A feature/data
+The generic implementation uses every accessible world. A feature/data
 adapter may specialize this method to return a smaller set only when its
 representative proof is exact; no approximation is performed here.
+
+# Examples
+```jldoctest
+julia> using AletheiaData, AletheiaCore
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> prep = prepare_scalar(store);
+
+julia> representative_worlds(prep, 1, :w1, globalrel, :f1, maximum)
+1-element Vector{Symbol}:
+ :w1
+```
 """
 function representative_worlds(data::PreparedScalarData, instance, world,
         relation, feature, aggregate)
@@ -467,12 +761,25 @@ function _memo_key(instance, world, relation, feature, aggregate)
     (instance, _metacondition_key(feature, aggregate), relation, world)
 end
 
-"""Aggregate a prepared feature over a world or relation's successors.
+"""
+Aggregate a prepared feature over a world or relation's successors.
 
-A global relation is memoized without a world.  Relational values are memoized
-by `(instance, world, relation, feature, aggregate)`.  Empty successor sets
+A global relation is memoized without a world. Relational values are memoized
+by `(instance, world, relation, feature, aggregate)`. Empty successor sets
 return `nothing`, so callers can apply the appropriate existential or
 universal identity without inventing a numeric sentinel.
+
+# Examples
+```jldoctest
+julia> using AletheiaData, AletheiaCore
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> prep = prepare_scalar(store);
+
+julia> aggregate_value(prep, 1, :w1, globalrel, :f1, maximum)
+0.0
+```
 """
 function aggregate_value(data::PreparedScalarData, instance, world_or_worlds,
         relation, feature, aggregate)
@@ -537,19 +844,62 @@ function _aggregate_for_threshold(operator, modal)
     end
 end
 
-"""Evaluate one threshold condition using prepared or source feature lookup."""
+"""
+Evaluate one threshold condition using prepared or source feature lookup.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> cond = ThresholdCondition(:f1, ==, 0.0);
+
+julia> scalar_check(cond, store, 1, :w1)
+true
+```
+"""
 function scalar_check(condition::ThresholdCondition, data, instance, world)
     test_operator(condition)(feature_value(data, instance, world, feature(condition)), threshold(condition))
 end
 scalar_check(condition::AbstractScalarCondition, data, instance, world) =
     throw(MethodError(scalar_check, (condition, data, instance, world)))
 
-"""Evaluate one condition over an explicit world order."""
+"""
+Evaluate one condition over an explicit world order.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> cond = ThresholdCondition(:f1, ==, 0.0);
+
+julia> scalar_atom_values(cond, store, 1, [:w1])
+1-element BitVector:
+ 1
+```
+"""
 function scalar_atom_values(condition, data, instance, worlds)
     BitVector(scalar_check(condition, data, instance, world) for world in worlds)
 end
 
-"""Build a scalar `ValuationCallback` for one prepared instance."""
+"""
+Build a scalar `ValuationCallback` for one prepared instance.
+
+# Examples
+```jldoctest
+julia> using AletheiaData, AletheiaCore
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> prep = prepare_scalar(store);
+
+julia> scalar_valuation(prep, 1) isa AletheiaCore.ValuationCallback
+true
+```
+"""
 function scalar_valuation(data::PreparedScalarData, instance; vectorized::Bool=true)
     _check_scalar_version(data)
     scalar = (condition, world) -> begin
@@ -559,7 +909,21 @@ function scalar_valuation(data::PreparedScalarData, instance; vectorized::Bool=t
     ValuationCallback(scalar; vectorized=batch)
 end
 
-"""Build a `ModelFamily` whose models read prepared scalar conditions."""
+"""
+Build a `ModelFamily` whose models read prepared scalar conditions.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> prep = prepare_scalar(store);
+
+julia> scalar_family(prep) isa ModelFamily
+true
+```
+"""
 function scalar_family(data::PreparedScalarData; algebra::TruthAlgebra=BOOLEAN, vectorized::Bool=true)
     _check_scalar_version(data)
     models = [Model(_frame(data, instance), algebra, scalar_valuation(data, instance; vectorized=vectorized))
@@ -689,12 +1053,31 @@ function _cached_scalar_apply(formulas, data, instance, cache::ScalarEvaluationC
     result, entries
 end
 
-"""Evaluate pooled scalar formulas for selected instances in one union-DAG pass.
+"""
+Evaluate pooled scalar formulas for selected instances in one union-DAG pass.
 
 The default result is one vector per formula, each vector containing one
-extension per selected instance.  With `trace=true`, a named tuple additionally
-reports lookup/aggregation provenance and cache state.  `ScalarEvaluationCache`
+extension per selected instance. With `trace=true`, a named tuple additionally
+reports lookup/aggregation provenance and cache state. `ScalarEvaluationCache`
 is a formula cache and is independent from feature storage and aggregate memos.
+
+# Examples
+```jldoctest
+julia> using AletheiaData, AletheiaCore
+
+julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
+
+julia> prep = prepare_scalar(store);
+
+julia> cond = ThresholdCondition(:f1, ==, 0.0);
+
+julia> f = atom(cond);
+
+julia> res = batch_apply([f], prep);
+
+julia> length(res)
+1
+```
 """
 function batch_apply(formulas::AbstractVector{<:Formula}, data::PreparedScalarData;
         instances=nothing, cache=nothing, trace::Bool=false)

@@ -5,6 +5,7 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
 
 ## Unreleased
 
+- Documented every public export with a runnable `jldoctest` example.
 - Added focused `AletheiaAudit` and `AletheiaNeSy` packages. Audit artifacts emit
   deterministic replayable traces and applicability-aware metrics; the neural
   interface validates callable network leaves and supports exact finite

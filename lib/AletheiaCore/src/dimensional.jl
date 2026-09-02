@@ -1,6 +1,15 @@
 # Immutable dimensional worlds and generated finite frames.
 
-"""An interval `[left,right]` with `left < right`."""
+"""An interval `[left,right]` with `left < right`.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("Interval"))
+true
+```
+"""
 struct Interval{T<:Real} <: AbstractWorld
     x::T
     y::T
@@ -11,13 +20,31 @@ struct Interval{T<:Real} <: AbstractWorld
 end
 Interval(x::T, y::T) where {T<:Real} = Interval{T}(x, y)
 
-"""An immutable axis-aligned rectangle, represented by two intervals."""
+"""An immutable axis-aligned rectangle, represented by two intervals.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("Rectangle"))
+true
+```
+"""
 struct Rectangle{T<:Real} <: AbstractWorld
     x::Interval{T}
     y::Interval{T}
 end
 
-"""A small immutable point value (provided for dimensional API compatibility)."""
+"""A small immutable point value (provided for dimensional API compatibility).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("Point"))
+true
+```
+"""
 struct Point <: AbstractWorld
     coordinates::Tuple
 end
@@ -27,10 +54,30 @@ Rectangle(x::Tuple{T,T}, y::Tuple{T,T}) where {T<:Real} = Rectangle(Interval(x..
 const Interval2D = Rectangle
 
 # A rectangle relation is a value carrying one relation for each axis.
+"""A relation value combining one relation for each rectangle axis.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("RectangleRelation"))
+true
+```
+"""
 struct RectangleRelation{X,Y} <: RelationFamily
     x::X
     y::Y
 end
+"""Construct a relation that combines one relation for each rectangle axis.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("rectangle_relation"))
+true
+```
+"""
 rectangle_relation(x, y) = RectangleRelation(x, y)
 const CartesianRelation = RectangleRelation
 relation_holds(r::RectangleRelation, a::Rectangle, b::Rectangle) =
@@ -445,7 +492,16 @@ function _interval_relation_adjacency(frame, provider::_IntervalRelationMap, rel
     _RelationAdjacency(rows, columns)
 end
 
-"""Build a one-dimensional interval frame over `domain`."""
+"""Build a one-dimensional interval frame over `domain`.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("interval_frame"))
+true
+```
+"""
 function interval_frame(domain; index=true)
     boundaries = _boundaries(domain)
     ws = _interval_worlds(boundaries)
@@ -454,7 +510,16 @@ function interval_frame(domain; index=true)
     Frame(ws, relation_map; index=index)
 end
 
-"""Build a two-dimensional rectangle frame over `x` and `y` domains."""
+"""Build a two-dimensional rectangle frame over `x` and `y` domains.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("rectangle_frame"))
+true
+```
+"""
 function rectangle_frame(x, y=x; index=true)
     xb, yb = _boundaries(x), _boundaries(y)
     ws = _rectangle_worlds(xb, yb)
@@ -471,7 +536,16 @@ function rectangle_frame(x, y=x; index=true)
     Frame(ws, relation_map; index=index)
 end
 
-"""Build a point frame over a finite linear-order domain (1D) or grid domain (2D)."""
+"""Build a point frame over a finite linear-order domain (1D) or grid domain (2D).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("point_frame"))
+true
+```
+"""
 function point_frame(domain, ydomain=nothing; index=true)
     if ydomain === nothing
         values = domain isa Integer ? collect(1:Int(domain)) : collect(domain)
@@ -530,9 +604,29 @@ Full2DPointFrame(n::Integer, m::Integer; kwargs...) = point_frame(n, m; kwargs..
 # Frame vocabulary corresponding to SoleLogics' dimensional defaults.  These
 # methods intentionally inspect the generated world values rather than add a
 # second frame representation.
+"""Return the designated empty world for a frame implementation.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("emptyworld"))
+true
+```
+"""
 function emptyworld(frame::AbstractMultiModalFrame)
     error("Please, provide method emptyworld(::$(typeof(frame))).")
 end
+"""Return the designated center world for a frame implementation.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("centralworld"))
+true
+```
+"""
 function centralworld(frame::AbstractMultiModalFrame)
     error("Please, provide method centralworld(::$(typeof(frame))).")
 end

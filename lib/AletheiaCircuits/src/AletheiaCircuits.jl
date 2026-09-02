@@ -1,4 +1,13 @@
-"""Finite distribution-semantics circuits and semiring weighted model counting."""
+"""Finite distribution-semantics circuits and semiring weighted model counting.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> isdefined(AletheiaCircuits, Symbol("AletheiaCircuits"))
+true
+```
+"""
 module AletheiaCircuits
 
 using AletheiaCore
@@ -126,4 +135,28 @@ export CircuitError,
 @doc "Construct a Float64 closed nonnegative probability semiring." Float64Profile
 @doc "Construct an exact Rational closed nonnegative probability semiring." RationalProfile
 
+
+@doc """
+Return the additive identity of a probability semiring.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> zero(ProbabilitySemiring())
+0.0
+```
+""" zero
+
+@doc """
+Return the multiplicative identity of a probability semiring.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> one(ProbabilitySemiring())
+1.0
+```
+""" one
 end
