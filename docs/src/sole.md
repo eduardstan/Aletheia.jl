@@ -1,9 +1,9 @@
 # Compatibility adapter
 
-`AletheiaSole` is the opt-in package for applications that need the
+`[`AletheiaSole`](compatibility.md)` is the opt-in package for applications that need the
 `SoleLogics` vocabulary at Aletheia's boundary. It provides formula wrappers,
 leftmost containers, relation aliases, alphabets, random formula helpers, and
-many-valued adapters without adding those names to `AletheiaCore`.
+many-valued adapters without adding those names to `[`AletheiaCore`](api.md)`.
 
 The adapter routes semantic work through ordinary pooled Aletheia formulas and
 models. Its wrappers are not a second evaluator, and the compatibility package

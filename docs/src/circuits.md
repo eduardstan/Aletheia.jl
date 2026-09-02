@@ -1,6 +1,6 @@
 # Distribution-semantics circuits
 
-`AletheiaCircuits` is the focused package for a finite distribution-semantics
+`[`AletheiaCircuits`](circuits.md)` is the focused package for a finite distribution-semantics
 fragment. A probabilistic logic program describes a distribution over ordinary
 (two-valued) worlds. Each independent choice selects one normalized outcome;
 ground rules then close the selected facts under an acyclic dependency order.
@@ -11,7 +11,7 @@ view described by Riguzzi, chapters 2 and 8 [riguzzi2023](@cite).
 
 ## Supported fragment
 
-`AletheiaCircuits` supports exactly finite, function-free programs with ground
+`[`AletheiaCircuits`](circuits.md)` supports exactly finite, function-free programs with ground
 rules, independent finite choices, normalized nonnegative weights, and an
 acyclic rule dependency graph. Consequences are two-valued. Queries and
 evidence can use atoms and explicit `Not`, `And`, and `Or` event expressions.

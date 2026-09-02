@@ -1,6 +1,6 @@
 # Audit artifacts
 
-`AletheiaAudit` gives symbolic artifacts one small, replayable protocol. A
+`[`AletheiaAudit`](audit.md)` gives symbolic artifacts one small, replayable protocol. A
 `RuleArtifact` evaluates ordered exact rules; a `TreeArtifact` uses the same
 protocol with typed tree nodes. Every evaluation emits an `ExecutionTrace`.
 

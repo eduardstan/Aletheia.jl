@@ -4,7 +4,7 @@
 CurrentModule = Aletheia
 ```
 
-`AletheiaCore` represents accessibility relations as values and evaluates them
+`[`AletheiaCore`](api.md)` represents accessibility relations as values and evaluates them
 through one frame protocol. This follows the relational-frame role of
 accessibility in modal semantics [blackburn2001; §1.3, pp. 16–20](@cite).
 

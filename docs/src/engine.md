@@ -10,7 +10,7 @@ listed below.
 
 ## The shared engine: a pooled syntax DAG
 
-`AletheiaCore` stores immutable `Atom` and `Branch` handles in an explicit
+`[`AletheiaCore`](api.md)` stores immutable `Atom` and `Branch` handles in an explicit
 `FormulaPool`. Hash-consing gives repeated subterms one pool-local identity,
 so the representation is a directed acyclic graph rather than a recursively
 nested Julia value. Formula formation and the distinction between syntax and
@@ -26,7 +26,7 @@ reference semantics for this shared evaluator [blackburn2001; §1.3, Definitions
 
 ## Truth-algebra readings
 
-`AletheiaCore` parameterizes model evaluation by a validated `TruthAlgebra`.
+`[`AletheiaCore`](api.md)` parameterizes model evaluation by a validated `TruthAlgebra`.
 Boolean, Gödel, Łukasiewicz, and finite FLew algebras supply the carrier and
 operations used by the same evaluator. Lattice operations, fusion,
 implication, and negation belong to the algebra; they are not extra formula
@@ -38,7 +38,7 @@ details in [Semantics and evaluation](semantics.md) and [Finite FLew-algebras](a
 
 ## Probability is a separate compiled path
 
-`AletheiaCircuits` does not put probabilities in `TruthAlgebra`. A truth value
+`[`AletheiaCircuits`](circuits.md)` does not put probabilities in `TruthAlgebra`. A truth value
 answers whether a formula holds at one selected world; distribution semantics
 assigns mass to a set of two-valued program worlds. Riguzzi's account makes
 that distinction explicit [riguzzi2023; chs. 2, 3, 8, and 12](@cite).
@@ -56,7 +56,7 @@ for the supported fragment and its typed failure boundaries.
 
 ## Scalar data and model families
 
-`AletheiaData` prepares scalar feature values over world × instance × feature
+`[`AletheiaData`](families.md)` prepares scalar feature values over world × instance × feature
 coordinates and keeps feature, aggregate, and formula caches separate. Its
 model-family protocol lets one pooled formula be evaluated over materialized
 models or an external dataset without making the core depend on a data-frame
@@ -70,9 +70,9 @@ semantics are the corresponding Kripke clauses [blackburn2001; §1.3, pp. 16–2
 
 ## Typed graphs as Kripke frames
 
-`AletheiaGraphs` represents typed entities, typed directed edges, and replayable
+`[`AletheiaGraphs`](graphs.md)` represents typed entities, typed directed edges, and replayable
 edge provenance. Its adapter maps entities to worlds and relation schemas to
-named relations in an Aletheia `Frame`, after which `AletheiaCore` can evaluate
+named relations in an Aletheia `Frame`, after which `[`AletheiaCore`](api.md)` can evaluate
 modal formulas on that structure. A relational frame is the standard semantic
 object for modal accessibility [blackburn2001; §1.3, pp. 16–20](@cite). See
 [Knowledge graphs](graphs.md).
@@ -84,26 +84,26 @@ provided by the current graph adapter; see its [package page](graphs.md).
 
 ## Learning, compatibility, and the two boundary packages
 
-`AletheiaLearn` supplies ILP clauses, substitutions, refinement iterators, and
+`[`AletheiaLearn`](learning.md)` supplies ILP clauses, substitutions, refinement iterators, and
 scoring over interpretation examples. A Kripke model can serve as an
 interpretation without changing the shared syntax or evaluator. The learning
 settings and θ-subsumption vocabulary follow Muggleton and De Raedt
 [muggleton1994; §§3–5, pp. 635–649](@cite); the implementation is documented in
 [Learning from interpretations](learning.md).
 
-`AletheiaSole` is an opt-in edge adapter for a separate formula vocabulary.
+`[`AletheiaSole`](compatibility.md)` is an opt-in edge adapter for a separate formula vocabulary.
 Its mappings and measured consumer evidence belong in the [on-ramp for
 selected
 SoleLogics consumers](compatibility.md), not in the description of the shared
 engine.
 
-`AletheiaAudit` adds deterministic execution traces, provenance, replay, and
+`[`AletheiaAudit`](audit.md)` adds deterministic execution traces, provenance, replay, and
 metrics whose applicability is explicit. Trace validity, fidelity, coverage,
 and resource accounting are kept as separate report fields because symbolic
 explanation evaluation needs more than a single accuracy number
 [stan2026; pp. 1–60](@cite). See [Audit artifacts](audit.md).
 
-`AletheiaNeSy` accepts a callable neural component at the valuation boundary,
+`[`AletheiaNeSy`](nesy.md)` accepts a callable neural component at the valuation boundary,
 validates its outputs against the declared carrier, and can extract an exact
 symbolic artifact on a declared finite case set. Neural values and finite
 choice labels follow separate paths: the former are truth-carrier values, while

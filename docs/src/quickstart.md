@@ -17,7 +17,7 @@ repository. In the Julia package manager, use the repository URL (or
 pkg> add https://github.com/eduardstan/Aletheia.jl.git
 ```
 
-`AletheiaCore` has no runtime dependencies. The umbrella assembles the focused
+`[`AletheiaCore`](api.md)` has no runtime dependencies. The umbrella assembles the focused
 packages; optional data-package integrations remain extensions. For the
 architecture behind this first formula, see [One engine, many readings](engine.md).
 

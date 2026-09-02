@@ -48,7 +48,7 @@ Order = [:type, :function, :constant]
 
 ## Compatibility adapter
 
-`AletheiaSole` is an opt-in adapter package. Its compatibility vocabulary and
+`[`AletheiaSole`](compatibility.md)` is an opt-in adapter package. Its compatibility vocabulary and
 many-valued boundary stay outside the Core namespace. The complete mapping and
 consumer evidence are in the [Coming from SoleLogics](compatibility.md) on-ramp.
 

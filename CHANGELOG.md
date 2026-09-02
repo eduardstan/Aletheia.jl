@@ -5,6 +5,7 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
 
 ## Unreleased
 
+- Standardized documentation notation and formatting: unified transition arrows to `→` throughout prose and tables, normalized table unit conventions (plain integers with thousands separators for allocations, exact byte conversions with thousands separators for memory, and three-decimal milliseconds for times), added a Notation specification in development docs, ensured benchmark tables reference artifact files and gate lines, aligned canonical terminology (`fresh-dataset churn`, `warm reuse`, `first use`, `scalar-data layer`, `callback path`, `knowledge graph`, `distribution semantics`), sentence-cased headings, and added section-scoped package cross-references.
 - Documented every public export with a runnable `jldoctest` example.
 - Added focused `AletheiaAudit` and `AletheiaNeSy` packages. Audit artifacts emit
   deterministic replayable traces and applicability-aware metrics; the neural

@@ -1,10 +1,10 @@
 # Aletheia.jl
 
 Aletheia is a Julia monorepo of focused packages built around one pooled
-syntax DAG and one model/evaluation walk. `AletheiaCore` supplies syntax,
+syntax DAG and one model/evaluation walk. `[`AletheiaCore`](lib/AletheiaCore/)` supplies syntax,
 validated truth-algebra semantics, relational frames, and theory utilities;
-`AletheiaData`, `AletheiaCircuits`, `AletheiaGraphs`, `AletheiaLearn`,
-`AletheiaSole`, `AletheiaAudit`, and `AletheiaNeSy` provide data, probability,
+`[`AletheiaData`](lib/AletheiaData/)`, `[`AletheiaCircuits`](lib/AletheiaCircuits/)`, `[`AletheiaGraphs`](lib/AletheiaGraphs/)`, `[`AletheiaLearn`](lib/AletheiaLearn/)`,
+`[`AletheiaSole`](lib/AletheiaSole/)`, `[`AletheiaAudit`](lib/AletheiaAudit/)`, and `[`AletheiaNeSy`](lib/AletheiaNeSy/)` provide data, probability,
 graph, learning, compatibility, audit, and neural-symbolic boundaries. The
 umbrella `Aletheia` re-exports them for a single-import workflow. See the
 [one-engine overview](https://eduardstan.github.io/Aletheia.jl/engine/) for the
@@ -27,16 +27,16 @@ architecture and the [documentation](https://eduardstan.github.io/Aletheia.jl/).
 
 The repository is a Julia monorepo with an umbrella and focused packages:
 
-- `AletheiaCore` contains pooled syntax, semantics, relations, theory utilities,
+- `[`AletheiaCore`](lib/AletheiaCore/)` contains pooled syntax, semantics, relations, theory utilities,
   and proof-search interfaces. It has no runtime dependencies.
-- `AletheiaData` contains model families and scalar-data preparation.
-- `AletheiaLearn` contains clauses, refinement operators, and ILP foundations.
-- `AletheiaSole` contains the opt-in compatibility vocabulary and adapters.
-- `AletheiaAudit` contains deterministic artifact traces, replay, and metrics.
-- `AletheiaNeSy` contains validated neural leaves and exact symbolic extraction.
-- `AletheiaCircuits` contains the finite distribution-semantics front end,
+- `[`AletheiaData`](lib/AletheiaData/)` contains model families and scalar-data preparation.
+- `[`AletheiaLearn`](lib/AletheiaLearn/)` contains clauses, refinement operators, and ILP foundations.
+- `[`AletheiaSole`](lib/AletheiaSole/)` contains the opt-in compatibility vocabulary and adapters.
+- `[`AletheiaAudit`](lib/AletheiaAudit/)` contains deterministic artifact traces, replay, and metrics.
+- `[`AletheiaNeSy`](lib/AletheiaNeSy/)` contains validated neural leaves and exact symbolic extraction.
+- `[`AletheiaCircuits`](lib/AletheiaCircuits/)` contains the finite distribution-semantics front end,
   certified event diagrams, and semiring WMC.
-- `AletheiaGraphs` contains typed knowledge graphs and relational frame adapters.
+- `[`AletheiaGraphs`](lib/AletheiaGraphs/)` contains typed knowledge graphs and relational frame adapters.
 - `Aletheia` assembles the focused packages and re-exports the top-level API.
 
 Use a focused package when you want a smaller dependency surface:

@@ -20,9 +20,9 @@ warning signals when the reference should be split per package again.
 **Context.** Users need a small dependency surface when they use only syntax,
 semantics, data preparation, learning, or compatibility features.
 
-**Choice.** The repository is split into `AletheiaCore`, `AletheiaData`,
-`AletheiaLearn`, `AletheiaSole`, `AletheiaCircuits`, `AletheiaGraphs`,
-`AletheiaAudit`, and `AletheiaNeSy`. The core package has no runtime
+**Choice.** The repository is split into `[`AletheiaCore`](api.md)`, `[`AletheiaData`](families.md)`,
+`[`AletheiaLearn`](learning.md)`, `[`AletheiaSole`](compatibility.md)`, `[`AletheiaCircuits`](circuits.md)`, `[`AletheiaGraphs`](graphs.md)`,
+`[`AletheiaAudit`](audit.md)`, and `[`AletheiaNeSy`](nesy.md)`. The core package has no runtime
 dependencies, while the `Aletheia` umbrella preserves the top-level API.
 
 **Consequence.** Applications can depend on one focused layer, and existing
@@ -33,7 +33,7 @@ applications can keep using `Aletheia` without changing their imports.
 **Context.** SoleLogics compatibility is useful for migration, but it would
 make the syntax and semantic foundation depend on an external vocabulary.
 
-**Choice.** `AletheiaSole` owns the opt-in `SoleLogics` module and its adapters.
+**Choice.** `[`AletheiaSole`](compatibility.md)` owns the opt-in `SoleLogics` module and its adapters.
 The core packages do not import SoleLogics.
 
 **Consequence.** Core users avoid compatibility dependencies, while migration
@@ -46,7 +46,7 @@ users can explicitly load `AletheiaSole.SoleLogics` (or
 quality tools and higher-level packages need established ecosystem support.
 
 **Choice.** Dependencies follow three tiers: zero-dependency runtime code in
-`AletheiaCore`, test-only tooling in test environments, and canonical ecosystem
+`[`AletheiaCore`](api.md)`, test-only tooling in test environments, and canonical ecosystem
 packages in non-core packages.
 
 **Consequence.** The core stays easy to embed and audit, quality checks remain
@@ -58,7 +58,7 @@ strict, and optional capabilities do not enlarge every installation.
 repeatable circuit-level operations without making an external engine part of
 its runtime contract.
 
-**Choice.** `AletheiaCircuits` owns a certified reduced ordered choice diagram
+**Choice.** `[`AletheiaCircuits`](circuits.md)` owns a certified reduced ordered choice diagram
 for its finite distribution-semantics fragment. External circuit engines may
 serve as test oracles, but they are not the source of Aletheia's runtime
 semantics.
@@ -94,7 +94,7 @@ abstraction without forcing a premature runtime dependency on the core.
 worlds, while `TruthAlgebra` evaluates a formula at one world. Conflating the
 two would make normalization and circuit guarantees invisible.
 
-**Choice.** `AletheiaCircuits` is a focused package with only a finite,
+**Choice.** `[`AletheiaCircuits`](circuits.md)` is a focused package with only a finite,
 function-free, ground, acyclic fragment. It compiles events to an owned
 reduced ordered choice decision diagram and evaluates only a certified circuit
 through a closed nonnegative probability semiring. The umbrella re-exports

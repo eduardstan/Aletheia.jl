@@ -1,6 +1,6 @@
 # Finite FLew-algebras
 
-`AletheiaCore` includes finite many-valued semantics with **FLew-algebras**:
+`[`AletheiaCore`](api.md)` includes finite many-valued semantics with **FLew-algebras**:
 finite
 residuated lattices with a commutative monoid. A value is a small integer
 index (`FiniteTruth`, currently `UInt8`) into a table carrier. The public
