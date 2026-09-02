@@ -4,6 +4,10 @@
 CurrentModule = Aletheia
 ```
 
+`AletheiaCore` represents accessibility relations as values and evaluates them
+through one frame protocol. This follows the relational-frame role of
+accessibility in modal semantics [blackburn2001; §1.3, pp. 16–20](@cite).
+
 ## Relation families are values
 
 A relation is data carried by `Diamond` or `Box`. The minimal extension protocol
@@ -64,8 +68,7 @@ A custom relation value does not have to subtype `RelationFamily`: implementing
 
 Aletheia provides all thirteen Allen values in `ALLEN_RELATIONS`, including
 `EQUALS`, corresponding to the thirteen relationships in Allen's Figure 2
-[allen1983; §3, Figures 1–2, p. 834](@cite). Compatibility `IA_*` spellings are available under
-`Aletheia.SoleLogics`. The `IA32IARelations(IA_I)` member tuple intentionally excludes equality,
+[allen1983; §3, Figures 1–2, p. 834](@cite). The `IA32IARelations(IA_I)` member tuple intentionally excludes equality,
 matching the twelve non-equality relationships in Allen's Figure 4
 [allen1983; Fig. 4](@cite). `interval_frame(n)` builds every
 interval over `n` cells — that is, every pair of boundaries drawn from
@@ -129,16 +132,14 @@ region-connection relations defined by Randell, Cui, and Cohn [randell1992;
 §4, pp. 167–168](@cite); `RCC_EQ` remains separate rather than being a fifth
 tuple member. The eight-value RCC8 basis, including equality, is described in
 the same source [randell1992; §4, Fig. 1, pp. 167–168](@cite) and surveyed by
-Cohn et al. [cohn1997](@cite). `Aletheia.SoleLogics` additionally provides
-`IA7Relations`, `IA3Relations`, and the SoleLogics `RCC5Relations` and `Topo_*`
-spellings. Each generated successor set is exhaustively checked against its
-predicate on small interval and rectangle domains.
+Cohn et al. [cohn1997](@cite). Each generated successor set is exhaustively
+checked against its predicate on small interval and rectangle domains.
 
 ## Compass logic 2D point relations
 
-The opt-in `Aletheia.SoleLogics` namespace provides the strict eight-direction
-2D point vocabulary `CL_N`, `CL_S`, `CL_E`, `CL_W`, `CL_NE`, `CL_NW`, `CL_SE`,
-and `CL_SW`. Venema provides the foundational interval/product perspective
+The strict eight-direction 2D point vocabulary uses the values `CL_N`,
+`CL_S`, `CL_E`, `CL_W`, `CL_NE`, `CL_NW`, `CL_SE`, and `CL_SW`. Venema provides
+the foundational interval/product perspective
 [venema1990](@cite), while Marx and Reynolds study Compass Logic
 [marx1999compass](@cite). Montanari, Puppis, and Sala give the exact
 projection-based formulas for the axial `N`, `S`, `E`, and `W` relations
@@ -147,8 +148,7 @@ package vocabulary extension, not attributed to these sources. Aletheia has no
 coincident or undetermined-direction value. The canonical tuple is
 `Aletheia.POINT2D_RELATIONS`. `point_frame(nx, ny)` creates a 2D grid frame whose worlds
 are `Point(x, y)`. Each relation is transitive and has a converse (for example
-`converse(Aletheia.SoleLogics.CL_N) === Aletheia.SoleLogics.CL_S` and
-`converse(Aletheia.SoleLogics.CL_NE) === Aletheia.SoleLogics.CL_SW`).
+`converse(CL_N) === CL_S` and `converse(CL_NE) === CL_SW`).
 
 ```jldoctest relations
 using Aletheia
@@ -178,10 +178,11 @@ explicit world order. The generated frames are ordinary `Frame` values, and
 RCC8 has eight values in `RCC8_RELATIONS`, including `RCC_EQ`; the seven-value
 `RCC8_BASICS` tuple is a convenient non-equality partition. `TPP` means that the
 source is a tangential proper part of the target, while `TPPi` is its converse
-(and likewise for `NTPP`/`NTPPi`). The compatibility spellings `Aletheia.SoleLogics.Topo_TPP` and
-`Aletheia.SoleLogics.Topo_NTPP` use SoleLogics' opposite naming orientation,
-so they equal `TPPi` and `NTPPi`. Use the RCC names when writing new code. `rectangle_relation(x, y)` instead combines one relation per axis;
-it is not itself an RCC8 value.
+(and likewise for `NTPP`/`NTPPi`). Use the RCC names when writing new code.
+`rectangle_relation(x, y)` instead combines one relation per axis; it is not
+itself an RCC8 value.
+
+For compatibility aliases and migration details, see the [Coming from SoleLogics](compatibility.md) on-ramp.
 
 ## Frame classes and correspondence
 

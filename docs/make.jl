@@ -4,10 +4,10 @@ repo = dirname(@__DIR__)
 packages = (
     "AletheiaCore",
     "AletheiaData",
-    "AletheiaLearn",
-    "AletheiaSole",
     "AletheiaCircuits",
     "AletheiaGraphs",
+    "AletheiaLearn",
+    "AletheiaSole",
     "AletheiaAudit",
     "AletheiaNeSy",
 )
@@ -21,7 +21,7 @@ Pkg.instantiate()
 
 import SoleData
 using Aletheia
-import AletheiaCore, AletheiaData, AletheiaLearn, AletheiaSole, AletheiaCircuits, AletheiaGraphs, AletheiaAudit, AletheiaNeSy
+import AletheiaCore, AletheiaData, AletheiaCircuits, AletheiaGraphs, AletheiaLearn, AletheiaSole, AletheiaAudit, AletheiaNeSy
 using Documenter
 using DocumenterCitations
 
@@ -43,25 +43,33 @@ makedocs(
         Aletheia.SoleLogics,
     ],
     pages = [
-        "Home" => "index.md",
+        "Overview" => "index.md",
+        "One engine, many readings" => "engine.md",
         "Quick start" => "quickstart.md",
-        "Syntax and design" => "design.md",
-        "Design decisions" => "design-decisions.md",
-        "Semantics and evaluation" => "semantics.md",
-        "Many models, one formula" => "families.md",
-        "Scalar data" => "scalar.md",
-        "Finite FLew-algebras" => "algebras.md",
-        "Distribution-semantics circuits" => "circuits.md",
-        "Relations, frames, and frame classes" => "relations.md",
-        "Knowledge graphs" => "graphs.md",
-        "Audit artifacts" => "audit.md",
-        "Neural-symbolic interface" => "nesy.md",
-        "Theory utilities" => "theory.md",
-        "Learning from interpretations" => "learning.md",
-        "Measured results" => "results.md",
-        "Development and validation" => "development.md",
-        "Migration from SoleLogics" => "compatibility.md",
+        "Packages" => [
+            "AletheiaCore" => [
+                "Syntax and design" => "design.md",
+                "Semantics and evaluation" => "semantics.md",
+                "Relations, frames, and frame classes" => "relations.md",
+                "Finite FLew-algebras" => "algebras.md",
+                "Theory utilities" => "theory.md",
+            ],
+            "AletheiaData" => [
+                "Many models, one formula" => "families.md",
+                "Scalar data" => "scalar.md",
+            ],
+            "AletheiaCircuits" => "circuits.md",
+            "AletheiaGraphs" => "graphs.md",
+            "AletheiaLearn" => "learning.md",
+            "AletheiaSole" => "sole.md",
+            "AletheiaAudit" => "audit.md",
+            "AletheiaNeSy" => "nesy.md",
+        ],
         "API reference" => "api.md",
+        "Measured results" => "results.md",
+        "Coming from SoleLogics" => "compatibility.md",
+        "Design decisions" => "design-decisions.md",
+        "Development and validation" => "development.md",
         "References" => "references.md",
     ],
     format = Documenter.HTML(size_threshold = 300 * 1024, size_threshold_warn = 300 * 1024),

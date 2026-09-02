@@ -4,6 +4,10 @@
 CurrentModule = Aletheia
 ```
 
+`AletheiaLearn` provides the ILP syntax, bounded refinement operators,
+interpretation wrappers, and scoring protocol over the shared `AletheiaCore`
+evaluator. It does not provide a learner or search policy.
+
 ## The connection
 
 Inductive logic programming distinguishes learning from entailment, learning

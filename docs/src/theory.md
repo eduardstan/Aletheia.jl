@@ -4,11 +4,12 @@
 CurrentModule = Aletheia
 ```
 
-This chapter covers four utilities that sit on top of the evaluator: the
-standard translation into first-order logic, bisimulation and contraction,
-classical normal forms, and the prover interface. Each operates on ordinary
-interned formulas. Aletheia does not ship a modal or first-order prover; the
-prover section explains what it does ship.
+`AletheiaCore` provides theory utilities over its pooled formulas and shared
+evaluator: standard translation into first-order syntax, bisimulation and
+contraction, classical normal forms, and bounded prover interfaces. These are
+separate utilities rather than a general theorem-proving layer. Modal
+translation and bisimulation use the frame semantics of Blackburn et al.
+[blackburn2001; §§2.2 and 2.4, pp. 64–67, 83–86](@cite).
 
 ## Standard translation
 

@@ -1,6 +1,7 @@
 # Finite FLew-algebras
 
-Aletheia's finite many-valued semantics includes **FLew-algebras**: finite
+`AletheiaCore` includes finite many-valued semantics with **FLew-algebras**:
+finite
 residuated lattices with a commutative monoid. A value is a small integer
 index (`FiniteTruth`, currently `UInt8`) into a table carrier. The public
 constructor is:
