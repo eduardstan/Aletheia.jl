@@ -5,6 +5,9 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
 
 ## Unreleased
 
+- Closed adversarial contract gaps: finite-carrier validation now rejects invalid and Boolean indices; neural extraction shares encoder dispatch with verification; uncovered outputs fail verification; circuit programs reject non-ground values and Boolean choices; Float64 weights convert through the exact rational profile; metric scopes and perturbation stability are validated; trace replay checks metadata; graph endpoints require full identity; benchmark hexadecimal seeds parse consistently; and trace omission is honored.
+- Updated audit, circuit, neural, showcase, benchmark, and provenance documentation to describe these boundaries and pin evidence links to the audited revision.
+
 - Corrected documentation paths, profiler line references, compatibility
   normalization claims, and the description of Documenter page-size thresholds
   to match the current package layout and implementation.

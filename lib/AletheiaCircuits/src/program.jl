@@ -15,7 +15,7 @@ abstract type AbstractChoiceVariable end
 
 The alternatives are mutually exclusive outcomes and `weights` are their
 probabilities.  The alternatives may be atoms, `nothing` (no atom), or any
-other finite ground value.
+other finite ground value except `Bool`, which is reserved for event constants.
 
 # Examples
 ```jldoctest
@@ -53,6 +53,12 @@ function _validate_choice(id, alternatives, weights)
             :matching_weights, "each alternative needs exactly one weight"
         ),
     )
+    any(alternative isa Bool for alternative in alternatives) && throw(
+        UnsupportedFeatureError(
+            :boolean_choice_alternatives,
+            "Bool values are reserved for two-valued event constants; use named atoms instead",
+        ),
+    )
     any(
         !isnothing(findfirst(i -> isequal(alternatives[i], alternatives[j]), 1:(j - 1))) for
         j in eachindex(alternatives)
@@ -82,7 +88,7 @@ end
 
 The alternatives are mutually exclusive outcomes and `weights` are their
 probabilities.  The alternatives may be atoms, `nothing` (no atom), or any
-other finite ground value.
+other finite ground value except `Bool`, which is reserved for event constants.
 """
 function ChoiceVariable(id, alternatives, weights)
     a = alternatives isa Tuple ? alternatives : tuple(alternatives...)
@@ -626,6 +632,26 @@ function _validate_profile(profile::DSProfile)
     return nothing
 end
 
+function _ground_value(value, seen=IdDict{Any,Bool}())
+    value === nothing && return true
+    value isa Union{Bool,Symbol,Char,AbstractString,Number,Missing} && return true
+    value isa Function && return false
+    value isa AletheiaCore.Constant && return _ground_value(value.value, seen)
+    value isa Union{EventNot,EventAnd,EventOr} && return _ground_value(
+        value isa EventNot ? value.child : value.children, seen
+    )
+    value isa Pair && return _ground_value(value.first, seen) && _ground_value(value.second, seen)
+    value isa Tuple && return all(x -> _ground_value(x, seen), value)
+    value isa NamedTuple && return all(x -> _ground_value(x, seen), values(value))
+    value isa AbstractArray || value isa AbstractSet || value isa AbstractDict || return false
+    haskey(seen, value) && return true
+    seen[value] = true
+    if value isa AbstractDict
+        return all(_ground_value(k, seen) && _ground_value(v, seen) for (k, v) in value)
+    end
+    return all(_ground_value(x, seen) for x in value)
+end
+
 function _validate_ground(value, context)
     feature = _contains_feature(value)
     feature === :function_symbols && throw(
@@ -644,6 +670,12 @@ function _validate_ground(value, context)
         UnsupportedFeatureError(
             :first_order_formulas,
             "the finite event language uses atoms and explicit Not, And, and Or expressions ($(context))",
+        ),
+    )
+    _ground_value(value) || throw(
+        UnsupportedFeatureError(
+            :ground_values,
+            "$(context) must be a finite ground value: nothing, Bool, Symbol, Char, string, number, or finite tuple/record/collection",
         ),
     )
     return nothing
@@ -734,7 +766,7 @@ function validate_program(program::DSProgram, profile::DSProfile=DSProfile())
             throw(GroundingError(:ground_rules, "rules must be GroundRule values"))
         _validate_ground(rule.head, "rule head")
         _validate_ground(rule.body, "rule body")
-        rule.head isa Union{EventNot,EventAnd,EventOr,Tuple,Bool} &&
+        rule.head isa Union{EventNot,EventAnd,EventOr,Tuple,Bool,Nothing} &&
             throw(GroundingError(:ground_rule_head, "a rule head must be one ground atom"))
     end
     _validate_ground(program.domain, "program domain")

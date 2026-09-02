@@ -112,6 +112,34 @@ end
     ).stability.applicable
 end
 
+@testset "verification and trace metadata are not silently trusted" begin
+    artifact = RuleArtifact([:yes => true])
+    uncovered = verify_artifact(artifact, [ArtifactCase(:no, true)])
+    @test !uncovered.valid
+    @test isequal(uncovered.claims.outputs, Any[missing])
+    @test isequal(uncovered.claims.expected_outputs, Any[true])
+    @test uncovered.claims.applicability == [false]
+    _, trace = eval_artifact(artifact, :yes)
+    original = trace.steps[1]
+    tampered_step = TraceStep(:forged, (selected=999, payload=:tampered), :forged_input, original.output)
+    tampered = ExecutionTrace([tampered_step], trace.provenance, trace.reported_result,
+        trace.input_hash, trace.output_hash, trace.scope)
+    @test !replay(tampered, :yes).valid
+    _, no_trace = eval_artifact(artifact, :yes; trace=false)
+    @test no_trace === nothing
+end
+
+@testset "metric scope and perturbation stability" begin
+    artifact = RuleArtifact([1 => true]; default=false)
+    changed = metric_bundle(artifact, [ArtifactCase(1, true)]; perturbations=[2])
+    @test changed.stability.value == 0.0
+    @test changed.stability.numerator == 0
+    @test changed.stability.denominator == 1
+    @test !metric_bundle(artifact, [ArtifactCase(1, true)]; scope=:local).stability.applicable
+    @test !metric_bundle(artifact, [ArtifactCase(1, true)]; perturbations=()).stability.applicable
+    @test_throws ArgumentError metric_bundle(artifact, [ArtifactCase(1, true)]; scope=:bogus)
+end
+
 @testset "AletheiaAudit quality" begin
     Aqua.test_all(AletheiaAudit)
     JET.test_package(

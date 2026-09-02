@@ -2,7 +2,7 @@
 
 `[`AletheiaAudit`](audit.md)` gives symbolic artifacts one small, replayable protocol. A
 `RuleArtifact` evaluates ordered exact rules; a `TreeArtifact` uses the same
-protocol with typed tree nodes. Every evaluation emits an `ExecutionTrace`.
+protocol with typed tree nodes. Evaluations emit an `ExecutionTrace` by default; `trace=false` deliberately returns no trace.
 
 ```jldoctest audit
 using AletheiaAudit
@@ -29,22 +29,24 @@ requirements for symbolic explanation evaluation in Stan et al. [stan2026](@cite
 `eval_artifact` returns both the artifact result and a deterministic trace.
 Trace steps record the selected operation, input and output hashes, and the
 artifact profile. `serialize_trace` and `deserialize_trace` provide a
-serialization boundary, while `replay` checks the recorded result against a
-later input. These fields make an execution inspectable without treating a
+serialization boundary, while `replay` recomputes artifact metadata and results
+against a later input. These fields make an execution inspectable without treating a
 trace as a logical proof.
 
 ## Explicit metric scope
 
 `MetricValue` keeps a value with its numerator, denominator, scope, and
 applicability. An uncovered or otherwise inapplicable case is represented by
-`missing`, not silently counted as a negative. `metric_bundle` reports fidelity,
-coverage, stability, complexity, constraints, trace validity, and resource cost
-as separate fields. This separation follows the requirements for evaluating
+`missing`, not silently counted as a negative. `metric_bundle` reports fidelity, coverage, stability, complexity, constraints,
+trace validity, and resource cost as separate fields. Scope is restricted to
+`:all`, `:global`, or `:local`; stability is computed from supplied perturbations
+and is otherwise inapplicable. This separation follows the requirements for evaluating
 symbolic explanations and their coverage and fidelity claims
 [stan2026; pp. 1–60](@cite).
 
 `verify_artifact` compares outputs with declared cases or an independent
-oracle, and `audit` packages verification inputs, traces, provenance, and
+oracle; expected but uncovered outputs are verification failures and retain their
+expected values in the report. `audit` packages verification inputs, traces, provenance, and
 metrics into one immutable record. The [API reference](api.md) lists the
 exported artifact and metric types; [Neural-symbolic interface](nesy.md)
 uses this audit boundary for exact extraction.

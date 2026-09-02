@@ -56,10 +56,14 @@ struct ExecutionTrace
     input_hash::String
     output_hash::String
     scope::Symbol
+    artifact::Any
+end
+function ExecutionTrace(steps, provenance, result, input_hash::String, output_hash::String, scope::Symbol)
+    return ExecutionTrace(TraceStep[steps...], provenance, result, input_hash, output_hash, scope, nothing)
 end
 function ExecutionTrace(steps, provenance, result)
     return ExecutionTrace(
-        TraceStep[steps...], provenance, result, "", _stable_hash(result), :global
+        TraceStep[steps...], provenance, result, "", _stable_hash(result), :global, nothing
     )
 end
 
@@ -230,9 +234,10 @@ function eval_artifact(
         result,
     )
     provenance_value = provenance(artifact)
-    tr = ExecutionTrace(
-        [step], provenance_value, result, _stable_hash(state), _stable_hash(result), scope
-    )
+    tr = trace ? ExecutionTrace(
+        [step], provenance_value, result, _stable_hash(state), _stable_hash(result), scope,
+        artifact
+    ) : nothing
     return result, tr
 end
 function eval_artifact(::SymbolicArtifact, state; kwargs...)
@@ -262,7 +267,15 @@ function _case(c)
 end
 _cases(cases) = ArtifactCase[_case(c) for c in cases]
 
-"""Replay a trace and verify hashes and the reported result."""
+"""Encode an input through the single neural/callable dispatch contract."""
+function _encoded_input(encoder, atom, world)
+    encoder === nothing && return world
+    applicable(encoder, atom, world) && return encoder(atom, world)
+    applicable(encoder, world) && return encoder(world)
+    throw(ArgumentError("encoder must accept (atom, world) or (world)"))
+end
+
+"""Replay a trace and verify hashes, metadata, and the reported result."""
 function replay(trace::ExecutionTrace, state; profile=nothing)
     failures = String[]
     expected_input = _stable_hash(state)
@@ -272,6 +285,34 @@ function replay(trace::ExecutionTrace, state; profile=nothing)
     isempty(trace.steps) && push!(failures, "trace has no execution step")
     if !isempty(trace.steps)
         step = trace.steps[end]
+        step.kind in (:artifact_evaluation, :test, :graph_path) ||
+            push!(failures, "step kind mismatch")
+        if step.kind === :artifact_evaluation
+            !isequal(step.inputs, expected_input) &&
+                push!(failures, "step input metadata mismatch")
+        end
+        if step.kind === :artifact_evaluation &&
+           (!(step.payload isa NamedTuple) || !hasproperty(step.payload, :artifact) ||
+           !hasproperty(step.payload, :selected) || !hasproperty(step.payload, :profile))
+            push!(failures, "step payload metadata malformed")
+        elseif step.kind === :artifact_evaluation && trace.artifact !== nothing
+            entries = trace.artifact isa RuleArtifact ? trace.artifact.rules : trace.artifact.nodes
+            selected = missing
+            for (i, rule) in enumerate(entries)
+                if _matches(rule.condition, state)
+                    selected = i
+                    break
+                end
+            end
+            !isequal(step.payload.artifact, string(nameof(typeof(trace.artifact)))) &&
+                push!(failures, "step artifact metadata mismatch")
+            !isequal(step.payload.selected, selected) &&
+                push!(failures, "step selection metadata mismatch")
+            profile !== nothing && !isequal(step.payload.profile, profile) &&
+                push!(failures, "step profile metadata mismatch")
+            predicted = _predict(trace.artifact, state)
+            !isequal(step.output, predicted) && push!(failures, "step result mismatch")
+        end
         !isequal(step.output, trace.reported_result) &&
             push!(failures, "reported result mismatch")
         trace.output_hash != _stable_hash(trace.reported_result) &&
@@ -289,6 +330,7 @@ function verify_artifact(artifact::SymbolicArtifact, cases; oracle=nothing, prof
     cs = _cases(cases)
     failures = String[]
     outputs = Any[]
+    expected_outputs = Any[]
     traces = ExecutionTrace[]
     for (i, c) in enumerate(cs)
         state = c.state === nothing ? c.input : c.state
@@ -296,15 +338,19 @@ function verify_artifact(artifact::SymbolicArtifact, cases; oracle=nothing, prof
         push!(outputs, out)
         push!(traces, tr)
         expected = oracle === nothing ? c.oracle_output : oracle(c.input, state)
-        if expected !== missing && out !== missing && !isequal(out, expected)
+        push!(expected_outputs, expected)
+        if expected !== missing && out === missing
+            push!(failures, "case $i output uncovered")
+        elseif expected !== missing && !isequal(out, expected)
             push!(failures, "case $i output mismatch")
         end
-        replay(tr, state).valid || push!(failures, "case $i trace failed replay")
+        replay(tr, state; profile=profile).valid || push!(failures, "case $i trace failed replay")
     end
     applicable = [outputs[i] !== missing for i in eachindex(outputs)]
     return VerificationReport(
         isempty(failures),
-        (outputs=outputs, traces=traces, cases=length(cs), applicability=applicable),
+        (outputs=outputs, expected_outputs=expected_outputs, traces=traces,
+            cases=length(cs), applicability=applicable),
         failures,
     )
 end
@@ -321,6 +367,8 @@ end
 function metric_bundle(
     artifact::SymbolicArtifact, cases; scope=:global, perturbations=(), versions=nothing
 )
+    scope in (:all, :global, :local) ||
+        throw(ArgumentError("metric scope must be :all, :global, or :local"))
     cs = _cases(cases)
     selected = scope === :all ? cs : [c for c in cs if c.scope == scope]
     covered = 0
@@ -343,10 +391,25 @@ function metric_bundle(
     else
         _metric(covered, length(selected), scope)
     end
-    stability = if isempty(perturbations)
-        MetricValue(1.0, 1, 1, scope, true)
+    stability = if isempty(perturbations) || isempty(selected)
+        MetricValue(missing, missing, missing, scope, false)
     else
-        MetricValue(1.0, 1, 1, scope, true)
+        baseline = begin
+            state = selected[1].state === nothing ? selected[1].input : selected[1].state
+            eval_artifact(artifact, state; scope=selected[1].scope)[1]
+        end
+        if baseline === missing
+            MetricValue(missing, missing, missing, scope, false)
+        else
+            matches = 0
+            total = 0
+            for perturbation in perturbations
+                value = eval_artifact(artifact, perturbation; scope=scope === :local ? :local : :global)[1]
+                total += 1
+                isequal(value, baseline) && (matches += 1)
+            end
+            _metric(matches, total, scope)
+        end
     end
     complexity = MetricValue(
         Float64(
@@ -508,17 +571,7 @@ function extract_artifact(
     selected in (:rule, :tree) || throw(ArgumentError("artifact must be :rule or :tree"))
     for c in cs
         state = c.state === nothing ? c.input : c.state
-        encoded = if encoder === nothing
-            c.input
-        elseif applicable(encoder, c.input)
-            encoder(c.input)
-        elseif applicable(encoder, nothing, c.input)
-            encoder(nothing, c.input)
-        elseif applicable(encoder, c.input, c.state)
-            encoder(c.input, c.state)
-        else
-            throw(ArgumentError("encoder must accept one input or (atom, input)"))
-        end
+        encoded = _encoded_input(encoder, c.input, state)
         output = source(encoded)
         push!(rs, ArtifactRule(state, output))
     end

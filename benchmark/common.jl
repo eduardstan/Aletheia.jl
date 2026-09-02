@@ -22,11 +22,11 @@ const ALLOW_CONTENDED = "--allow-contended" in ARGS
 const DEFAULT_SEEDS = (UInt64(0xA1E7_2024), UInt64(0x5EED_2025),
     UInt64(0xC0FF_EE42), UInt64(0x1234_5678), UInt64(0x9ABC_DEF0))
 function parse_seed(text)
-    clean = replace(text, "_" => "")
+    clean = replace(strip(text), "_" => "")
     startswith(lowercase(clean), "0x") ? parse(UInt64, clean[3:end]; base=16) : parse(UInt64, clean)
 end
 SEED = let raw = get(ENV, "BENCHMARK_SEED", string(DEFAULT_SEEDS[1]))
-    parse(UInt64, raw)
+    parse_seed(raw)
 end
 const BENCH_SECONDS = DEEP ? 0.05 : 0.01
 const BENCH_SAMPLES = DEEP ? 500 : 200

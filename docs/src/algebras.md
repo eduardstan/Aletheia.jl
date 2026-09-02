@@ -75,7 +75,7 @@ The order helpers are derived from the lattice meet:
 `precedeq(a, x, y)` means `meet(a, x, y) == x`, and
 `succeedeq` reverses the arguments. `check` and `extension` use the same DAG
 walk for these algebras as for Boolean and chain models; finite models return
-`UInt8` vectors, including for modal `Diamond` and `Box` formulas.
+`UInt8` vectors, including for modal `Diamond` and `Box` formulas; values outside the one-based `FiniteTruth` carrier are rejected.
 
 The bounded-residuated-lattice and FLew terminology follows Galatos et al.'s
 algebraic treatment of substructural logics, §2.2 (printed pp. 91–94)

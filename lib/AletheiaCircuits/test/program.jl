@@ -66,3 +66,19 @@ end
     )
     @test_throws GroundingError world(p, Dict())
 end
+
+
+@testset "program validation closes the finite ground fragment" begin
+    @test_throws GroundingError validate_program(
+        DSProgram(rules=[GroundRule(nothing, (:a,))])
+    )
+    @test_throws UnsupportedFeatureError validate_program(
+        DSProgram(domain=Iterators.countfrom(1),
+            choices=[ChoiceVariable(:c, (:a, :b), (1//2, 1//2))])
+    )
+    fn = x -> x
+    @test_throws UnsupportedFeatureError validate_program(
+        DSProgram(choices=[ChoiceVariable(:c, (fn, nothing), (1//2, 1//2))])
+    )
+    @test_throws UnsupportedFeatureError ChoiceVariable(:c, (true, false), (1//2, 1//2))
+end

@@ -23,7 +23,7 @@ The ratio is SoleLogics/Aletheia; allocations are `count / bytes`. Every ratio
 cell shows the median, mean ± standard deviation, and the observed per-seed
 range. The range is descriptive, not a confidence interval. `[no clear winner]`
 means that the mean ± standard deviation band contains `1.00×`. The raw run is retained in
-[`data/benchmark-run/run.txt`](https://github.com/eduardstan/Aletheia.jl/blob/main/data/benchmark-run/run.txt),
+[`data/benchmark-run/run.txt`](https://github.com/eduardstan/Aletheia.jl/blob/9f71902c0b08d69b72f94fa0a5693b05b33fa469/data/benchmark-run/run.txt),
 
 
 ## How to read a row
@@ -136,7 +136,7 @@ scores all 32 hypothesis/interpretation pairs. SoleLogics stores model/world/
 label tuples; Aletheia constructs `learning_from_interpretations` examples.
 Example and hypothesis construction is outside the timed score loop, so this
 is a paired score/evaluation hot path, not a comparison of learner
-construction APIs. The ILP row is supported by the [raw benchmark artefact](https://github.com/eduardstan/Aletheia.jl/blob/main/data/benchmark-run/run.txt):
+construction APIs. The ILP row is supported by the [raw benchmark artefact](https://github.com/eduardstan/Aletheia.jl/blob/9f71902c0b08d69b72f94fa0a5693b05b33fa469/data/benchmark-run/run.txt):
 it scores four hypotheses against eight seeded models (32 pairs; models have
 4–7 worlds and edge probability .35).
 
@@ -145,8 +145,8 @@ it scores four hypotheses against eight seeded models (32 pairs; models have
 | propositional check, depth 2 | 3.06 μs (mean 3.12 μs ± 869.1 ns) | 2.34 μs (mean 2.34 μs ± 300.7 ns) | 1.31× (mean 1.37× ± 0.49×, range 0.88-1.97×) [no clear winner] | 29 / 752 bytes ; 48 / 2,544 bytes |
 | propositional check, depth 4 | 18.77 μs (mean 18.08 μs ± 1.39 μs) | 9.38 μs (mean 10.20 μs ± 2.20 μs) | 1.76× (mean 1.83× ± 0.35×, range 1.38-2.30×) | 155 / 4,208 bytes ; 159 / 9,296 bytes |
 | propositional check, depth 6 | 70.55 μs (mean 71.26 μs ± 7.71 μs) | 34.69 μs (mean 38.00 μs ± 5.24 μs) | 1.81× (mean 1.91× ± 0.36×, range 1.53-2.34×) | 659 / 18,032 bytes ; 601 / 36,920 bytes |
-| e×tension, 8 worlds / depth 3 | 44.51 μs (mean 47.41 μs ± 8.26 μs) | 10.97 μs (mean 12.35 μs ± 3.21 μs) | 3.91× (mean 3.94× ± 0.69×, range 3.26-5.03×) | 760 / 31,024 bytes ; 143 / 11,920 bytes |
-| e×tension, 32 worlds / depth 4 | 220.31 μs (mean 220.72 μs ± 20.62 μs) | 120.05 μs (mean 131.10 μs ± 29.82 μs) | 1.88× (mean 1.74× ± 0.36×, range 1.22-2.11×) | 2,191 / 112,640 bytes ; 655 / 163,920 bytes |
+| extension, 8 worlds / depth 3 | 44.51 μs (mean 47.41 μs ± 8.26 μs) | 10.97 μs (mean 12.35 μs ± 3.21 μs) | 3.91× (mean 3.94× ± 0.69×, range 3.26-5.03×) | 760 / 31,024 bytes ; 143 / 11,920 bytes |
+| extension, 32 worlds / depth 4 | 220.31 μs (mean 220.72 μs ± 20.62 μs) | 120.05 μs (mean 131.10 μs ± 29.82 μs) | 1.88× (mean 1.74× ± 0.36×, range 1.22-2.11×) | 2,191 / 112,640 bytes ; 655 / 163,920 bytes |
 | random modal, worlds=8 / 0.15 / depth=2 | 4.44 μs (mean 3.91 μs ± 2.70 μs) | 2.04 μs (mean 2.06 μs ± 650.6 ns) | 2.10× (mean 1.70× ± 0.85×, range 0.67-2.63×) [no clear winner] | 136 / 5,280 bytes ; 58 / 3,632 bytes |
 | random modal, worlds=24 / 0.15 / depth=2 | 13.36 μs (mean 11.64 μs ± 5.18 μs) | 8.52 μs (mean 8.04 μs ± 3.35 μs) | 1.42× (mean 1.40× ± 0.39×, range 0.88-1.82×) | 264 / 13,616 bytes ; 128 / 20,592 bytes |
 | random modal, worlds=8 / 0.5 / depth=2 | 4.62 μs (mean 4.86 μs ± 3.90 μs) | 3.34 μs (mean 3.03 μs ± 1.12 μs) | 1.38× (mean 1.40× ± 0.78×, range 0.67-2.58×) [no clear winner] | 138 / 5,312 bytes ; 58 / 3,632 bytes |
@@ -229,7 +229,7 @@ consumer worker. A fresh SoleData checkout is unavailable in this measurement
 environment, so no numeric SoleData results are included in this quick
 benchmark; rerun the two protocol scripts with
 `SOLEDATA_PATH` before publishing updated results. The full decision report is
-published in [`data/soledata-protocol/`](https://github.com/eduardstan/Aletheia.jl/tree/main/data/soledata-protocol).
+published in [`data/soledata-protocol/`](https://github.com/eduardstan/Aletheia.jl/tree/9f71902c0b08d69b72f94fa0a5693b05b33fa469/data/soledata-protocol).
 
 ## SoleModels rule checks through Aletheia
 
@@ -284,10 +284,10 @@ allocations / 6,727,592 bytes**; with it, the five-run median is **1.864 ms and
 24,067 / 3,017,992**. Steady-state allocations are unchanged.
 
 The full sweep has eighteen cases; six of them share this shape. The large
-tails are spread rather than a position effect; the [run-order diagnostic](https://github.com/eduardstan/Aletheia.jl/tree/main/data/solemodels-consumer/order-diagnostic-late-first/)
+tails are spread rather than a position effect; the [run-order diagnostic](https://github.com/eduardstan/Aletheia.jl/tree/9f71902c0b08d69b72f94fa0a5693b05b33fa469/data/solemodels-consumer/order-diagnostic-late-first/)
 supports this conclusion. The full distributions and per-repetition logs are
 published in
-[`data/solemodels-consumer/`](https://github.com/eduardstan/Aletheia.jl/tree/main/data/solemodels-consumer).
+[`data/solemodels-consumer/`](https://github.com/eduardstan/Aletheia.jl/tree/9f71902c0b08d69b72f94fa0a5693b05b33fa469/data/solemodels-consumer).
 
 ## Bisimulation contraction: capability and scope
 
@@ -459,7 +459,7 @@ The rerun is retained in `data/benchmark-run/deployed-apply-after.txt`. The quie
 ### After frame sharing
 
 The frame-sharing rerun is retained in
-[`data/benchmark-run/deployed-apply-after-sharing.txt`](https://github.com/eduardstan/Aletheia.jl/blob/main/data/benchmark-run/deployed-apply-after-sharing.txt).
+[`data/benchmark-run/deployed-apply-after-sharing.txt`](https://github.com/eduardstan/Aletheia.jl/blob/9f71902c0b08d69b72f94fa0a5693b05b33fa469/data/benchmark-run/deployed-apply-after-sharing.txt).
 It uses the merged `benchmark/deployed_apply.jl` harness with scale cases capped
 at 128 instances. The differential gate passed for all five seeds, and the
 quiet-machine gate passed (`load_gate=PASS start=1.88 end=1.30 peak=2.40`), so
@@ -524,9 +524,9 @@ materialization in the apply call; preparation remains outside apply timing.
 The construction and first-use values are intentionally not folded into warm
 reuse. This is a result for the declared workload and mode, never
 "universally faster". Reproduce it with the package paths and command in
-[`benchmark/README.md`](https://github.com/eduardstan/Aletheia.jl/blob/main/benchmark/README.md);
+[`benchmark/README.md`](https://github.com/eduardstan/Aletheia.jl/blob/9f71902c0b08d69b72f94fa0a5693b05b33fa469/benchmark/README.md);
 this run is publishable because both recorded gates pass. The full per-seed output is retained in
-[`data/benchmark-run/deployed-apply-after.txt`](https://github.com/eduardstan/Aletheia.jl/blob/main/data/benchmark-run/deployed-apply-after.txt).
+[`data/benchmark-run/deployed-apply-after.txt`](https://github.com/eduardstan/Aletheia.jl/blob/9f71902c0b08d69b72f94fa0a5693b05b33fa469/data/benchmark-run/deployed-apply-after.txt).
 
 ## Correctness and coverage
 

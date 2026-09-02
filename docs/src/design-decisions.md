@@ -108,6 +108,20 @@ exact claims for the declared fragment. Function symbols, cycles, unnormalized
 choices, and zero-mass evidence fail with typed exceptions. Gradients, EM,
 and general AMC remain deliberately outside this contract.
 
+## 2026-09-03 — Audit boundary edge cases are explicit
+
+**Context.** Adversarial cases exposed ambiguity at three public boundaries: exact
+probability conversion, Boolean choice outcomes, and optional trace emission.
+
+**Choice.** `RationalProfile()` converts Float64 weights with `rationalize` using an
+eight-ulp tolerance. `Bool` is reserved for two-valued event constants and is
+rejected as a choice alternative; callers should use named atoms. `eval_artifact`
+honors `trace=false` by returning `nothing` for the trace.
+
+**Consequence.** Exact WMC remains available for common Float64 inputs, Boolean
+events cannot collide with choice atoms, and callers can deliberately omit trace
+material rather than receiving an ignored option.
+
 ## 2026-09-02 — Traces by default
 
 **Context.** Audited symbolic decisions need checkable execution evidence, not only a final answer.

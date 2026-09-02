@@ -213,10 +213,14 @@ truth_type(::Type{<:FiniteFLewAlgebra}) = FiniteTruth
 truth_type(::FiniteFLewAlgebra) = FiniteTruth
 
 @inline function _checked_finite_index(algebra::FiniteFLewAlgebra{N}, value) where N
-    value isa Integer || throw(ArgumentError("truth value must be an integer index"))
-    1 <= value <= N || throw(ArgumentError("truth index $value is outside 1:$N"))
+    (value isa Integer && !(value isa Bool)) ||
+        throw(ArgumentError("value $(repr(value)) is outside the FiniteTruth carrier 1:$N"))
+    1 <= value <= N ||
+        throw(ArgumentError("value $(repr(value)) is outside the FiniteTruth carrier 1:$N"))
     FiniteTruth(value)
 end
+@inline _validate_atom_value(algebra::FiniteFLewAlgebra, value) =
+    _checked_finite_index(algebra, value)
 
 """Return the finite carrier indices in table order."""
 domain(::FiniteFLewAlgebra{N}) where N = Tuple(FiniteTruth(i) for i in 1:N)

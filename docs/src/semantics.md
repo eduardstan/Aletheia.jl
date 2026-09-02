@@ -38,8 +38,9 @@ LukasiewiczAlgebra{4} (chain of 4 levels: 0.0, 0.333, 0.667, 1.0)
 lattice `meet`, `join`, `fusion`, `implication`, and `negation` are methods on the algebra, not
 methods on formulas. This keeps the semantic carrier visible to Julia's type
 inference and lets the same model/evaluation API support custom carriers. Atom
-values for finite chains are validated at `interpret`, so lazy valuations and
-compound formulas follow the same boundary. Finite chain levels are stored as
+values for finite chains and finite FLew carriers are validated at `interpret`, so lazy
+valuations and compound formulas follow the same boundary; invalid carrier indices
+are rejected. Finite chain levels are stored as
 `Float64`, so a value computed as `1/3` may not be bit-identical to the stored
 level. A value within `8eps(Float64)` of a level is therefore accepted and
 snapped to it; anything further off-chain is rejected rather than silently

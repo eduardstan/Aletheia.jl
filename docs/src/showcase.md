@@ -2,7 +2,7 @@
 
 This page follows one small, synthetic dataset through the same ordered
 journey as the runnable bundle in
-[`examples/showcase/`](https://github.com/eduardstan/Aletheia.jl/tree/main/examples/showcase).
+[`examples/showcase/`](https://github.com/eduardstan/Aletheia.jl/tree/9f71902c0b08d69b72f94fa0a5693b05b33fa469/examples/showcase).
 The four records are committed in `records.csv`; the example has no run-time
 download and uses the pinned seed `0x5EED_2025`.
 
@@ -54,11 +54,11 @@ boundary [darwiche2002](@cite).
 compiled (alert, calm) probabilities: Tuple{Symbol, Rational{Int64}, Rational{Int64}}[(:r1, 1, 0), (:r2, 3//16, 1//4), (:r3, 1//16, 1), (:r4, 3//16, 3//4)]
 certified-circuit/total-choice cross-check: true
 declared fragment: finite, function-free, ground, acyclic
-refused: function symbols, cycles, unnormalized choices, and zero-mass evidence
+refused: function symbols, opaque values, infinite domains, invalid rule heads, cycles, unnormalized choices, and zero-mass evidence
 ```
 
 The declared fragment covers this finite program and its exact rational WMC.
-It refuses function symbols, cyclic rules, unnormalized choices, and
+It refuses function symbols, opaque values, infinite domains, invalid rule heads, cyclic rules, unnormalized choices, and
 zero-mass evidence rather than silently widening the contract [riguzzi2023;
 kimmig2017](@cite). Gradients, EM, and general probabilistic inference are not
 claims of this showcase; the implemented scope is the circuit boundary above
@@ -106,7 +106,7 @@ symbolic explanations [stan2026; pp. 1–60](@cite).
 ```text
 fidelity: value=1.0, population=4/4, applicable=true, scope=all
 coverage: value=0.8, population=4/5, applicable=true, scope=all
-stability: value=1.0, population=1/1, applicable=true, scope=all
+stability: value=missing, population=missing/missing, applicable=false, scope=all
 complexity: value=4.0, population=4/1, applicable=true, scope=all
 constraints: value=missing, population=missing/missing, applicable=false, scope=all
 trace: value=1.0, population=5/5, applicable=true, scope=all
@@ -166,7 +166,7 @@ e. neural leaves/direct outputs: Bool[1, 1, 0, 1]
    metric bundle:
   fidelity: value=1.0, population=4/4, applicable=true, scope=all
   coverage: value=0.8, population=4/5, applicable=true, scope=all
-  stability: value=1.0, population=1/1, applicable=true, scope=all
+  stability: value=missing, population=missing/missing, applicable=false, scope=all
   complexity: value=4.0, population=4/1, applicable=true, scope=all
   constraints: value=missing, population=missing/missing, applicable=false, scope=all
   trace: value=1.0, population=5/5, applicable=true, scope=all

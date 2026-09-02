@@ -99,6 +99,16 @@ end
     )
 end
 
+@testset "graph endpoints require full entity identity" begin
+    canonical = KGEntity(:same; kind=:person, metadata=(source=:canonical,))
+    foreign = KGEntity(:same; kind=:person, metadata=(source=:foreign,))
+    other = KGEntity(:other; kind=:person, metadata=(source=:canonical,))
+    relation = KGRelation(:knows; domain=:person, range=:person)
+    @test_throws ArgumentError KnowledgeGraph(
+        [canonical, other], [relation], [KGEdge(foreign, relation, other)]
+    )
+end
+
 @testset "AletheiaGraphs quality" begin
     Aqua.test_all(AletheiaGraphs)
     if pkgversion(JET) < v"0.11"
