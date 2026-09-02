@@ -9,8 +9,10 @@ contributors.
 **Context.** The exported-symbol documentation sweep outgrew Documenter’s
 single-page API reference default.
 
-**Choice.** The generated API page uses a 500 KiB `size_threshold` and a
-400 KiB warning threshold.
+**Choice.** The `Documenter.HTML` format in `docs/make.jl` sets
+`size_threshold = 500 * 1024` and `size_threshold_warn = 400 * 1024`.
+These thresholds size the generated API page; they do not size an evaluation
+cache.
 
 **Consequence.** The current reference builds without an error while the
 warning signals when the reference should be split per package again.
