@@ -637,7 +637,7 @@ function prepare_scalar(data; features=(), frames=nothing, relations=(),
         instance_labels = _normalise_instances(data, instances, feature_list, data.values)
         world_list = worlds === nothing ? collect(data.worlds) : collect(worlds)
         all(world -> haskey(data.world_positions, world), world_list) || throw(KeyError("world"))
-        frames_list = _normalise_frames(data, frames, instance_labels, world_list)
+        frames_list = _share_frames(_normalise_frames(data, frames, instance_labels, world_list))
         # A store can be prepared with a subset of its dimensions, but values
         # remain source-authoritative and are copied into the requested order.
         dense_values = Array{eltype(data.values)}(undef, length(world_list), length(instance_labels), length(feature_list))
@@ -647,7 +647,7 @@ function prepare_scalar(data; features=(), frames=nothing, relations=(),
         source = data
     else
         instance_labels = _normalise_instances(data, instances, feature_list)
-        frames_list = _normalise_frames(data, frames, instance_labels, worlds)
+        frames_list = _share_frames(_normalise_frames(data, frames, instance_labels, worlds))
         world_list = _normalise_worlds(frames_list, worlds)
         # Feature families may legitimately mix numeric and categorical
         # payloads.  `Any` keeps the generic store faithful and avoids a

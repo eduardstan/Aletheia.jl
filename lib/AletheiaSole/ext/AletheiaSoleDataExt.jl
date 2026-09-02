@@ -61,18 +61,17 @@ end
 """Construct a `SoleDataFamily` from an `AbstractModalLogiset`."""
 function SoleDataFamily(dataset::SoleData.AbstractModalLogiset;
         vectorized::Bool=true, relation=nothing)
-    # Keep one converted Frame for equal source frames.  This preserves
-    # Aletheia's valuation-independent adjacency cache without assuming that
-    # all SoleData instances have the same frame.
-    source_frames = Any[]
+    # Keep one converted Frame for each equal world/relation signature.  This
+    # preserves Aletheia's valuation-independent adjacency cache without
+    # assuming that all SoleData instances have the same frame.
     converted_frames = Any[]
     models = Any[]
     for i_instance in 1:SoleData.ninstances(dataset)
-        source_frame = SoleData.frame(dataset, i_instance)
-        slot = findfirst(candidate -> isequal(candidate, source_frame), source_frames)
+        converted = _aletheia_frame(SoleData.frame(dataset, i_instance), relation)
+        slot = findfirst(candidate ->
+            AletheiaData._same_frame(candidate, converted), converted_frames)
         if slot === nothing
-            push!(source_frames, source_frame)
-            push!(converted_frames, _aletheia_frame(source_frame, relation))
+            push!(converted_frames, converted)
             slot = length(converted_frames)
         end
         push!(models, _aletheia_model(
@@ -111,10 +110,10 @@ function AletheiaData.prepare_scalar(dataset::SoleData.AbstractModalLogiset;
     n = SoleData.ninstances(dataset)
     labels = instances === nothing ? collect(1:n) : collect(instances)
     source_frames = [SoleData.frame(dataset, i) for i in labels]
-    converted = [Aletheia.Frame(collect(SoleData.allworlds(fr)),
+    converted = AletheiaData._share_frames([Aletheia.Frame(collect(SoleData.allworlds(fr)),
         Dict(:R => Dict(w => Tuple(isnothing(relation) ?
             SoleData.accessibles(fr, w) : SoleData.accessibles(fr, w, relation))
-            for w in SoleData.allworlds(fr))); index=true) for fr in source_frames]
+            for w in SoleData.allworlds(fr))); index=true) for fr in source_frames])
     feature_list = _sole_features(dataset, features)
     AletheiaData.prepare_scalar(_SoleDataSource(dataset); features=feature_list,
         frames=converted, relations=isempty(relations) ? (:R,) : relations,

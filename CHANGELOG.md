@@ -20,6 +20,8 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
 - Reduced fresh-dataset batch evaluation churn by reusing the pooled union-DAG
   plan, preserving relation-cache visibility, and reusing vectorized callback
   buffers for prepared decision-list apply.
+- Scalar data preparation now shares equal world/relation frame objects across
+  instances, so family evaluation can reuse the pooled evaluation plan.
 
 - Added the focused `AletheiaCircuits` package for finite distribution
   semantics: normalized independent choices, ground acyclic rules, certified

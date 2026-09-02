@@ -455,6 +455,27 @@ The rerun is retained in `data/benchmark-run/deployed-apply-after.txt`. The quie
 | Aletheia dense scalar-data | 1.268 → 0.849 ms; 14,371 / 4,117,952 -> 12,965 / 3,996,384 | 17.244 → 12.153 ms; 117,507 / 21,725,888 -> 116,101 / 21,604,320 |
 | Aletheia dense vectorized scalar-data | 0.871 → 0.533 ms; 7,427 / 1,384,256 -> 5,797 / 1,251,936 | 16.019 → 13.395 ms; 110,563 / 18,882,448 -> 108,933 / 18,859,872 |
 
+### After frame sharing
+
+The frame-sharing rerun is retained in
+[`data/benchmark-run/deployed-apply-after-sharing.txt`](https://github.com/eduardstan/Aletheia.jl/blob/main/data/benchmark-run/deployed-apply-after-sharing.txt).
+It uses the merged `benchmark/deployed_apply.jl` harness with scale cases capped
+at 128 instances. The differential gate passed for all five seeds, and the
+quiet-machine gate passed (`load_gate=PASS start=1.88 end=1.30 peak=2.40`), so
+these allocation and byte rows also include the permitted timing evidence.
+Values are selected by mode name from the five per-seed fresh-dataset and warm
+samples in the artifact.
+
+| mode | warm reuse (ms; allocations / bytes) | fresh-dataset churn (ms; allocations / bytes) |
+| --- | ---: | ---: |
+| Aletheia bridge scalar-data | 0.833; 12,350 / 3,956,304 | 1.554; 18,796 / 5,056,800 |
+| Aletheia bridge vectorized scalar-data | 0.513; 5,182 / 1,211,856 | 1.251; 11,628 / 2,312,352 |
+| Aletheia dense scalar-data | 0.856; 12,350 / 3,956,304 | 1.610; 18,796 / 5,056,800 |
+| Aletheia dense vectorized scalar-data | 0.539; 5,182 / 1,211,856 | 1.109; 11,628 / 2,312,352 |
+
+The scalar-data churn now matches the prepared callback paths in allocation
+order, while non-equal frame signatures remain separate.
+
 The scale sweep keeps the trained formula roots fixed and changes only the
 supported dataset size. It compares native `SoleModels.apply` with prepared
 Aletheia scalar and vectorized callbacks under the same five seeds. Each child
