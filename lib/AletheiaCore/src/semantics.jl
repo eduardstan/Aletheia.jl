@@ -961,16 +961,20 @@ function (valuation::Valuation)(atom_value, world)
     _lookup_valuation(valuation.data, atom_value, world)
 end
 
-"""Return atom values in the supplied world order, using a batch callback when available."""
+"""Return atom values in the supplied world order, using a batch callback when available.
+
+The vector returned by a batch callback is consumed synchronously during formula
+extension evaluation, so callbacks may reuse an internal buffer on the next call.
+"""
 function atom_values(valuation, atom::Atom, worlds)
     [ _lookup_atom(valuation, atom, world) for world in worlds ]
 end
 
 function atom_values(valuation::ValuationCallback, atom::Atom, worlds)
     batch = valuation.vectorized
-    batch === nothing ?
-        [valuation.scalar(value(atom), world) for world in worlds] :
-        collect(batch(value(atom), worlds))
+    batch === nothing && return [valuation.scalar(value(atom), world) for world in worlds]
+    result = batch(value(atom), worlds)
+    result isa AbstractVector ? result : collect(result)
 end
 
 

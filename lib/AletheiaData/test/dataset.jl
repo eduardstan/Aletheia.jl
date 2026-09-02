@@ -54,3 +54,27 @@ struct EmptyFamily <: AbstractModelFamily end
     @test_throws MethodError instance_count(EmptyFamily())
     @test_throws MethodError instance_model(EmptyFamily(), 1)
 end
+
+
+@testset "family apply allocation budget" begin
+    sig = Signature((¬, Diamond(:R)))
+    pool = FormulaPool(sig)
+    p = atom(pool, "p")
+    modal = branch(pool, Diamond(:R), p)
+    formulas = Formula[modal, p]
+    frame = Frame(1:8, Dict(:R => Dict(world => (world == 8 ? (8,) : (world + 1,))
+        for world in 1:8)); index=true)
+    callback = Aletheia.ValuationCallback((name, world) -> name == "p" && iseven(world);
+        vectorized=(name, worlds) -> BitVector(name == "p" && iseven(world) for world in worlds))
+    family = ModelFamily([Model(frame, BOOLEAN, callback) for _ in 1:16])
+    @test extension(formulas, family) ==
+        [extension(formulas[1], family), extension(formulas[2], family)]
+    # Recorded on Julia 1.10–1.12 for one fresh 16-instance, 8-world apply.
+    # The ceiling leaves room for allocator and minor-version variation while
+    # catching the former per-instance evaluator-plan growth.
+    fresh_frame = Frame(1:8, Dict(:R => Dict(world => (world == 8 ? (8,) : (world + 1,))
+        for world in 1:8)); index=true)
+    fresh_family = ModelFamily([Model(fresh_frame, BOOLEAN, callback) for _ in 1:16])
+    fresh_bytes = @allocated extension(formulas, fresh_family)
+    @test fresh_bytes <= 1_500_000
+end

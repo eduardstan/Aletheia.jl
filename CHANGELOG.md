@@ -17,6 +17,10 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
   and the neural-symbolic boundary. Reorganized navigation by package
   dependency order and added the one-engine overview.
 
+- Reduced fresh-dataset batch evaluation churn by reusing the pooled union-DAG
+  plan, preserving relation-cache visibility, and reusing vectorized callback
+  buffers for prepared decision-list apply.
+
 - Added the focused `AletheiaCircuits` package for finite distribution
   semantics: normalized independent choices, ground acyclic rules, certified
   reduced ordered event diagrams, and separate Float64/Rational WMC and
