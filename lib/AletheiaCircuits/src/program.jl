@@ -492,8 +492,8 @@ function _assignment(program::DSProgram, total_choice)
                     total_choice[c]
                 else
                     throw(
-                    GroundingError(:total_choice, "missing selection for $(repr(c.id))")
-                )
+                        GroundingError(:total_choice, "missing selection for $(repr(c.id))")
+                    )
                 end,
             ) for c in program.choices
         ]

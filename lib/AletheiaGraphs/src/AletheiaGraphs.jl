@@ -1,16 +1,57 @@
-"""Typed knowledge graphs and their relational Kripke adapter."""
+"""
+Typed knowledge graphs and their relational Kripke adapter.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> e = KGEntity(:e1)
+KGEntity{Symbol, Symbol, @NamedTuple{}}(:e1, :entity, NamedTuple())
+```
+"""
 module AletheiaGraphs
 
 using AletheiaCore
 using Graphs
 using MetaGraphsNext
 
-"""Abstract supertype for graph entities."""
+"""
+Abstract supertype for graph entities.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> KGEntity(:e1) isa AbstractKGEntity
+true
+```
+"""
 abstract type AbstractKGEntity end
-"""Abstract supertype for typed graph relations."""
+
+"""
+Abstract supertype for typed graph relations.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> KGRelation(:r1) isa AbstractKGRelation
+true
+```
+"""
 abstract type AbstractKGRelation end
 
-"""A typed graph entity with an identifier, kind, and immutable metadata."""
+"""
+A typed graph entity with an identifier, kind, and immutable metadata.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> e = KGEntity(:e1; kind=:person)
+KGEntity{Symbol, Symbol, @NamedTuple{}}(:e1, :person, NamedTuple())
+```
+"""
 struct KGEntity{I,K,M} <: AbstractKGEntity
     id::I
     kind::K
@@ -18,7 +59,17 @@ struct KGEntity{I,K,M} <: AbstractKGEntity
 end
 KGEntity(id; kind=:entity, metadata=NamedTuple()) = KGEntity(id, kind, metadata)
 
-"""A named typed relation, with domain and range kind constraints."""
+"""
+A named typed relation, with domain and range kind constraints.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> r = KGRelation(:knows; domain=:person, range=:person)
+KGRelation{Symbol, Symbol, Symbol, @NamedTuple{}}(:knows, :person, :person, NamedTuple())
+```
+"""
 struct KGRelation{I,D,R,M} <: AbstractKGRelation
     id::I
     domain::D
@@ -29,7 +80,17 @@ function KGRelation(id; domain=:Any, range=:Any, metadata=NamedTuple())
     return KGRelation(id, domain, range, metadata)
 end
 
-"""Source information attached to a graph edge."""
+"""
+Source information attached to a graph edge.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> p = KGProvenance(:source_doc)
+KGProvenance{Symbol, Nothing, Nothing, Nothing}(:source_doc, nothing, nothing, nothing)
+```
+"""
 struct KGProvenance{S,L,T,H}
     source::S
     locator::L
@@ -40,7 +101,21 @@ function KGProvenance(source; locator=nothing, timestamp=nothing, content_hash=n
     return KGProvenance(source, locator, timestamp, content_hash)
 end
 
-"""A directed, typed graph edge and its source provenance."""
+"""
+A directed, typed graph edge and its source provenance.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> e1 = KGEntity(:e1); e2 = KGEntity(:e2); r = KGRelation(:rel);
+
+julia> edge = KGEdge(e1, r, e2);
+
+julia> edge.source.id
+:e1
+```
+"""
 struct KGEdge{E,R,P}
     source::E
     relation::R
@@ -58,7 +133,21 @@ function KGEdge(
     )
 end
 
-"""A validated collection of entities, relation schemas, edges, and graph provenance."""
+"""
+A validated collection of entities, relation schemas, edges, and graph provenance.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> e1 = KGEntity(:e1); e2 = KGEntity(:e2); r = KGRelation(:rel);
+
+julia> g = KnowledgeGraph([e1, e2], [r], [KGEdge(e1, r, e2)]);
+
+julia> length(entities(g))
+2
+```
+"""
 struct KnowledgeGraph{E,R,G,P}
     entities::E
     relations::R
@@ -66,14 +155,46 @@ struct KnowledgeGraph{E,R,G,P}
     provenance::P
 end
 
-"""A replayable path.  Provenance is kept per traversed edge."""
+"""
+A replayable path. Provenance is kept per traversed edge.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> e1 = KGEntity(:e1); e2 = KGEntity(:e2); r = KGRelation(:rel);
+
+julia> g = KnowledgeGraph([e1, e2], [r], [KGEdge(e1, r, e2)]);
+
+julia> p = paths(g, :e1; max_hops=1)[1];
+
+julia> p isa KGPath
+true
+```
+"""
 struct KGPath{E,R,P}
     entities::E
     relations::R
     edge_provenance::P
 end
 
-"""A bounded reachable subgraph returned by [`subgraphs`](@ref)."""
+"""
+A bounded reachable subgraph returned by [`subgraphs`](@ref).
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> e1 = KGEntity(:e1); e2 = KGEntity(:e2); r = KGRelation(:rel);
+
+julia> g = KnowledgeGraph([e1, e2], [r], [KGEdge(e1, r, e2)]);
+
+julia> sub = subgraphs(g, :e1; max_hops=1)[1];
+
+julia> sub isa KGSubgraph
+true
+```
+"""
 struct KGSubgraph{E,G}
     entities::E
     edges::G
@@ -135,15 +256,93 @@ function _kind_matches(expected, actual)
            (expected isa Type && actual isa expected)
 end
 
-"""Return the entities in stable graph order."""
+"""
+Return the entities in stable graph order.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> e1 = KGEntity(:e1); r = KGRelation(:rel);
+
+julia> g = KnowledgeGraph([e1], [r], KGEdge[]);
+
+julia> [e.id for e in entities(g)]
+1-element Vector{Symbol}:
+ :e1
+```
+"""
 entities(graph::KnowledgeGraph) = graph.entities
-"""Return the relation schemas in stable graph order."""
+
+"""
+Return the relation schemas in stable graph order.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> e1 = KGEntity(:e1); r = KGRelation(:r1);
+
+julia> g = KnowledgeGraph([e1], [r], KGEdge[]);
+
+julia> [r.id for r in relations(g)]
+1-element Vector{Symbol}:
+ :r1
+```
+"""
 relations(graph::KnowledgeGraph) = graph.relations
-"""Return the graph edges in stable insertion order."""
+
+"""
+Return the graph edges in stable insertion order.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> e1 = KGEntity(:e1); e2 = KGEntity(:e2); r = KGRelation(:r1);
+
+julia> g = KnowledgeGraph([e1, e2], [r], [KGEdge(e1, r, e2)]);
+
+julia> length(edges(g))
+1
+```
+"""
 edges(graph::KnowledgeGraph) = graph.edges
-"""Return graph-level provenance."""
+
+"""
+Return graph-level provenance.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> e1 = KGEntity(:e1); r = KGRelation(:r1);
+
+julia> g = KnowledgeGraph([e1], [r], KGEdge[]; provenance=:doc1);
+
+julia> provenance(g)
+:doc1
+```
+"""
 provenance(graph::KnowledgeGraph) = graph.provenance
-"""Return a path's edge provenance, without interpreting it as a proof."""
+
+"""
+Return a path's edge provenance, without interpreting it as a proof.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> e1 = KGEntity(:e1); e2 = KGEntity(:e2); r = KGRelation(:r1);
+
+julia> g = KnowledgeGraph([e1, e2], [r], [KGEdge(e1, r, e2)]);
+
+julia> p = paths(g, :e1; max_hops=1)[1];
+
+julia> path_provenance(p)
+(KGProvenance{Symbol, Nothing, Nothing, Nothing}(:unknown, nothing, nothing, nothing),)
+```
+"""
 path_provenance(path::KGPath) = path.edge_provenance
 
 function _entity(graph, x)
@@ -188,12 +387,26 @@ end
 """
     paths(graph, source; relation=nothing, target=nothing, max_hops, simple=true)
 
-Enumerate directed typed paths from `source` up to `max_hops`.  Paths are
+Enumerate directed typed paths from `source` up to `max_hops`. Paths are
 returned in deterministic depth-first order and retain entities, relations, and
 edge provenance, so they can be replayed with [`path_valid`](@ref). `simple`
-prevents repeated entities when true.  Path validity is graph membership only;
-it is not logical entailment.  The traversal uses Graphs.jl's directed graph
+prevents repeated entities when true. Path validity is graph membership only;
+it is not logical entailment. The traversal uses Graphs.jl's directed graph
 model and the typed edge metadata retained by this package.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> e1 = KGEntity(:e1); e2 = KGEntity(:e2); r = KGRelation(:r1);
+
+julia> g = KnowledgeGraph([e1, e2], [r], [KGEdge(e1, r, e2)]);
+
+julia> ps = paths(g, :e1; max_hops=1);
+
+julia> length(ps)
+1
+```
 """
 function paths(
     graph::KnowledgeGraph, source; relation=nothing, target=nothing, max_hops, simple=true
@@ -233,7 +446,23 @@ function paths(
     return result
 end
 
-"""Check that every step and provenance item of a path is an edge in `graph`."""
+"""
+Check that every step and provenance item of a path is an edge in `graph`.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> e1 = KGEntity(:e1); e2 = KGEntity(:e2); r = KGRelation(:r1);
+
+julia> g = KnowledgeGraph([e1, e2], [r], [KGEdge(e1, r, e2)]);
+
+julia> p = paths(g, :e1; max_hops=1)[1];
+
+julia> path_valid(p, g)
+true
+```
+"""
 function path_valid(path::KGPath, graph::KnowledgeGraph)
     length(path.entities) == length(path.relations) + 1 || return false
     length(path.relations) == length(path.edge_provenance) || return false
@@ -251,10 +480,42 @@ function path_valid(path::KGPath, graph::KnowledgeGraph)
     return true
 end
 
-"""Alias for [`path_valid`](@ref), naming the graph-membership field explicitly."""
+"""
+Alias for [`path_valid`](@ref), naming the graph-membership field explicitly.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> e1 = KGEntity(:e1); e2 = KGEntity(:e2); r = KGRelation(:r1);
+
+julia> g = KnowledgeGraph([e1, e2], [r], [KGEdge(e1, r, e2)]);
+
+julia> p = paths(g, :e1; max_hops=1)[1];
+
+julia> path_validity(p, g)
+true
+```
+"""
 path_validity(path::KGPath, graph::KnowledgeGraph) = path_valid(path, graph)
 
-"""Enumerate one bounded reachable subgraph from `source`, retaining traversed edges."""
+"""
+Enumerate one bounded reachable subgraph from `source`, retaining traversed edges.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> e1 = KGEntity(:e1); e2 = KGEntity(:e2); r = KGRelation(:r1);
+
+julia> g = KnowledgeGraph([e1, e2], [r], [KGEdge(e1, r, e2)]);
+
+julia> subs = subgraphs(g, :e1; max_hops=1);
+
+julia> length(subs)
+1
+```
+"""
 function subgraphs(graph::KnowledgeGraph, source; max_hops)
     max_hops isa Integer && max_hops >= 0 ||
         throw(ArgumentError("max_hops must be a non-negative integer"))
@@ -297,7 +558,23 @@ function _metagraph(graph::KnowledgeGraph)
     return backend
 end
 
-"""Build an Aletheia frame whose worlds are graph entities."""
+"""
+Build an Aletheia frame whose worlds are graph entities.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> e1 = KGEntity(:e1); e2 = KGEntity(:e2); r = KGRelation(:r1);
+
+julia> g = KnowledgeGraph([e1, e2], [r], [KGEdge(e1, r, e2)]);
+
+julia> f = frame(g);
+
+julia> f isa AletheiaGraphs.AletheiaCore.AbstractFrame
+true
+```
+"""
 function frame(graph::KnowledgeGraph; relation_map=identity, index=true)
     _metagraph(graph)
     names = Dict{Any,Any}()
@@ -350,11 +627,25 @@ end
 """
     model(graph; algebra=BOOLEAN, concept_valuation=nothing, relation_map=identity)
 
-Map entities to worlds and typed relations to named frame relations.  The
+Map entities to worlds and typed relations to named frame relations. The
 valuation callback receives a concept atom payload and a `KGEntity`, and may
 return a Boolean or a value accepted by the selected Aletheia truth algebra.
 This uses the existing `ValuationCallback` boundary; no graph-specific
 semantics are introduced.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> e1 = KGEntity(:e1); e2 = KGEntity(:e2); r = KGRelation(:r1);
+
+julia> g = KnowledgeGraph([e1, e2], [r], [KGEdge(e1, r, e2)]);
+
+julia> m = model(g);
+
+julia> m isa AletheiaGraphs.AletheiaCore.Model
+true
+```
 """
 function model(
     graph::KnowledgeGraph; algebra=BOOLEAN, concept_valuation=nothing, relation_map=identity
@@ -372,10 +663,24 @@ end
 """
     concept_atoms(graph; vocabulary)
 
-Create pooled Aletheia atom formulas for a concept vocabulary.  A dictionary
-uses its keys as concept names; an iterable uses its values.  The vocabulary is
+Create pooled Aletheia atom formulas for a concept vocabulary. A dictionary
+uses its keys as concept names; an iterable uses its values. The vocabulary is
 syntax only: membership and confidence must be supplied separately through a
 valuation callback.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> e1 = KGEntity(:e1); r = KGRelation(:r1);
+
+julia> g = KnowledgeGraph([e1], [r], KGEdge[]);
+
+julia> atoms = concept_atoms(g; vocabulary=[:person]);
+
+julia> length(atoms)
+1
+```
 """
 function concept_atoms(graph::KnowledgeGraph; vocabulary)
     names = vocabulary isa AbstractDict ? collect(keys(vocabulary)) : collect(vocabulary)
@@ -388,9 +693,24 @@ end
                       relation_map=identity)
 
 Evaluate a concept formula over graph entities and return one truth value per
-entity in frame order.  A present path is not an entailment proof, and a
+entity in frame order. A present path is not an entailment proof, and a
 numeric/neural confidence supplied by the callback remains a score rather than
 proof metadata.
+
+# Examples
+```jldoctest
+julia> using AletheiaGraphs
+
+julia> e1 = KGEntity(:e1; kind=:person); r = KGRelation(:r1);
+
+julia> g = KnowledgeGraph([e1], [r], KGEdge[]);
+
+julia> atoms = concept_atoms(g; vocabulary=[:person]);
+
+julia> concept_extension(atoms[1], g)
+1-element BitVector:
+ 1
+```
 """
 function concept_extension(
     concept::AletheiaCore.Formula,

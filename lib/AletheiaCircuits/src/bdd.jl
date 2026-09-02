@@ -313,9 +313,9 @@ function _raw_bdd(program::DSProgram, assignments, truth)
             children[1]
         else
             begin
-            push!(ns, BDDNode(level, childtuple))
-            length(ns)
-        end
+                push!(ns, BDDNode(level, childtuple))
+                length(ns)
+            end
         end
         memo[key] = nodeid
         return nodeid
@@ -510,7 +510,11 @@ function _same_program(left::CompiledEvent, right::CompiledEvent)
 end
 
 function _event_truth(event::CompiledEvent)
-    event.evidence_truth === nothing ? event.query_truth : event.query_truth .& event.evidence_truth
+    return if event.evidence_truth === nothing
+        event.query_truth
+    else
+        event.query_truth .& event.evidence_truth
+    end
 end
 
 function _joint(left::CompiledEvent, right::CompiledEvent)
