@@ -198,7 +198,8 @@ Both loops use a prebuilt position dictionary. The remaining difference is the
 canonical Aletheia arithmetic range versus SoleLogics' `accessibles` traversal.
 The deep sweep is measured separately with per-cell load averages recorded in
 `data/benchmark-run/interval-deep.txt`; its raw values are in that artefact.
-All generated edges are checked against their predicates in `test/relations.jl`.
+All generated edges are checked against their predicates in
+`lib/AletheiaCore/test/relations.jl`.
 
 ## Checking formulas over real SoleData datasets
 
@@ -321,8 +322,8 @@ The correctness gate ran **480 seeded random labelled models** and 16 random
 modal formulas per model (96 for each of five seeds, plus the deterministic
 differential suite); every
 original-world truth value equalled its quotient-class value before timing.
-The same gate is asserted in `test/theory.jl`, so a disagreement fails tests
-rather than becoming a performance result.
+The same gate is asserted in `lib/AletheiaCore/test/theory.jl`, so a
+disagreement fails tests rather than becoming a performance result.
 
 `C` is one contraction; `P_orig` and `P_quot` are per-formula check times on
 the original and the quotient model; `K*` is the number of formulas at which
@@ -508,11 +509,13 @@ A one-iteration `Profile.Allocs` profile is recorded beside the scale rows. It
 runs the exact apply call on a never-used fresh fixture after a separate
 profiler warm-up and reports aggregated stack-frame file:line sites, bytes, and
 counts for the callback, native decision list, and dense-store path. The top
-vectorized callback site is `[`AletheiaCore`](api.md)/src/evaluation.jl:528` (16,781,888
-bytes), with `[`AletheiaData`](families.md)/src/dataset.jl:109` next (15,733,020 bytes). The
-dense-store profile has the same evaluator sites (`:528`, 16,891,200 bytes;
-`AletheiaData/src/dataset.jl:109`, 15,835,500 bytes). Native apply is led by
-`SoleModels/.../other.jl:149` (5,554,802 bytes) and `:165` (5,501,874 bytes),
+vectorized callback site is [`AletheiaCore`](api.md)/`lib/AletheiaCore/src/evaluation.jl:321`
+(16,781,888 bytes), with [`AletheiaData`](families.md)/`lib/AletheiaData/src/dataset.jl:213`
+next (15,733,020 bytes). The dense-store profile has the same evaluator sites
+(`lib/AletheiaCore/src/evaluation.jl:321`, 16,891,200 bytes;
+`lib/AletheiaData/src/dataset.jl:213`, 15,835,500 bytes). Native apply is led by
+`SoleModels/.../other.jl:149` (5,554,802 bytes) and
+`SoleModels/.../other.jl:165` (5,501,874 bytes),
 with `SoleLogics/.../rule-and-branch.jl:490` next (5,501,570 bytes). The
 profile therefore attributes the measured fresh-fixture gap to Aletheia
 extension/data evaluation allocation sites, not to eager dense feature

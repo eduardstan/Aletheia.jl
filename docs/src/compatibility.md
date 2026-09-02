@@ -83,10 +83,9 @@ remain the core API.
   dispatch and SoleLogics' `collatetruth` protocol have no Aletheia counterpart.
   Connectives are values with extensible traits, and semantic operations belong
   to `TruthAlgebra`.
-* `normalize` is not reproduced. SoleLogics' rewriting profiles
-  (`allow_atom_flipping`, `prefer_implications`, and the rest) are a different
-  normalization semantics from Aletheia's; conversion here is explicit through
-  `cnf` and `dnf`.
+* `normalize` is not reproduced. The compatibility `normalize` marker throws,
+  and the `cnf`/`dnf` adapters accept no normalization keywords. Aletheia's
+  normal-form conversion is explicit through `cnf` and `dnf`.
 * `AbstractInterpretationSet` and `LogicalInstance` are SoleData/SoleModels
   concepts that remain unresolved here. `feature`, `condition`, and `threshold`
   are also SoleData/SoleModels concepts; they raise clear errors rather than
@@ -230,8 +229,7 @@ substitution is impossible, so Aletheia does not build these shims.
 
 SolePostHoc is the ecosystem's largest consumer and is out of scope for
 substitution. Its rule antecedents are constructed upstream by SoleModels as
-`LeftmostConjunctiveForm`; the installed SoleModels source does this at
-`src/rule-extraction.jl:91`. SoleModels also declares a direct dependency on
+`LeftmostConjunctiveForm`. SoleModels also declares a direct dependency on
 SoleLogics 0.13. Replacing SoleLogics at the logic layer therefore cannot reach
 this path: the constraint is one package upstream of the substitution target.
 That is a structural dependency fact, not a criticism of either package's
@@ -335,5 +333,5 @@ SolePostHoc checkout itself was not modified. The loaded consumer functions
 `_element_to_string`, its `Atom`/`SyntaxBranch` traversal, and its parser
 callback all ran successfully. Its `dnf_to_syntaxbranch` chain — `dnf`, then
 `.grandchildren`, `.ispos`/`.atom`, and `SyntaxBranch(NamedConnective{:∨}(),
-…)` — now runs as well; `test/compatibility.jl` keeps that chain verbatim in
-shape. The tests add no SoleLogics package as a dependency.
+…)` — now runs as well; `lib/AletheiaSole/test/compatibility.jl` keeps that
+chain verbatim in shape. The tests add no SoleLogics package as a dependency.

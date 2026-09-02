@@ -64,7 +64,8 @@ not a hidden scan. The deep sweep was measured separately with per-cell load ave
 The same corrected quick run measured the consumer subsets at n=6: IA3 57.80 μs
 vs 8.87 μs (3,048 vs 273 allocations), IA7 43.78 μs vs 23.09 μs (2,484 vs 717),
 and RCC5 83.75 μs vs 48.77 μs (4,104 vs 1,121), SoleLogics vs Aletheia. All
-generated edges are checked against their predicates in `test/relations.jl`.
+generated edges are checked against their predicates in
+`lib/AletheiaCore/test/relations.jl`.
 
 ## SoleData protocol status
 
