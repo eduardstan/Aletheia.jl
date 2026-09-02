@@ -124,7 +124,7 @@ does not acquire SoleLogics as a package dependency.
 
 Documentation across Aletheia follows a single uniform notation and terminology convention:
 
-- **Transitions**: before/after transitions in prose and tables use the right arrow glyph (`→`), never `→`.
+- **Transitions**: before/after transitions in prose and tables use the right arrow glyph (`→`), never `->`.
 - **Units**: quantities in tables follow fixed unit conventions:
   - Allocations are reported as plain integers with thousands separators (for example, `14,358`).
   - Bytes are reported as bytes with thousands separators (for example, `1,024 bytes`), with exact binary conversion (`1 KiB = 1,024 bytes`).
