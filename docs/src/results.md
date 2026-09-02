@@ -430,10 +430,10 @@ reuse. The published values below are scope-limited.
 | decision-list apply | 4.348; 36,515 / 1,415,616 | 11.128; 109,330 / 6,100,080 |
 | Aletheia scalar callback | 1.249; 14,358 / 3,759,120 | 15.958; 117,494 / 21,367,056 |
 | Aletheia vectorized batch callback | 0.749; 7,414 / 1,274,512 | 18.235; 110,550 / 18,882,448 |
-| Aletheia bridge scalar-data | 1.256; 14,371 / 4,117.9 KiB | 15.252; 117,507 / 21,216.7 KiB |
-| Aletheia bridge vectorized scalar-data | 0.683; 7,427 / 1,351.8 KiB | 16.148; 110,563 / 18,547.1 KiB |
-| Aletheia dense scalar-data | 1.268; 14,371 / 4,117.9 KiB | 17.244; 117,507 / 21,216.7 KiB |
-| Aletheia dense vectorized scalar-data | 0.871; 7,427 / 1,351.8 KiB | 16.019; 110,563 / 18,547.1 KiB |
+| Aletheia bridge scalar-data | 1.256; 14,371 / 4,117,952 bytes | 15.252; 117,507 / 21,725,888 bytes |
+| Aletheia bridge vectorized scalar-data | 0.683; 7,427 / 1,384,256 bytes | 16.148; 110,563 / 18,992,192 bytes |
+| Aletheia dense scalar-data | 1.268; 14,371 / 4,117,952 bytes | 17.244; 117,507 / 21,725,888 bytes |
+| Aletheia dense vectorized scalar-data | 0.871; 7,427 / 1,384,256 bytes | 16.019; 110,563 / 18,992,192 bytes |
 
 The scale sweep keeps the trained formula roots fixed and changes only the
 supported dataset size. It compares native `SoleModels.apply` with prepared
