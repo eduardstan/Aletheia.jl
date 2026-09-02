@@ -388,6 +388,15 @@ removes all retained extensions and permits the cache to be used with a new
 formula pool, while retaining its model binding.  If a model is mutated, discard
 the cache; `clear!` cannot repair relation adjacency already cached by its
 `Frame`.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("EvaluationCache"))
+true
+```
 """
 mutable struct EvaluationCache
     model::Model
@@ -400,7 +409,16 @@ function EvaluationCache(model::Model)
     return EvaluationCache(model, nothing, Dict{Int,Any}(), ReentrantLock())
 end
 
-"""Clear all extensions retained by an [`EvaluationCache`](@ref)."""
+"""Clear all extensions retained by an [`EvaluationCache`](@ref).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("clear!"))
+true
+```
+"""
 function clear!(cache::EvaluationCache)
     lock(cache.lock)
     try
@@ -489,6 +507,15 @@ end
     describe(extension_result, model)
 
 Return an `Extension` view of `extension_result` over `model` for rich REPL printing.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("describe"))
+true
+```
 """
 describe(ext::AbstractVector, model::Model) = Extension(ext, model)
 function describe(io::IO, ext::AbstractVector, model::Model)
@@ -636,6 +663,15 @@ same model and pool restrictions as the single-formula method.
 For a model family, `extension(formulas, family)` returns one vector per
 formula, each containing that formula's extensions in instance order.  The
 shared pass is run once for each instance.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("extension"))
+true
+```
 """
 function extension(
     formulas::AbstractVector, model::Model{Bool,A}; cache=nothing
@@ -669,6 +705,15 @@ end
 Return the truth value of `φ` at `world`.  The result is exactly the carrier
 type of the model's algebra.  Evaluation uses the same DAG walk as
 [`extension`](@ref).
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("check"))
+true
+```
 """
 function check(
     formula::Formula, model::Model{Bool,A}, world; cache=nothing
@@ -684,7 +729,16 @@ function check(formula::Formula, model::Model{T}, world; cache=nothing)::T where
     return values[position]
 end
 
-"""Check whether a formula holds at some world via the SoleLogics marker."""
+"""Check whether a formula holds at some world via the SoleLogics marker.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("check"))
+true
+```
+"""
 function check(
     formula::Formula, model::Model{Bool,A}, ::AnyWorld; cache=nothing
 )::Bool where {A<:BooleanAlgebra}

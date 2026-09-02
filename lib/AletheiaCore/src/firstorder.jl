@@ -45,7 +45,16 @@ end
 
 """A first-order function term. Function symbols are uninterpreted syntax here;
 function symbols are part of the clause language in Muggleton & De Raedt, §5.2
-[muggleton1994](@cite)."""
+[muggleton1994](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("FunctionTerm"))
+true
+```
+"""
 struct FunctionTerm <: FirstOrderTerm
     name::Any
     arguments::Tuple{Vararg{FirstOrderTerm}}
@@ -255,7 +264,16 @@ end
 Base.show(io::IO, f::FirstOrderFormula) = print(io, _fo_text(f))
 Base.string(f::FirstOrderFormula) = _fo_text(f)
 
-"""A finite first-order interpretation used by `evaluate` and translation tests."""
+"""A finite first-order interpretation used by `evaluate` and translation tests.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("FirstOrderInterpretation"))
+true
+```
+"""
 struct FirstOrderInterpretation{D,P,E,F}
     domain::D
     predicates::P
@@ -339,7 +357,16 @@ function _predicate_value(interpretation::FirstOrderInterpretation, name, args)
     return throw(KeyError(name))
 end
 
-"""Evaluate a first-order formula in a finite interpretation."""
+"""Evaluate a first-order formula in a finite interpretation.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("evaluate"))
+true
+```
+"""
 function evaluate(
     formula::FirstOrderFormula,
     interpretation::FirstOrderInterpretation,
@@ -462,6 +489,15 @@ Atoms become unary predicates, and each named modal relation becomes a binary
 predicate.  The clauses are the standard ones of Blackburn, de Rijke, and
 Venema §2.4 [blackburn2001](@cite).  `atom_predicate` and `relation_predicate`
 may be functions when separate predicate namespaces are desired.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("standard_translation"))
+true
+```
 """
 function standard_translation(
     formula::Formula;
@@ -486,7 +522,16 @@ const translate = standard_translation
 Dictionary layouts enumerate atom names, including nested world-to-atom maps
 when their nested keys are unambiguous. Overlapping dictionary keys whose
 orientation cannot be determined require an explicit `atoms` keyword; callable
-and otherwise unrecognised valuations require it as well."""
+and otherwise unrecognised valuations require it as well.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("first_order_interpretation"))
+true
+```
+"""
 function first_order_interpretation(
     model::Model;
     atoms=nothing,

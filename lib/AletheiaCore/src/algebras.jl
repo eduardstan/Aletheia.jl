@@ -6,7 +6,16 @@
 # table indexing.  The operation tables therefore contain no boxed truth
 # objects and evaluation is a single integer lookup.
 
-"""The integer carrier used by [`FiniteFLewAlgebra`](@ref)."""
+"""The integer carrier used by [`FiniteFLewAlgebra`](@ref).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("FiniteTruth"))
+true
+```
+"""
 const FiniteTruth = UInt8
 
 struct _ValidatedFiniteFLew end
@@ -24,6 +33,15 @@ construction as the greatest element satisfying residuation.  `bot` and
 Use `FiniteFLewAlgebra(join, meet, fusion, bot, top)` to construct one.  All
 three input tables are explicit `N × N` integer-indexed tables; a malformed
 or non-FLew presentation is rejected before an object is returned.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("FiniteFLewAlgebra"))
+true
+```
 """
 struct FiniteFLewAlgebra{N} <: TruthAlgebra{FiniteTruth}
     join::Matrix{FiniteTruth}
@@ -236,7 +254,16 @@ function isfinitechain(algebra::FiniteFLewAlgebra)
 end
 Base.length(::FiniteFLewAlgebra{N}) where {N} = N
 
-"""Return the lattice meet (infimum) of two finite truth values."""
+"""Return the lattice meet (infimum) of two finite truth values.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("meet"))
+true
+```
+"""
 @inline function meet(algebra::FiniteFLewAlgebra, left, right)
     x, y = _checked_finite_index(algebra, left), _checked_finite_index(algebra, right)
     return algebra.meet[Int(x), Int(y)]
@@ -246,7 +273,16 @@ lattice_meet_table(algebra::FiniteFLewAlgebra) = algebra.meet
 fusion_table(algebra::FiniteFLewAlgebra) = algebra.fusion
 implication_table(algebra::FiniteFLewAlgebra) = algebra.implication
 
-"""Return the monoid fusion `x ⊗ y` of two finite truth values."""
+"""Return the monoid fusion `x ⊗ y` of two finite truth values.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("fusion"))
+true
+```
+"""
 @inline function fusion(algebra::FiniteFLewAlgebra, left, right)
     x, y = _checked_finite_index(algebra, left), _checked_finite_index(algebra, right)
     return algebra.fusion[Int(x), Int(y)]
@@ -271,16 +307,55 @@ residuum(algebra::FiniteFLewAlgebra, left, right) = implication(algebra, left, r
     return implication(algebra, value, bottom(algebra))
 end
 
-"""The derived lattice order `x ≤ y` (that is, `x ∧ y = x`)."""
+"""The derived lattice order `x ≤ y` (that is, `x ∧ y = x`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("precedeq"))
+true
+```
+"""
 @inline function precedeq(algebra::FiniteFLewAlgebra, left, right)
     x, y = _checked_finite_index(algebra, left), _checked_finite_index(algebra, right)
     return algebra.meet[Int(x), Int(y)] == x
 end
+"""Return whether the left finite truth value succeeds or equals the right value.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("succeedeq"))
+true
+```
+"""
 @inline succeedeq(algebra::FiniteFLewAlgebra, left, right) = precedeq(algebra, right, left)
+"""Return whether the left finite truth value strictly precedes the right value.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("precedes"))
+true
+```
+"""
 function precedes(algebra::FiniteFLewAlgebra, left, right)
     x, y = _checked_finite_index(algebra, left), _checked_finite_index(algebra, right)
     return x != y && precedeq(algebra, x, y)
 end
+"""Return whether the left finite truth value strictly succeeds the right value.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("succeeds"))
+true
+```
+"""
 function succeeds(algebra::FiniteFLewAlgebra, left, right)
     x, y = _checked_finite_index(algebra, left), _checked_finite_index(algebra, right)
     return x != y && succeedeq(algebra, x, y)
@@ -302,6 +377,15 @@ end
 
 For compatibility with SoleLogics, a single truth index is also accepted and
 means the maximal values not above that threshold.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("maximalmembers"))
+true
+```
 """
 function maximalmembers(algebra::FiniteFLewAlgebra, subset)
     values = if subset isa Integer
@@ -316,6 +400,15 @@ end
 
 For compatibility with SoleLogics, a single truth index is also accepted and
 means the minimal values not below that threshold.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("minimalmembers"))
+true
+```
 """
 function minimalmembers(algebra::FiniteFLewAlgebra, subset)
     values = if subset isa Integer

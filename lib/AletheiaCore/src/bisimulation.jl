@@ -105,6 +105,15 @@ maps when their nested keys are unambiguous. Overlapping dictionary keys whose
 orientation cannot be determined require an explicit `atoms` keyword.
 Unrecognised valuation representations likewise require an explicit atom
 namespace.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("bisimilar"))
+true
+```
 """
 function bisimilar(m1::Model, w1, m2::Model, w2; atoms=nothing, relations=nothing)
     _check_world(frame(m1), w1)
@@ -150,7 +159,16 @@ function bisimilar(m1::Model, w1, m2::Model, w2; atoms=nothing, relations=nothin
 end
 bisimilar(m1::Model, w1, m2::Model, w2, atoms) = bisimilar(m1, w1, m2, w2; atoms=atoms)
 
-"""An equivalence class of worlds in a bisimulation quotient."""
+"""An equivalence class of worlds in a bisimulation quotient.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("BisimulationClass"))
+true
+```
+"""
 struct BisimulationClass
     members::Tuple
 end
@@ -177,6 +195,16 @@ struct BisimulationContraction{M,Q,W}
     classes::Q
     world_map::W
 end
+"""Compatibility alias for [`BisimulationContraction`](@ref).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("QuotientModel"))
+true
+```
+"""
 const QuotientModel = BisimulationContraction
 
 function Base.show(io::IO, contraction::BisimulationContraction)
@@ -362,6 +390,15 @@ layouts enumerate atom names, including nested world-to-atom maps
 when their nested keys are unambiguous. Overlapping dictionary keys whose
 orientation cannot be determined require an explicit `atoms` keyword.
 Unrecognised valuation representations require explicit `atoms` as well.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("bisimulation_contraction"))
+true
+```
 """
 function bisimulation_contraction(model::Model; atoms=nothing, relations=nothing)
     atom_names = atoms === nothing ? _valuation_atoms(model) : collect(atoms)

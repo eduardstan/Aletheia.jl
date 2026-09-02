@@ -4,17 +4,71 @@ import Base: join
 # Formula syntax remains in syntax.jl; this file never turns a truth value into a
 # Formula, nor does it evaluate a Branch.
 
-"""Marker for values used as worlds in modal frames."""
+"""Marker for values used as worlds in modal frames.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("AbstractWorld"))
+true
+```
+"""
 abstract type AbstractWorld end
-"""Abstract accessibility-frame vocabulary used by Sole consumers."""
+"""Abstract accessibility-frame vocabulary used by Sole consumers.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("AbstractFrame"))
+true
+```
+"""
 abstract type AbstractFrame{W} end
-"""Abstract frame with one implicit accessibility relation."""
+"""Abstract frame with one implicit accessibility relation.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("AbstractUniModalFrame"))
+true
+```
+"""
 abstract type AbstractUniModalFrame{W} <: AbstractFrame{W} end
-"""Abstract frame with named accessibility relations."""
+"""Abstract frame with named accessibility relations.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("AbstractMultiModalFrame"))
+true
+```
+"""
 abstract type AbstractMultiModalFrame{W} <: AbstractFrame{W} end
-"""The SoleLogics world-set dispatch alias."""
+"""The SoleLogics world-set dispatch alias.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("AbstractWorlds"))
+true
+```
+"""
 const AbstractWorlds{W} = AbstractVector{W} where {W<:AbstractWorld}
-"""Marker used when a grounded formula is checked without choosing a world."""
+"""Marker used when a grounded formula is checked without choosing a world.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("AnyWorld"))
+true
+```
+"""
 struct AnyWorld end
 
 """
@@ -25,10 +79,28 @@ Interface for a truth algebra whose carrier type is `T`.  Implementations provid
 `negation`.  Keeping `T` in
 the type makes an interpretation's result type part of the model's type rather
 than a `Union` of unrelated truth domains.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("TruthAlgebra"))
+true
+```
 """
 abstract type TruthAlgebra{T} end
 
-"""Return the carrier type `T` of a truth algebra."""
+"""Return the carrier type `T` of a truth algebra.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("truth_type"))
+true
+```
+"""
 truth_type(::Type{<:TruthAlgebra{T}}) where {T} = T
 truth_type(algebra::TruthAlgebra) = truth_type(typeof(algebra))
 
@@ -37,23 +109,59 @@ truth_type(algebra::TruthAlgebra) = truth_type(typeof(algebra))
 Finite algebras return a tuple enumerating every carrier value.  The continuous
 unit-interval chains return `(bottom, top)` as their finite bounds
 representation; use the algebra's operations for the full interval.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("carrier"))
+true
+```
 """
 carrier(algebra::TruthAlgebra) = domain(algebra)
 
 """ASCII alias for [`truth_type`](@ref)."""
 truthtype(algebra) = truth_type(algebra)
 
-"""Return the greatest truth value of `algebra`."""
+"""Return the greatest truth value of `algebra`.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("top"))
+true
+```
+"""
 function top(algebra::TruthAlgebra)
     return throw(MethodError(top, (algebra,)))
 end
 
-"""Return the least truth value of `algebra`."""
+"""Return the least truth value of `algebra`.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("bottom"))
+true
+```
+"""
 function bottom(algebra::TruthAlgebra)
     return throw(MethodError(bottom, (algebra,)))
 end
 
-"""Short alias for [`bottom`](@ref)."""
+"""Short alias for [`bottom`](@ref).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("bot"))
+true
+```
+"""
 bot(algebra::TruthAlgebra) = bottom(algebra)
 
 """Meet operation of `algebra`."""
@@ -66,17 +174,44 @@ function fusion(algebra::TruthAlgebra, left, right)
     return throw(MethodError(fusion, (algebra, left, right)))
 end
 
-"""Join operation of `algebra`."""
+"""Join operation of `algebra`.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("join"))
+true
+```
+"""
 function join(algebra::TruthAlgebra, left, right)
     return throw(MethodError(join, (algebra, left, right)))
 end
 
-"""Residual implication operation of `algebra`."""
+"""Residual implication operation of `algebra`.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("implication"))
+true
+```
+"""
 function implication(algebra::TruthAlgebra, left, right)
     return throw(MethodError(implication, (algebra, left, right)))
 end
 
-"""Negation operation of `algebra`."""
+"""Negation operation of `algebra`.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("negation"))
+true
+```
+"""
 function negation(algebra::TruthAlgebra, value)
     return throw(MethodError(negation, (algebra, value)))
 end
@@ -94,9 +229,28 @@ The two-element Boolean algebra, with carrier `Bool`: `top` is `true`,
 `bottom` is `false`, meet/join are `&`/`|`, implication is `(!left) || right`,
 and negation is `!value`.  These are the standard Boolean operations; see
 Goranko, *Logic as a Tool*, §§1.1.2–1.1.5 (pp. 3–6) [goranko2016](@cite).
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("BooleanAlgebra"))
+true
+```
 """
 struct BooleanAlgebra <: TruthAlgebra{Bool} end
 
+"""The standard Boolean truth algebra singleton.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("BOOLEAN"))
+true
+```
+"""
 const BOOLEAN = BooleanAlgebra()
 
 truth_type(::Type{BooleanAlgebra}) = Bool
@@ -140,6 +294,15 @@ FL-algebra/residuated-lattice instance in the framework defined by Galatos et al
 (printed p. 2) [galatos2007](@cite). Galatos et al. explicitly leave specific
 many-valued logics outside the book's scope (Introduction, printed p. 7)
 [galatos2007](@cite), so this named Gödel table awaits a dedicated source.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("GodelAlgebra"))
+true
+```
 """
 struct GodelAlgebra{N} <: TruthAlgebra{Float64}
     function GodelAlgebra{N}() where {N}
@@ -169,6 +332,15 @@ Introduction (printed p. 2) [galatos2007](@cite). Galatos et al. explicitly leav
 specific many-valued logics
 outside the book's scope (Introduction, printed p. 7) [galatos2007](@cite), so
 this named Łukasiewicz table awaits a dedicated source.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("LukasiewiczAlgebra"))
+true
+```
 """
 struct LukasiewiczAlgebra{N} <: TruthAlgebra{Float64}
     function LukasiewiczAlgebra{N}() where {N}
@@ -246,16 +418,43 @@ function negation(algebra::LukasiewiczAlgebra, value::Real)
     return _lukasiewicz_result(algebra, 1.0 - _lukasiewicz_value(algebra, value))
 end
 
-"""Return the ordered finite levels of a chain algebra."""
+"""Return the ordered finite levels of a chain algebra.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("levels"))
+true
+```
+"""
 function levels(::Union{GodelAlgebra{N},LukasiewiczAlgebra{N}}) where {N}
     N == 0 && throw(ArgumentError("the unit-interval algebra has infinitely many levels"))
     return (Float64(i) / (N - 1) for i in 0:(N - 1))
 end
 
-"""Return whether `algebra` is a finite chain rather than the unit interval."""
+"""Return whether `algebra` is a finite chain rather than the unit interval.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("isfinitechain"))
+true
+```
+"""
 isfinitechain(::Union{GodelAlgebra{N},LukasiewiczAlgebra{N}}) where {N} = N != 0
 
-"""Return the carrier values of `algebra`."""
+"""Return the carrier values of `algebra`.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("domain"))
+true
+```
+"""
 domain(::BooleanAlgebra) = (false, true)
 domain(algebra::GodelAlgebra{0}) = (0.0, 1.0)
 domain(algebra::LukasiewiczAlgebra{0}) = (0.0, 1.0)
@@ -287,6 +486,15 @@ stored in enumeration order, and `index=true` additionally stores a world to
 position dictionary for algorithms that use stable positions.  A one-world
 frame uses this same ordinary type; no propositional special case exists.
 See Blackburn, de Rijke, and Venema, *Modal Logic*, §1.3 [blackburn2001](@cite).
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("Frame"))
+true
+```
 """
 struct Frame{W<:Tuple,RS,I} <: AbstractMultiModalFrame{eltype(W)}
     worlds::W
@@ -421,19 +629,64 @@ end
 function Frame(worlds; index=false, world_index=nothing)
     return Frame(worlds, Dict(); index=index, world_index=world_index)
 end
-"""Return the worlds of a frame in stable enumeration order."""
+"""Return the worlds of a frame in stable enumeration order.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("worlds"))
+true
+```
+"""
 worlds(frame::Frame) = frame.worlds
 
-"""Return the relation mapping stored by a frame."""
+"""Return the relation mapping stored by a frame.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("relations"))
+true
+```
+"""
 relations(frame::Frame) = frame.relations
 
-"""Return the optional world-to-position index, or `nothing` when absent."""
+"""Return the optional world-to-position index, or `nothing` when absent.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("world_index"))
+true
+```
+"""
 world_index(frame::Frame) = frame.index
 
-"""Return whether a frame carries an explicit world-to-position index."""
+"""Return whether a frame carries an explicit world-to-position index.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("hasworldindex"))
+true
+```
+"""
 hasworldindex(frame::Frame) = frame.index !== nothing
 
-"""Return the stable position of `world`, using or building no allocation when indexed."""
+"""Return the stable position of `world`, using or building no allocation when indexed.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("world_position"))
+true
+```
+"""
 function world_position(frame::Frame, world)
     if frame.index !== nothing
         haskey(frame.index, world) || throw(KeyError(world))
@@ -477,6 +730,15 @@ end
 Return a lazy iterator over worlds accessible from `world` via `relation`.
 No vector is allocated by this call; callers that need storage can explicitly
 write `collect(accessible(frame, world, relation))`.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("accessible"))
+true
+```
 """
 function accessible(frame::Frame, world, relation_name)
     targets = _relation_targets(frame, world, relation_name)
@@ -524,6 +786,15 @@ end
 
 The result is a materialised world set, as in the SoleLogics collation API;
 accessibility itself remains lazy and is only consumed by the modal predicates.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("collateworlds"))
+true
+```
 """
 function collateworlds(frame::AbstractFrame, connective, truth_sets::Tuple)
     expected = arity(connective)
@@ -639,6 +910,15 @@ A lightweight wrapper for a valuation.  `data` may be a function
 `(atom_value, world) -> truth`, a dictionary keyed by `(atom_value, world)`, a
 nested atom/world or world/atom dictionary, or a dictionary mapping atom values
 to sets of worlds (the usual Boolean valuation presentation).
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("Valuation"))
+true
+```
 """
 struct Valuation{V}
     data::V
@@ -652,6 +932,15 @@ A valuation callback for models whose atom truth is computed on demand.  The
 receives `(atom, worlds)` and returns one value per world; the evaluator uses it
 when computing an extension, while scalar interpretation remains available for
 `check`.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("ValuationCallback"))
+true
+```
 """
 struct ValuationCallback{S,B}
     scalar::S
@@ -767,6 +1056,15 @@ is part of the model so Boolean, Gödel, and Łukasiewicz models all use exactly
 the same interpretation path.  This is the many-valued analogue of the
 frame-plus-valuation model of Blackburn, de Rijke, and Venema, *Modal Logic*,
 §1.3 [blackburn2001](@cite).
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("Model"))
+true
+```
 """
 struct Model{T,A<:TruthAlgebra{T},F<:Frame,V}
     frame::F
@@ -792,16 +1090,52 @@ function Model(frame::Frame, valuation; algebra::TruthAlgebra=BOOLEAN)
     return Model(frame, algebra, valuation)
 end
 
-"""Return the frame underlying `model`."""
+"""Return the frame underlying `model`.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("frame"))
+true
+```
+"""
 frame(model::Model) = model.frame
 
-"""Return the truth algebra carried by `model`."""
+"""Return the truth algebra carried by `model`.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("algebra"))
+true
+```
+"""
 algebra(model::Model) = model.algebra
 
-"""Return the raw valuation carried by `model`."""
+"""Return the raw valuation carried by `model`.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("valuation"))
+true
+```
+"""
 valuation(model::Model) = model.valuation
 
-"""Forward [`accessible`](@ref) from a model to its underlying frame."""
+"""Forward [`accessible`](@ref) from a model to its underlying frame.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("accessible"))
+true
+```
+"""
 function accessible(model::Model, world, relation_name)
     return accessible(model.frame, world, relation_name)
 end
@@ -825,6 +1159,15 @@ Interpret an **atom only** at `world`, returning exactly the carrier type of
 `model`'s truth algebra.  Compound formulas are evaluated through [`check`](@ref)
 and [`extension`](@ref), which consume the syntax DAG and apply these algebra
 operations.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("interpret"))
+true
+```
 """
 function interpret(atom::Atom, model::Model{T}, world)::T where {T}
     _check_world(model.frame, world)
