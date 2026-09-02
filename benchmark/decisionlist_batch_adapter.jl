@@ -85,8 +85,25 @@ function _source_dataset(dataset)
     dataset isa SoleData.MultiLogiset ? SoleData.modality(dataset, 1) : dataset
 end
 
+
+function _vectorized_callback(scalar, world_count)
+    buffer = falses(world_count)
+    (condition, worlds) -> begin
+        length(worlds) == length(buffer) || throw(ArgumentError(
+            "vectorized valuation received an unexpected world count"))
+        for (position, world) in enumerate(worlds)
+            buffer[position] = scalar(condition, world)
+        end
+        buffer
+    end
+end
+
 function _model_family(dataset, relation_names; vectorized=true)
     models = Any[]
+    # Frames are independent of the instance valuation.  Reuse one exact frame
+    # object when the dataset supplies the same world order and relations; this
+    # also lets Aletheia's relation adjacency cache serve every instance.
+    native_frame = nothing
     for i_instance in 1:SoleData.ninstances(dataset)
         source_frame = SoleData.frame(dataset, i_instance)
         source_worlds = collect(SoleData.allworlds(source_frame))
@@ -96,10 +113,14 @@ function _model_family(dataset, relation_names; vectorized=true)
                 for world in source_worlds
             ) for relation_name in relation_names
         )
-        native_frame = Aletheia.Frame(source_worlds, adjacency; index=true)
+        candidate = Aletheia.Frame(source_worlds, adjacency; index=true)
+        if native_frame === nothing || Aletheia.worlds(native_frame) != Aletheia.worlds(candidate) ||
+                Aletheia.relations(native_frame) != Aletheia.relations(candidate)
+            native_frame = candidate
+        end
         scalar = (condition, world) -> condition isa _BatchTruth ? condition.value :
             SoleData.checkcondition(condition, dataset, i_instance, world)
-        batch = vectorized ? ((condition, worlds) -> BitVector(scalar(condition, world) for world in worlds)) : nothing
+        batch = vectorized ? _vectorized_callback(scalar, length(source_worlds)) : nothing
         valuation = Aletheia.ValuationCallback(scalar; vectorized=batch)
         push!(models, Aletheia.Model(native_frame, Aletheia.BOOLEAN, valuation))
     end

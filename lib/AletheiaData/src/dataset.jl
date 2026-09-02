@@ -190,6 +190,41 @@ The result is one vector per formula, and each vector contains extensions in
 instance order.  This is the family counterpart of
 [`extension(formulas, model)`](@ref).
 """
+function _batch_extension(normalized::Vector{Formula}, family::ModelFamily)
+    nodes, positions = _batch_evaluation_nodes(normalized)
+    models = family.models
+    isempty(models) && return [Any[] for _ in normalized]
+    first_model = first(models)
+    last_frame = frame(first_model)
+    plan = _evaluation_plan(nodes, first_model)
+    first_batch = _batch_evaluate(normalized, nodes, positions, first_model, plan)
+    results = [Vector{typeof(first_batch[position])}(undef, length(models))
+        for position in eachindex(normalized)]
+    for position in eachindex(normalized)
+        results[position][1] = first_batch[position]
+    end
+    for (instance, model) in enumerate(models)
+        instance == 1 && continue
+        model_frame = frame(model)
+        if model_frame !== last_frame
+            last_frame = model_frame
+            plan = _evaluation_plan(nodes, model)
+        end
+        batch = _batch_evaluate(normalized, nodes, positions, model, plan)
+        for position in eachindex(normalized)
+            results[position][instance] = batch[position]
+        end
+    end
+    results
+end
+
+function extension(formulas::AbstractVector, family::ModelFamily)
+    normalized = _batch_formulas(formulas)
+    isempty(normalized) && return Vector{Any}[]
+    _batch_extension(normalized, family)
+end
+
+# Retain the protocol fallback for custom family implementations.
 function extension(formulas::AbstractVector, family::AbstractModelFamily)
     normalized = _batch_formulas(formulas)
     isempty(normalized) && return Vector{Any}[]

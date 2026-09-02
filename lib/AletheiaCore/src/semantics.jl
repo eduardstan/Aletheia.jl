@@ -968,9 +968,9 @@ end
 
 function atom_values(valuation::ValuationCallback, atom::Atom, worlds)
     batch = valuation.vectorized
-    batch === nothing ?
-        [valuation.scalar(value(atom), world) for world in worlds] :
-        collect(batch(value(atom), worlds))
+    batch === nothing && return [valuation.scalar(value(atom), world) for world in worlds]
+    result = batch(value(atom), worlds)
+    result isa AbstractVector ? result : collect(result)
 end
 
 

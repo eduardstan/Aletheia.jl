@@ -2,7 +2,9 @@
 module AletheiaData
 
 using AletheiaCore
-import AletheiaCore: extension, check, clear!, worlds, world_index, _batch_evaluation_nodes, _batch_formulas, ValuationCallback
+import AletheiaCore: extension, check, clear!, worlds, world_index,
+    _batch_evaluation_nodes, _batch_formulas, _batch_evaluate, _evaluation_plan,
+    ValuationCallback
 include("dataset.jl")
 include("scalar.jl")
 

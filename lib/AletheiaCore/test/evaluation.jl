@@ -122,6 +122,8 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
         (value, world) -> (batch_calls[] += 1; value == "p" ? world != :w3 : world != :w1)))
     batch_shared = [conjunction, disjunction, branch(pool, →, p, q)]
     batch_shared_result = extension(batch_shared, counted_batch)
+    @test @inferred(extension(batch_shared, batch_boolean)) ==
+        [extension(formula, batch_boolean) for formula in batch_shared]
     plain_counted = Model(frame, BOOLEAN, Dict("p" => Set([:w1, :w2]), "q" => Set([:w2, :w3])))
     @test batch_shared_result == [extension(formula, plain_counted) for formula in batch_shared]
     @test batch_calls[] == 2 * length(worlds(frame))

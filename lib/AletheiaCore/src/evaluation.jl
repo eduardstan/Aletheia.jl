@@ -292,13 +292,34 @@ end
 
 function _batch_evaluate(formulas::AbstractVector{<:Formula}, model::Model, ::Type{E})::Vector{E} where E
     nodes, positions = _batch_evaluation_nodes(formulas)
-    values = Vector{E}(undef, length(nodes))
+    _batch_evaluate(formulas, nodes, positions, model, E)
+end
+
+# The family evaluator reuses the union-DAG plan across instances.  Formula
+# roots are still copied so repeated roots remain independent to callers.
+function _batch_evaluate(formulas::AbstractVector{<:Formula}, nodes::Vector{_EvaluationNode},
+        positions::Dict{Int,Int}, model::Model{Bool}, plan::_EvaluationPlan)::Vector{BitVector}
+    _batch_evaluate(formulas, nodes, positions, model, plan, BitVector)
+end
+
+function _batch_evaluate(formulas::AbstractVector{<:Formula}, nodes::Vector{_EvaluationNode},
+        positions::Dict{Int,Int}, model::Model{T}, plan::_EvaluationPlan)::Vector{Vector{T}} where T
+    _batch_evaluate(formulas, nodes, positions, model, plan, Vector{T})
+end
+
+function _batch_evaluate(formulas::AbstractVector{<:Formula}, nodes::Vector{_EvaluationNode},
+        positions::Dict{Int,Int}, model::Model, ::Type{E})::Vector{E} where E
     plan = _evaluation_plan(nodes, model)
+    _batch_evaluate(formulas, nodes, positions, model, plan, E)
+end
+
+function _batch_evaluate(formulas::AbstractVector{<:Formula}, nodes::Vector{_EvaluationNode},
+        positions::Dict{Int,Int}, model::Model, plan::_EvaluationPlan, ::Type{E})::Vector{E} where E
+    values = Vector{E}(undef, length(nodes))
     root_slots = [positions[id(formula)] for formula in formulas]
     for (slot, node) in enumerate(nodes)
         values[slot] = _node_extension(node, first(formulas), model, values, plan, E)
     end
-    # Each returned extension is independent, including repeated roots.
     [deepcopy(values[slot]) for slot in root_slots]
 end
 

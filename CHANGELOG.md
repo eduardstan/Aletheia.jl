@@ -5,17 +5,9 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
 
 ## Unreleased
 
-- Documented every public export with a runnable `jldoctest` example.
-- Added focused `AletheiaAudit` and `AletheiaNeSy` packages. Audit artifacts emit
-  deterministic replayable traces and applicability-aware metrics; the neural
-  interface validates callable network leaves and supports exact finite
-  symbolic round trips. Semantic loss remains disabled until a sound gradient
-  profile exists.
-- Reframed the documentation around the shared pooled syntax DAG and
-  evaluation walk, with package-specific readings for truth algebras,
-  distribution-semantics circuits, scalar data, typed graphs, audit traces,
-  and the neural-symbolic boundary. Reorganized navigation by package
-  dependency order and added the one-engine overview.
+- Reduced fresh-dataset batch evaluation churn by reusing the pooled union-DAG
+  plan, preserving relation-cache visibility, and reusing vectorized callback
+  buffers for prepared decision-list apply.
 
 - Added the focused `AletheiaCircuits` package for finite distribution
   semantics: normalized independent choices, ground acyclic rules, certified
