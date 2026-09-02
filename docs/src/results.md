@@ -439,24 +439,21 @@ reuse. The published values below are scope-limited.
 
 ### After allocation fix
 
-The rerun is retained in `data/benchmark-run/deployed-apply-after.txt`. Timing
-columns are withheld because the quiet-machine gate failed (`load_gate=FAIL
-start=1.64 end=4.97 peak=6.52`) and allocation counts are load-independent;
-timing comparison awaits a passing run. The regression-test budget remains the
-guarantee.
+The rerun is retained in `data/benchmark-run/deployed-apply-after.txt`. The quiet-machine and differential gates passed (`load_gate=PASS start=1.21 end=1.67 peak=1.67`, `differential=PASS`). Recorded uptime was `uptime_before_differential= 14:27:01 up 3 days, 20:54,  1 user,  load average: 1.21, 1.30, 1.13` and `uptime_after_run= 14:49:57 up 3 days, 21:17,  1 user,  load average: 1.67, 1.57, 1.38`.
 
-| mode | warm reuse allocations / bytes (before -> after) | fresh-dataset churn allocations / bytes (before -> after) |
+| mode | warm reuse (ms; allocations / bytes) (before → after) | fresh-dataset churn (ms; allocations / bytes) (before → after) |
 | --- | ---: | ---: |
-| Aletheia bridge scalar-data | 14,371 / 4,117,952 -> 12,965 / 3,996,384 | 117,507 / 21,725,888 -> 116,101 / 21,604,320 |
-| Aletheia bridge vectorized scalar-data | 7,427 / 1,384,256 -> 5,797 / 1,251,936 | 110,563 / 18,992,192 -> 108,933 / 18,859,872 |
-| Aletheia dense scalar-data | 14,371 / 4,117,952 -> 12,965 / 3,996,384 | 117,507 / 21,725,888 -> 116,101 / 21,604,320 |
-| Aletheia dense vectorized scalar-data | 7,427 / 1,384,256 -> 5,797 / 1,251,936 | 110,563 / 18,992,192 -> 108,933 / 18,859,872 |
-| Aletheia scalar callback | 14,358 / 3,759,120 -> 12,369 / 3,607,984 | 117,494 / 21,367,056 -> 18,815 / 4,708,480 |
-| Aletheia vectorized batch callback | 7,414 / 1,274,512 -> 4,529 / 635,056 | 110,550 / 18,882,448 -> 10,975 / 1,735,552 |
-| decision-list apply | 36,515 / 1,415,616 -> 36,693 / 1,421,888 | 109,330 / 6,100,080 -> 110,135 / 6,103,200 |
-| deployed modal-tree apply | 470 / 34,016 -> 470 / 34,016 | 470 / 34,016 -> 470 / 34,016 |
-| Sole formula-check | 103,127 / 4,028,272 -> 103,127 / 4,028,272 | 222,979 / 10,762,736 -> 222,979 / 10,762,736 |
-| supported-warm | 103,127 / 4,028,272 -> 103,127 / 4,028,272 | 222,979 / 10,762,736 -> 222,979 / 10,762,736 |
+| Sole formula-check | 10.293 → 8.054 ms; 103,127 / 4,028,272 -> 103,127 / 4,028,272 | 18.209 → 15.334 ms; 222,979 / 10,762,736 -> 222,979 / 10,762,736 |
+| supported-cold (construction + first check) | 18.833 → 15.828 ms; 223,554 / 10,934,488 -> 223,554 / 10,934,488 | 19.904 → 15.860 ms; 223,554 / 10,934,488 -> 223,554 / 10,934,488 |
+| supported-warm | 10.094 → 8.324 ms; 103,127 / 4,028,272 -> 103,127 / 4,028,272 | 19.353 → 15.593 ms; 222,979 / 10,762,736 -> 222,979 / 10,762,736 |
+| deployed modal-tree apply | 0.192 → 0.057 ms; 470 / 34,016 -> 470 / 34,016 | 0.074 → 0.075 ms; 470 / 34,016 -> 470 / 34,016 |
+| decision-list apply | 4.348 → 3.697 ms; 36,515 / 1,415,616 -> 36,693 / 1,421,888 | 11.128 → 9.078 ms; 109,330 / 6,100,080 -> 110,135 / 6,103,200 |
+| Aletheia scalar callback | 1.249 → 0.794 ms; 14,358 / 3,759,120 -> 12,369 / 3,607,984 | 15.958 → 1.427 ms; 117,494 / 21,367,056 -> 18,815 / 4,708,480 |
+| Aletheia vectorized batch callback | 0.749 → 0.444 ms; 7,414 / 1,274,512 -> 4,529 / 635,056 | 18.235 → 1.017 ms; 110,550 / 18,882,448 -> 10,975 / 1,735,552 |
+| Aletheia bridge scalar-data | 1.256 → 0.838 ms; 14,371 / 4,117,952 -> 12,965 / 3,996,384 | 15.252 → 12.392 ms; 117,507 / 21,725,888 -> 116,101 / 21,604,320 |
+| Aletheia bridge vectorized scalar-data | 0.683 → 0.551 ms; 7,427 / 1,384,256 -> 5,797 / 1,251,936 | 16.148 → 12.211 ms; 110,563 / 18,992,192 -> 108,933 / 18,859,872 |
+| Aletheia dense scalar-data | 1.268 → 0.849 ms; 14,371 / 4,117,952 -> 12,965 / 3,996,384 | 17.244 → 12.153 ms; 117,507 / 21,725,888 -> 116,101 / 21,604,320 |
+| Aletheia dense vectorized scalar-data | 0.871 → 0.533 ms; 7,427 / 1,384,256 -> 5,797 / 1,251,936 | 16.019 → 13.395 ms; 110,563 / 18,882,448 -> 108,933 / 18,859,872 |
 
 The scale sweep keeps the trained formula roots fixed and changes only the
 supported dataset size. It compares native `SoleModels.apply` with prepared
@@ -476,17 +473,15 @@ skipped rather than imputed.
 | 256 × 8 | 51.334 / 148.870 ms | 36.094 / 389.007 ms | 12.506 / 353.174 ms |
 | 512 × 8 | 113.189 / 352.923 ms | 98.969 / 706.175 ms | 26.180 / 727.951 ms |
 
-### After allocation fix (timings withheld)
+### After allocation fix
 
-The new scale cases are capped at 128 instances. Timing columns are withheld
-because the quiet-machine gate failed (`load_gate=FAIL start=1.64 end=4.97
-peak=6.52`); allocation counts are load-independent.
+The new scale cases are capped at 128 instances. The quiet-machine and differential gates passed (`load_gate=PASS start=1.21 end=1.67 peak=1.67`, `differential=PASS`).
 
-| instances × points | native warm allocations / bytes (before -> after) | Aletheia scalar warm allocations / bytes (before -> after) | Aletheia vectorized warm allocations / bytes (before -> after) | native churn allocations / bytes (before -> after) | Aletheia scalar churn allocations / bytes (before -> after) | Aletheia vectorized churn allocations / bytes (before -> after) |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 32 × 8 | 77,398 / 2,971,376 -> 77,754 / 2,983,920 | 28,661 / 7,498,528 -> 24,560 / 7,187,392 | 14,773 / 2,529,312 -> 8,880 / 1,241,536 | 230,125 / 12,692,424 -> 231,828 / 12,713,904 | 234,933 / 42,714,400 -> 31,006 / 8,287,888 | 221,045 / 37,745,184 -> 15,326 / 2,342,032 |
-| 64 × 8 | 122,406 / 4,703,056 -> 123,064 / 4,726,224 | 57,273 / 14,982,240 -> 48,944 / 14,346,432 | 29,497 / 5,043,808 -> 17,584 / 2,454,720 | 386,732 / 21,870,384 -> 389,674 / 21,927,360 | 469,817 / 85,413,984 -> 55,390 / 15,446,928 | 442,041 / 75,475,552 -> 24,030 / 3,555,216 |
-| 128 × 8 | 195,544 / 7,555,704 -> 196,590 / 7,592,440 | 114,489 / 29,940,416 -> 97,712 / 28,664,736 | 58,937 / 10,063,552 -> 34,992 / 4,881,312 | 666,596 / 38,011,568 -> 671,308 / 38,095,144 | 939,577 / 170,803,904 -> 104,158 / 29,765,232 | 884,025 / 150,927,040 -> 41,438 / 5,981,808 |
+| instances × points | native warm / churn (ms; before → after) | Aletheia scalar warm / churn (ms; before → after) | Aletheia vectorized warm / churn (ms; before → after) | native allocations / bytes (warm; before → after) | Aletheia scalar allocations / bytes (warm; before → after) | Aletheia vectorized allocations / bytes (warm; before → after) | native allocations / bytes (churn; before → after) | Aletheia scalar allocations / bytes (churn; before → after) | Aletheia vectorized allocations / bytes (churn; before → after) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 32 × 8 | 8.804 → 7.641 / 23.152 → 18.993 ms | 1.933 → 1.458 / 41.266 → 2.655 ms | 1.645 → 0.833 / 36.654 → 1.492 ms | 77,398 / 2,971,376 -> 77,754 / 2,983,920 | 28,661 / 7,498,528 -> 24,560 / 7,187,392 | 14,773 / 2,529,312 -> 8,880 / 1,241,536 | 230,125 / 12,692,424 -> 231,828 / 12,713,904 | 234,933 / 42,714,400 -> 31,006 / 8,287,888 | 221,045 / 37,745,184 -> 15,326 / 2,342,032 |
+| 64 × 8 | 14.168 → 11.827 / 38.021 → 31.065 ms | 8.157 → 3.557 / 79.684 → 3.810 ms | 3.051 → 1.575 / 77.516 → 2.206 ms | 122,406 / 4,703,056 -> 123,064 / 4,726,224 | 57,273 / 14,982,240 -> 48,944 / 14,346,432 | 29,497 / 5,043,808 -> 17,584 / 2,454,720 | 386,732 / 21,870,384 -> 389,674 / 21,927,360 | 469,817 / 85,413,984 -> 55,390 / 15,446,928 | 442,041 / 75,475,552 -> 24,030 / 3,555,216 |
+| 128 × 8 | 23.382 → 18.583 / 66.419 → 50.236 ms | 16.619 → 9.232 / 185.868 → 10.393 ms | 7.559 → 3.607 / 166.299 → 4.659 ms | 195,544 / 7,555,704 -> 196,590 / 7,592,440 | 114,489 / 29,940,416 -> 97,712 / 28,664,736 | 58,937 / 10,063,552 -> 34,992 / 4,881,312 | 666,596 / 38,011,568 -> 671,308 / 38,095,144 | 939,577 / 170,803,904 -> 104,158 / 29,765,232 | 884,025 / 150,927,040 -> 41,438 / 5,981,808 |
 
 A one-iteration `Profile.Allocs` profile is recorded beside the scale rows. It
 runs the exact apply call on a never-used fresh fixture after a separate
@@ -507,7 +502,7 @@ reuse. This is a result for the declared workload and mode, never
 "universally faster". Reproduce it with the package paths and command in
 [`benchmark/README.md`](https://github.com/eduardstan/Aletheia.jl/blob/main/benchmark/README.md);
 this run is publishable because both recorded gates pass. The full per-seed output is retained in
-[`data/benchmark-run/deployed-apply.txt`](https://github.com/eduardstan/Aletheia.jl/blob/main/data/benchmark-run/deployed-apply.txt).
+[`data/benchmark-run/deployed-apply-after.txt`](https://github.com/eduardstan/Aletheia.jl/blob/main/data/benchmark-run/deployed-apply-after.txt).
 
 ## Correctness and coverage
 
