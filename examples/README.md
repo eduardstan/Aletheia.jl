@@ -12,3 +12,4 @@ Each example is a small, self-contained lesson and uses Aletheia's rich terminal
 - `normal_forms.jl` — Convert a classical formula to CNF and DNF and check semantic preservation.
 - `standard_translation.jl` — Compare direct modal evaluation with first-order standard translation.
 - `model_family.jl` — Evaluate one formula across a family of models sharing a frame.
+- `showcase/` — Follow one committed dataset through crisp, many-valued, probabilistic, graph, and neural-symbolic readings.

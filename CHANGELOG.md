@@ -8,6 +8,8 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
 - Corrected documentation paths, profiler line references, compatibility
   normalization claims, and the description of Documenter page-size thresholds
   to match the current package layout and implementation.
+- Added a one-dataset showcase bundle with a committed synthetic dataset, pinned seed, scalar and crisp decision-list checks, a validated finite many-valued reading, certified distribution-semantics circuits with a total-choice oracle, typed graph paths with provenance replay, and exact neural-symbolic extraction with audit metrics and hashes.
+
 - Standardized documentation notation and formatting: unified transition arrows to `→` throughout prose and tables, normalized table unit conventions (plain integers with thousands separators for allocations, exact byte conversions with thousands separators for memory, and three-decimal milliseconds for times), added a Notation specification in development docs, ensured benchmark tables reference artifact files and gate lines, aligned canonical terminology (`fresh-dataset churn`, `warm reuse`, `first use`, `scalar-data layer`, `callback path`, `knowledge graph`, `distribution semantics`), sentence-cased headings, and added section-scoped package cross-references.
 - Documented every public export with a runnable `jldoctest` example.
 - Added focused `AletheiaAudit` and `AletheiaNeSy` packages. Audit artifacts emit

@@ -46,6 +46,7 @@ makedocs(
         "Overview" => "index.md",
         "One engine, many readings" => "engine.md",
         "Quick start" => "quickstart.md",
+        "One-dataset showcase" => "showcase.md",
         "Packages" => [
             "AletheiaCore" => [
                 "Syntax and design" => "design.md",

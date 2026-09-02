@@ -433,6 +433,7 @@ end
 include("umbrella_presentation.jl")
 include("citations.jl")
 include("examples.jl")
+include("showcase.jl")
 include("benchmark_load_gate.jl")
 include("benchmark_measurement.jl")
 
