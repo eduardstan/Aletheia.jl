@@ -49,7 +49,11 @@ mkpath(dirname(result_path))
 sections = ("supported-construction", "sole-formula-check", "supported-cold",
     "supported-warm", "deployed-modal-tree", "decision-list-apply",
     "aletheia-scalar-construction", "aletheia-scalar",
-    "aletheia-vectorized-construction", "aletheia-vectorized")
+    "aletheia-vectorized-construction", "aletheia-vectorized",
+    "aletheia-data-bridge-scalar-construction", "aletheia-data-bridge-scalar",
+    "aletheia-data-bridge-vectorized-construction", "aletheia-data-bridge-vectorized",
+    "aletheia-data-scalar-construction", "aletheia-data-scalar",
+    "aletheia-data-vectorized-construction", "aletheia-data-vectorized")
 records = String[]
 errors = String[]
 run_start_uptime = "unavailable"
@@ -77,11 +81,11 @@ try
         println(io, "modaldecisiontrees_path=$(MODALDECISIONTREES_PATH)")
         println(io, "seeds=0xA1E7_2024,0x5EED_2025,0xC0FF_EE42,0x1234_5678,0x9ABC_DEF0 data_seed=$(APPLY_DATA_SEED) train_seed_default=$(APPLY_TRAIN_SEED)")
         println(io, "workload=instances=$(APPLY_NINSTANCES),points=$(APPLY_NPOINTS),depth=$(APPLY_DEPTH)")
-        println(io, "scale_cases=128:8,128:64,1024:8,1024:64; scale_modes=decision-list-apply,aletheia-scalar,aletheia-vectorized")
-        println(io, "profile=one fresh-dataset churn iteration; vectorized callback versus native decision-list apply")
+        println(io, "scale_cases=32:8,64:8,128:8,256:8,512:8; scale_modes=decision-list-apply,aletheia-scalar,aletheia-vectorized; scale_timeout_s=900; scale_samples=3; scale_address_space_kb=6000000")
+        println(io, "profile=Profile.Allocs sample_rate=1 on one never-used fresh-dataset churn apply; vectorized callback versus native decision-list apply")
         println(io, "sole_controls=full_memo=true one_step_memo=true global_precompute=true relational_precompute=false")
         println(io, "sole_paths=formula-check=SoleData.check; modal-tree=ModalDecisionTrees.apply/modalstep/checkcondition; decision-list=SoleModels.apply/SoleLogics.check")
-        println(io, "aletheia_path=DecisionListBatchAdapter prepared model family; scalar or vectorized ValuationCallback; conversion outside apply timing")
+        println(io, "aletheia_path=DecisionListBatchAdapter prepared model family; callback scalar/vectorized and DenseFeatureStore scalar/vectorized paths; conversion outside apply timing")
         for package_name in ("Aletheia", "SoleLogics", "SoleData", "SoleModels", "ModalDecisionTrees")
             dependency = first(filter(dep -> dep.name == package_name,
                 collect(values(Pkg.dependencies()))))
@@ -130,22 +134,29 @@ try
 
     # Scaling compares only native decision-list apply with the two prepared
     # Aletheia callbacks. Each case retains all five seeded rows.
-    for (ninstances, npoints) in ((128, 8), (128, 64), (1024, 8), (1024, 64))
+    for (ninstances, npoints) in ((32, 8), (64, 8), (128, 8), (256, 8), (512, 8))
         before = quiet_check(uptime_line())
         outpath, outio = mktemp(ROOT); close(outio)
         errpath, errio = mktemp(ROOT); close(errio)
-        command = `timeout -k 1s 300s nice -n 15 $(julia) --startup-file=no --project=$environment $(joinpath(@__DIR__, "deployed_apply_scale_worker.jl")) $ninstances $npoints`
+        command = `timeout -k 1s 900s systemd-run --user --scope -q -p MemoryMax=6G
+            /usr/bin/time -v nice -n 15 $(julia) --startup-file=no --project=$environment
+            $(joinpath(@__DIR__, "deployed_apply_scale_worker.jl")) $ninstances $npoints`
         process = run(pipeline(command, stdout=outpath, stderr=errpath); wait=false)
         wait(process)
         output = read(outpath, String)
         stderr = read(errpath, String)
         rm(outpath; force=true); rm(errpath; force=true)
         after = uptime_line()
-        push!(records, "scale-section=instances=$(ninstances),points=$(npoints) uptime_before=$(before) uptime_after=$(after)")
+        maxrss_match = match(r"Maximum resident set size \(kbytes\):\s*(\d+)", stderr)
+        maxrss = maxrss_match === nothing ? "unavailable" : maxrss_match.captures[1]
+        push!(records, "scale-section=instances=$(ninstances),points=$(npoints) maxrss_kb=$(maxrss) uptime_before=$(before) uptime_after=$(after)")
         scale_lines = [strip(line) for line in split(output, '\n')
             if startswith(strip(line), "scale-result ") || startswith(strip(line), "scale-parity=")]
-        if process.exitcode in (124, 137)
-            push!(records, "scale-skip=instances=$(ninstances),points=$(npoints),reason=timeout uptime_before=$(before) uptime_after=$(after)")
+        if process.exitcode == 124
+            push!(records, "scale-skip=instances=$(ninstances),points=$(npoints),reason=timeout maxrss_kb=$(maxrss) uptime_before=$(before) uptime_after=$(after)")
+        elseif process.exitcode in (137, 9) || occursin("Killed process", stderr) ||
+                occursin("Cannot allocate memory", stderr) || occursin("Resource temporarily unavailable", stderr)
+            push!(records, "scale-skip=instances=$(ninstances),points=$(npoints),reason=memory maxrss_kb=$(maxrss) uptime_before=$(before) uptime_after=$(after)")
         elseif process.exitcode != 0
             push!(errors, "scale section instances=$(ninstances),points=$(npoints) exit=$(process.exitcode): $(strip(stderr))")
         elseif isempty(scale_lines)
@@ -167,7 +178,7 @@ try
     after = uptime_line()
     push!(records, "profile-section uptime_before=$(before) uptime_after=$(after)")
     profile_lines = [strip(line) for line in split(profile_output, '\n')
-        if startswith(strip(line), "profile ") || startswith(strip(line), "profile-note=")]
+        if startswith(strip(line), "profile ") || startswith(strip(line), "profile-site ") || startswith(strip(line), "profile-site-source ") || startswith(strip(line), "profile-top-source ") || startswith(strip(line), "profile-cold ") || startswith(strip(line), "profile-note=")]
     profile_process.exitcode == 0 || push!(errors, "profile section exit=$(profile_process.exitcode): $(strip(profile_stderr))")
     isempty(profile_lines) && push!(errors, "profile section emitted no attribution")
     append!(records, ["$line uptime_before=$(before) uptime_after=$(after)" for line in profile_lines])

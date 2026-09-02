@@ -13,7 +13,7 @@ function timed_sample(f)
     diff = Base.GC_Diff(Base.gc_num(), gc_before)
     TimedSample(Float64(elapsed), Int(diff.malloc + diff.realloc + diff.poolalloc + diff.bigalloc), Int(diff.allocd))
 end
-function measure(f; warm=true, samples=5)
+function measure(f; warm=true, samples=3)
     warm && (SINK[] = f())
     observations = [timed_sample(f) for _ in 1:samples]
     times = getfield.(observations, :time)

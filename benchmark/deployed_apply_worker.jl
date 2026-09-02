@@ -34,12 +34,12 @@ end
 
 mode = ARGS[1]
 for seed in APPLY_SEEDS
-    base = build_apply_fixture(train_seed=seed)
+    base = build_apply_fixture(train_seed=seed, scalar_layer=true)
     gate = run_parity_gate(base)
     println("parity=PASS seed=$(seed) rules=$(gate.rules) instances=$(gate.instances) " *
         "extension_cases=$(gate.extension_cases) predictions=$(gate.predictions)")
     # Rebuild after the gate so cache state is explicit for the timed fixture.
-    fixture = build_apply_fixture(train_seed=seed)
+    fixture = build_apply_fixture(train_seed=seed, scalar_layer=true)
 
     if mode === "supported-construction"
         support = SoleData.supports(fixture.dataset)[1]
@@ -51,11 +51,19 @@ for seed in APPLY_SEEDS
                 onestep_precompute_relmemoset=false)
         end
         emit(mode, "construction", m; seed=seed)
-    elseif mode === "aletheia-scalar-construction" || mode === "aletheia-vectorized-construction"
-        vectorized = mode === "aletheia-vectorized-construction"
-        m = measure(; warm=false) do
-            DecisionListBatchAdapter.prepare(fixture.decision_list, fixture.modalities;
-                vectorized=vectorized)
+    elseif endswith(mode, "-construction")
+        vectorized = occursin("vectorized", mode)
+        if startswith(mode, "aletheia-data")
+            builder = occursin("bridge", mode) ? build_bridge_scalar_layer_state :
+                build_dense_scalar_layer_state
+            m = measure(; warm=false) do
+                builder(fixture.dataset, fixture.vector_state; vectorized=vectorized)
+            end
+        else
+            m = measure(; warm=false) do
+                DecisionListBatchAdapter.prepare(fixture.decision_list, fixture.modalities;
+                    vectorized=vectorized)
+            end
         end
         emit(mode, "construction", m; seed=seed)
     else

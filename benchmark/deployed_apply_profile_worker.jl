@@ -1,5 +1,6 @@
 # One-iteration allocation attribution for the fresh-dataset churn phase.
 include(joinpath(@__DIR__, "deployed_apply_common.jl"))
+using Profile
 const SINK = Ref{Any}(nothing)
 function allocation_sample(f)
     GC.gc(); before = Base.gc_num(); SINK[] = f()
@@ -9,30 +10,36 @@ end
 function emit(mode, step, m)
     println("profile mode=$(mode) step=$(step) allocs=$(m.allocs) bytes=$(m.bytes)")
 end
-base = build_apply_fixture(train_seed=first(APPLY_SEEDS))
+base = build_apply_fixture(train_seed=first(APPLY_SEEDS), scalar_layer=true)
 fresh = fresh_fixture(base, make_supported_dataset(APPLY_NINSTANCES, APPLY_NPOINTS))
 run_parity_gate(fresh)
-scalar_state = fresh.scalar_state
-vector_state = fresh.vector_state
-# Warm compilation, then profile the same prepared fresh-dataset operation.
-DecisionListBatchAdapter.apply_prepared(vector_state, fresh.decision_list)
-DecisionListBatchAdapter.apply_prepared(scalar_state, fresh.decision_list)
-vector_extensions = Aletheia.extension(vector_state.formulas, vector_state.family)
-vector_masks = [BitVector(any(values) for values in per_instance) for per_instance in vector_extensions]
-for (step, f) in (("extension-only", () -> Aletheia.extension(vector_state.formulas, vector_state.family)),
-                  ("mask-fold-only", () -> [BitVector(any(values) for values in per_instance)
-                      for per_instance in vector_extensions]),
-                  ("prediction-fold-only", () -> [findfirst(mask -> mask[i], vector_masks)
-                      for i in 1:vector_state.ninstances]),
-                  ("full-apply", () -> DecisionListBatchAdapter.apply_prepared(
-                      vector_state, fresh.decision_list)))
-    emit("aletheia-vectorized", step, allocation_sample(f))
+function profile_fresh_apply(mode, base)
+    # Compile the profiled call shape first; the recorded run is still a
+    # never-used fixture with cold evaluator caches.
+    warm_profile_fixture = fresh_fixture(base, make_supported_dataset(
+        APPLY_NINSTANCES, APPLY_NPOINTS))
+    Profile.Allocs.@profile sample_rate=1 apply_mode(warm_profile_fixture, mode)
+    Profile.Allocs.clear()
+    fresh_fixture_value = fresh_fixture(base, make_supported_dataset(
+        APPLY_NINSTANCES, APPLY_NPOINTS))
+    Profile.Allocs.@profile sample_rate=1 apply_mode(fresh_fixture_value, mode)
+    result = Profile.Allocs.fetch()
+    buffer = IOBuffer()
+    Profile.Allocs.print(buffer, result; format=:flat, sortedby=:bytes, maxdepth=100, groupby=:line, mincount=1)
+    text = String(take!(buffer))
+    println("profile-cold mode=$(mode) note=one apply on never-used fresh fixture")
+    for line in Iterators.take(split(text, '\n'), 12)
+        isempty(strip(line)) || println("profile-site mode=$(mode) $(strip(line))")
+    end
+    println("profile-top-source mode=$(mode)")
+    for line in split(text, '\n')
+        source = strip(line)
+        (occursin("deployed_apply", source) || occursin("decisionlist", source) ||
+            occursin("AletheiaData", source) || occursin("Sole", source) || occursin("scalar.jl", source) ||
+            occursin("evaluation.jl", source)) &&
+            println("profile-site-source mode=$(mode) $(source)")
+    end
 end
-rules = fresh.rules[1:end-1]
-for (index, rule) in enumerate(rules)
-    emit("sole-decision-list", "checkantecedent-$index",
-        allocation_sample(() -> SoleModels.checkantecedent(rule, fresh.modalities)))
-end
-emit("sole-decision-list", "full-apply",
-    allocation_sample(() -> SoleModels.apply(fresh.decision_list, fresh.modalities)))
-println("profile-note=eager dense feature materialization is outside this prepared apply iteration; callback uses SoleData.checkcondition")
+profile_fresh_apply("aletheia-vectorized", base)
+profile_fresh_apply("decision-list-apply", base)
+profile_fresh_apply("aletheia-data-vectorized", base)
