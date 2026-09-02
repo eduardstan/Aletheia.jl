@@ -456,7 +456,16 @@ data_version(data::PreparedScalarData) = data.version
 
 # Source-version protocol.  A source can provide `data_version(x)` itself;
 # mutable tabular adapters commonly expose a `version` field instead.
-"""Return a source version, defaulting to zero for unversioned values."""
+"""Return a source version, defaulting to zero for unversioned values.
+
+# Examples
+```jldoctest
+julia> using AletheiaData
+
+julia> isdefined(AletheiaData, Symbol("data_version"))
+true
+```
+"""
 function data_version(data)
     begin
         if hasproperty(data, :version) && getproperty(data, :version) isa Integer
@@ -1108,7 +1117,7 @@ julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
 
 julia> prep = prepare_scalar(store);
 
-julia> scalar_valuation(prep, 1) isa ValuationCallback
+julia> scalar_valuation(prep, 1) isa AletheiaCore.ValuationCallback
 true
 ```
 """
