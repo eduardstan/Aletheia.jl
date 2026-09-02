@@ -124,6 +124,19 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
     batch_shared_result = extension(batch_shared, counted_batch)
     @test @inferred(extension(batch_shared, batch_boolean)) ==
         [extension(formula, batch_boolean) for formula in batch_shared]
+    shared_buffer = falses(length(worlds(frame)))
+    shared_batch = (value, callback_worlds) -> begin
+        for (slot, world) in enumerate(callback_worlds)
+            shared_buffer[slot] = value == "p" ? world != :w3 : world != :w1
+        end
+        shared_buffer
+    end
+    shared_model = Model(frame, BOOLEAN, ValuationCallback(
+        (value, world) -> value == "p" ? world != :w3 : world != :w1;
+        vectorized=shared_batch))
+    scalar_model = Model(frame, BOOLEAN, ValuationCallback(
+        (value, world) -> value == "p" ? world != :w3 : world != :w1))
+    @test extension([conjunction], shared_model) == extension([conjunction], scalar_model)
     plain_counted = Model(frame, BOOLEAN, Dict("p" => Set([:w1, :w2]), "q" => Set([:w2, :w3])))
     @test batch_shared_result == [extension(formula, plain_counted) for formula in batch_shared]
     @test batch_calls[] == 2 * length(worlds(frame))
