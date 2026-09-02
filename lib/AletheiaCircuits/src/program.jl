@@ -1,6 +1,15 @@
 abstract type AbstractChoiceVariable end
 
-"""A primitive finite choice with mutually exclusive alternatives."""
+"""A primitive finite choice with mutually exclusive alternatives.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> isdefined(AletheiaCircuits, Symbol("ChoiceVariable"))
+true
+```
+"""
 struct ChoiceVariable{I,A<:Tuple,W<:Tuple} <: AbstractChoiceVariable
     id::I
     alternatives::A
@@ -657,7 +666,16 @@ function world(program::DSProgram, total_choice)
     return atoms
 end
 
-"""Enumerate total choices as dictionaries from choice identifiers to outcomes."""
+"""Enumerate total choices as dictionaries from choice identifiers to outcomes.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> isdefined(AletheiaCircuits, Symbol("total_choices"))
+true
+```
+"""
 function total_choices(program::DSProgram)
     validate_program(program)
     result = Vector{Dict{Any,Any}}()
@@ -677,7 +695,16 @@ function total_choices(program::DSProgram)
     return result
 end
 
-"""Return the product weight of a primitive total choice."""
+"""Return the product weight of a primitive total choice.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> isdefined(AletheiaCircuits, Symbol("choice_probability"))
+true
+```
+"""
 function choice_probability(program::DSProgram, total_choice; T=nothing)
     validate_program(program)
     assignment = _assignment(program, total_choice)

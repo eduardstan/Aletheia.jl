@@ -1,4 +1,13 @@
-"""Finite distribution-semantics circuits and semiring weighted model counting."""
+"""Finite distribution-semantics circuits and semiring weighted model counting.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> isdefined(AletheiaCircuits, Symbol("AletheiaCircuits"))
+true
+```
+"""
 module AletheiaCircuits
 
 using AletheiaCore

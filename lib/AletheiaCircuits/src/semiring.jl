@@ -75,9 +75,27 @@ function ProbabilitySemiring(profile::ProbabilityProfile{T}) where {T}
 end
 ProbabilitySemiring(::Type{T}) where {T} = ProbabilitySemiring{T}()
 
-"""Return the default Float64 probability profile."""
+"""Return the default Float64 probability profile.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> isdefined(AletheiaCircuits, Symbol("Float64Profile"))
+true
+```
+"""
 Float64Profile() = ProbabilitySemiring{Float64}(:float64)
-"""Return the exact Rational probability profile."""
+"""Return the exact Rational probability profile.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> isdefined(AletheiaCircuits, Symbol("RationalProfile"))
+true
+```
+"""
 RationalProfile() = ProbabilitySemiring{Rational{Int}}(:rational)
 
 function _carrier(s::ProbabilitySemiring{T}) where {T}

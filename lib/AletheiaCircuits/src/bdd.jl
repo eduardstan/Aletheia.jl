@@ -1,4 +1,13 @@
-"""Reduced ordered decision diagrams over finite choice variables."""
+"""Reduced ordered decision diagrams over finite choice variables.
+
+# Examples
+```jldoctest
+julia> using AletheiaCircuits
+
+julia> isdefined(AletheiaCircuits, Symbol("AbstractEvent"))
+true
+```
+"""
 abstract type AbstractEvent end
 abstract type AbstractEventCircuit end
 abstract type CircuitNode end
