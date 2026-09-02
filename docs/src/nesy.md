@@ -1,6 +1,6 @@
 # Neural-symbolic interface
 
-`AletheiaNeSy` accepts any callable as a network. `neural_valuation` wraps it in
+`[`AletheiaNeSy`](nesy.md)` accepts any callable as a network. `neural_valuation` wraps it in
 a validated `ValuationCallback`; scalar and batch calls use the same direct
 network path.
 

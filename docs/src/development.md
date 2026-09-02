@@ -1,6 +1,6 @@
 # Development and validation
 
-Run these commands from the repository root. `AletheiaCore` has no runtime
+Run these commands from the repository root. `[`AletheiaCore`](api.md)` has no runtime
 dependencies; the test, documentation, benchmark, formatting, and coverage
 environments are separate Julia projects. The first invocation of each command
 may spend extra time resolving and precompiling Julia packages.
@@ -39,7 +39,7 @@ A passing umbrella run ends with:
 Aletheia tests passed
 ```
 
-It includes Aqua/JET checks and the runnable examples. `AletheiaSole` owns
+It includes Aqua/JET checks and the runnable examples. `[`AletheiaSole`](compatibility.md)` owns
 `SoleLogics`, so compatibility code is imported as `using AletheiaSole.SoleLogics`
 (or, through the umbrella, `using Aletheia.SoleLogics`).
 
@@ -118,3 +118,26 @@ differential: PASS (64 formulas; seed 2716278820)
 
 It is deterministic for that seed and is separate from `Pkg.test()` so Aletheia
 does not acquire SoleLogics as a package dependency.
+
+
+## Notation
+
+Documentation across Aletheia follows a single uniform notation and terminology convention:
+
+- **Transitions**: before/after transitions in prose and tables use the right arrow glyph (`→`), never `->`.
+- **Units**: quantities in tables follow fixed unit conventions:
+  - Allocations are reported as plain integers with thousands separators (for example, `14,358`).
+  - Bytes are reported as bytes with thousands separators (for example, `1,024 bytes`), with exact binary conversion (`1 KiB = 1,024 bytes`).
+  - Times are reported in milliseconds (`ms`) with three decimal places (for example, `1.249 ms`), or in microseconds (`μs`) only when the entire table uses microseconds.
+- **Table shapes**: before/after comparison tables share column headers, and every benchmark table names its underlying artifact file and gate line in the paragraph preceding it.
+- **Canonical terminology**:
+  - `fresh-dataset churn`
+  - `warm reuse`
+  - `first use`
+  - `scalar-data layer`
+  - `callback path`
+  - `knowledge graph`
+  - `distribution semantics`
+  - Package names: `[`AletheiaCore`](api.md)`, `[`AletheiaData`](families.md)`, `[`AletheiaLearn`](learning.md)`, `[`AletheiaSole`](compatibility.md)`, `[`AletheiaCircuits`](circuits.md)`, `[`AletheiaGraphs`](graphs.md)`, `[`AletheiaAudit`](audit.md)`, `[`AletheiaNeSy`](nesy.md)`, `Aletheia`.
+- **Headings**: sentence case throughout headings.
+- **Cross-references**: every mention of a package or documentation page links once per section to its corresponding page.

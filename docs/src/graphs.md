@@ -1,6 +1,6 @@
 # Knowledge graphs as relational structures
 
-A knowledge graph is a collection of typed entities and directed, typed edges. `AletheiaGraphs` keeps the source record for every edge, then maps entities to worlds and relation schemas to named relations in an Aletheia frame. This makes graph traversal and modal evaluation two views of the same finite relational structure, following the standard relational-frame reading of modal logic [blackburn2001](@cite).
+A knowledge graph is a collection of typed entities and directed, typed edges. `[`AletheiaGraphs`](graphs.md)` keeps the source record for every edge, then maps entities to worlds and relation schemas to named relations in an Aletheia frame. This makes graph traversal and modal evaluation two views of the same finite relational structure, following the standard relational-frame reading of modal logic [blackburn2001](@cite).
 
 ```@example graphs
 using Aletheia, AletheiaGraphs

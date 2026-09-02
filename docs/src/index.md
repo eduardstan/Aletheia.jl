@@ -2,10 +2,10 @@
 
 Aletheia is a Julia monorepo of focused packages with one shared architecture:
 one pooled syntax DAG, one model/evaluation boundary, and several deliberately
-separate readings. `AletheiaCore` provides the pooled formulas, validated truth
-algebras, relational frames, and evaluator; `AletheiaData`, `AletheiaCircuits`,
-`AletheiaGraphs`, `AletheiaLearn`, `AletheiaSole`, `AletheiaAudit`, and
-`AletheiaNeSy` add data, probability, graph, learning, compatibility, audit,
+separate readings. `[`AletheiaCore`](api.md)` provides the pooled formulas, validated truth
+algebras, relational frames, and evaluator; `[`AletheiaData`](families.md)`, `[`AletheiaCircuits`](circuits.md)`,
+`[`AletheiaGraphs`](graphs.md)`, `[`AletheiaLearn`](learning.md)`, `[`AletheiaSole`](compatibility.md)`, `[`AletheiaAudit`](audit.md)`, and
+`[`AletheiaNeSy`](nesy.md)` add data, probability, graph, learning, compatibility, audit,
 and neural-symbolic boundaries. The syntax/model/evaluation separation follows
 the modal semantics vocabulary of Blackburn, de Rijke, and Venema
 [blackburn2001; §§1.2–1.3, pp. 9–26](@cite).

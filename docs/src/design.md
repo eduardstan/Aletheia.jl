@@ -4,7 +4,7 @@
 CurrentModule = Aletheia
 ```
 
-`AletheiaCore` is the dependency-free implementation of pooled syntax and
+`[`AletheiaCore`](api.md)` is the dependency-free implementation of pooled syntax and
 model evaluation. Its central boundary is simple: a formula is syntax; a truth
 value is a result of interpreting syntax in a model. That distinction is not
 cosmetic. It lets one pooled formula DAG be evaluated in Boolean, Gödel,

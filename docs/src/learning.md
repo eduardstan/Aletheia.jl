@@ -4,8 +4,8 @@
 CurrentModule = Aletheia
 ```
 
-`AletheiaLearn` provides the ILP syntax, bounded refinement operators,
-interpretation wrappers, and scoring protocol over the shared `AletheiaCore`
+`[`AletheiaLearn`](learning.md)` provides the ILP syntax, bounded refinement operators,
+interpretation wrappers, and scoring protocol over the shared `[`AletheiaCore`](api.md)`
 evaluator. It does not provide a learner or search policy.
 
 ## The connection

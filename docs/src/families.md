@@ -4,7 +4,7 @@
 CurrentModule = Aletheia
 ```
 
-`AletheiaData` is the data-facing layer over `AletheiaCore`. It represents a
+`[`AletheiaData`](families.md)` is the data-facing layer over `[`AletheiaCore`](api.md)`. It represents a
 dataset as a family of finite models—one model per instance, often over the
 same frame. [`AbstractModelFamily`](@ref) is the dependency-free protocol for
 that shape, so the core does not need to know about a particular dataset

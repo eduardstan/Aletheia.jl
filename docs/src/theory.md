@@ -4,7 +4,7 @@
 CurrentModule = Aletheia
 ```
 
-`AletheiaCore` provides theory utilities over its pooled formulas and shared
+`[`AletheiaCore`](api.md)` provides theory utilities over its pooled formulas and shared
 evaluator: standard translation into first-order syntax, bisimulation and
 contraction, classical normal forms, and bounded prover interfaces. These are
 separate utilities rather than a general theorem-proving layer. Modal
