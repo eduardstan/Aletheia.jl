@@ -437,6 +437,27 @@ reuse. The published values below are scope-limited.
 | Aletheia dense scalar-data | 1.268; 14,371 / 4,117,952 bytes | 17.244; 117,507 / 21,725,888 bytes |
 | Aletheia dense vectorized scalar-data | 0.871; 7,427 / 1,384,256 bytes | 16.019; 110,563 / 18,992,192 bytes |
 
+### After allocation evidence (timings withheld)
+
+The rerun is retained in `data/benchmark-run/deployed-apply-after.txt`. Its
+allocation and byte counts are reported below; no timing from this failed-gate
+run is published. Timing comparison awaits a passing quiet-machine run. The
+regression-test budget remains the acceptance guarantee.
+
+| mode | before churn allocations / bytes | after churn allocations / bytes | timing |
+| --- | ---: | ---: | --- |
+| Sole formula-check | 222,979 / 10,762,736 | 222,979 / 10,762,736 | withheld: quiet-machine gate failed, peak load 6.52 |
+| supported-cold | 223,554 / 10,934,488 | 223,554 / 10,934,488 | withheld: quiet-machine gate failed, peak load 6.52 |
+| supported-warm | 222,979 / 10,762,736 | 222,979 / 10,762,736 | withheld: quiet-machine gate failed, peak load 6.52 |
+| deployed modal-tree apply | 470 / 34,016 | 470 / 34,016 | withheld: quiet-machine gate failed, peak load 6.52 |
+| decision-list apply | 109,330 / 6,100,080 | 110,135 / 6,103,200 | withheld: quiet-machine gate failed, peak load 6.52 |
+| Aletheia scalar callback | 117,494 / 21,367,056 | 18,815 / 4,708,480 | withheld: quiet-machine gate failed, peak load 6.52 |
+| Aletheia vectorized batch callback | 110,550 / 18,882,448 | 10,975 / 1,735,552 | withheld: quiet-machine gate failed, peak load 6.52 |
+| Aletheia bridge scalar-data | 117,507 / 21,725,888 | 116,101 / 21,604,320 | withheld: quiet-machine gate failed, peak load 6.52 |
+| Aletheia bridge vectorized scalar-data | 110,563 / 18,992,192 | 108,933 / 18,859,872 | withheld: quiet-machine gate failed, peak load 6.52 |
+| Aletheia dense scalar-data | 117,507 / 21,725,888 | 116,101 / 21,604,320 | withheld: quiet-machine gate failed, peak load 6.52 |
+| Aletheia dense vectorized scalar-data | 110,563 / 18,992,192 | 108,933 / 18,859,872 | withheld: quiet-machine gate failed, peak load 6.52 |
+
 The scale sweep keeps the trained formula roots fixed and changes only the
 supported dataset size. It compares native `SoleModels.apply` with prepared
 Aletheia scalar and vectorized callbacks under the same five seeds. Each child
