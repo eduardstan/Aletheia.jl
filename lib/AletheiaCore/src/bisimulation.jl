@@ -158,6 +158,20 @@ function Base.show(io::IO, class::BisimulationClass)
     return print(io, "Class(", join(repr.(class.members), ", "), ")")
 end
 
+"""The result of bisimulation quotient contraction on a model.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> m = Model(Frame([1, 2], Dict(globalrel => [(1, 2)])), Dict("p" => Dict(1 => true, 2 => false)));
+
+julia> c = bisimulation_contraction(m);
+
+julia> c isa BisimulationContraction
+true
+```
+"""
 struct BisimulationContraction{M,Q,W}
     model::M
     classes::Q
@@ -197,9 +211,68 @@ function Base.show(io::IO, ::MIME"text/plain", contraction::BisimulationContract
     return _display_elision_line(io, 4, elided)
 end
 
+"""Return the contracted model from a bisimulation contraction.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> m = Model(Frame([1, 2], Dict(globalrel => [(1, 2)])), Dict("p" => Dict(1 => true, 2 => false)));
+
+julia> c = bisimulation_contraction(m);
+
+julia> model(c) isa Model
+true
+```
+"""
 model(contraction::BisimulationContraction) = contraction.model
+
+"""Return the quotient equivalence classes from a bisimulation contraction.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> m = Model(Frame([1, 2], Dict(globalrel => [(1, 2)])), Dict("p" => Dict(1 => true, 2 => false)));
+
+julia> c = bisimulation_contraction(m);
+
+julia> classes(c) isa Tuple
+true
+```
+"""
 classes(contraction::BisimulationContraction) = contraction.classes
+
+"""Return the world-to-class mapping from a bisimulation contraction.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> m = Model(Frame([1, 2], Dict(globalrel => [(1, 2)])), Dict("p" => Dict(1 => true, 2 => false)));
+
+julia> c = bisimulation_contraction(m);
+
+julia> world_map(c) isa Dict
+true
+```
+"""
 world_map(contraction::BisimulationContraction) = contraction.world_map
+
+"""Return the quotient class corresponding to a original world.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> m = Model(Frame([1, 2], Dict(globalrel => [(1, 2)])), Dict("p" => Dict(1 => true, 2 => false)));
+
+julia> c = bisimulation_contraction(m);
+
+julia> contraction_world(c, 1) isa BisimulationClass
+true
+```
+"""
 function contraction_world(contraction::BisimulationContraction, world)
     world isa BisimulationClass && return world
     return if haskey(contraction.world_map, world)

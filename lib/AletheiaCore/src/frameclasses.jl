@@ -1,18 +1,114 @@
 # Frame-condition traits and named normal modal systems.
 
-"""A named class of finite relational frames."""
+"""A named class of finite relational frames.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> FrameClass(:K, ())
+K
+```
+"""
 struct FrameClass
     name::Symbol
     conditions::Tuple{Vararg{Symbol}}
 end
 
+"""The basic normal modal system K (no frame conditions).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> K isa FrameClass
+true
+```
+"""
 const K = FrameClass(:K, ())
+
+"""The system T (reflexive frames).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> T isa FrameClass
+true
+```
+"""
 const T = FrameClass(:T, (:reflexive,))
+
+"""The system S4 (reflexive and transitive frames).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> S4 isa FrameClass
+true
+```
+"""
 const S4 = FrameClass(:S4, (:reflexive, :transitive))
+
+"""The system S5 (equivalence frames).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> S5 isa FrameClass
+true
+```
+"""
 const S5 = FrameClass(:S5, (:reflexive, :transitive, :symmetric))
+
+"""The class of reflexive frames.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> REFLEXIVE isa FrameClass
+true
+```
+"""
 const REFLEXIVE = FrameClass(:reflexive, (:reflexive,))
+
+"""The class of transitive frames.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> TRANSITIVE isa FrameClass
+true
+```
+"""
 const TRANSITIVE = FrameClass(:transitive, (:transitive,))
+
+"""The class of symmetric frames.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> SYMMETRIC isa FrameClass
+true
+```
+"""
 const SYMMETRIC = FrameClass(:symmetric, (:symmetric,))
+
+"""The class of serial frames.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> SERIAL isa FrameClass
+true
+```
+"""
 const SERIAL = FrameClass(:serial, (:serial,))
 const REFLEXIVITY = REFLEXIVE
 const TRANSITIVITY = TRANSITIVE

@@ -86,27 +86,85 @@ from the generic fallback.
 function inverse(relation)
     return throw(MethodError(inverse, (relation,)))
 end
+"""Return the converse relation of `relation`.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> converse(BEFORE)
+after
+```
+"""
 converse(relation) = inverse(relation)
 
-# A generic identity relation is useful when a frame needs equality explicitly.
+"""A generic identity relation family.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> IDENTITY isa IdentityRelation
+true
+```
+"""
 struct IdentityRelation <: RelationFamily end
 const IdentityRel = IdentityRelation
+
+"""The identity relation singleton value (`IDENTITY`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> relation_holds(IDENTITY, 1, 1)
+true
+```
+"""
 const IDENTITY = IdentityRelation()
 const ID = IDENTITY
 relation_holds(::IdentityRelation, source, target) = isequal(source, target)
 inverse(relation::IdentityRelation) = relation
 
-# Relations used by the SoleLogics-compatible frame vocabulary.  They are values rather
-# than syntax connectives; modal connectives carry one of these values in
-# their relation field.
+"""The global relation family.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> globalrel isa GlobalRelation
+true
+```
+"""
 struct GlobalRelation <: RelationFamily end
 const GlobalRel = GlobalRelation
+
+"""The global accessibility relation singleton (`globalrel`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> relation_holds(globalrel, 1, 2)
+true
+```
+"""
 const globalrel = GlobalRelation()
 relation_holds(::GlobalRelation, source, target) = true
 inverse(relation::GlobalRelation) = relation
 arity(::GlobalRelation) = 2
 syntaxstring(::GlobalRelation; kwargs...) = "G"
 
+"""Nominal accessibility relation to a specific world `w`.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> AtWorldRelation(1)
+at-world
+```
+"""
 struct AtWorldRelation{W} <: RelationFamily
     w::W
 end
@@ -114,8 +172,29 @@ relation_holds(relation::AtWorldRelation, source, target) = isequal(target, rela
 arity(::AtWorldRelation) = 2
 syntaxstring(relation::AtWorldRelation; kwargs...) = "@($(string(relation.w)))"
 
+"""The to-center relation family.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> tocenterrel isa ToCenterRelation
+true
+```
+"""
 struct ToCenterRelation <: RelationFamily end
 const ToCenterRel = ToCenterRelation
+
+"""The to-center relation singleton (`tocenterrel`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> tocenterrel isa ToCenterRelation
+true
+```
+"""
 const tocenterrel = ToCenterRelation()
 arity(::IdentityRelation) = 2
 syntaxstring(::IdentityRelation; kwargs...) = "="
@@ -132,8 +211,16 @@ function inverse(::ToCenterRelation)
 vocabulary is its converse."))
 end
 
-# SoleLogics names and Aletheia's established relation protocol use different
-# spellings for identity; retain both as the same singleton value.
+"""The identity relation singleton alias (`identityrel`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> identityrel === IDENTITY
+true
+```
+"""
 const identityrel = IDENTITY
 
 """Return whether a relation has source-independent accessibility targets.

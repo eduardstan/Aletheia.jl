@@ -734,11 +734,15 @@ Base.hash(a::Branch, h::UInt) = hash(objectid(a.pool), hash(a.id, h))
 
 # Built-in syntax-only connectives.  Their values are ordinary structs; the
 # modal values carry their relation as data rather than encoding it in a type.
+"""Stateless syntax marker for classical negation."""
 struct Negation end
+"""Stateless syntax marker for classical conjunction."""
 struct Conjunction end
 """Stateless syntax marker for multiplicative conjunction (fusion)."""
 struct Fusion end
+"""Stateless syntax marker for classical disjunction."""
 struct Disjunction end
+"""Stateless syntax marker for classical implication."""
 struct Implication end
 
 """Abstract vocabulary shared by relational modal connectives."""
@@ -749,6 +753,14 @@ abstract type AbstractRelationalConnective{R} end
 A unary modal connective carrying `relation` as a value.  The relation is a
 field, not a type parameter encoded in a singleton, so parametric relations
 remain ordinary syntax values.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Diamond(globalrel)
+⟨global⟩
+```
 """
 struct Diamond{R} <: AbstractRelationalConnective{R}
     relation::R
@@ -759,6 +771,14 @@ end
 
 The syntactic dual modal connective for [`Diamond`](@ref), carrying its
 relation as a value.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Box(globalrel)
+[global]
+```
 """
 struct Box{R} <: AbstractRelationalConnective{R}
     relation::R
@@ -767,37 +787,233 @@ end
 # SoleLogics-compatible modal/connective predicates.  These predicates
 # intentionally default to `false` for non-connective values and
 # classify a diamond as any modal connective that is not a box.
+
+"""
+Return whether a connective or type represents a modal operator.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> ismodal(Diamond(globalrel))
+true
+```
+"""
 ismodal(::Any) = false
 ismodal(::Type{<:Diamond}) = true
 ismodal(::Type{<:Box}) = true
 ismodal(connective::AbstractRelationalConnective) = ismodal(typeof(connective))
+
+"""
+Return whether a connective has arity 1.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isunary(¬)
+true
+```
+"""
 isunary(connective) = arity(connective) == 1
+
+"""
+Return whether a connective or type represents a box modal operator.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isbox(Box(globalrel))
+true
+```
+"""
 isbox(::Any) = false
 isbox(::Type{<:Diamond}) = false
 isbox(::Type{<:Box}) = true
 isbox(connective::AbstractRelationalConnective) = isbox(typeof(connective))
+
+"""
+Return whether a connective or type represents a diamond modal operator.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdiamond(Diamond(globalrel))
+true
+```
+"""
 isdiamond(::Any) = false
 isdiamond(C::Type) = ismodal(C) && !isbox(C)
 isdiamond(connective::AbstractRelationalConnective) = isdiamond(typeof(connective))
 
+"""The prefix negation connective (`¬`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> NEGATION
+¬
+```
+"""
 const NEGATION = Negation()
+
+"""The conjunction connective (`∧`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> CONJUNCTION
+∧
+```
+"""
 const CONJUNCTION = Conjunction()
+
+"""The fusion connective (`⊗`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> FUSION
+⊗
+```
+"""
 const FUSION = Fusion()
+
+"""The disjunction connective (`∨`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> DISJUNCTION
+∨
+```
+"""
 const DISJUNCTION = Disjunction()
+
+"""The implication connective (`→`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> IMPLICATION
+→
+```
+"""
 const IMPLICATION = Implication()
+
+"""The prefix negation connective (`NOT`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> AletheiaCore.NOT
+¬
+```
+"""
 const NOT = NEGATION
+
+"""The conjunction connective (`AND`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> AletheiaCore.AND
+∧
+```
+"""
 const AND = CONJUNCTION
+
+"""The disjunction connective (`OR`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> AletheiaCore.OR
+∨
+```
+"""
 const OR = DISJUNCTION
+
+"""The implication connective (`IMPLIES`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> AletheiaCore.IMPLIES
+→
+```
+"""
 const IMPLIES = IMPLICATION
-"""The prefix negation connective (`¬`)."""
+
+"""The prefix negation connective (`¬`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> ¬
+¬
+```
+"""
 const ¬ = NEGATION
-"""The conjunction connective (`∧`)."""
+
+"""The conjunction connective (`∧`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> ∧
+∧
+```
+"""
 const ∧ = CONJUNCTION
-"""The fusion connective (`⊗`)."""
+
+"""The fusion connective (`⊗`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> ⊗
+⊗
+```
+"""
 const ⊗ = FUSION
-"""The disjunction connective (`∨`)."""
+
+"""The disjunction connective (`∨`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> ∨
+∨
+```
+"""
 const ∨ = DISJUNCTION
-"""The implication connective (`→`)."""
+
+"""The implication connective (`→`).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> →
+→
+```
+"""
 const → = IMPLICATION
 
 """Return the modal relation carried by a [`Diamond`](@ref) or [`Box`](@ref)."""

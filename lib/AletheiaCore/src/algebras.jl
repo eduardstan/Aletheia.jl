@@ -538,11 +538,76 @@ function _chain_flew(n::Int, kind::Symbol)
     return _make_flew(join_table, meet_table, fusion_table, 2, 1, n)
 end
 
+"""The 3-element Gödel chain FLew algebra.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> G3 isa FiniteFLewAlgebra
+true
+```
+"""
 const G3 = _chain_flew(3, :godel)
+
+"""The 4-element Gödel chain FLew algebra.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> G4 isa FiniteFLewAlgebra
+true
+```
+"""
 const G4 = _chain_flew(4, :godel)
+
+"""The 5-element Gödel chain FLew algebra.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> G5 isa FiniteFLewAlgebra
+true
+```
+"""
 const G5 = _chain_flew(5, :godel)
+
+"""The 6-element Gödel chain FLew algebra.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> G6 isa FiniteFLewAlgebra
+true
+```
+"""
 const G6 = _chain_flew(6, :godel)
+
+"""The 3-element Łukasiewicz chain FLew algebra.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Ł3 isa FiniteFLewAlgebra
+true
+```
+"""
 const Ł3 = _chain_flew(3, :lukasiewicz)
+
+"""The 4-element Łukasiewicz chain FLew algebra.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Ł4 isa FiniteFLewAlgebra
+true
+```
+"""
 const Ł4 = _chain_flew(4, :lukasiewicz)
 const L3 = Ł3
 const L4 = Ł4
@@ -551,6 +616,16 @@ function _named_flew(join_values, meet_values, fusion_values, n)
     return _make_flew(join_values, meet_values, fusion_values, 2, 1, n)
 end
 
+"""The 4-element non-chain FLew algebra H4.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> H4 isa FiniteFLewAlgebra
+true
+```
+"""
 const H4 = _named_flew(
     [1 1 1 1; 1 2 3 4; 1 3 3 1; 1 4 1 4],
     [1 2 3 4; 2 2 2 2; 3 2 3 2; 4 2 2 4],
@@ -558,6 +633,16 @@ const H4 = _named_flew(
     4,
 )
 
+"""The 6-element non-chain FLew algebra H6.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> H6 isa FiniteFLewAlgebra
+true
+```
+"""
 const H6 = _named_flew(
     [1 1 1 1 1 1; 1 2 3 4 5 6; 1 3 3 6 5 6; 1 4 6 4 1 6; 1 5 5 1 5 1; 1 6 6 6 1 6],
     [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 2 3 3; 4 2 2 4 2 4; 5 2 3 2 5 3; 6 2 3 4 3 6],
@@ -565,6 +650,16 @@ const H6 = _named_flew(
     6,
 )
 
+"""The 6-element non-chain FLew algebra H6_1.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> H6_1 isa FiniteFLewAlgebra
+true
+```
+"""
 const H6_1 = _named_flew(
     [1 1 1 1 1 1; 1 2 3 4 5 6; 1 3 3 5 5 6; 1 4 5 4 5 6; 1 5 5 5 5 6; 1 6 6 6 6 6],
     [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 2 3 3; 4 2 2 4 4 4; 5 2 3 4 5 5; 6 2 3 4 5 6],
@@ -572,6 +667,16 @@ const H6_1 = _named_flew(
     6,
 )
 
+"""The 6-element non-chain FLew algebra H6_2.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> H6_2 isa FiniteFLewAlgebra
+true
+```
+"""
 const H6_2 = _named_flew(
     [1 1 1 1 1 1; 1 2 3 4 5 6; 1 3 3 4 5 6; 1 4 4 4 6 6; 1 5 5 6 5 6; 1 6 6 6 6 6],
     [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 3 3 3; 4 2 3 4 3 4; 5 2 3 3 5 5; 6 2 3 4 5 6],
@@ -579,6 +684,16 @@ const H6_2 = _named_flew(
     6,
 )
 
+"""The 6-element non-chain FLew algebra H6_3.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> H6_3 isa FiniteFLewAlgebra
+true
+```
+"""
 const H6_3 = _named_flew(
     [1 1 1 1 1 1; 1 2 3 4 5 6; 1 3 3 4 5 6; 1 4 4 4 5 6; 1 5 5 5 5 1; 1 6 6 6 1 6],
     [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 3 3 3; 4 2 3 4 4 4; 5 2 3 4 5 4; 6 2 3 4 4 6],
@@ -586,6 +701,16 @@ const H6_3 = _named_flew(
     6,
 )
 
+"""The 9-element non-chain FLew algebra H9.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> H9 isa FiniteFLewAlgebra
+true
+```
+"""
 const H9 = _named_flew(
     [
         1 1 1 1 1 1 1 1 1
@@ -623,6 +748,14 @@ const H9 = _named_flew(
     9,
 )
 
-# A finite Boolean FLew table is useful where a uniform UInt8 carrier is
-# required, while BOOLEAN remains the optimized Bool TruthAlgebra.
+"""A 2-valued finite Boolean FLew table.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> BooleanFLewAlgebra isa FiniteFLewAlgebra
+true
+```
+"""
 const BooleanFLewAlgebra = _named_flew([1 1; 1 2], [1 2; 2 2], [1 2; 2 2], 2)

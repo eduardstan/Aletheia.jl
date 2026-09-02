@@ -2,12 +2,43 @@
 # The target is intentionally syntax-only; `evaluate` is a reference interpreter for tests
 # and examples, not a theorem prover.  Standard translation follows BDV §2.4.
 
+"""Abstract supertype for first-order logic terms.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Variable(:x) isa FirstOrderTerm
+true
+```
+"""
 abstract type FirstOrderTerm end
+
+"""A first-order variable term.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Variable(:x)
+x
+```
+"""
 struct Variable <: FirstOrderTerm
     name::Symbol
 end
 Variable(name::AbstractString) = Variable(Symbol(name))
 
+"""A first-order constant term.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Constant(42)
+42
+```
+"""
 struct Constant <: FirstOrderTerm
     value::Any
 end
@@ -24,36 +55,134 @@ FunctionTerm(name, arguments::FirstOrderTerm...) = FunctionTerm(name, arguments)
 const FOFunction = FunctionTerm
 const CompoundTerm = FunctionTerm
 
+"""Abstract supertype for first-order logic formulas.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Predicate(:P, Variable(:x)) isa FirstOrderFormula
+true
+```
+"""
 abstract type FirstOrderFormula end
+
+"""A first-order predicate formula.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Predicate(:P, Variable(:x))
+P(x)
+```
+"""
 struct Predicate <: FirstOrderFormula
     name::Any
     arguments::Tuple{Vararg{FirstOrderTerm}}
 end
 Predicate(name, arguments::AbstractVector) = Predicate(name, tuple(arguments...))
 Predicate(name, arguments::FirstOrderTerm...) = Predicate(name, arguments)
+
+"""A first-order equality formula.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Equality(Variable(:x), Variable(:y))
+x = y
+```
+"""
 struct Equality <: FirstOrderFormula
     left::FirstOrderTerm
     right::FirstOrderTerm
 end
+
+"""First-order negation.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> FONegation(Predicate(:P, Variable(:x)))
+¬P(x)
+```
+"""
 struct FONegation <: FirstOrderFormula
     child::FirstOrderFormula
 end
+
+"""First-order conjunction.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> FOConjunction(Predicate(:P, Variable(:x)), Predicate(:Q, Variable(:x)))
+P(x) ∧ Q(x)
+```
+"""
 struct FOConjunction <: FirstOrderFormula
     left::FirstOrderFormula
     right::FirstOrderFormula
 end
+
+"""First-order disjunction.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> FODisjunction(Predicate(:P, Variable(:x)), Predicate(:Q, Variable(:x)))
+P(x) ∨ Q(x)
+```
+"""
 struct FODisjunction <: FirstOrderFormula
     left::FirstOrderFormula
     right::FirstOrderFormula
 end
+
+"""First-order implication.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> FOImplication(Predicate(:P, Variable(:x)), Predicate(:Q, Variable(:x)))
+P(x) → Q(x)
+```
+"""
 struct FOImplication <: FirstOrderFormula
     left::FirstOrderFormula
     right::FirstOrderFormula
 end
+
+"""First-order existential quantification.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Exists(Variable(:x), Predicate(:P, Variable(:x)))
+∃x. P(x)
+```
+"""
 struct Exists <: FirstOrderFormula
     variable::Variable
     body::FirstOrderFormula
 end
+
+"""First-order universal quantification.
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> Forall(Variable(:x), Predicate(:P, Variable(:x)))
+∀x. P(x)
+```
+"""
 struct Forall <: FirstOrderFormula
     variable::Variable
     body::FirstOrderFormula

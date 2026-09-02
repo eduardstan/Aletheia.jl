@@ -586,4 +586,14 @@ function prove_entails(
     return prove_entails(prover, (premise,), conclusion; kwargs...)
 end
 
+"""Named alias for [`FiniteModelProver`](@ref).
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> BoundedFiniteProver(2) isa FiniteModelProver
+true
+```
+"""
 const BoundedFiniteProver = FiniteModelProver
