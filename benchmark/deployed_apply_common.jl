@@ -126,6 +126,19 @@ function supported_cold(fixture)
     formula_check(fixture, cold)
 end
 
+function fresh_fixture(base, dataset)
+    modalities = SoleData.MultiLogiset(dataset)
+    scalar_state = DecisionListBatchAdapter.prepare(base.decision_list, modalities; vectorized=false)
+    vector_state = DecisionListBatchAdapter.prepare(base.decision_list, modalities; vectorized=true)
+    ApplyFixture(dataset, modalities, base.tree, base.model, base.rules, base.decision_list,
+        scalar_state, vector_state)
+end
+
+function churn_fixtures(base; count=6)
+    [fresh_fixture(base, make_supported_dataset(APPLY_NINSTANCES, APPLY_NPOINTS))
+        for _ in 1:count]
+end
+
 function apply_mode(fixture, mode)
     mode === "sole-formula-check" && return formula_check(fixture)
     mode === "supported-cold" && return supported_cold(fixture)

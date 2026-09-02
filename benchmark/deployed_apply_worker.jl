@@ -26,19 +26,6 @@ function measure(f; warm=true, samples=5)
     (sample=sample, minimum=minimum(times), maximum=maximum(times), samples=samples)
 end
 
-function fresh_fixture(base, dataset)
-    modalities = SoleData.MultiLogiset(dataset)
-    scalar_state = DecisionListBatchAdapter.prepare(base.decision_list, modalities; vectorized=false)
-    vector_state = DecisionListBatchAdapter.prepare(base.decision_list, modalities; vectorized=true)
-    ApplyFixture(dataset, modalities, base.tree, base.model, base.rules, base.decision_list,
-        scalar_state, vector_state)
-end
-
-function churn_fixtures(base; count=6)
-    [fresh_fixture(base, make_supported_dataset(APPLY_NINSTANCES, APPLY_NPOINTS))
-        for _ in 1:count]
-end
-
 function emit(mode, phase, measured; seed=missing)
     s = measured.sample
     println("result seed=$(seed) mode=$(mode) phase=$(phase) time_ns=$(s.time) allocs=$(s.allocs) bytes=$(s.bytes) " *

@@ -105,7 +105,10 @@ first use, warm reuse, and fresh-dataset churn are separate phases. Aletheia
 frame/model-family conversion is measured separately and excluded from steady
 apply. A failed quiet-machine or parity gate makes the artifact
 non-publishable. Raw results and package paths/versions belong in
-`data/benchmark-run/deployed-apply.txt`.
+`data/benchmark-run/deployed-apply.txt`. The scale sweep uses 128 and 1024
+instances with 8 and 64 points; cases that exceed the 300-second section bound
+are recorded as skipped. The artifact also contains the one-iteration
+allocation attribution profile for the default churn fixture.
 
 ## SoleModels consumer comparison
 

@@ -428,6 +428,28 @@ reuse. The published values below are scope-limited.
 | Aletheia scalar callback | 0.981; 14,358 / 3,759,088 | 16.636; 117,494 / 21,367,024 |
 | Aletheia vectorized batch callback | 0.649; 7,414 / 1,274,480 | 14.423; 110,550 / 18,882,416 |
 
+The scale sweep keeps the trained formula roots fixed and changes only the
+supported dataset size. It compares native `SoleModels.apply` with prepared
+Aletheia scalar and vectorized callbacks under the same five seeds.
+
+| instances × points | native decision-list warm / churn (ms) | Aletheia scalar warm / churn (ms) | Aletheia vectorized warm / churn (ms) |
+| --- | ---: | ---: | ---: |
+| 128 × 8 | 21.512 / 69.496 ms | 15.520 / 169.395 ms | 7.554 / 153.160 ms |
+| 128 × 64 | skipped (300 s timeout) | skipped (300 s timeout) | skipped (300 s timeout) |
+| 1024 × 8 | skipped (300 s timeout) | skipped (300 s timeout) | skipped (300 s timeout) |
+| 1024 × 64 | skipped (300 s timeout) | skipped (300 s timeout) | skipped (300 s timeout) |
+
+A one-iteration allocation profile is recorded beside the scale rows. On the
+16-instance, 8-point fixture, the reported allocation signal was largest for
+the isolated prediction-fold step (9,642,024 bytes), followed by mask folding
+(5,560,784 bytes); the full prepared vectorized apply measured 1,274,400 bytes.
+The native full apply measured 1,415,504 bytes. These isolated profile steps do
+not perform feature materialization, and the callback uses
+`SoleData.checkcondition`; the profile therefore refutes eager dense feature
+materialization as the cause of the churn gap. The churn figure includes
+fresh-dataset allocator/GC behavior and must not be explained by the profile
+step totals alone.
+
 The construction and first-use values are intentionally not folded into warm
 reuse. This is a result for the declared workload and mode, never
 "universally faster". Reproduce it with the package paths and command in

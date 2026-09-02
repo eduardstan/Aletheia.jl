@@ -77,6 +77,8 @@ try
         println(io, "modaldecisiontrees_path=$(MODALDECISIONTREES_PATH)")
         println(io, "seeds=0xA1E7_2024,0x5EED_2025,0xC0FF_EE42,0x1234_5678,0x9ABC_DEF0 data_seed=$(APPLY_DATA_SEED) train_seed_default=$(APPLY_TRAIN_SEED)")
         println(io, "workload=instances=$(APPLY_NINSTANCES),points=$(APPLY_NPOINTS),depth=$(APPLY_DEPTH)")
+        println(io, "scale_cases=128:8,128:64,1024:8,1024:64; scale_modes=decision-list-apply,aletheia-scalar,aletheia-vectorized")
+        println(io, "profile=one fresh-dataset churn iteration; vectorized callback versus native decision-list apply")
         println(io, "sole_controls=full_memo=true one_step_memo=true global_precompute=true relational_precompute=false")
         println(io, "sole_paths=formula-check=SoleData.check; modal-tree=ModalDecisionTrees.apply/modalstep/checkcondition; decision-list=SoleModels.apply/SoleLogics.check")
         println(io, "aletheia_path=DecisionListBatchAdapter prepared model family; scalar or vectorized ValuationCallback; conversion outside apply timing")
@@ -125,6 +127,50 @@ try
             append!(records, ["$line uptime_before=$(before) uptime_after=$(after)" for line in lines])
         end
     end
+
+    # Scaling compares only native decision-list apply with the two prepared
+    # Aletheia callbacks. Each case retains all five seeded rows.
+    for (ninstances, npoints) in ((128, 8), (128, 64), (1024, 8), (1024, 64))
+        before = quiet_check(uptime_line())
+        outpath, outio = mktemp(ROOT); close(outio)
+        errpath, errio = mktemp(ROOT); close(errio)
+        command = `timeout -k 1s 300s nice -n 15 $(julia) --startup-file=no --project=$environment $(joinpath(@__DIR__, "deployed_apply_scale_worker.jl")) $ninstances $npoints`
+        process = run(pipeline(command, stdout=outpath, stderr=errpath); wait=false)
+        wait(process)
+        output = read(outpath, String)
+        stderr = read(errpath, String)
+        rm(outpath; force=true); rm(errpath; force=true)
+        after = uptime_line()
+        push!(records, "scale-section=instances=$(ninstances),points=$(npoints) uptime_before=$(before) uptime_after=$(after)")
+        scale_lines = [strip(line) for line in split(output, '\n')
+            if startswith(strip(line), "scale-result ") || startswith(strip(line), "scale-parity=")]
+        if process.exitcode in (124, 137)
+            push!(records, "scale-skip=instances=$(ninstances),points=$(npoints),reason=timeout uptime_before=$(before) uptime_after=$(after)")
+        elseif process.exitcode != 0
+            push!(errors, "scale section instances=$(ninstances),points=$(npoints) exit=$(process.exitcode): $(strip(stderr))")
+        elseif isempty(scale_lines)
+            push!(errors, "scale section instances=$(ninstances),points=$(npoints) emitted no result")
+        else
+            append!(records, ["$line uptime_before=$(before) uptime_after=$(after)" for line in scale_lines])
+        end
+    end
+
+    before = quiet_check(uptime_line())
+    outpath, outio = mktemp(ROOT); close(outio)
+    errpath, errio = mktemp(ROOT); close(errio)
+    profile_command = `timeout -k 1s 180s nice -n 15 $(julia) --startup-file=no --project=$environment $(joinpath(@__DIR__, "deployed_apply_profile_worker.jl"))`
+    profile_process = run(pipeline(profile_command, stdout=outpath, stderr=errpath); wait=false)
+    wait(profile_process)
+    profile_output = read(outpath, String)
+    profile_stderr = read(errpath, String)
+    rm(outpath; force=true); rm(errpath; force=true)
+    after = uptime_line()
+    push!(records, "profile-section uptime_before=$(before) uptime_after=$(after)")
+    profile_lines = [strip(line) for line in split(profile_output, '\n')
+        if startswith(strip(line), "profile ") || startswith(strip(line), "profile-note=")]
+    profile_process.exitcode == 0 || push!(errors, "profile section exit=$(profile_process.exitcode): $(strip(profile_stderr))")
+    isempty(profile_lines) && push!(errors, "profile section emitted no attribution")
+    append!(records, ["$line uptime_before=$(before) uptime_after=$(after)" for line in profile_lines])
 finally
     rm(environment; recursive=true, force=true)
 end
