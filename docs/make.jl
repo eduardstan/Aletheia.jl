@@ -72,7 +72,7 @@ makedocs(
         "Development and validation" => "development.md",
         "References" => "references.md",
     ],
-    format = Documenter.HTML(size_threshold = 300 * 1024, size_threshold_warn = 300 * 1024),
+    format = Documenter.HTML(size_threshold = 500 * 1024, size_threshold_warn = 400 * 1024),
     plugins = [bibliography],
 )
 
