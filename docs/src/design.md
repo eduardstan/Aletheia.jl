@@ -4,10 +4,13 @@
 CurrentModule = Aletheia
 ```
 
-The central boundary is simple: a formula is syntax; a truth value is a result
-of interpreting syntax in a model. That distinction is not cosmetic. It lets
-one pooled formula DAG be evaluated in Boolean, Gödel, Łukasiewicz, or a
-user-defined algebra without making truth carriers into special atom values.
+`AletheiaCore` is the dependency-free implementation of pooled syntax and
+model evaluation. Its central boundary is simple: a formula is syntax; a truth
+value is a result of interpreting syntax in a model. That distinction is not
+cosmetic. It lets one pooled formula DAG be evaluated in Boolean, Gödel,
+Łukasiewicz, or a user-defined algebra without making truth carriers into
+special atom values. The distinction follows the syntax and satisfaction
+boundary in Blackburn et al. [blackburn2001; §§1.2–1.3, pp. 9–26](@cite).
 
 ## Similarity types and pooled DAGs
 
@@ -22,8 +25,8 @@ needed) `precedence`/`associativity` traits.
 values. Thus a deeply nested formula does not produce a recursively nested
 Julia type. Hash-consing makes repeated construction of the same atom or branch
 return the same pool-local ID. This is an identity guarantee, not a general
-allocation or runtime win; the measured benefit depends on whether a workload
-actually reuses subterms:
+allocation or runtime improvement; measured effects depend on whether a
+workload actually reuses subterms:
 
 ```jldoctest design
 using Aletheia
@@ -67,10 +70,8 @@ The consequence is visible in the API: [`interpret`](@ref) accepts an atom
 only; [`check`](@ref) and [`extension`](@ref) are the compound-formula entry
 points. This is the same separation between a valuation and satisfaction used
 in Blackburn et al., §1.3 (Definitions 1.19–1.20, pp. 16–18)
-[blackburn2001; §1.3, Definitions 1.19–1.20, pp. 16–18](@cite). SoleLogics
-represents ⊤ and ⊥ as formula leaves; the migration layer rejects them rather
-than silently reinterpreting them as atoms. See
-[Migration from SoleLogics](compatibility.md).
+[blackburn2001; §1.3, Definitions 1.19–1.20, pp. 16–18](@cite). For the
+adapter boundary, see the [Coming from SoleLogics](compatibility.md) on-ramp.
 
 ## Why many-valued logic is a parameter
 

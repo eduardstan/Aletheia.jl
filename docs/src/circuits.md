@@ -1,6 +1,7 @@
 # Distribution-semantics circuits
 
-A probabilistic logic program describes a distribution over ordinary
+`AletheiaCircuits` is the focused package for a finite distribution-semantics
+fragment. A probabilistic logic program describes a distribution over ordinary
 (two-valued) worlds. Each independent choice selects one normalized outcome;
 ground rules then close the selected facts under an acyclic dependency order.
 For a query event `q`, weighted model counting sums the weights of worlds in
@@ -16,14 +17,18 @@ acyclic rule dependency graph. Consequences are two-valued. Queries and
 evidence can use atoms and explicit `Not`, `And`, and `Or` event expressions.
 The front end enumerates the finite primitive choices to build a reduced
 ordered choice decision diagram. Enumeration is a simple, auditable grounding
-strategy for this fragment. The resulting circuit certificate records the
-choice order, every node's support, disjoint decision branches, and source
-provenance.
+strategy for this fragment. Reduced circuit representations and their
+tractable operations are the knowledge-compilation boundary described by
+Darwiche and Marquis [darwiche2002](@cite). The resulting circuit certificate
+records the choice order, every node's support, disjoint decision branches, and
+source provenance.
 
 A circuit must be certified before the semiring evaluator will enter it. The
 probability evaluator is intentionally not a `TruthAlgebra`: truth values at a
-world and a measure over worlds are different semantic objects. WMC uses the
-closed nonnegative `Float64Profile()` by default, or exact `RationalProfile()`.
+world and a measure over worlds are different semantic objects
+[riguzzi2023; chs. 2 and 8](@cite). WMC uses the closed nonnegative
+`Float64Profile()` by default, or exact `RationalProfile()`, following the
+semiring abstraction of algebraic model counting [kimmig2017](@cite).
 
 ```@example circuits
 using AletheiaCircuits

@@ -1,35 +1,43 @@
 # Aletheia.jl
 
-Aletheia is a syntax-first Julia foundation for propositional, modal,
-many-valued, and first-order logic. Formulas are interned handles into an
-explicit pool; semantics live in models; one evaluator walks the shared DAG.
-It is a foundation: it is **not** a prover and it is **not** a learner.
-[Read the documentation](https://eduardstan.github.io/Aletheia.jl/).
+Aletheia is a Julia monorepo of focused packages built around one pooled
+syntax DAG and one model/evaluation walk. `AletheiaCore` supplies syntax,
+validated truth-algebra semantics, relational frames, and theory utilities;
+`AletheiaData`, `AletheiaCircuits`, `AletheiaGraphs`, `AletheiaLearn`,
+`AletheiaSole`, `AletheiaAudit`, and `AletheiaNeSy` provide data, probability,
+graph, learning, compatibility, audit, and neural-symbolic boundaries. The
+umbrella `Aletheia` re-exports them for a single-import workflow. See the
+[one-engine overview](https://eduardstan.github.io/Aletheia.jl/engine/) for the
+architecture and the [documentation](https://eduardstan.github.io/Aletheia.jl/).
 
 - Pooled immutable formulas, extensible connectives, parsing and printing.
 - Truth algebras, including finite FLew non-chain families.
 - Relational frames and models with Allen interval, Compass, and RCC relation
   families.
 - Evaluation, bisimulation and contraction, and the standard translation.
-- ILP foundations, a model-family API for evaluating one formula across many
-  models, and an opt-in SoleLogics compatibility layer.
+- ILP foundations and a model-family API for evaluating one formula across many
+  models.
+- Deterministic audit traces and explicit metric applicability.
+- A neural-symbolic boundary with validated neural leaves and exact finite-case
+  extraction.
 - Finite distribution-semantics circuits with certified BDD compilation and
   Float64 or exact Rational weighted model counting.
 
 ## Package layout
 
-The repository is a Julia monorepo with a compatibility-preserving umbrella:
+The repository is a Julia monorepo with an umbrella and focused packages:
 
 - `AletheiaCore` contains pooled syntax, semantics, relations, theory utilities,
   and proof-search interfaces. It has no runtime dependencies.
 - `AletheiaData` contains model families and scalar-data preparation.
 - `AletheiaLearn` contains clauses, refinement operators, and ILP foundations.
-- `AletheiaSole` contains the opt-in `SoleLogics` vocabulary and adapters.
+- `AletheiaSole` contains the opt-in compatibility vocabulary and adapters.
+- `AletheiaAudit` contains deterministic artifact traces, replay, and metrics.
+- `AletheiaNeSy` contains validated neural leaves and exact symbolic extraction.
 - `AletheiaCircuits` contains the finite distribution-semantics front end,
   certified event diagrams, and semiring WMC.
 - `AletheiaGraphs` contains typed knowledge graphs and relational frame adapters.
-- `Aletheia` depends on all six focused packages and re-exports the historical
-  top-level API.
+- `Aletheia` assembles the focused packages and re-exports the top-level API.
 
 Use a focused package when you want a smaller dependency surface:
 
@@ -40,10 +48,15 @@ using AletheiaLearn
 using AletheiaSole.SoleLogics
 using AletheiaCircuits
 using AletheiaGraphs
+using AletheiaAudit
+using AletheiaNeSy
 ```
 
-Existing applications can continue to use `using Aletheia`. The compatibility
-namespace remains available as `Aletheia.SoleLogics` through the umbrella.
+Existing applications can continue to use `using Aletheia`; focused imports
+are available when a smaller dependency boundary is appropriate. The opt-in
+compatibility namespace remains available through the umbrella. See the
+[Coming from SoleLogics](https://eduardstan.github.io/Aletheia.jl/compatibility/)
+on-ramp for mappings and migration scope.
 
 ## Try it in two minutes
 
@@ -114,5 +127,10 @@ choice.
 - Wolfgang Schwarz, *Logic 2: Modal Logic*, 2024 lecture notes, CC BY-NC-SA 4.0, [github.com/wo/logic2](https://github.com/wo/logic2).
 - Stephen Muggleton and Luc De Raedt, “Inductive Logic Programming: Theory and Methods”, *Journal of Logic Programming* 19–20 (1994), 629–679.
 - Filip Železný and Nada Lavrač (eds), *Inductive Logic Programming: 18th International Conference, ILP 2008*, LNAI 5194, Springer, 2008.
+- Fabrizio Riguzzi, *Foundations of Probabilistic Logic Programming: Languages, Semantics, Inference and Learning*, River Publishers, 2023.
+- Adnan Darwiche and Pierre Marquis, “A Knowledge Compilation Map”, *Journal of Applied and Non-Classical Logics* (2002).
+- Angelika Kimmig, Guy Van den Broeck, and Luc De Raedt, “Algebraic Model Counting”, *Journal of Applied Logic* (2017).
+- Robin Manhaeve et al., “Neural Probabilistic Logic Programming in DeepProbLog”, *Artificial Intelligence* (2021); Ziyang Li, Jiani Huang, and Mayur Naik, “Scallop” (2023); and related works on the [reference shelf](references/README.md).
+- “Symbols and Neurons: A Review of Symbolic XAI in Deep Learning”, *Journal of Artificial Intelligence Research* (2026), for audit-metric scope; see the [reference shelf](references/README.md).
 
 Released under the [MIT License](LICENSE).

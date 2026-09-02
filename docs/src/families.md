@@ -4,10 +4,11 @@
 CurrentModule = Aletheia
 ```
 
-A dataset is usually not one Kripke model but many: one model per instance,
-often over the same frame. [`AbstractModelFamily`](@ref) is the protocol for
-that shape, and it is dependency-free — Aletheia does not know about any
-particular dataset package.
+`AletheiaData` is the data-facing layer over `AletheiaCore`. It represents a
+dataset as a family of finite models—one model per instance, often over the
+same frame. [`AbstractModelFamily`](@ref) is the dependency-free protocol for
+that shape, so the core does not need to know about a particular dataset
+package.
 
 An implementation supplies [`instance_count`](@ref) and
 [`instance_model`](@ref); [`eachinstance`](@ref) and
@@ -90,17 +91,9 @@ Aletheia.instance_count(d::MyDataset) = length(d.rows)
 Aletheia.instance_model(d::MyDataset, i) = Model(frame_for(d.rows[i]), BOOLEAN, valuation_for(d.rows[i]))
 ```
 
-SoleData is supported through an optional package extension. With SoleData
-loaded, `Aletheia.SoleDataFamily(dataset)` adapts any
-`SoleData.AbstractModalLogiset`; it builds one Aletheia `Model` per instance,
-uses `SoleData.frame(dataset, i)` for its worlds and accessibility, and supplies
-`SoleData.checkcondition` as the atom valuation callback. The converted frame
-exposes the selected SoleData relation as `:R`, so an Aletheia formula can use
-`Diamond(:R)` or `Box(:R)`. Pass `relation=...` for a multimodal SoleData frame;
-leave it as `nothing` for a unimodal frame. The optional `vectorized=false`
-selects the scalar callback instead of the default batch callback.
-
-This adapter can evaluate a modal formula directly over a SoleData dataset:
+An optional package extension can adapt an external modal dataset to this
+model-family protocol, preserving its world order, accessibility relation, and
+atom callback. The following runnable example exercises that boundary:
 
 ```jldoctest families
 using Aletheia, SoleData
@@ -134,7 +127,10 @@ instance 1 at world 1: true
 instance 2 at world 1: false
 ```
 
-The extension does not cross SoleData's feature/channel, representative,
-one-step aggregation, or memo interfaces. Those hooks remain available to
-SoleData's own optimized `check` path. The [measured results](results.md)
-chapter reports the differential agreement and the cost of this boundary.
+The optional adapter leaves source-dataset feature, representative, and memo
+interfaces under the source package's control; this page documents only the
+model-family boundary. The [measured results](results.md) chapter reports the
+scope and cost of the measured adapter path.
+
+For the compatibility boundary and migration guidance, use the [Coming from
+SoleLogics](compatibility.md) on-ramp.

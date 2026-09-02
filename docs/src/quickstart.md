@@ -6,7 +6,10 @@ CurrentModule = Aletheia
 
 ## Install
 
-Aletheia requires Julia 1.10 or later and is currently developed from its
+Aletheia is the umbrella package for the focused Core, Data, Circuits,
+Graphs, Learn, Sole, Audit, and NeSy layers. Use the umbrella for the examples
+below, or install a focused package when an application needs a smaller
+boundary. It requires Julia 1.10 or later and is currently developed from its
 repository. In the Julia package manager, use the repository URL (or
 `] dev /path/to/Aletheia.jl` for a local checkout):
 
@@ -14,7 +17,9 @@ repository. In the Julia package manager, use the repository URL (or
 pkg> add https://github.com/eduardstan/Aletheia.jl.git
 ```
 
-`AletheiaCore` has no runtime dependencies. The umbrella package assembles the focused packages; optional SoleData integration remains an extension.
+`AletheiaCore` has no runtime dependencies. The umbrella assembles the focused
+packages; optional data-package integrations remain extensions. For the
+architecture behind this first formula, see [One engine, many readings](engine.md).
 
 ## Build a formula
 

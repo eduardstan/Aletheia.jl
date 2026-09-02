@@ -318,7 +318,7 @@ back as `Truth`):
 out-of-memory bail; the unsatisfiable answer is a distinct `false`. So
 `nothing` means *undetermined within the budget*, never *no*. Each of the five
 was re-run with a 600 s budget instead of 20 s, and SoleLogics then returned the
-same verdict Aletheia had: `⟨L̅⟩p`, `⟨D̅⟩[L]r`, `⟨D⟩[E̅]p`, `⟨O̅⟩r ∧ [B](⊤)` and
+same verdict Aletheia had: `⟨L̅⟩p`, `⟨D̅⟩[L]r`, `⟨D⟩[E̅]p`, `⟨O̅⟩r ∧ [B]`(⊤) and
 `⟨D⟩[E̅]p` all `true` on both sides. **Every decision either substrate
 determined agrees; none differ.**
 

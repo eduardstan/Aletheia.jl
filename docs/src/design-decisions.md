@@ -10,8 +10,9 @@ contributors.
 semantics, data preparation, learning, or compatibility features.
 
 **Choice.** The repository is split into `AletheiaCore`, `AletheiaData`,
-`AletheiaLearn`, `AletheiaSole`, `AletheiaCircuits`, and `AletheiaGraphs`. The core package has no runtime
-dependencies, while the `Aletheia` umbrella preserves the historical API.
+`AletheiaLearn`, `AletheiaSole`, `AletheiaCircuits`, `AletheiaGraphs`,
+`AletheiaAudit`, and `AletheiaNeSy`. The core package has no runtime
+dependencies, while the `Aletheia` umbrella preserves the top-level API.
 
 **Consequence.** Applications can depend on one focused layer, and existing
 applications can keep using `Aletheia` without changing their imports.

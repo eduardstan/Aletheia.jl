@@ -1,15 +1,19 @@
 # Aletheia.jl
 
-Aletheia is a syntax-first Julia foundation for propositional, modal,
-many-valued, first-order logic, and inductive logic programming. It is
-deliberately a small set of composable layers rather than a monolithic logic
-hierarchy: formulas are pooled DAG handles, semantics live in models, and
-evaluation is a single walk over that DAG.
+Aletheia is a Julia monorepo of focused packages with one shared architecture:
+one pooled syntax DAG, one model/evaluation boundary, and several deliberately
+separate readings. `AletheiaCore` provides the pooled formulas, validated truth
+algebras, relational frames, and evaluator; `AletheiaData`, `AletheiaCircuits`,
+`AletheiaGraphs`, `AletheiaLearn`, `AletheiaSole`, `AletheiaAudit`, and
+`AletheiaNeSy` add data, probability, graph, learning, compatibility, audit,
+and neural-symbolic boundaries. The syntax/model/evaluation separation follows
+the modal semantics vocabulary of Blackburn, de Rijke, and Venema
+[blackburn2001; §§1.2–1.3, pp. 9–26](@cite).
 
-It is for people who build on logic rather than reason about one fixed logic:
-if you need to construct many formulas, evaluate them over finite Kripke
-models, swap the truth algebra without rewriting the evaluator, or hand modal
-interpretations to a learner, this is the layer underneath that work.
+The root `Aletheia` package re-exports the focused interfaces for a single-import
+workflow. Applications can instead depend on only the package that implements
+their boundary. [One engine, many readings](engine.md) shows how those
+packages share an engine without collapsing distinct semantic objects.
 
 Here is the whole shape of the package: a signature, a pool, a formula, a
 frame, a model, and a check.
@@ -41,36 +45,23 @@ Venema, §§1.2–1.3 (pp. 9–26) [blackburn2001; §§1.2–1.3, pp. 9–26](@c
 
 ## Package layout
 
-Aletheia is maintained as six Julia packages in one repository. The umbrella
-`Aletheia` package preserves the original all-in-one API, while focused users
-can depend on the layer they need:
+Aletheia is maintained as focused Julia packages in one repository. The
+umbrella `Aletheia` package re-exports the public interfaces, while focused
+users can depend on the layer they need:
 
-- `AletheiaCore` — pooled syntax, semantics, relations, and theory utilities;
-- `AletheiaData` — model-family and scalar-data protocols;
-- `AletheiaLearn` — ILP clauses, refinements, and learning-setting wrappers;
-- `AletheiaSole` — the opt-in `SoleLogics` compatibility vocabulary;
-- `AletheiaCircuits` — finite distribution-semantics programs, certified event
-  diagrams, and Float64 or exact Rational weighted model counting.
-- `AletheiaGraphs` — typed knowledge graphs, provenance-preserving paths,
-  and relational frame adapters.
+- [`AletheiaCore`](design.md) — pooled syntax, semantics, relations, and theory utilities;
+- [`AletheiaData`](families.md) — model-family and scalar-data protocols;
+- [`AletheiaCircuits`](circuits.md) — finite distribution-semantics programs, certified event
+  diagrams, and Float64 or exact Rational weighted model counting;
+- [`AletheiaGraphs`](graphs.md) — typed knowledge graphs, provenance-preserving paths, and
+  relational frame adapters;
+- [`AletheiaLearn`](learning.md) — ILP clauses, refinements, and learning-setting wrappers;
+- [`AletheiaSole`](sole.md) — opt-in compatibility adapters;
+- [`AletheiaAudit`](audit.md) — deterministic artifact traces, replay, and metrics;
+- [`AletheiaNeSy`](nesy.md) — validated neural leaves and exact symbolic extraction.
 
-The compatibility module is imported directly with `using AletheiaSole.SoleLogics`.
-Applications that already use `Aletheia` may keep using
-`Aletheia.SoleLogics`.
-
-## Relationship to SoleLogics
-
-[SoleLogics.jl](https://github.com/aclai-lab/SoleLogics.jl) is the established
-Julia package for symbolic and modal logic, and the foundation of the SoleLogics
-ecosystem (SoleData, SoleModels, SoleReasoners, SolePostHoc). Aletheia covers
-much of the same ground with a different representation: formulas are interned
-handles into an explicit pool rather than recursively typed trees, and truth
-algebras are values rather than types. Because the two packages answer the same
-questions, this site measures Aletheia against SoleLogics throughout — the
-[measured results](results.md) chapter reports the wins and the losses — and
-ships an opt-in [compatibility layer](compatibility.md) for trying selected
-SoleLogics consumers against Aletheia; the migration page records which consumers
-work and which remain unsupported.
+The compatibility package is documented separately so that the shared-engine
+narrative stays focused on Aletheia's own boundaries.
 
 ## Choose a path
 
@@ -83,8 +74,9 @@ work and which remain unsupported.
 - **[Semantics and evaluation](semantics.md)** — how does a formula get a truth
   value, in Boolean, Gödel, and Łukasiewicz models?
 - **[Many models, one formula](families.md)** — how do I evaluate one formula
-- **[Scalar data](scalar.md)** — how do I prepare dense feature values and evaluate threshold/modal formulas over data?
   across a whole dataset of models?
+- **[Scalar data](scalar.md)** — how do I prepare dense feature values and
+  evaluate threshold/modal formulas over data?
 - **[Finite FLew-algebras](algebras.md)** — what if my truth values are not a
   chain?
 - **[Distribution-semantics circuits](circuits.md)** — how do I compile a
@@ -95,25 +87,30 @@ work and which remain unsupported.
   contract a model by bisimulation, or normalise a classical formula?
 - **[Learning from interpretations](learning.md)** — why is a Kripke model
   already an ILP interpretation example?
-- **[Measured results](results.md)** — is it fast, and where is it slower? A
-  measurement report against SoleLogics, wins and losses.
+- **[Audit artifacts](audit.md)** — how are traces, replay, and metric
+  applicability recorded?
+- **[Neural-symbolic interface](nesy.md)** — how are neural leaves validated
+  and extracted exactly on finite cases?
+- **[API reference](api.md)** — which symbols belong to each package?
+- **[Measured results](results.md)** — what has been measured, with scope,
+  provenance, and workload limits.
 - **[Development and validation](development.md)** — how do I run the tests,
   docs, benchmarks, and differential checks?
-- **[Migration from SoleLogics](compatibility.md)** — which SoleLogics names
-  work under Aletheia, and which have no faithful equivalent?
+- **[Coming from SoleLogics?](compatibility.md)** — an on-ramp for selected
+SoleLogics consumers and their mappings.
 
 ## Scope and limits
 
-Aletheia supplies syntax, semantic structures, finite evaluation, a small
-first-order target syntax/evaluator, theory utilities, and ILP foundations. It
-does **not** ship a modal theorem prover, a first-order prover, a learner, an
-RCC composition table (the relations themselves are available; composing two of
-them into a disjunction of possible relations is not), or SoleLogics'
-many-valued tableau engines. The [theory](theory.md) and
-[learning](learning.md) chapters call these boundaries out where they matter.
+Aletheia supplies pooled syntax, semantic structures, finite evaluation,
+validated many-valued algebras, scalar/data preparation, finite
+distribution-semantics circuits, typed graph adapters, audit artifacts, a
+neural-symbolic boundary, theory utilities, and ILP foundations. It does **not**
+ship a modal theorem prover, a first-order prover, a learner, an RCC composition
+table, description-logic entailment, general probabilistic inference, or a
+proven gradient-based semantic-loss path. The package pages describe each
+boundary and its limits.
 
 The benchmark is run by hand rather than in CI, because shared-runner timings
-are too noisy to publish. Its differential correctness suite lives outside the
-package tests so that Aletheia never takes SoleLogics as a dependency. The
-[measured results](results.md) chapter reports the full protocol, including the
-workloads where Aletheia is slower.
+are too noisy to publish. Its differential correctness suite is separate from
+package tests, and the [measured results](results.md) chapter reports the full
+protocol, scope, and workload limits.

@@ -4,6 +4,12 @@
 CurrentModule = Aletheia
 ```
 
+`AletheiaCore` owns the semantic protocol shared by Boolean, many-valued, and
+relational model evaluation. A `TruthAlgebra` supplies the carrier and
+connective operations, while `Frame` and `Model` supply worlds, accessibility,
+and valuation. The frame/model boundary is the Kripke interpretation described
+by Blackburn et al. [blackburn2001; §1.3, pp. 16–20](@cite).
+
 ## Truth algebras
 
 [`TruthAlgebra`](@ref) is the semantic protocol. The built-ins are
