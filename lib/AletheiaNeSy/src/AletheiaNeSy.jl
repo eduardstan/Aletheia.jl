@@ -182,8 +182,12 @@ function _nesy_cases(cases)
     for c in cases
         if c isa ArtifactCase
             push!(result, c)
-        elseif c isa NamedTuple && hasproperty(c, :input)
+        elseif c isa NamedTuple
+            hasproperty(c, :input) ||
+                throw(MalformedCaseError("named cases need an input field"))
             scope = hasproperty(c, :scope) ? c.scope : :global
+            scope in (:global, :local) ||
+                throw(MalformedCaseError("case scope must be :global or :local"))
             output = hasproperty(c, :oracle_output) ? c.oracle_output : missing
             state = hasproperty(c, :state) ? c.state : nothing
             push!(result, ArtifactCase(c.input, state, output, scope))

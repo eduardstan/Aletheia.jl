@@ -301,8 +301,11 @@ function verify_artifact(artifact::SymbolicArtifact, cases; oracle=nothing, prof
         end
         replay(tr, state).valid || push!(failures, "case $i trace failed replay")
     end
+    applicable = [outputs[i] !== missing for i in eachindex(outputs)]
     return VerificationReport(
-        isempty(failures), (outputs=outputs, traces=traces, cases=length(cs)), failures
+        isempty(failures),
+        (outputs=outputs, traces=traces, cases=length(cs), applicability=applicable),
+        failures,
     )
 end
 
@@ -335,7 +338,11 @@ function metric_bundle(
         end
     end
     fidelity = _metric(matching, compared, scope)
-    coverage = _metric(covered, length(selected), scope)
+    coverage = if covered == 0
+        MetricValue(missing, missing, missing, scope, false)
+    else
+        _metric(covered, length(selected), scope)
+    end
     stability = if isempty(perturbations)
         MetricValue(1.0, 1, 1, scope, true)
     else
@@ -429,10 +436,24 @@ function inject!(target, ::SymbolicArtifact; kwargs...)
 end
 
 """Check that a shipped artifact type satisfies the common protocol."""
-function test_interface(T::Type{<:SymbolicArtifact})
+function test_interface(T::Type{<:SymbolicArtifact}; artifact=nothing, cases=nothing)
     T <: Union{RuleArtifact,TreeArtifact} ||
         throw(ArgumentError("artifact type has no registered protocol"))
-    return true
+    artifact === nothing && return true
+    artifact isa T || throw(ArgumentError("artifact does not have the requested type"))
+    cases === nothing && throw(ArgumentError("protocol cases are required"))
+    cs = _cases(cases)
+    report = verify_artifact(artifact, cs)
+    report.valid || return false
+    return all(
+        replay(
+            eval_artifact(artifact, c.state === nothing ? c.input : c.state)[2],
+            c.state === nothing ? c.input : c.state,
+        ).valid for c in cs
+    )
+end
+function test_interface(artifact::SymbolicArtifact, cases)
+    return test_interface(typeof(artifact); artifact=artifact, cases=cases)
 end
 
 export SymbolicArtifact,
@@ -489,14 +510,14 @@ function extract_artifact(
         state = c.state === nothing ? c.input : c.state
         encoded = if encoder === nothing
             c.input
+        elseif applicable(encoder, c.input)
+            encoder(c.input)
+        elseif applicable(encoder, nothing, c.input)
+            encoder(nothing, c.input)
+        elseif applicable(encoder, c.input, c.state)
+            encoder(c.input, c.state)
         else
-            (
-                if applicable(encoder, c.input)
-                    encoder(c.input)
-                else
-                    encoder(c.input, c.state)
-                end
-            )
+            throw(ArgumentError("encoder must accept one input or (atom, input)"))
         end
         output = source(encoded)
         push!(rs, ArtifactRule(state, output))
