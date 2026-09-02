@@ -276,7 +276,8 @@ julia> using AletheiaLearn, AletheiaCore
 julia> p = Predicate(:p, [Variable(:X)]);
 
 julia> ClauseSet([Clause([Literal(p)])])
-ClauseSet(p(X))
+ClauseSet (1 clause)
+  p(X)
 ```
 """
 struct ClauseSet{C<:Tuple}
@@ -350,7 +351,19 @@ end
 
 Base.string(knowledge::ClauseSet) = sprint(show, knowledge)
 
-"""A finite substitution for first-order variables (Muggleton & De Raedt, Definition 5.3 [muggleton1994](@cite))."""
+"""
+A finite substitution for first-order variables (Muggleton & De Raedt, Definition 5.3 [muggleton1994](@cite)).
+
+# Examples
+```jldoctest
+julia> using AletheiaLearn, AletheiaCore
+
+julia> sub = Substitution(:X => Variable(:Y));
+
+julia> sub[:X]
+Y
+```
+"""
 struct Substitution
     bindings::Tuple
     function Substitution(bindings::Tuple)
@@ -438,10 +451,22 @@ function _apply_substitution(
     )
 end
 
-"""Apply a normalized substitution to a term, atomic formula, or clause.
+"""
+Apply a normalized substitution to a term, atomic formula, or clause.
 
 Bindings are followed through variable chains; this is the usual composed application,
-not a capture-avoiding operation for quantified formulas."""
+not a capture-avoiding operation for quantified formulas.
+
+# Examples
+```jldoctest
+julia> using AletheiaLearn, AletheiaCore
+
+julia> p = Predicate(:p, [Variable(:X)]);
+
+julia> substitute(p, Substitution(:X => Variable(:Y)))
+p(Y)
+```
+"""
 function substitute(term::FirstOrderTerm, substitution::Substitution)
     return _apply_substitution(term, substitution, Set{Variable}())
 end
@@ -512,12 +537,25 @@ function _match_literal(
            _match_term(left.right, right.right, environment)
 end
 
-"""Decide Plotkin's θ-subsumption: some substitution makes `left` a subset of `right`.
+"""
+Decide Plotkin's θ-subsumption: some substitution makes `left` a subset of `right`.
 
 The search is a direct backtracking matcher and is exponential in the worst case,
-as expected for the NP-complete general problem.  Variables in `right` are treated
+as expected for the NP-complete general problem. Variables in `right` are treated
 as ordinary target terms; only variables in `left` are bound. The definition is
 Muggleton & De Raedt, Definition 5.3 [muggleton1994](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaLearn, AletheiaCore
+
+julia> p1 = Predicate(:p, [Variable(:X)]);
+
+julia> p2 = Predicate(:p, [Constant(:a)]);
+
+julia> subsumes(Clause([Literal(p1)]), Clause([Literal(p2)]))
+true
+```
 """
 function subsumes(left::Clause, right::Clause)
     # A substitution may identify literals, so clause cardinality is not a safe
@@ -541,9 +579,56 @@ subsumes(left::Clause, right::HornClause) = subsumes(left, right.clause)
 subsumes(left::HornClause, right::Clause) = subsumes(left.clause, right)
 
 const theta_subsumes = subsumes
-"""The ILP generality quasi-order, implemented by θ-subsumption (Muggleton & De Raedt, §5.2 [muggleton1994](@cite))."""
+
+"""
+The ILP generality quasi-order, implemented by θ-subsumption (Muggleton & De Raedt, §5.2 [muggleton1994](@cite)).
+
+# Examples
+```jldoctest
+julia> using AletheiaLearn, AletheiaCore
+
+julia> p1 = Predicate(:p, [Variable(:X)]);
+
+julia> p2 = Predicate(:p, [Constant(:a)]);
+
+julia> more_general(Clause([Literal(p1)]), Clause([Literal(p2)]))
+true
+```
+"""
 more_general(left, right) = subsumes(left, right)
+
+"""
+Test whether `left` is more specific than `right` under θ-subsumption.
+
+# Examples
+```jldoctest
+julia> using AletheiaLearn, AletheiaCore
+
+julia> p1 = Predicate(:p, [Variable(:X)]);
+
+julia> p2 = Predicate(:p, [Constant(:a)]);
+
+julia> more_specific(Clause([Literal(p2)]), Clause([Literal(p1)]))
+true
+```
+"""
 more_specific(left, right) = subsumes(right, left)
+
+"""
+Test whether `left` and `right` are equivalent under mutual θ-subsumption.
+
+# Examples
+```jldoctest
+julia> using AletheiaLearn, AletheiaCore
+
+julia> p1 = Predicate(:p, [Variable(:X)]);
+
+julia> p2 = Predicate(:p, [Variable(:Y)]);
+
+julia> equivalent_under_subsumption(Clause([Literal(p1)]), Clause([Literal(p2)]))
+true
+```
+"""
 function equivalent_under_subsumption(left, right)
     return subsumes(left, right) && subsumes(right, left)
 end
@@ -668,7 +753,8 @@ function _predicate_templates(predicates)
     return (_predicate_template(predicate) for predicate in predicates)
 end
 
-"""Return a lazy stream of proper specializations under θ-subsumption.
+"""
+Return a lazy stream of proper specializations under θ-subsumption.
 
 The one-step operator applies supplied substitutions and/or adds one supplied
 literal template, exactly the two operations described in Muggleton & De Raedt
@@ -684,6 +770,19 @@ it must be `nothing` or a non-negative integer. Refining a `HornClause` returns
 literal. The operator is sound and proper, but is not claimed complete or
 optimal: it cannot generate literals outside the bias and does not perform
 reduced-clause canonicalization.
+
+# Examples
+```jldoctest
+julia> using AletheiaLearn, AletheiaCore
+
+julia> p = Predicate(:p, [Variable(:X)]);
+
+julia> c = Clause([Literal(p)]);
+
+julia> collect(downward_refinements(c; predicates=[:q => 1]))
+1-element Vector{Any}:
+ p(X) ∨ q(_A1)
+```
 """
 function downward_refinements(
     clause::Union{Clause,HornClause};
@@ -788,13 +887,28 @@ function downward_refinements(
     )
 end
 
-"""Return a lazy stream of proper generalizations under θ-subsumption.
+"""
+Return a lazy stream of proper generalizations under θ-subsumption.
 
 This operator deletes one literal and replaces one non-variable subterm by a
 fresh variable. It is sound, proper, locally finite for a finite clause, and
 intentionally incomplete: no complete generalization operator exists for full
 clausal logic without a language bias because θ-subsumption has infinite
 chains (Muggleton & De Raedt (1994), §5.2.2).
+
+# Examples
+```jldoctest
+julia> using AletheiaLearn, AletheiaCore
+
+julia> p = Predicate(:p, [Constant(:a)]);
+
+julia> c = Clause([Literal(p)]);
+
+julia> collect(upward_refinements(c))
+2-element Vector{Any}:
+ ⊥
+ p(_G1)
+```
 """
 function upward_refinements(clause::Union{Clause,HornClause})
     base = clause isa HornClause ? clause.clause : clause
@@ -838,22 +952,87 @@ end
 const downward_refinement = downward_refinements
 const upward_refinement = upward_refinements
 const specializations = downward_refinements
+
+"""
+Return a lazy stream of generalizations for `clause`.
+
+# Examples
+```jldoctest
+julia> using AletheiaLearn, AletheiaCore
+
+julia> p = Predicate(:p, [Constant(:a)]);
+
+julia> c = Clause([Literal(p)]);
+
+julia> collect(generalizations(c))
+2-element Vector{Any}:
+ ⊥
+ p(_G1)
+```
+"""
 const generalizations = upward_refinements
 
-"""Return whether a clause is a Horn clause (Muggleton & De Raedt, §3.2 [muggleton1994](@cite))."""
+"""
+Return whether a clause is a Horn clause (Muggleton & De Raedt, §3.2 [muggleton1994](@cite)).
+
+# Examples
+```jldoctest
+julia> using AletheiaLearn, AletheiaCore
+
+julia> p = Predicate(:p, [Variable(:X)]);
+
+julia> ishorn(Clause([Literal(p)]))
+true
+```
+"""
 ishorn(clause::Clause) = count(literal -> literal.positive, clause.literals) <= 1
 ishorn(::HornClause) = true
 
+"""
+Abstract supertype for ILP training/test examples.
+
+# Examples
+```jldoctest
+julia> using AletheiaLearn
+
+julia> struct MyExample <: ILPExample end
+
+julia> MyExample() isa ILPExample
+true
+```
+"""
 abstract type ILPExample end
-"""An example in learning from entailment: a query and its positive/negative label
-(Muggleton & De Raedt, §3 [muggleton1994](@cite))."""
+
+"""
+An example in learning from entailment: a query and its positive/negative label
+(Muggleton & De Raedt, §3 [muggleton1994](@cite)).
+
+# Examples
+```jldoctest
+julia> using AletheiaLearn
+
+julia> EntailmentExample("p(a)"; positive=true)
+EntailmentExample (+): p(a)
+```
+"""
 struct EntailmentExample{E} <: ILPExample
     example::E
     positive::Bool
 end
 EntailmentExample(example; positive=true) = EntailmentExample(example, Bool(positive))
-"""An example in learning from interpretations: an interpretation and its label
-(Muggleton & De Raedt, §3 [muggleton1994](@cite))."""
+
+"""
+An example in learning from interpretations: an interpretation and its label
+(Muggleton & De Raedt, §3 [muggleton1994](@cite)).
+
+# Examples
+```jldoctest
+julia> using AletheiaLearn
+
+julia> InterpretationExample(:interp; positive=true)
+InterpretationExample (+): interp
+```
+"""
 struct InterpretationExample{I} <: ILPExample
     interpretation::I
     positive::Bool
@@ -861,35 +1040,99 @@ end
 function InterpretationExample(interpretation; positive=true)
     return InterpretationExample(interpretation, Bool(positive))
 end
-"""An example in learning from proofs: a proof object and its label
-(Muggleton & De Raedt, §5 [muggleton1994](@cite))."""
+
+"""
+An example in learning from proofs: a proof object and its label
+(Muggleton & De Raedt, §5 [muggleton1994](@cite)).
+
+# Examples
+```jldoctest
+julia> using AletheiaLearn
+
+julia> ProofExample(:proof; positive=true)
+ProofExample (+): proof
+```
+"""
 struct ProofExample{P} <: ILPExample
     proof::P
     positive::Bool
 end
 ProofExample(proof; positive=true) = ProofExample(proof, Bool(positive))
-"""Construct an example for learning from entailment [muggleton1994](@cite)."""
+
+"""
+Construct an example for learning from entailment [muggleton1994](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaLearn
+
+julia> ex = learning_from_entailment("p(a)");
+
+julia> ex.positive
+true
+```
+"""
 function learning_from_entailment(example; positive=true)
     return EntailmentExample(example; positive=positive)
 end
-"""Construct a modal `Model` example for learning from interpretations [muggleton1994](@cite).
+
+"""
+Construct a modal `Model` example for learning from interpretations [muggleton1994](@cite).
 
 The named learning-setting constructor intentionally follows [`interpretation_example`](@ref)
 and rejects first-order adapters; callers with another interpretation type can use
 [`InterpretationExample`](@ref) directly.
+
+# Examples
+```jldoctest
+julia> using AletheiaLearn, AletheiaCore
+
+julia> m = Model(Frame([:w1], Dict(); index=true), BOOLEAN, (a, w) -> true);
+
+julia> ex = learning_from_interpretations(m);
+
+julia> ex.positive
+true
+```
 """
 function learning_from_interpretations(example; positive=true)
     return interpretation_example(example; positive=positive)
 end
-"""Construct an example for learning from proofs [muggleton1994](@cite)."""
+
+"""
+Construct an example for learning from proofs [muggleton1994](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaLearn
+
+julia> ex = learning_from_proofs(:proof1);
+
+julia> ex.positive
+true
+```
+"""
 learning_from_proofs(example; positive=true) = ProofExample(example; positive=positive)
 
-"""Present a Kripke `Model` directly as an interpretation example.
+"""
+Present a Kripke `Model` directly as an interpretation example.
 
 Aletheia's `Model` is an interpretation (a frame plus valuation), so this is
 the concrete bridge to learning from interpretations. Boolean modal models can
 also be converted to first-order interpretations with `first_order_interpretation`.
 The setting follows Muggleton & De Raedt, §3 [muggleton1994](@cite).
+
+# Examples
+```jldoctest
+julia> using AletheiaLearn, AletheiaCore
+
+julia> m = Model(Frame([:w1], Dict(); index=true), BOOLEAN, (a, w) -> true);
+
+julia> ex = interpretation_example(m);
+
+julia> ex.positive
+true
+```
 """
 function interpretation_example(model::Model; positive=true)
     return InterpretationExample(model; positive=positive)
@@ -901,6 +1144,22 @@ function interpretation_example(other; positive=true)
         ),
     )
 end
+
+"""
+Alias for [`interpretation_example`](@ref).
+
+# Examples
+```jldoctest
+julia> using AletheiaLearn, AletheiaCore
+
+julia> m = Model(Frame([:w1], Dict(); index=true), BOOLEAN, (a, w) -> true);
+
+julia> ex = model_example(m);
+
+julia> ex.positive
+true
+```
+"""
 function model_example(model::Model; positive=true)
     return interpretation_example(model; positive=positive)
 end
@@ -930,6 +1189,16 @@ The aggregate remains defined when there are no positive examples, no
 negative examples, or the hypothesis covers no examples.  In those cases the
 formula above is evaluated over the examples that do exist; only the empty
 collection returns `missing`.
+
+# Examples
+```jldoctest
+julia> using AletheiaLearn
+
+julia> score = HypothesisScore(1, 0, 1, 0);
+
+julia> score.accuracy
+1.0
+```
 """
 struct HypothesisScore
     true_positives::Int
@@ -971,6 +1240,18 @@ interpreted as failure to establish coverage and the example is counted as
 uncovered.  Since `check` evaluates the whole extension first, a missing value
 at any world has this result.  This function measures a supplied hypothesis only; Aletheia ships
 no learner or hypothesis-search procedure.
+
+# Examples
+```jldoctest
+julia> using AletheiaLearn, AletheiaCore
+
+julia> m = Model(Frame([:w1], Dict(); index=true), BOOLEAN, (a, w) -> true);
+
+julia> ex = interpretation_example(m; positive=true);
+
+julia> score(atom(:p), [ex]) isa HypothesisScore
+true
+```
 """
 function score(hypothesis::Formula, examples)
     true_positives = 0
