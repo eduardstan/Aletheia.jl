@@ -17,6 +17,8 @@ include("ilp.jl")
     if pkgversion(JET) < v"0.11"
         JET.test_package(AletheiaLearn; target_defined_modules=true)
     else
-        JET.test_package(AletheiaLearn; target_modules=(AletheiaLearn,), analyze_from_definitions=true)
+        JET.test_package(
+            AletheiaLearn; target_modules=(AletheiaLearn,), analyze_from_definitions=true
+        )
     end
 end

@@ -204,7 +204,7 @@ julia> using AletheiaData
 
 julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
 
-julia> instances(store)
+julia> AletheiaData.instances(store)
 (1,)
 ```
 """
@@ -344,7 +344,7 @@ julia> using AletheiaData, AletheiaCore
 julia> index = ScalarRelationIndex([Frame([:w1], Dict(); index=true)], (globalrel,));
 
 julia> index.relations
-(globalrel,)
+(global,)
 ```
 """
 struct ScalarRelationIndex{F}
@@ -763,11 +763,14 @@ function prepare_scalar(
             Array{Any}(undef, length(world_list), length(instance_labels), length(feature_list))
         else
             fill!(
-            Array{Any}(
-                undef, length(world_list), length(instance_labels), length(feature_list)
-            ),
-            missing,
-        )
+                Array{Any}(
+                    undef,
+                    length(world_list),
+                    length(instance_labels),
+                    length(feature_list),
+                ),
+                missing,
+            )
         end
         if precompute_features
             for (iw, world) in enumerate(world_list),
@@ -886,12 +889,12 @@ function representative_worlds(
         collect(world)
     else
         (
-        if relation isa GlobalRelation && hasproperty(data, :worlds)
-            collect(getproperty(data, :worlds))
-        else
-            Any[]
-        end
-    )
+            if relation isa GlobalRelation && hasproperty(data, :worlds)
+                collect(getproperty(data, :worlds))
+            else
+                Any[]
+            end
+        )
     end
 end
 
@@ -990,12 +993,12 @@ function aggregate_value(
             collect(data.worlds)
         else
             (
-            if world_or_worlds isa AbstractVector || world_or_worlds isa Tuple
-                collect(world_or_worlds)
-            else
-                collect(world_or_worlds)
-            end
-        )
+                if world_or_worlds isa AbstractVector || world_or_worlds isa Tuple
+                    collect(world_or_worlds)
+                else
+                    collect(world_or_worlds)
+                end
+            )
         end
         _aggregate_values(
             [feature_value(data, instance, world, feature) for world in ws], aggregate
@@ -1012,16 +1015,16 @@ function aggregate_value(
             collect(world_or_worlds)
         else
             (
-            if relation isa GlobalRelation && hasproperty(data, :worlds)
-                collect(getproperty(data, :worlds))
-            else
-                throw(
-                ArgumentError(
-                    "an unprepared scalar dataset needs an explicit world collection"
-                ),
+                if relation isa GlobalRelation && hasproperty(data, :worlds)
+                    collect(getproperty(data, :worlds))
+                else
+                    throw(
+                        ArgumentError(
+                            "an unprepared scalar dataset needs an explicit world collection",
+                        ),
+                    )
+                end
             )
-            end
-        )
         end
     return _aggregate_values(
         [feature_value(data, instance, world, feature) for world in worlds_value], aggregate
@@ -1099,7 +1102,7 @@ Build a scalar `ValuationCallback` for one prepared instance.
 
 # Examples
 ```jldoctest
-julia> using AletheiaData
+julia> using AletheiaData, AletheiaCore
 
 julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
 
@@ -1116,9 +1119,9 @@ function scalar_valuation(data::PreparedScalarData, instance; vectorized::Bool=t
     end
     batch = if vectorized
         (
-        (condition, world_values) ->
-            scalar_atom_values(condition, data, instance, world_values)
-    )
+            (condition, world_values) ->
+                scalar_atom_values(condition, data, instance, world_values)
+        )
     else
         nothing
     end
@@ -1249,43 +1252,43 @@ function _scalar_evaluate(
                 leaf = childnode.kind === :atom ? childnode.payload : nothing
                 aggregate = if leaf isa ThresholdCondition
                     _aggregate_for_threshold(
-                    test_operator(leaf), connective isa Diamond ? :diamond : :box
-                )
+                        test_operator(leaf), connective isa Diamond ? :diamond : :box
+                    )
                 else
                     nothing
                 end
                 prior_hits = if trace && aggregate !== nothing
                     [
-                    if relation(connective) isa GlobalRelation
-                        haskey(
-                        data.one_step_memos.global_values,
-                        _global_memo_key(instance, feature(leaf), aggregate),
-                    )
-                    else
-                        haskey(
-                        data.one_step_memos.relational_values,
-                        _memo_key(
-                            instance,
-                            world,
-                            relation(connective),
-                            feature(leaf),
-                            aggregate,
-                        ),
-                    )
-                    end for world in worlds_vector
-                ]
+                        if relation(connective) isa GlobalRelation
+                            haskey(
+                                data.one_step_memos.global_values,
+                                _global_memo_key(instance, feature(leaf), aggregate),
+                            )
+                        else
+                            haskey(
+                                data.one_step_memos.relational_values,
+                                _memo_key(
+                                    instance,
+                                    world,
+                                    relation(connective),
+                                    feature(leaf),
+                                    aggregate,
+                                ),
+                            )
+                        end for world in worlds_vector
+                    ]
                 else
                     Bool[]
                 end
                 reduced = if leaf isa AbstractScalarCondition
                     _scalar_modal_leaf(
-                    leaf,
-                    data,
-                    instance,
-                    relation(connective),
-                    worlds_vector,
-                    connective isa Diamond ? :diamond : :box,
-                )
+                        leaf,
+                        data,
+                        instance,
+                        relation(connective),
+                        worlds_vector,
+                        connective isa Diamond ? :diamond : :box,
+                    )
                 else
                     nothing
                 end
@@ -1316,23 +1319,27 @@ function _scalar_evaluate(
                             worlds_vector
                         else
                             collect(
-                            accessible(_frame(data, instance), world, relation(connective))
-                        )
+                                accessible(
+                                    _frame(data, instance), world, relation(connective)
+                                ),
+                            )
                         end for world in worlds_vector
                     ]
                     values[slot] = BitVector(
                         if connective isa Diamond
                             any(
-                            target ->
-                                child[findfirst(x -> isequal(x, target), worlds_vector)],
-                            targets,
-                        )
+                                target -> child[findfirst(
+                                    x -> isequal(x, target), worlds_vector
+                                )],
+                                targets,
+                            )
                         else
                             all(
-                            target ->
-                                child[findfirst(x -> isequal(x, target), worlds_vector)],
-                            targets,
-                        )
+                                target -> child[findfirst(
+                                    x -> isequal(x, target), worlds_vector
+                                )],
+                                targets,
+                            )
                         end for targets in adjacency
                     )
                     trace && push!(
@@ -1429,10 +1436,10 @@ function batch_apply(
     normalized = collect(formulas)
     isempty(normalized) && return if trace
         (
-        values=Vector{Any}[],
-        traces=NamedTuple[],
-        cache_state=(formula=:empty, features=:empty, aggregates=:empty),
-    )
+            values=Vector{Any}[],
+            traces=NamedTuple[],
+            cache_state=(formula=:empty, features=:empty, aggregates=:empty),
+        )
     else
         Vector{Any}[]
     end

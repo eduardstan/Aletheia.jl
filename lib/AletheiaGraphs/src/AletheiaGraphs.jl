@@ -471,9 +471,9 @@ function path_valid(path::KGPath, graph::KnowledgeGraph)
         any(
             edge ->
                 isequal(edge.source, path.entities[i]) &&
-                isequal(edge.target, path.entities[i + 1]) &&
-                isequal(edge.relation, path.relations[i]) &&
-                isequal(edge.provenance, path.edge_provenance[i]),
+                    isequal(edge.target, path.entities[i + 1]) &&
+                    isequal(edge.relation, path.relations[i]) &&
+                    isequal(edge.provenance, path.edge_provenance[i]),
             graph.edges,
         ) || return false
     end

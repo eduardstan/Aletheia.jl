@@ -9,7 +9,10 @@ connective only need to add a method for their own value or type.
 function arity(connective)
     if connective isa Negation
         1
-    elseif connective isa Conjunction || connective isa Fusion || connective isa Disjunction || connective isa Implication
+    elseif connective isa Conjunction ||
+           connective isa Fusion ||
+           connective isa Disjunction ||
+           connective isa Implication
         2
     elseif connective isa Diamond || connective isa Box
         1
@@ -48,8 +51,11 @@ end
 Return whether a connective has a syntactic dual.
 """
 function hasdual(connective)
-    connective isa Negation || connective isa Conjunction || connective isa Disjunction ||
-        connective isa Diamond || connective isa Box
+    return connective isa Negation ||
+           connective isa Conjunction ||
+           connective isa Disjunction ||
+           connective isa Diamond ||
+           connective isa Box
 end
 
 """
@@ -102,7 +108,7 @@ Return whether a connective is commutative.  Commutativity is recorded as a
 trait for later normalization stages; it never changes syntax or equality.
 """
 function commutative(connective)
-    connective isa Conjunction || connective isa Fusion || connective isa Disjunction
+    return connective isa Conjunction || connective isa Fusion || connective isa Disjunction
 end
 
 """
@@ -112,7 +118,7 @@ Return whether a connective is a modality.  This is a syntactic trait and has
 no semantic consequence in the syntax layer.
 """
 function modality(connective)
-    connective isa Diamond || connective isa Box
+    return connective isa Diamond || connective isa Box
 end
 
 """
@@ -160,42 +166,57 @@ struct Signature{C<:Tuple,A<:Tuple}
     connectives::C
     arities::A
     function Signature(cs::C, as::A) where {C<:Tuple,A<:Tuple}
-        length(cs) == length(as) || throw(ArgumentError("connectives and arities must have equal lengths"))
+        length(cs) == length(as) ||
+            throw(ArgumentError("connectives and arities must have equal lengths"))
         isempty(cs) && throw(ArgumentError("a signature must contain a connective"))
-        checked = ntuple(i -> begin
-            n = as[i]
-            n isa Integer && n >= 0 || throw(ArgumentError("arity must be a non-negative integer"))
-            Int(n)
-        end, length(as))
+        checked = ntuple(
+            i -> begin
+                n = as[i]
+                n isa Integer && n >= 0 ||
+                    throw(ArgumentError("arity must be a non-negative integer"))
+                Int(n)
+            end,
+            length(as),
+        )
         trait_arities = ntuple(i -> arity(cs[i]), length(cs))
-        trait_arities == checked || throw(ArgumentError("declared arities disagree with arity traits"))
+        trait_arities == checked ||
+            throw(ArgumentError("declared arities disagree with arity traits"))
         texts = map(notation, cs)
         all(text -> text isa AbstractString && !isempty(text), texts) ||
             throw(ArgumentError("connective notation must be non-empty text"))
-        all(text -> all(c -> !isspace(c) && c != '(' && c != ')' && c != ',' && c != '"', text), texts) ||
-            throw(ArgumentError("connective notation cannot contain whitespace or delimiters"))
+        all(
+            text ->
+                all(c -> !isspace(c) && c != '(' && c != ')' && c != ',' && c != '"', text),
+            texts,
+        ) || throw(
+            ArgumentError("connective notation cannot contain whitespace or delimiters")
+        )
         length(unique(texts)) == length(cs) ||
             throw(ArgumentError("connective notation must be unique within a signature"))
-        new{C,typeof(checked)}(cs, checked)
+        return new{C,typeof(checked)}(cs, checked)
     end
 end
 
 function Signature(cs::AbstractVector)
-    Signature(tuple(cs...))
+    return Signature(tuple(cs...))
 end
 
 function Signature(cs::AbstractVector, as::AbstractVector)
-    Signature(tuple(cs...), tuple(as...))
+    return Signature(tuple(cs...), tuple(as...))
 end
 
 function Signature(cs::Tuple)
     isempty(cs) && throw(ArgumentError("a signature must contain a connective"))
-    as = ntuple(i -> begin
-        n = arity(cs[i])
-        n isa Integer && n >= 0 || throw(ArgumentError("arity must be a non-negative integer"))
-        Int(n)
-    end, length(cs))
-    Signature(cs, as)
+    as = ntuple(
+        i -> begin
+            n = arity(cs[i])
+            n isa Integer && n >= 0 ||
+                throw(ArgumentError("arity must be a non-negative integer"))
+            Int(n)
+        end,
+        length(cs),
+    )
+    return Signature(cs, as)
 end
 
 """Return the connectives in a [`Signature`](@ref), in declaration order."""
@@ -206,12 +227,12 @@ function arity(signature::Signature, connective)
     for i in eachindex(signature.connectives)
         isequal(signature.connectives[i], connective) && return signature.arities[i]
     end
-    throw(ArgumentError("connective $(repr(connective)) is not in the signature"))
+    return throw(ArgumentError("connective $(repr(connective)) is not in the signature"))
 end
 
 """Return whether `connective` belongs to `signature`."""
 function hasconnective(signature::Signature, connective)
-    any(c -> isequal(c, connective), signature.connectives)
+    return any(c -> isequal(c, connective), signature.connectives)
 end
 
 # Hash-consed payloads must not be mutable.  The check is recursive so an
@@ -261,7 +282,7 @@ function _payload_is_immutable_dynamic(value, seen)
     for i in 1:fieldcount(T)
         _payload_is_immutable_dynamic(getfield(value, i), seen) || return false
     end
-    true
+    return true
 end
 
 # Retain the explicit-seen form for internal callers that need to share a
@@ -269,17 +290,17 @@ end
 # whenever the payload type is statically closed.
 _payload_is_immutable(value, seen) = _payload_is_immutable_dynamic(value, seen)
 
-@generated function _payload_is_immutable(value::T) where T
+@generated function _payload_is_immutable(value::T) where {T}
     status = _payload_static_immutability(T)
     status === true && return :(true)
     status === false && return :(false)
-    :(_payload_is_immutable_dynamic(value, IdDict{Any,Nothing}()))
+    return :(_payload_is_immutable_dynamic(value, IdDict{Any,Nothing}()))
 end
 
 function _require_immutable_payload(value, role::AbstractString)
     _payload_is_immutable(value) ||
         throw(ArgumentError("$role must be immutable; mutable payloads cannot be interned"))
-    value
+    return value
 end
 
 # Internal pool records use ids in their key; no formula tree is ever used as a
@@ -305,7 +326,7 @@ mutable struct FormulaPool{S<:Signature}
 end
 
 function FormulaPool(signature::Signature)
-    FormulaPool(signature, Dict{Any,Int}(), _PoolNode[], ReentrantLock())
+    return FormulaPool(signature, Dict{Any,Int}(), _PoolNode[], ReentrantLock())
 end
 
 """Return the signature associated with a formula pool."""
@@ -344,8 +365,10 @@ struct Atom{V,P<:FormulaPool} <: Formula
     value::V
 
     # Internal reconstruction from an already-validated pool node.
-    function Atom(pool::P, id::Int, value::V, ::_TrustedFormulaHandle) where {V,P<:FormulaPool}
-        new{V,P}(pool, id, value)
+    function Atom(
+        pool::P, id::Int, value::V, ::_TrustedFormulaHandle
+    ) where {V,P<:FormulaPool}
+        return new{V,P}(pool, id, value)
     end
 
     function Atom(pool::P, id::Int, value::V) where {V,P<:FormulaPool}
@@ -355,14 +378,13 @@ struct Atom{V,P<:FormulaPool} <: Formula
             1 <= id <= length(pool.nodes) ||
                 throw(ArgumentError("atom id $id is not present in its FormulaPool"))
             node = pool.nodes[id]
-            node.kind == 0x01 ||
-                throw(ArgumentError("formula id $id is not an atom"))
+            node.kind == 0x01 || throw(ArgumentError("formula id $id is not an atom"))
             isequal(node.payload, value) ||
                 throw(ArgumentError("atom payload does not match formula id $id"))
         finally
             unlock(pool.lock)
         end
-        new{V,P}(pool, id, value)
+        return new{V,P}(pool, id, value)
     end
 end
 
@@ -387,19 +409,22 @@ struct Branch{C,N,P<:FormulaPool} <: Formula
     children::NTuple{N,Int}
 
     # Internal reconstruction from an already-validated pool node.
-    function Branch(pool::P, id::Int, connective::C, children::NTuple{N,Int}, ::_TrustedFormulaHandle) where {C,N,P<:FormulaPool}
-        new{C,N,P}(pool, id, connective, children)
+    function Branch(
+        pool::P, id::Int, connective::C, children::NTuple{N,Int}, ::_TrustedFormulaHandle
+    ) where {C,N,P<:FormulaPool}
+        return new{C,N,P}(pool, id, connective, children)
     end
 
-    function Branch(pool::P, id::Int, connective::C, children::NTuple{N,Int}) where {C,N,P<:FormulaPool}
+    function Branch(
+        pool::P, id::Int, connective::C, children::NTuple{N,Int}
+    ) where {C,N,P<:FormulaPool}
         _require_immutable_payload(connective, "branch connective")
         lock(pool.lock)
         try
             1 <= id <= length(pool.nodes) ||
                 throw(ArgumentError("branch id $id is not present in its FormulaPool"))
             node = pool.nodes[id]
-            node.kind == 0x02 ||
-                throw(ArgumentError("formula id $id is not a branch"))
+            node.kind == 0x02 || throw(ArgumentError("formula id $id is not a branch"))
             isequal(node.payload, connective) ||
                 throw(ArgumentError("branch connective does not match formula id $id"))
             node.children == children ||
@@ -409,7 +434,7 @@ struct Branch{C,N,P<:FormulaPool} <: Formula
         finally
             unlock(pool.lock)
         end
-        new{C,N,P}(pool, id, connective, children)
+        return new{C,N,P}(pool, id, connective, children)
     end
 end
 
@@ -454,9 +479,9 @@ nchildren(branch::Branch) = length(branch.children)
 arity(formula::Atom) = nchildren(formula)
 arity(formula::Branch) = nchildren(formula)
 
-function _branch_from_ids(pool::FormulaPool, id::Int, connective, ids, ::Val{N}) where N
+function _branch_from_ids(pool::FormulaPool, id::Int, connective, ids, ::Val{N}) where {N}
     typed_ids = ntuple(i -> ids[i], N)
-    Branch(pool, id, connective, typed_ids, _trusted_formula_handle)
+    return Branch(pool, id, connective, typed_ids, _trusted_formula_handle)
 end
 
 function _formula_unlocked(pool::FormulaPool, id::Int)
@@ -509,8 +534,9 @@ all other connective branches are grounded only when every child is grounded.
 function isgrounded(formula::Formula)
     isatom(formula) && return false
     connective = operator(formula)
-    (connective isa AbstractRelationalConnective && isgrounding(relation(connective))) ||
-        all(isgrounded, children(formula))
+    return (
+        connective isa AbstractRelationalConnective && isgrounding(relation(connective))
+    ) || all(isgrounded, children(formula))
 end
 
 function _intern!(pool::FormulaPool, kind::UInt8, payload, childids::Tuple{Vararg{Int}})
@@ -533,7 +559,7 @@ end
 """Intern an atom, returning the canonical atom value for this pool and payload."""
 function atom(pool::FormulaPool, value)
     atom_id = _intern!(pool, 0x01, value, ())
-    Atom(pool, atom_id, value, _trusted_formula_handle)
+    return Atom(pool, atom_id, value, _trusted_formula_handle)
 end
 
 # This method makes the type constructor spelling useful; the full-field
@@ -541,22 +567,31 @@ end
 Atom(pool::FormulaPool, value) = atom(pool, value)
 
 function _branch_children(pool::FormulaPool, childtuple::Tuple)
-    ids = ntuple(i -> begin
-        child = childtuple[i]
-        (child isa Atom || child isa Branch) || throw(ArgumentError("branch children must be formulas"))
-        _formula_pool(child) === pool || throw(ArgumentError("all children must belong to the same FormulaPool"))
-        _formula_id(child)
-    end, length(childtuple))
-    ids
+    ids = ntuple(
+        i -> begin
+            child = childtuple[i]
+            (child isa Atom || child isa Branch) ||
+                throw(ArgumentError("branch children must be formulas"))
+            _formula_pool(child) === pool || throw(
+                ArgumentError("all children must belong to the same FormulaPool")
+            )
+            _formula_id(child)
+        end,
+        length(childtuple),
+    )
+    return ids
 end
 
 """Intern a branch from a tuple of immediate children."""
 function branch(pool::FormulaPool, connective, childtuple::Tuple)
-    arity(pool.signature, connective) == length(childtuple) ||
-        throw(ArgumentError("$(repr(connective)) expects $(arity(pool.signature, connective)) children, got $(length(childtuple))"))
+    arity(pool.signature, connective) == length(childtuple) || throw(
+        ArgumentError(
+            "$(repr(connective)) expects $(arity(pool.signature, connective)) children, got $(length(childtuple))",
+        ),
+    )
     ids = _branch_children(pool, childtuple)
     branch_id = _intern!(pool, 0x02, connective, ids)
-    _branch_from_ids(pool, branch_id, connective, ids, Val(length(ids)))
+    return _branch_from_ids(pool, branch_id, connective, ids, Val(length(ids)))
 end
 
 """Intern a branch from vararg immediate children."""
@@ -587,21 +622,21 @@ function subterms(pool::FormulaPool)
 end
 
 function _reachable!(pool::FormulaPool, current::Int, seen::Set{Int})
-    current in seen && return
+    current in seen && return nothing
     push!(seen, current)
     node = pool.nodes[current]
     for child in node.children
         _reachable!(pool, child, seen)
     end
-    nothing
+    return nothing
 end
 
 """Return the distinct ids in a formula's subterm DAG, dependency first."""
 function subterms(formula::Atom)
-    _subterms(formula)
+    return _subterms(formula)
 end
 function subterms(formula::Branch)
-    _subterms(formula)
+    return _subterms(formula)
 end
 
 function _subterms(formula)
@@ -615,7 +650,7 @@ function _subterms(formula)
     end
     result = collect(seen)
     sort!(result)
-    result
+    return result
 end
 
 """Return the number of distinct subterms reachable from `formula`."""
@@ -657,10 +692,10 @@ end
 
 """Return the subterm DAG reachable from `formula`, in dependency order."""
 function dag(formula::Atom)
-    _dag_formula(formula)
+    return _dag_formula(formula)
 end
 function dag(formula::Branch)
-    _dag_formula(formula)
+    return _dag_formula(formula)
 end
 
 function _dag_formula(formula)
@@ -772,11 +807,13 @@ relation(modal::Box) = modal.relation
 function _atom_text(value, pool::FormulaPool)
     text = string(value)
     spellings = notation.(pool.signature.connectives)
-    safe = !isempty(text) && all(c -> !isspace(c) && c != '(' && c != ')' && c != ',' && c != '"', text) &&
+    safe =
+        !isempty(text) &&
+        all(c -> !isspace(c) && c != '(' && c != ')' && c != ',' && c != '"', text) &&
         all(spelling -> !occursin(spelling, text), spellings)
     safe && return text
     escaped = replace(replace(text, "\\" => "\\\\"), "\"" => "\\\"")
-    "\"$(escaped)\""
+    return "\"$(escaped)\""
 end
 
 function _needs_parentheses(parent, child, position::Symbol)
@@ -789,11 +826,11 @@ function _needs_parentheses(parent, child, position::Symbol)
     assoc == :none && return true
     assoc == :left && position == :right && return true
     assoc == :right && position == :left && return true
-    false
+    return false
 end
 
 function _print_formula(formula::Atom, parent, position::Symbol)
-    _atom_text(formula.value, formula.pool)
+    return _atom_text(formula.value, formula.pool)
 end
 
 function _print_formula(formula::Branch, parent, position::Symbol)
@@ -813,7 +850,9 @@ function _print_formula(formula::Branch, parent, position::Symbol)
         rt = _print_formula(right, c, :right)
         "$(lt) $(token) $(rt)"
     else
-        "$(token)(" * join((_print_formula(ch, nothing, :only) for ch in formula_children), ", ") * ")"
+        "$(token)(" *
+        join((_print_formula(ch, nothing, :only) for ch in formula_children), ", ") *
+        ")"
     end
     if parent !== nothing && _needs_parentheses(parent, formula, position)
         "(" * result * ")"
@@ -868,7 +907,9 @@ modal language declares its own [`Signature`](@ref) and [`FormulaPool`](@ref);
 that is also the textbook reading, in which a modal similarity type is
 declared before its formulas are formed.
 """
-const DEFAULT_SIGNATURE = Signature((NEGATION, CONJUNCTION, FUSION, DISJUNCTION, IMPLICATION))
+const DEFAULT_SIGNATURE = Signature((
+    NEGATION, CONJUNCTION, FUSION, DISJUNCTION, IMPLICATION
+))
 
 """
     DEFAULT_POOL
@@ -924,11 +965,17 @@ branch(connective, children...) = branch(DEFAULT_POOL, connective, children)
 # ambiguous with them.
 const _PooledFormula = Union{Atom,Branch}
 
-(connective::Negation)(formula::_PooledFormula) =
-    branch(_formula_pool(formula), connective, (formula,))
-(connective::Union{Conjunction,Disjunction,Implication})(left::_PooledFormula, right::_PooledFormula) =
-    branch(_formula_pool(left), connective, (left, right))
-(connective::Fusion)(left::_PooledFormula, right::_PooledFormula) =
-    branch(_formula_pool(left), connective, (left, right))
-(connective::Union{Diamond,Box})(formula::_PooledFormula) =
-    branch(_formula_pool(formula), connective, (formula,))
+function (connective::Negation)(formula::_PooledFormula)
+    return branch(_formula_pool(formula), connective, (formula,))
+end
+function (connective::Union{Conjunction,Disjunction,Implication})(
+    left::_PooledFormula, right::_PooledFormula
+)
+    return branch(_formula_pool(left), connective, (left, right))
+end
+function (connective::Fusion)(left::_PooledFormula, right::_PooledFormula)
+    return branch(_formula_pool(left), connective, (left, right))
+end
+function (connective::Union{Diamond,Box})(formula::_PooledFormula)
+    return branch(_formula_pool(formula), connective, (formula,))
+end

@@ -19,10 +19,12 @@ function _evaluation_nodes(formula::Formula)
     ids = [node.id for node in dag_nodes]
     nodes = Vector{_EvaluationNode}(undef, length(dag_nodes))
     for (slot, node) in enumerate(dag_nodes)
-        child_slots = ntuple(i -> searchsortedfirst(ids, node.children[i]), length(node.children))
+        child_slots = ntuple(
+            i -> searchsortedfirst(ids, node.children[i]), length(node.children)
+        )
         nodes[slot] = _EvaluationNode(node.id, node.kind, node.payload, child_slots)
     end
-    nodes
+    return nodes
 end
 
 function _relation_names(nodes::Vector{_EvaluationNode})
@@ -35,19 +37,21 @@ function _relation_names(nodes::Vector{_EvaluationNode})
             end
         end
     end
-    names
+    return names
 end
 
 function _cache_relation(frame::Frame, relation_name)
     stored = frame.relations
     (stored isa Function || stored isa _RelationProvider) && return false
     haskey(stored, relation_name) || return true
-    !(stored[relation_name] isa Function)
+    return !(stored[relation_name] isa Function)
 end
 
 function _relation_adjacency(frame::Frame, relation_name, positions)
     if frame.relations isa _IntervalRelationMap
-        specialized = _interval_relation_adjacency(frame, frame.relations, relation_name, positions)
+        specialized = _interval_relation_adjacency(
+            frame, frame.relations, relation_name, positions
+        )
         specialized !== nothing && return specialized
     end
     world_count = length(frame)
@@ -69,7 +73,7 @@ function _relation_adjacency(frame::Frame, relation_name, positions)
         end
         rows[source_position] = targets
     end
-    _RelationAdjacency(rows, columns)
+    return _RelationAdjacency(rows, columns)
 end
 
 function _evaluation_plan(nodes::Vector{_EvaluationNode}, model::Model)
@@ -78,35 +82,46 @@ function _evaluation_plan(nodes::Vector{_EvaluationNode}, model::Model)
     adjacency = Dict{Any,_RelationAdjacency}()
     for relation_name in _relation_names(nodes)
         if !_cache_relation(frame, relation_name)
-            adjacency[relation_name] = _relation_adjacency(frame, relation_name, cache.positions)
+            adjacency[relation_name] = _relation_adjacency(
+                frame, relation_name, cache.positions
+            )
             continue
         end
         lock(cache.lock)
         try
             if !haskey(cache.adjacency, relation_name)
-                cache.adjacency[relation_name] = _relation_adjacency(frame, relation_name, cache.positions)
+                cache.adjacency[relation_name] = _relation_adjacency(
+                    frame, relation_name, cache.positions
+                )
             end
             adjacency[relation_name] = cache.adjacency[relation_name]
         finally
             unlock(cache.lock)
         end
     end
-    _EvaluationPlan(cache.positions, adjacency)
+    return _EvaluationPlan(cache.positions, adjacency)
 end
 
 @inline function _node_atom(formula::Formula, node::_EvaluationNode)
-    Atom(pool(formula), node.id, node.payload, _trusted_formula_handle)
+    return Atom(pool(formula), node.id, node.payload, _trusted_formula_handle)
 end
 
-function _atom_extension(node::_EvaluationNode, formula::Formula, model::Model{T}, positions, ::Type{Vector{T}})::Vector{T} where T
+function _atom_extension(
+    node::_EvaluationNode, formula::Formula, model::Model{T}, positions, ::Type{Vector{T}}
+)::Vector{T} where {T}
     values = Vector{T}(undef, length(frame(model)))
     atom_formula = _node_atom(formula, node)
     if model.valuation isa ValuationCallback && model.valuation.vectorized !== nothing
         raw_values = atom_values(model.valuation, atom_formula, worlds(frame(model)))
-        length(raw_values) == length(values) || throw(ArgumentError("valuation callback returned $(length(raw_values)) values for $(length(values)) worlds"))
+        length(raw_values) == length(values) || throw(
+            ArgumentError(
+                "valuation callback returned $(length(raw_values)) values for $(length(values)) worlds",
+            ),
+        )
         for (slot, world) in enumerate(worlds(frame(model)))
             raw = raw_values[slot]
-            raw isa T || throw(ArgumentError("valuation returned $(typeof(raw)); expected $T"))
+            raw isa T ||
+                throw(ArgumentError("valuation returned $(typeof(raw)); expected $T"))
             values[positions[world]] = _validate_atom_value(model.algebra, raw)
         end
     else
@@ -114,18 +129,29 @@ function _atom_extension(node::_EvaluationNode, formula::Formula, model::Model{T
             values[positions[world]] = interpret(atom_formula, model, world)
         end
     end
-    values
+    return values
 end
 
-function _atom_extension(node::_EvaluationNode, formula::Formula, model::Model{Bool,A}, positions, ::Type{BitVector})::BitVector where {A<:BooleanAlgebra}
+function _atom_extension(
+    node::_EvaluationNode,
+    formula::Formula,
+    model::Model{Bool,A},
+    positions,
+    ::Type{BitVector},
+)::BitVector where {A<:BooleanAlgebra}
     values = falses(length(frame(model)))
     atom_formula = _node_atom(formula, node)
     if model.valuation isa ValuationCallback && model.valuation.vectorized !== nothing
         raw_values = atom_values(model.valuation, atom_formula, worlds(frame(model)))
-        length(raw_values) == length(values) || throw(ArgumentError("valuation callback returned $(length(raw_values)) values for $(length(values)) worlds"))
+        length(raw_values) == length(values) || throw(
+            ArgumentError(
+                "valuation callback returned $(length(raw_values)) values for $(length(values)) worlds",
+            ),
+        )
         for (slot, world) in enumerate(worlds(frame(model)))
             raw = raw_values[slot]
-            raw isa Bool || throw(ArgumentError("valuation returned $(typeof(raw)); expected Bool"))
+            raw isa Bool ||
+                throw(ArgumentError("valuation returned $(typeof(raw)); expected Bool"))
             values[positions[world]] = raw
         end
     else
@@ -133,70 +159,82 @@ function _atom_extension(node::_EvaluationNode, formula::Formula, model::Model{B
             values[positions[world]] = interpret(atom_formula, model, world)
         end
     end
-    values
+    return values
 end
 
-function _negation_extension(algebra::TruthAlgebra, values::Vector{T})::Vector{T} where T
+function _negation_extension(algebra::TruthAlgebra, values::Vector{T})::Vector{T} where {T}
     result = Vector{T}(undef, length(values))
     for i in eachindex(values)
         result[i] = negation(algebra, values[i])::T
     end
-    result
+    return result
 end
 
 function _negation_extension(::BooleanAlgebra, values::BitVector)::BitVector
-    .~values
+    return .~values
 end
 
-function _meet_extension(algebra::TruthAlgebra, left::Vector{T}, right::Vector{T})::Vector{T} where T
+function _meet_extension(
+    algebra::TruthAlgebra, left::Vector{T}, right::Vector{T}
+)::Vector{T} where {T}
     result = Vector{T}(undef, length(left))
     for i in eachindex(left)
         result[i] = meet(algebra, left[i], right[i])::T
     end
-    result
+    return result
 end
 
 function _meet_extension(::BooleanAlgebra, left::BitVector, right::BitVector)::BitVector
-    left .& right
+    return left .& right
 end
 
-function _fusion_extension(algebra::TruthAlgebra, left::Vector{T}, right::Vector{T})::Vector{T} where T
+function _fusion_extension(
+    algebra::TruthAlgebra, left::Vector{T}, right::Vector{T}
+)::Vector{T} where {T}
     result = Vector{T}(undef, length(left))
     for i in eachindex(left)
         result[i] = fusion(algebra, left[i], right[i])::T
     end
-    result
+    return result
 end
 
 function _fusion_extension(::BooleanAlgebra, left::BitVector, right::BitVector)::BitVector
-    left .& right
+    return left .& right
 end
 
-function _join_extension(algebra::TruthAlgebra, left::Vector{T}, right::Vector{T})::Vector{T} where T
+function _join_extension(
+    algebra::TruthAlgebra, left::Vector{T}, right::Vector{T}
+)::Vector{T} where {T}
     result = Vector{T}(undef, length(left))
     for i in eachindex(left)
         result[i] = join(algebra, left[i], right[i])::T
     end
-    result
+    return result
 end
 
 function _join_extension(::BooleanAlgebra, left::BitVector, right::BitVector)::BitVector
-    left .| right
+    return left .| right
 end
 
-function _implication_extension(algebra::TruthAlgebra, left::Vector{T}, right::Vector{T})::Vector{T} where T
+function _implication_extension(
+    algebra::TruthAlgebra, left::Vector{T}, right::Vector{T}
+)::Vector{T} where {T}
     result = Vector{T}(undef, length(left))
     for i in eachindex(left)
         result[i] = implication(algebra, left[i], right[i])::T
     end
-    result
+    return result
 end
 
-function _implication_extension(::BooleanAlgebra, left::BitVector, right::BitVector)::BitVector
-    (.~left) .| right
+function _implication_extension(
+    ::BooleanAlgebra, left::BitVector, right::BitVector
+)::BitVector
+    return (.~left) .| right
 end
 
-function _diamond_extension(algebra::TruthAlgebra, child::Vector{T}, adjacency::_RelationAdjacency)::Vector{T} where T
+function _diamond_extension(
+    algebra::TruthAlgebra, child::Vector{T}, adjacency::_RelationAdjacency
+)::Vector{T} where {T}
     rows = adjacency.rows
     result = Vector{T}(undef, length(rows))
     for source in eachindex(rows)
@@ -206,20 +244,24 @@ function _diamond_extension(algebra::TruthAlgebra, child::Vector{T}, adjacency::
         end
         result[source] = value
     end
-    result
+    return result
 end
 
-function _diamond_extension(::BooleanAlgebra, child::BitVector, adjacency::_RelationAdjacency)::BitVector
+function _diamond_extension(
+    ::BooleanAlgebra, child::BitVector, adjacency::_RelationAdjacency
+)::BitVector
     result = falses(length(child))
     for target in eachindex(child)
         child[target] && (result .|= adjacency.columns[target])
     end
-    result
+    return result
 end
 
 # Box is universal quantification, so it folds successor values with the
 # lattice meet (infimum), not monoid fusion.
-function _box_extension(algebra::TruthAlgebra, child::Vector{T}, adjacency::_RelationAdjacency)::Vector{T} where T
+function _box_extension(
+    algebra::TruthAlgebra, child::Vector{T}, adjacency::_RelationAdjacency
+)::Vector{T} where {T}
     rows = adjacency.rows
     result = Vector{T}(undef, length(rows))
     for source in eachindex(rows)
@@ -229,46 +271,69 @@ function _box_extension(algebra::TruthAlgebra, child::Vector{T}, adjacency::_Rel
         end
         result[source] = value
     end
-    result
+    return result
 end
 
-function _box_extension(::BooleanAlgebra, child::BitVector, adjacency::_RelationAdjacency)::BitVector
-    .~_diamond_extension(BOOLEAN, .~child, adjacency)
+function _box_extension(
+    ::BooleanAlgebra, child::BitVector, adjacency::_RelationAdjacency
+)::BitVector
+    return .~_diamond_extension(BOOLEAN, .~child, adjacency)
 end
 
-function _branch_extension(node::_EvaluationNode, values::Vector{E}, model::Model, plan::_EvaluationPlan, ::Type{E})::E where E
+function _branch_extension(
+    node::_EvaluationNode, values::Vector{E}, model::Model, plan::_EvaluationPlan, ::Type{E}
+)::E where {E}
     connective = node.payload
     if connective isa Negation
         return _negation_extension(model.algebra, values[node.children[1]])
     elseif connective isa Conjunction
-        return _meet_extension(model.algebra, values[node.children[1]], values[node.children[2]])
+        return _meet_extension(
+            model.algebra, values[node.children[1]], values[node.children[2]]
+        )
     elseif connective isa Fusion
-        return _fusion_extension(model.algebra, values[node.children[1]], values[node.children[2]])
+        return _fusion_extension(
+            model.algebra, values[node.children[1]], values[node.children[2]]
+        )
     elseif connective isa Disjunction
-        return _join_extension(model.algebra, values[node.children[1]], values[node.children[2]])
+        return _join_extension(
+            model.algebra, values[node.children[1]], values[node.children[2]]
+        )
     elseif connective isa Implication
-        return _implication_extension(model.algebra, values[node.children[1]], values[node.children[2]])
+        return _implication_extension(
+            model.algebra, values[node.children[1]], values[node.children[2]]
+        )
     elseif connective isa Diamond
-        return _diamond_extension(model.algebra, values[node.children[1]], plan.adjacency[relation(connective)])
+        return _diamond_extension(
+            model.algebra, values[node.children[1]], plan.adjacency[relation(connective)]
+        )
     elseif connective isa Box
-        return _box_extension(model.algebra, values[node.children[1]], plan.adjacency[relation(connective)])
+        return _box_extension(
+            model.algebra, values[node.children[1]], plan.adjacency[relation(connective)]
+        )
     end
-    throw(ArgumentError("no evaluator for connective $(repr(connective))"))
+    return throw(ArgumentError("no evaluator for connective $(repr(connective))"))
 end
 
-function _node_extension(node::_EvaluationNode, formula::Formula, model::Model, values::Vector{E}, plan::_EvaluationPlan, ::Type{E})::E where E
+function _node_extension(
+    node::_EvaluationNode,
+    formula::Formula,
+    model::Model,
+    values::Vector{E},
+    plan::_EvaluationPlan,
+    ::Type{E},
+)::E where {E}
     node.kind === :atom && return _atom_extension(node, formula, model, plan.positions, E)
-    _branch_extension(node, values, model, plan, E)
+    return _branch_extension(node, values, model, plan, E)
 end
 
-function _evaluate(formula::Formula, model::Model, ::Type{E})::E where E
+function _evaluate(formula::Formula, model::Model, ::Type{E})::E where {E}
     nodes = _evaluation_nodes(formula)
     values = Vector{E}(undef, length(nodes))
     plan = _evaluation_plan(nodes, model)
     for (slot, node) in enumerate(nodes)
         values[slot] = _node_extension(node, formula, model, values, plan, E)
     end
-    values[end]
+    return values[end]
 end
 
 # Build one dependency-ordered evaluator for all roots.  Formula ids are local
@@ -287,10 +352,12 @@ function _batch_evaluation_nodes(formulas::AbstractVector{<:Formula})
         children = ntuple(i -> positions[node.children[i]], length(node.children))
         nodes[slot] = _EvaluationNode(node.id, node.kind, node.payload, children)
     end
-    nodes, positions
+    return nodes, positions
 end
 
-function _batch_evaluate(formulas::AbstractVector{<:Formula}, model::Model, ::Type{E})::Vector{E} where E
+function _batch_evaluate(
+    formulas::AbstractVector{<:Formula}, model::Model, ::Type{E}
+)::Vector{E} where {E}
     nodes, positions = _batch_evaluation_nodes(formulas)
     values = Vector{E}(undef, length(nodes))
     plan = _evaluation_plan(nodes, model)
@@ -299,7 +366,7 @@ function _batch_evaluate(formulas::AbstractVector{<:Formula}, model::Model, ::Ty
         values[slot] = _node_extension(node, first(formulas), model, values, plan, E)
     end
     # Each returned extension is independent, including repeated roots.
-    [deepcopy(values[slot]) for slot in root_slots]
+    return [deepcopy(values[slot]) for slot in root_slots]
 end
 
 """
@@ -329,7 +396,9 @@ mutable struct EvaluationCache
     lock::ReentrantLock
 end
 
-EvaluationCache(model::Model) = EvaluationCache(model, nothing, Dict{Int,Any}(), ReentrantLock())
+function EvaluationCache(model::Model)
+    return EvaluationCache(model, nothing, Dict{Int,Any}(), ReentrantLock())
+end
 
 """Clear all extensions retained by an [`EvaluationCache`](@ref)."""
 function clear!(cache::EvaluationCache)
@@ -340,11 +409,14 @@ function clear!(cache::EvaluationCache)
     finally
         unlock(cache.lock)
     end
-    cache
+    return cache
 end
 
-function _cached_evaluate(formula::Formula, model::Model, ::Type{E}, cache::EvaluationCache)::E where E
-    cache.model === model || throw(ArgumentError("evaluation cache belongs to a different model"))
+function _cached_evaluate(
+    formula::Formula, model::Model, ::Type{E}, cache::EvaluationCache
+)::E where {E}
+    cache.model === model ||
+        throw(ArgumentError("evaluation cache belongs to a different model"))
     lock(cache.lock)
     try
         formula_pool = pool(formula)
@@ -356,7 +428,11 @@ function _cached_evaluate(formula::Formula, model::Model, ::Type{E}, cache::Eval
         key = id(formula)
         if haskey(cache.values, key)
             value = cache.values[key]
-            value isa E || throw(ArgumentError("evaluation cache contains a result for a different carrier type"))
+            value isa E || throw(
+                ArgumentError(
+                    "evaluation cache contains a result for a different carrier type"
+                ),
+            )
             return value::E
         end
         value = _evaluate(formula, model, E)
@@ -367,14 +443,18 @@ function _cached_evaluate(formula::Formula, model::Model, ::Type{E}, cache::Eval
     end
 end
 
-function _evaluate_with_cache(formula::Formula, model::Model, ::Type{E}, ::Nothing)::E where E
-    _evaluate(formula, model, E)
+function _evaluate_with_cache(
+    formula::Formula, model::Model, ::Type{E}, ::Nothing
+)::E where {E}
+    return _evaluate(formula, model, E)
 end
-function _evaluate_with_cache(formula::Formula, model::Model, ::Type{E}, cache::EvaluationCache)::E where E
-    _cached_evaluate(formula, model, E, cache)
+function _evaluate_with_cache(
+    formula::Formula, model::Model, ::Type{E}, cache::EvaluationCache
+)::E where {E}
+    return _cached_evaluate(formula, model, E, cache)
 end
-function _evaluate_with_cache(formula::Formula, model::Model, ::Type{E}, cache)::E where E
-    throw(ArgumentError("cache must be nothing or an EvaluationCache"))
+function _evaluate_with_cache(formula::Formula, model::Model, ::Type{E}, cache)::E where {E}
+    return throw(ArgumentError("cache must be nothing or an EvaluationCache"))
 end
 
 """
@@ -391,13 +471,19 @@ struct Extension{T,V<:AbstractVector{T},W<:Tuple,A<:TruthAlgebra}
     worlds::W
     algebra::A
 
-    function Extension(values::V, worlds::W, algebra::A) where {T, V<:AbstractVector{T}, W<:Tuple, A<:TruthAlgebra}
-        new{T, V, W, A}(values, worlds, algebra)
+    function Extension(
+        values::V, worlds::W, algebra::A
+    ) where {T,V<:AbstractVector{T},W<:Tuple,A<:TruthAlgebra}
+        return new{T,V,W,A}(values, worlds, algebra)
     end
 end
 
-Extension(values::AbstractVector, worlds, algebra) = Extension(values, Tuple(worlds), algebra)
-Extension(values::AbstractVector, model::Model) = Extension(values, frame(model).worlds, algebra(model))
+function Extension(values::AbstractVector, worlds, algebra)
+    return Extension(values, Tuple(worlds), algebra)
+end
+function Extension(values::AbstractVector, model::Model)
+    return Extension(values, frame(model).worlds, algebra(model))
+end
 
 """
     describe(extension_result, model)
@@ -405,7 +491,9 @@ Extension(values::AbstractVector, model::Model) = Extension(values, frame(model)
 Return an `Extension` view of `extension_result` over `model` for rich REPL printing.
 """
 describe(ext::AbstractVector, model::Model) = Extension(ext, model)
-describe(io::IO, ext::AbstractVector, model::Model) = show(io, MIME("text/plain"), Extension(ext, model))
+function describe(io::IO, ext::AbstractVector, model::Model)
+    return show(io, MIME("text/plain"), Extension(ext, model))
+end
 
 Base.show(io::IO, ext::Extension) = print(io, "Extension(", ext.values, ")")
 
@@ -414,19 +502,25 @@ function _display_worlds_line(io::IO, label::AbstractString, worlds)
     _display_label(io, 2, label)
     if isempty(worlds)
         print(io, "(none)")
-        return
+        return nothing
     end
     shown, elided = _display_bounded(io, worlds, DISPLAY_ITEMS)
     print(io, join(repr.(shown), ", "))
-    _display_elision(io, elided)
+    return _display_elision(io, elided)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", ext::Extension{Bool})
     n_tot = length(ext.worlds)
     n_sat = count(ext.values)
-    _display_header(io, "Extension", "$n_sat of $n_tot world$(n_tot == 1 ? "" : "s") satisfy")
-    _display_worlds_line(io, "Satisfied at", [ext.worlds[i] for i in 1:n_tot if ext.values[i]])
-    _display_worlds_line(io, "Unsatisfied at", [ext.worlds[i] for i in 1:n_tot if !ext.values[i]])
+    _display_header(
+        io, "Extension", "$n_sat of $n_tot world$(n_tot == 1 ? "" : "s") satisfy"
+    )
+    _display_worlds_line(
+        io, "Satisfied at", [ext.worlds[i] for i in 1:n_tot if ext.values[i]]
+    )
+    return _display_worlds_line(
+        io, "Unsatisfied at", [ext.worlds[i] for i in 1:n_tot if !ext.values[i]]
+    )
 end
 
 function Base.show(io::IO, ::MIME"text/plain", ext::Extension)
@@ -437,7 +531,7 @@ function Base.show(io::IO, ::MIME"text/plain", ext::Extension)
         _display_label(io, 2, repr(ext.worlds[i]), " => ")
         print(io, _display_truth(ext.algebra, ext.values[i]))
     end
-    _display_elision_line(io, 2, elided)
+    return _display_elision_line(io, 2, elided)
 end
 
 """
@@ -452,25 +546,38 @@ To construct a rich display view of the extension, pass the result and model to
 function _batch_formulas(formulas::AbstractVector)
     normalized = Formula[]
     for (position, formula) in enumerate(formulas)
-        formula isa Atom || formula isa Branch || throw(ArgumentError(
-            "batch formulas[$position] must be an Aletheia Atom or Branch, got $(typeof(formula))"))
+        formula isa Atom ||
+            formula isa Branch ||
+            throw(
+                ArgumentError(
+                    "batch formulas[$position] must be an Aletheia Atom or Branch, got $(typeof(formula))",
+                ),
+            )
         push!(normalized, formula)
     end
     isempty(normalized) && return normalized
     formula_pool = pool(first(normalized))
     for (position, formula) in enumerate(normalized)
-        pool(formula) === formula_pool || throw(ArgumentError(
-            "batch formulas must belong to one FormulaPool (formulas[$position] does not)"))
+        pool(formula) === formula_pool || throw(
+            ArgumentError(
+                "batch formulas must belong to one FormulaPool (formulas[$position] does not)",
+            ),
+        )
     end
-    normalized
+    return normalized
 end
 
-function _batch_evaluate_with_cache(formulas::Vector{Formula}, model::Model, ::Type{E}, ::Nothing)::Vector{E} where E
-    _batch_evaluate(formulas, model, E)
+function _batch_evaluate_with_cache(
+    formulas::Vector{Formula}, model::Model, ::Type{E}, ::Nothing
+)::Vector{E} where {E}
+    return _batch_evaluate(formulas, model, E)
 end
 
-function _batch_evaluate_with_cache(formulas::Vector{Formula}, model::Model, ::Type{E}, cache::EvaluationCache)::Vector{E} where E
-    cache.model === model || throw(ArgumentError("evaluation cache belongs to a different model"))
+function _batch_evaluate_with_cache(
+    formulas::Vector{Formula}, model::Model, ::Type{E}, cache::EvaluationCache
+)::Vector{E} where {E}
+    cache.model === model ||
+        throw(ArgumentError("evaluation cache belongs to a different model"))
     lock(cache.lock)
     try
         formula_pool = pool(first(formulas))
@@ -486,8 +593,11 @@ function _batch_evaluate_with_cache(formulas::Vector{Formula}, model::Model, ::T
             key = id(formula)
             if haskey(cache.values, key)
                 value = cache.values[key]
-                value isa E || throw(ArgumentError(
-                    "evaluation cache contains a result for a different carrier type"))
+                value isa E || throw(
+                    ArgumentError(
+                        "evaluation cache contains a result for a different carrier type",
+                    ),
+                )
                 results[position] = deepcopy(value)
             else
                 push!(missing_formulas, formula)
@@ -507,8 +617,10 @@ function _batch_evaluate_with_cache(formulas::Vector{Formula}, model::Model, ::T
     end
 end
 
-function _batch_evaluate_with_cache(formulas::Vector{Formula}, model::Model, ::Type{E}, cache)::Vector{E} where E
-    throw(ArgumentError("cache must be nothing or an EvaluationCache"))
+function _batch_evaluate_with_cache(
+    formulas::Vector{Formula}, model::Model, ::Type{E}, cache
+)::Vector{E} where {E}
+    return throw(ArgumentError("cache must be nothing or an EvaluationCache"))
 end
 
 """
@@ -525,26 +637,30 @@ For a model family, `extension(formulas, family)` returns one vector per
 formula, each containing that formula's extensions in instance order.  The
 shared pass is run once for each instance.
 """
-function extension(formulas::AbstractVector, model::Model{Bool,A}; cache=nothing) where {A<:BooleanAlgebra}
+function extension(
+    formulas::AbstractVector, model::Model{Bool,A}; cache=nothing
+) where {A<:BooleanAlgebra}
     normalized = _batch_formulas(formulas)
     isempty(normalized) && return BitVector[]
-    _batch_evaluate_with_cache(normalized, model, BitVector, cache)
+    return _batch_evaluate_with_cache(normalized, model, BitVector, cache)
 end
 
-function extension(formulas::AbstractVector, model::Model{T}; cache=nothing) where T
+function extension(formulas::AbstractVector, model::Model{T}; cache=nothing) where {T}
     normalized = _batch_formulas(formulas)
     isempty(normalized) && return Vector{T}[]
-    _batch_evaluate_with_cache(normalized, model, Vector{T}, cache)
+    return _batch_evaluate_with_cache(normalized, model, Vector{T}, cache)
 end
 
-function extension(formula::Formula, model::Model{Bool,A}; cache=nothing) where {A<:BooleanAlgebra}
+function extension(
+    formula::Formula, model::Model{Bool,A}; cache=nothing
+) where {A<:BooleanAlgebra}
     values = _evaluate_with_cache(formula, model, BitVector, cache)
-    cache === nothing ? values : deepcopy(values)
+    return cache === nothing ? values : deepcopy(values)
 end
 
-function extension(formula::Formula, model::Model{T}; cache=nothing) where T
+function extension(formula::Formula, model::Model{T}; cache=nothing) where {T}
     values = _evaluate_with_cache(formula, model, Vector{T}, cache)
-    cache === nothing ? values : deepcopy(values)
+    return cache === nothing ? values : deepcopy(values)
 end
 
 """
@@ -554,22 +670,28 @@ Return the truth value of `φ` at `world`.  The result is exactly the carrier
 type of the model's algebra.  Evaluation uses the same DAG walk as
 [`extension`](@ref).
 """
-function check(formula::Formula, model::Model{Bool,A}, world; cache=nothing)::Bool where {A<:BooleanAlgebra}
+function check(
+    formula::Formula, model::Model{Bool,A}, world; cache=nothing
+)::Bool where {A<:BooleanAlgebra}
     position = world_position(frame(model), world)
     values = _evaluate_with_cache(formula, model, BitVector, cache)
-    values[position]
+    return values[position]
 end
 
-function check(formula::Formula, model::Model{T}, world; cache=nothing)::T where T
+function check(formula::Formula, model::Model{T}, world; cache=nothing)::T where {T}
     position = world_position(frame(model), world)
     values = _evaluate_with_cache(formula, model, Vector{T}, cache)
-    values[position]
+    return values[position]
 end
 
 """Check whether a formula holds at some world via the SoleLogics marker."""
-function check(formula::Formula, model::Model{Bool,A}, ::AnyWorld; cache=nothing)::Bool where {A<:BooleanAlgebra}
-    any(extension(formula, model; cache=cache))
+function check(
+    formula::Formula, model::Model{Bool,A}, ::AnyWorld; cache=nothing
+)::Bool where {A<:BooleanAlgebra}
+    return any(extension(formula, model; cache=cache))
 end
-function check(formula::Formula, model::Model{T}, ::AnyWorld; cache=nothing)::Bool where T
-    any(value -> value == top(algebra(model)), extension(formula, model; cache=cache))
+function check(formula::Formula, model::Model{T}, ::AnyWorld; cache=nothing)::Bool where {T}
+    return any(
+        value -> value == top(algebra(model)), extension(formula, model; cache=cache)
+    )
 end

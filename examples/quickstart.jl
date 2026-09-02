@@ -10,10 +10,8 @@ println("formula: ", syntaxstring(formula))
 parsed = parse(pool, "⟨R⟩p ∧ [R]q")
 println("parse round-trip: ", parsed == formula)
 
-base_frame = Frame((:w₁, :w₂),
-    Dict(:R => Dict(:w₁ => [:w₂], :w₂ => [:w₂])); index=true)
-model = Model(base_frame, BOOLEAN,
-    Dict("p" => Set([:w₂]), "q" => Set([:w₁, :w₂])))
+base_frame = Frame((:w₁, :w₂), Dict(:R => Dict(:w₁ => [:w₂], :w₂ => [:w₂])); index=true)
+model = Model(base_frame, BOOLEAN, Dict("p" => Set([:w₂]), "q" => Set([:w₁, :w₂])))
 show(stdout, MIME"text/plain"(), model)
 println()
 println("successors of w₁: ", collect(accessible(base_frame, :w₁, :R)))

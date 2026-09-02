@@ -13,8 +13,15 @@ struct ProverResult{A,C,M,D}
     countermodel::M
     details::D
 end
-ProverResult(status::Symbol; answer=nothing, certificate=nothing, countermodel=nothing, details=nothing) =
-    ProverResult(status, answer, certificate, countermodel, details)
+function ProverResult(
+    status::Symbol;
+    answer=nothing,
+    certificate=nothing,
+    countermodel=nothing,
+    details=nothing,
+)
+    return ProverResult(status, answer, certificate, countermodel, details)
+end
 Base.Bool(result::ProverResult) = result.answer === true
 
 """A complete but intentionally tiny truth-table backend for propositional formulas."""
@@ -26,11 +33,14 @@ function _propositional_atoms(formula::Formula)
     for node in dag(formula)
         node.kind === :atom && !(node.payload in atoms) && push!(atoms, node.payload)
     end
-    atoms
+    return atoms
 end
 function _propositional_atom_names(required_formulas; atoms=nothing)
-    required = required_formulas isa Formula ? _propositional_atoms(required_formulas) :
+    required = if required_formulas isa Formula
+        _propositional_atoms(required_formulas)
+    else
         unique(vcat((_propositional_atoms(formula) for formula in required_formulas)...))
+    end
     atoms === nothing && return required
     # Accept same-pool Atom handles as a convenience, but use their payloads
     # as the valuation keys just like formula discovery does.
@@ -38,53 +48,68 @@ function _propositional_atom_names(required_formulas; atoms=nothing)
     length(unique(names)) == length(names) ||
         throw(ArgumentError("atoms override must not contain duplicates"))
     missing = [name for name in required if !(name in names)]
-    isempty(missing) || throw(ArgumentError("atoms override is missing formula atoms: $(join(string.(missing), ", "))"))
-    names
+    isempty(missing) || throw(
+        ArgumentError(
+            "atoms override is missing formula atoms: $(join(string.(missing), ", "))"
+        ),
+    )
+    return names
 end
 function _propositional_formula(formula::Atom)
-    true
+    return true
 end
 function _propositional_formula(formula::Branch)
     c = operator(formula)
     c isa Union{Negation,Conjunction,Disjunction,Implication} || return false
-    all(_propositional_formula, children(formula))
+    return all(_propositional_formula, children(formula))
 end
 function _table_model(formula, atoms, values)
     frame = Frame((:only,); index=true)
-    valuation = Dict(atom_name => (value ? Set([:only]) : Set{Symbol}()) for (atom_name, value) in zip(atoms, values))
-    Model(frame, BOOLEAN, valuation)
+    valuation = Dict(
+        atom_name => (value ? Set([:only]) : Set{Symbol}()) for
+        (atom_name, value) in zip(atoms, values)
+    )
+    return Model(frame, BOOLEAN, valuation)
 end
 function _assignments(n)
-    (BitVector(((mask >> (i - 1)) & 1 == 1 for i in 1:n)) for mask in 0:(2^n - 1))
+    return (BitVector(((mask >> (i - 1)) & 1 == 1 for i in 1:n)) for mask in 0:(2^n - 1))
 end
 function _truth_table(formula; atoms=nothing)
-    _propositional_formula(formula) || return ProverResult(:unknown; answer=nothing,
-        details="the trivial backend handles only Boolean propositional connectives")
+    _propositional_formula(formula) || return ProverResult(
+        :unknown;
+        answer=nothing,
+        details="the trivial backend handles only Boolean propositional connectives",
+    )
     names = _propositional_atom_names(formula; atoms=atoms)
     for values in _assignments(length(names))
         model = _table_model(formula, names, values)
         truth = check(formula, model, :only)
         truth === true && return (true, model)
     end
-    (false, nothing)
+    return (false, nothing)
 end
 function _prove_satisfiability(prover::PropositionalProver, formula::Formula; atoms=nothing)
     table = _truth_table(formula; atoms=atoms)
     table isa ProverResult && return table
     answer, countermodel = table
     answer isa Bool || return ProverResult(:unknown; details="unsupported formula")
-    answer ? ProverResult(:sat; answer=true, countermodel=countermodel, certificate=:truth_table) :
+    return if answer
+        ProverResult(:sat; answer=true, countermodel=countermodel, certificate=:truth_table)
+    else
         ProverResult(:unsat; answer=false, certificate=:truth_table)
+    end
 end
 function _prove_validity(prover::PropositionalProver, formula::Formula; atoms=nothing)
-    _propositional_formula(formula) || return ProverResult(:unknown; details="unsupported formula")
+    _propositional_formula(formula) ||
+        return ProverResult(:unknown; details="unsupported formula")
     names = _propositional_atom_names(formula; atoms=atoms)
     for values in _assignments(length(names))
         model = _table_model(formula, names, values)
-        !check(formula, model, :only) && return ProverResult(:invalid; answer=false,
-            countermodel=model, certificate=:truth_table)
+        !check(formula, model, :only) && return ProverResult(
+            :invalid; answer=false, countermodel=model, certificate=:truth_table
+        )
     end
-    ProverResult(:valid; answer=true, certificate=:truth_table)
+    return ProverResult(:valid; answer=true, certificate=:truth_table)
 end
 function _prove_entailment(prover::PropositionalProver, premises, conclusion; atoms=nothing)
     all(_propositional_formula, premises) && _propositional_formula(conclusion) ||
@@ -93,38 +118,51 @@ function _prove_entailment(prover::PropositionalProver, premises, conclusion; at
     for values in _assignments(length(names))
         model = _table_model(conclusion, names, values)
         all(check(premise, model, :only) for premise in premises) || continue
-        !check(conclusion, model, :only) && return ProverResult(:invalid, false, nothing, model, :truth_table)
+        !check(conclusion, model, :only) &&
+            return ProverResult(:invalid, false, nothing, model, :truth_table)
     end
-    ProverResult(:entailed; answer=true, certificate=:truth_table)
+    return ProverResult(:entailed; answer=true, certificate=:truth_table)
 end
 
 """Return a backend-specific proof-search result for satisfiability."""
 function prove(prover::AbstractProver, formula::Formula; kwargs...)
-    throw(MethodError(prove, (prover, formula)))
+    return throw(MethodError(prove, (prover, formula)))
 end
-prove(formula::Formula, prover::AbstractProver; kwargs...) = prove(prover, formula; kwargs...)
-prove(prover::PropositionalProver, formula::Formula; kwargs...) = _prove_satisfiability(prover, formula; kwargs...)
+function prove(formula::Formula, prover::AbstractProver; kwargs...)
+    return prove(prover, formula; kwargs...)
+end
+function prove(prover::PropositionalProver, formula::Formula; kwargs...)
+    return _prove_satisfiability(prover, formula; kwargs...)
+end
 
 """Return a backend-specific result for validity."""
 function prove_valid(prover::AbstractProver, formula::Formula; kwargs...)
-    throw(MethodError(prove_valid, (prover, formula)))
+    return throw(MethodError(prove_valid, (prover, formula)))
 end
-prove_valid(formula::Formula, prover::AbstractProver; kwargs...) = prove_valid(prover, formula; kwargs...)
-prove_valid(prover::PropositionalProver, formula::Formula; kwargs...) = _prove_validity(prover, formula; kwargs...)
+function prove_valid(formula::Formula, prover::AbstractProver; kwargs...)
+    return prove_valid(prover, formula; kwargs...)
+end
+function prove_valid(prover::PropositionalProver, formula::Formula; kwargs...)
+    return _prove_validity(prover, formula; kwargs...)
+end
 
 """Ask an `AbstractProver` whether `formula` is satisfiable.  The result is `Bool` or `nothing` for unknown."""
 function issatisfiable(prover::AbstractProver, formula::Formula; kwargs...)
     result = prove(prover, formula; kwargs...)
-    result.answer
+    return result.answer
 end
-issatisfiable(formula::Formula, prover::AbstractProver; kwargs...) = issatisfiable(prover, formula; kwargs...)
+function issatisfiable(formula::Formula, prover::AbstractProver; kwargs...)
+    return issatisfiable(prover, formula; kwargs...)
+end
 
 """Ask an `AbstractProver` whether `formula` is valid.  The result is `Bool` or `nothing` for unknown."""
 function isvalid(prover::AbstractProver, formula::Formula; kwargs...)
     result = prove_valid(prover, formula; kwargs...)
-    result.answer
+    return result.answer
 end
-isvalid(formula::Formula, prover::AbstractProver; kwargs...) = isvalid(prover, formula; kwargs...)
+function isvalid(formula::Formula, prover::AbstractProver; kwargs...)
+    return isvalid(prover, formula; kwargs...)
+end
 
 """Ask an `AbstractProver` whether premises entail a conclusion."""
 function entails(prover::AbstractProver, premises, conclusion; kwargs...)
@@ -136,20 +174,30 @@ function entails(prover::AbstractProver, premises, conclusion; kwargs...)
     else
         throw(MethodError(entails, (prover, premises, conclusion)))
     end
-    result.answer
+    return result.answer
 end
-entails(premises, conclusion, prover::AbstractProver; kwargs...) = entails(prover, premises, conclusion; kwargs...)
+function entails(premises, conclusion, prover::AbstractProver; kwargs...)
+    return entails(prover, premises, conclusion; kwargs...)
+end
 # Disambiguate the two convenience orders when both outer arguments happen to be provers.
-entails(left::AbstractProver, premises, right::AbstractProver; kwargs...) =
-    throw(ArgumentError("entails expects one AbstractProver and one premise collection"))
-entails(premise::Formula, conclusion::Formula, prover::AbstractProver; kwargs...) = entails(prover, (premise,), conclusion; kwargs...)
+function entails(left::AbstractProver, premises, right::AbstractProver; kwargs...)
+    return throw(
+        ArgumentError("entails expects one AbstractProver and one premise collection")
+    )
+end
+function entails(premise::Formula, conclusion::Formula, prover::AbstractProver; kwargs...)
+    return entails(prover, (premise,), conclusion; kwargs...)
+end
 
 # Convenience spelling uses the shipped fallback explicitly; modal engines should
 # always pass their own AbstractProver instance.
-issatisfiable(formula::Formula; kwargs...) = issatisfiable(PropositionalProver(), formula; kwargs...)
+function issatisfiable(formula::Formula; kwargs...)
+    return issatisfiable(PropositionalProver(), formula; kwargs...)
+end
 isvalid(formula::Formula; kwargs...) = isvalid(PropositionalProver(), formula; kwargs...)
-entails(premises, conclusion; kwargs...) = entails(PropositionalProver(), premises, conclusion; kwargs...)
-
+function entails(premises, conclusion; kwargs...)
+    return entails(PropositionalProver(), premises, conclusion; kwargs...)
+end
 
 struct _FiniteWorld
     index::Int
@@ -177,7 +225,7 @@ struct FiniteModelProver <: AbstractProver
     function FiniteModelProver(bound::Integer)
         bound >= 1 || throw(ArgumentError("finite-model bound must be at least one"))
         bound <= typemax(Int) || throw(ArgumentError("finite-model bound is too large"))
-        new(Int(bound))
+        return new(Int(bound))
     end
 end
 FiniteModelProver(; bound::Integer=2) = FiniteModelProver(bound)
@@ -186,9 +234,11 @@ function _finite_formula(formula::Formula)
     for node in dag(formula)
         node.kind === :atom && continue
         connective = node.payload
-        connective isa Union{Negation,Conjunction,Fusion,Disjunction,Implication,Diamond,Box} || return false
+        connective isa
+        Union{Negation,Conjunction,Fusion,Disjunction,Implication,Diamond,Box} ||
+            return false
     end
-    true
+    return true
 end
 _finite_formula(::Any) = false
 
@@ -200,11 +250,11 @@ function _finite_truth_values(algebra::TruthAlgebra)
     elseif algebra isa Union{GodelAlgebra,LukasiewiczAlgebra} && isfinitechain(algebra)
         return domain(algebra)
     end
-    nothing
+    return nothing
 end
 
 function _finite_relation_names(formula::Formula)
-    sort!(collect(_relation_names(_evaluation_nodes(formula))); by=string)
+    return sort!(collect(_relation_names(_evaluation_nodes(formula))); by=string)
 end
 
 function _finite_each_assignment(values, count::Int, visitor::Function)
@@ -215,9 +265,9 @@ function _finite_each_assignment(values, count::Int, visitor::Function)
             current[slot] = candidate
             visit(slot + 1) && return true
         end
-        false
+        return false
     end
-    visit(1)
+    return visit(1)
 end
 
 function _finite_each_relation_masks(names, width::Int, visitor::Function)
@@ -232,9 +282,9 @@ function _finite_each_relation_masks(names, width::Int, visitor::Function)
             masks[slot] = mask
             visit(slot + 1) && return true
         end
-        false
+        return false
     end
-    visit(1)
+    return visit(1)
 end
 
 function _finite_frame(names, masks, n::Int)
@@ -252,7 +302,7 @@ function _finite_frame(names, masks, n::Int)
         end
         relation_map[name] = adjacency
     end
-    Frame(frame_worlds, relation_map; index=true)
+    return Frame(frame_worlds, relation_map; index=true)
 end
 
 function _finite_model(names, values, frame::Frame, algebra::TruthAlgebra, atoms_count::Int)
@@ -261,25 +311,38 @@ function _finite_model(names, values, frame::Frame, algebra::TruthAlgebra, atoms
     if algebra isa BooleanAlgebra
         for atom_slot in 1:atoms_count
             start = (atom_slot - 1) * length(world_tuple)
-            valuation[names[atom_slot]] = Set(world_tuple[world_slot]
-                for world_slot in eachindex(world_tuple) if values[start + world_slot] === true)
+            valuation[names[atom_slot]] = Set(
+                world_tuple[world_slot] for
+                world_slot in eachindex(world_tuple) if values[start + world_slot] === true
+            )
         end
     else
         for atom_slot in 1:atoms_count
             start = (atom_slot - 1) * length(world_tuple)
-            valuation[names[atom_slot]] = Dict(world_tuple[world_slot] => values[start + world_slot]
-                for world_slot in eachindex(world_tuple))
+            valuation[names[atom_slot]] = Dict(
+                world_tuple[world_slot] => values[start + world_slot] for
+                world_slot in eachindex(world_tuple)
+            )
         end
     end
-    Model(frame, algebra, valuation)
+    return Model(frame, algebra, valuation)
 end
 
 """Enumerate bounded frames and valuations, stopping when `visitor` succeeds."""
-function _finite_models(formula::Formula, algebra::TruthAlgebra, bound::Int, visitor::Function;
-                        atoms=nothing, relations=nothing)
+function _finite_models(
+    formula::Formula,
+    algebra::TruthAlgebra,
+    bound::Int,
+    visitor::Function;
+    atoms=nothing,
+    relations=nothing,
+)
     atom_names = _propositional_atom_names(formula; atoms=atoms)
-    relation_names = relations === nothing ? _finite_relation_names(formula) :
+    relation_names = if relations === nothing
+        _finite_relation_names(formula)
+    else
         sort!(unique(collect(relations)); by=string)
+    end
     values = _finite_truth_values(algebra)
     values === nothing && return (false, nothing, 0, false)
     tested = Ref(0)
@@ -291,32 +354,46 @@ function _finite_models(formula::Formula, algebra::TruthAlgebra, bound::Int, vis
             complete[] = false
             break
         end
-        found = _finite_each_relation_masks(relation_names, edge_width, masks -> begin
-            frame = _finite_frame(relation_names, masks, world_count)
-            _finite_each_assignment(values, length(atom_names) * world_count, assignment -> begin
-                model = _finite_model(atom_names, assignment, frame, algebra, length(atom_names))
-                tested[] += 1
-                if visitor(model)
-                    witness[] = model
-                    true
-                else
-                    false
-                end
-            end)
-        end)
+        found = _finite_each_relation_masks(
+            relation_names,
+            edge_width,
+            masks -> begin
+                frame = _finite_frame(relation_names, masks, world_count)
+                _finite_each_assignment(
+                    values,
+                    length(atom_names) * world_count,
+                    assignment -> begin
+                        model = _finite_model(
+                            atom_names,
+                            assignment,
+                            frame,
+                            algebra,
+                            length(atom_names),
+                        )
+                        tested[] += 1
+                        if visitor(model)
+                            witness[] = model
+                            true
+                        else
+                            false
+                        end
+                    end,
+                )
+            end,
+        )
         found && return (true, witness[], tested[], complete[])
     end
-    (false, nothing, tested[], complete[])
+    return (false, nothing, tested[], complete[])
 end
 
 function _finite_bound(prover::FiniteModelProver, requested)
     requested === nothing && return prover.bound
-    FiniteModelProver(requested).bound
+    return FiniteModelProver(requested).bound
 end
 
 function _finite_details(query, bound, tested; complete=true)
     suffix = complete ? "" : "; finite search space was too large to enumerate"
-    "$query search exhausted after $tested model$(tested == 1 ? "" : "s") through world bound $bound$suffix"
+    return "$query search exhausted after $tested model$(tested == 1 ? "" : "s") through world bound $bound$suffix"
 end
 
 function _finite_unsupported(algebra, formula)
@@ -324,74 +401,158 @@ function _finite_unsupported(algebra, formula)
     relation_names = _finite_relation_names(formula)
     any(name -> name isa RelationFamily, relation_names) &&
         return "relation-family connectives are not supported by the generated-frame search"
-    _finite_truth_values(algebra) === nothing && return "finite Boolean, Gödel-chain, Łukasiewicz-chain, or FLew algebra required"
-    nothing
+    _finite_truth_values(algebra) === nothing &&
+        return "finite Boolean, Gödel-chain, Łukasiewicz-chain, or FLew algebra required"
+    return nothing
 end
 
-function prove(prover::FiniteModelProver, formula::Formula; bound=nothing, atoms=nothing,
-              algebra::TruthAlgebra=BOOLEAN)
+function prove(
+    prover::FiniteModelProver,
+    formula::Formula;
+    bound=nothing,
+    atoms=nothing,
+    algebra::TruthAlgebra=BOOLEAN,
+)
     reason = _finite_unsupported(algebra, formula)
     reason !== nothing && return ProverResult(:unknown; details=reason)
     actual_bound = _finite_bound(prover, bound)
     modal = !isempty(_finite_relation_names(formula))
-    found, model, tested, complete = _finite_models(formula, algebra, modal ? actual_bound : 1,
-        candidate -> check(formula, candidate, AnyWorld()); atoms=atoms)
-    found && return ProverResult(:sat; answer=true, certificate=model, countermodel=model,
-        details="bounded finite-model witness")
-    modal || return ProverResult(:unsat; answer=false, certificate=:finite_exhaustion,
-        details=_finite_details("satisfiability", actual_bound, tested; complete=complete))
-    ProverResult(:inconclusive; details=_finite_details("satisfiability", actual_bound, tested; complete=complete))
+    found, model, tested, complete = _finite_models(
+        formula,
+        algebra,
+        modal ? actual_bound : 1,
+        candidate -> check(formula, candidate, AnyWorld());
+        atoms=atoms,
+    )
+    found && return ProverResult(
+        :sat;
+        answer=true,
+        certificate=model,
+        countermodel=model,
+        details="bounded finite-model witness",
+    )
+    modal || return ProverResult(
+        :unsat;
+        answer=false,
+        certificate=:finite_exhaustion,
+        details=_finite_details("satisfiability", actual_bound, tested; complete=complete),
+    )
+    return ProverResult(
+        :inconclusive;
+        details=_finite_details("satisfiability", actual_bound, tested; complete=complete),
+    )
 end
 
 function _finite_algebra_for_query(formula::Formula, algebra)
     reason = _finite_unsupported(algebra, formula)
     reason === nothing || return reason
-    nothing
+    return nothing
 end
 
 @inline _finite_designated(algebra::TruthAlgebra, value) = value == top(algebra)
 
-
-function prove_valid(prover::FiniteModelProver, formula::Formula; bound=nothing, atoms=nothing,
-                     algebra::TruthAlgebra=BOOLEAN)
+function prove_valid(
+    prover::FiniteModelProver,
+    formula::Formula;
+    bound=nothing,
+    atoms=nothing,
+    algebra::TruthAlgebra=BOOLEAN,
+)
     reason = _finite_algebra_for_query(formula, algebra)
     reason !== nothing && return ProverResult(:unknown; details=reason)
     actual_bound = _finite_bound(prover, bound)
     modal = !isempty(_finite_relation_names(formula))
-    found, model, tested, complete = _finite_models(formula, algebra, modal ? actual_bound : 1,
-        candidate -> any(!_finite_designated(algebra, check(formula, candidate, world))
-                           for world in worlds(frame(candidate))); atoms=atoms)
-    found && return ProverResult(:invalid; answer=false, countermodel=model, certificate=:finite_model,
-        details="bounded finite-model counterexample")
-    modal || return ProverResult(:valid; answer=true, certificate=:finite_exhaustion,
-        details=_finite_details("validity", actual_bound, tested; complete=complete))
-    ProverResult(:inconclusive; details=_finite_details("validity", actual_bound, tested; complete=complete))
+    found, model, tested, complete = _finite_models(
+        formula,
+        algebra,
+        modal ? actual_bound : 1,
+        candidate -> any(
+            !_finite_designated(algebra, check(formula, candidate, world)) for
+            world in worlds(frame(candidate))
+        );
+        atoms=atoms,
+    )
+    found && return ProverResult(
+        :invalid;
+        answer=false,
+        countermodel=model,
+        certificate=:finite_model,
+        details="bounded finite-model counterexample",
+    )
+    modal || return ProverResult(
+        :valid;
+        answer=true,
+        certificate=:finite_exhaustion,
+        details=_finite_details("validity", actual_bound, tested; complete=complete),
+    )
+    return ProverResult(
+        :inconclusive;
+        details=_finite_details("validity", actual_bound, tested; complete=complete),
+    )
 end
 
-function _finite_entailment_result(prover::FiniteModelProver, premises, conclusion;
-                                   bound=nothing, atoms=nothing, algebra::TruthAlgebra=BOOLEAN)
+function _finite_entailment_result(
+    prover::FiniteModelProver,
+    premises,
+    conclusion;
+    bound=nothing,
+    atoms=nothing,
+    algebra::TruthAlgebra=BOOLEAN,
+)
     all(formula -> formula isa Formula && _finite_formula(formula), premises) &&
-        _finite_formula(conclusion) || return ProverResult(:unknown; details="unsupported connective or formula")
-    any(name -> name isa RelationFamily,
-        vcat((_finite_relation_names(formula) for formula in (premises..., conclusion))...)) &&
-        return ProverResult(:unknown; details="relation-family connectives are not supported by the generated-frame search")
-    _finite_truth_values(algebra) === nothing &&
-        return ProverResult(:unknown; details="finite Boolean, Gödel-chain, Łukasiewicz-chain, or FLew algebra required")
+        _finite_formula(conclusion) ||
+        return ProverResult(:unknown; details="unsupported connective or formula")
+    any(
+        name -> name isa RelationFamily,
+        vcat((_finite_relation_names(formula) for formula in (premises..., conclusion))...),
+    ) && return ProverResult(
+        :unknown;
+        details="relation-family connectives are not supported by the generated-frame search",
+    )
+    _finite_truth_values(algebra) === nothing && return ProverResult(
+        :unknown;
+        details="finite Boolean, Gödel-chain, Łukasiewicz-chain, or FLew algebra required",
+    )
     actual_bound = _finite_bound(prover, bound)
     formulae = (premises..., conclusion)
-    relation_names = sort!(unique(vcat((_finite_relation_names(formula) for formula in formulae)...)); by=string)
+    relation_names = sort!(
+        unique(vcat((_finite_relation_names(formula) for formula in formulae)...));
+        by=string,
+    )
     modal = !isempty(relation_names)
     combined_atoms = _propositional_atom_names(formulae; atoms=atoms)
-    found, model, tested, complete = _finite_models(conclusion, algebra, modal ? actual_bound : 1,
-        candidate -> any(world ->
-            all(_finite_designated(algebra, check(premise, candidate, world)) for premise in premises) &&
-            !_finite_designated(algebra, check(conclusion, candidate, world)),
-            worlds(frame(candidate))); atoms=combined_atoms, relations=relation_names)
-    found && return ProverResult(:invalid; answer=false, countermodel=model, certificate=:finite_model,
-        details="bounded finite-model counterexample")
-    modal || return ProverResult(:entailed; answer=true, certificate=:finite_exhaustion,
-        details=_finite_details("entailment", actual_bound, tested; complete=complete))
-    ProverResult(:inconclusive; details=_finite_details("entailment", actual_bound, tested; complete=complete))
+    found, model, tested, complete = _finite_models(
+        conclusion,
+        algebra,
+        modal ? actual_bound : 1,
+        candidate -> any(
+            world ->
+                all(
+                    _finite_designated(algebra, check(premise, candidate, world)) for
+                    premise in premises
+                ) && !_finite_designated(algebra, check(conclusion, candidate, world)),
+            worlds(frame(candidate)),
+        );
+        atoms=combined_atoms,
+        relations=relation_names,
+    )
+    found && return ProverResult(
+        :invalid;
+        answer=false,
+        countermodel=model,
+        certificate=:finite_model,
+        details="bounded finite-model counterexample",
+    )
+    modal || return ProverResult(
+        :entailed;
+        answer=true,
+        certificate=:finite_exhaustion,
+        details=_finite_details("entailment", actual_bound, tested; complete=complete),
+    )
+    return ProverResult(
+        :inconclusive;
+        details=_finite_details("entailment", actual_bound, tested; complete=complete),
+    )
 end
 
 """
@@ -408,15 +569,21 @@ function prove_entails(prover::AbstractProver, premises, conclusion; kwargs...)
     elseif prover isa FiniteModelProver
         return _finite_entailment_result(prover, normalized, conclusion; kwargs...)
     end
-    throw(MethodError(prove_entails, (prover, premises, conclusion)))
+    return throw(MethodError(prove_entails, (prover, premises, conclusion)))
 end
-prove_entails(premises, conclusion, prover::AbstractProver; kwargs...) =
-    prove_entails(prover, premises, conclusion; kwargs...)
+function prove_entails(premises, conclusion, prover::AbstractProver; kwargs...)
+    return prove_entails(prover, premises, conclusion; kwargs...)
+end
 # Disambiguate the two convenience orders when both outer arguments are provers.
-prove_entails(left::AbstractProver, premises, right::AbstractProver; kwargs...) =
-    throw(ArgumentError("prove_entails expects one AbstractProver and one premise collection"))
-prove_entails(premise::Formula, conclusion::Formula, prover::AbstractProver; kwargs...) =
-    prove_entails(prover, (premise,), conclusion; kwargs...)
-
+function prove_entails(left::AbstractProver, premises, right::AbstractProver; kwargs...)
+    return throw(
+        ArgumentError("prove_entails expects one AbstractProver and one premise collection")
+    )
+end
+function prove_entails(
+    premise::Formula, conclusion::Formula, prover::AbstractProver; kwargs...
+)
+    return prove_entails(prover, (premise,), conclusion; kwargs...)
+end
 
 const BoundedFiniteProver = FiniteModelProver

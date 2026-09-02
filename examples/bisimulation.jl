@@ -22,9 +22,16 @@ show(stdout, MIME"text/plain"(), m₂_bad)
 println()
 println("unperturbed roots bisimilar: ", bisimilar(m₁, :r, m₂, :s))
 println("separator: ", syntaxstring(separator))
-println("unperturbed values (m₁/m₂): ", check(separator, m₁, :r), "/", check(separator, m₂, :s))
+println(
+    "unperturbed values (m₁/m₂): ", check(separator, m₁, :r), "/", check(separator, m₂, :s)
+)
 println("after labelling t=p: ", bisimilar(m₁, :r, m₂_bad, :s))
-println("separating values (m₁/m₂_bad): ", check(separator, m₁, :r), "/", check(separator, m₂_bad, :s))
+println(
+    "separating values (m₁/m₂_bad): ",
+    check(separator, m₁, :r),
+    "/",
+    check(separator, m₂_bad, :s),
+)
 # BEGIN EXPECTED OUTPUT
 # m₁ (unlabelled root):
 # Model (1 world, 1 relation, BooleanAlgebra())

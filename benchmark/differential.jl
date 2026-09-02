@@ -1,9 +1,10 @@
 # Deterministic differential correctness suite.  It is deliberately housed in
 # benchmark/ rather than test/ so Aletheia does not depend on SoleLogics.
-import Pkg
+using Pkg: Pkg
 sole_path = get(ENV, "SOLELOGICS_PATH", "../SoleLogics.jl")
-isdir(sole_path) || error("SoleLogics checkout not found at $sole_path; set SOLELOGICS_PATH")
-Pkg.develop(Pkg.PackageSpec(path=sole_path))
+isdir(sole_path) ||
+    error("SoleLogics checkout not found at $sole_path; set SOLELOGICS_PATH")
+Pkg.develop(Pkg.PackageSpec(; path=sole_path))
 Pkg.instantiate()
 include(joinpath(@__DIR__, "common.jl"))
 using Test
@@ -17,12 +18,21 @@ function syntax_random_recipe(rng, depth, nextatom=Ref(0))
         return atomrecipe("p$(1 + mod(nextatom[], 7))")
     end
     op = rand(rng, (:not, :and, :or, :implies))
-    op === :not ? recipe(op, syntax_random_recipe(rng, depth - 1, nextatom)) :
-        recipe(op, syntax_random_recipe(rng, depth - 1, nextatom), syntax_random_recipe(rng, depth - 1, nextatom))
+    return if op === :not
+        recipe(op, syntax_random_recipe(rng, depth - 1, nextatom))
+    else
+        recipe(
+            op,
+            syntax_random_recipe(rng, depth - 1, nextatom),
+            syntax_random_recipe(rng, depth - 1, nextatom),
+        )
+    end
 end
 
 function parse_both(text)
-    (Aletheia.parse(pool_a(), text), SoleLogics.parseformula(SoleLogics.SyntaxTree, text))
+    return (
+        Aletheia.parse(pool_a(), text), SoleLogics.parseformula(SoleLogics.SyntaxTree, text)
+    )
 end
 
 # These are the only deliberate representation differences: Aletheia's
@@ -49,15 +59,19 @@ const FORMULA_COUNT = 64
         atext = Aletheia.syntaxstring(ap)
         stext = SoleLogics.syntaxstring(sp)
         @test Aletheia.syntaxstring(Aletheia.parse(pool_a(), atext)) == atext
-        @test SoleLogics.syntaxstring(SoleLogics.parseformula(SoleLogics.SyntaxTree, stext)) == stext
+        @test SoleLogics.syntaxstring(
+            SoleLogics.parseformula(SoleLogics.SyntaxTree, stext)
+        ) == stext
         # Aletheia's explicit parentheses are accepted by SoleLogics too.
-        @test canonical(SoleLogics.parseformula(SoleLogics.SyntaxTree, atext)) == canonical(ap)
+        @test canonical(SoleLogics.parseformula(SoleLogics.SyntaxTree, atext)) ==
+              canonical(ap)
 
         # Structural equality decisions: equal and deliberately altered forms.
         equal_pool = pool_a()
         aequal = build_a(r, equal_pool)
         aequal_again = build_a(r, equal_pool)
-        @test (isequal(aequal, aequal_again)) == (canonical(aequal) == canonical(aequal_again))
+        @test (isequal(aequal, aequal_again)) ==
+              (canonical(aequal) == canonical(aequal_again))
         s_equal = build_s(r)
         @test (isequal(s, s_equal)) == (canonical(s) == canonical(s_equal))
         altered = atomrecipe("not-in-formula-$i")
@@ -71,10 +85,10 @@ const FORMULA_COUNT = 64
             out = Set{Any}()
             function visit(y)
                 push!(out, canonical(y))
-                foreach(visit, Aletheia.children(y))
+                return foreach(visit, Aletheia.children(y))
             end
             visit(x)
-            out
+            return out
         end
         aset = aset_of(a)
         sset = Set(canonical(x) for x in SoleLogics.subformulas(s))
@@ -82,7 +96,6 @@ const FORMULA_COUNT = 64
     end
 end
 println("differential: PASS ($FORMULA_COUNT formulas; seed $SEED)")
-
 
 @testset "semantic evaluation (seed=$SEED)" begin
     modal_rng = MersenneTwister(SEED + 1)
@@ -94,13 +107,18 @@ println("differential: PASS ($FORMULA_COUNT formulas; seed $SEED)")
         am = a_boolean_model(n, edges; sets=sets)
         sm = s_boolean_model(n, edges; sets=sets)
         recipe = random_recipe(modal_rng, depth; modal=true)
-        pool = modal_pool_a(); af = build_a(recipe, pool)
+        pool = modal_pool_a()
+        af = build_a(recipe, pool)
         sf = build_s(recipe)
-        @test all(Aletheia.check(af, am, w) ==
-            SoleLogics.check(sf, sm, SoleLogics.World(w); perform_normalization=false)
-            for w in 1:n)
-        @test collect(Aletheia.extension(af, am)) ==
-            BitVector([SoleLogics.check(sf, sm, SoleLogics.World(w); perform_normalization=false) for w in 1:n])
+        @test all(
+            Aletheia.check(af, am, w) ==
+            SoleLogics.check(sf, sm, SoleLogics.World(w); perform_normalization=false) for
+            w in 1:n
+        )
+        @test collect(Aletheia.extension(af, am)) == BitVector([
+            SoleLogics.check(sf, sm, SoleLogics.World(w); perform_normalization=false) for
+            w in 1:n
+        ])
     end
 end
 println("semantic differential: PASS (64 seeded random modal models)")

@@ -4,17 +4,97 @@
     # executable specification, not a second set of hand-written implications.
     named = (
         (G3, [1 1 1; 1 2 3; 1 3 3], [1 2 3; 2 2 2; 3 2 3], [1 2 3; 2 2 2; 3 2 3]),
-        (G4, [1 1 1 1; 1 2 3 4; 1 3 3 4; 1 4 4 4], [1 2 3 4; 2 2 2 2; 3 2 3 3; 4 2 3 4], [1 2 3 4; 2 2 2 2; 3 2 3 3; 4 2 3 4]),
-        (G5, [1 1 1 1 1; 1 2 3 4 5; 1 3 3 4 5; 1 4 4 4 5; 1 5 5 5 5], [1 2 3 4 5; 2 2 2 2 2; 3 2 3 3 3; 4 2 3 4 4; 5 2 3 4 5], [1 2 3 4 5; 2 2 2 2 2; 3 2 3 3 3; 4 2 3 4 4; 5 2 3 4 5]),
-        (G6, [1 1 1 1 1 1; 1 2 3 4 5 6; 1 3 3 4 5 6; 1 4 4 4 5 6; 1 5 5 5 5 6; 1 6 6 6 6 6], [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 3 3 3; 4 2 3 4 4 4; 5 2 3 4 5 5; 6 2 3 4 5 6], [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 3 3 3; 4 2 3 4 4 4; 5 2 3 4 5 5; 6 2 3 4 5 6]),
+        (
+            G4,
+            [1 1 1 1; 1 2 3 4; 1 3 3 4; 1 4 4 4],
+            [1 2 3 4; 2 2 2 2; 3 2 3 3; 4 2 3 4],
+            [1 2 3 4; 2 2 2 2; 3 2 3 3; 4 2 3 4],
+        ),
+        (
+            G5,
+            [1 1 1 1 1; 1 2 3 4 5; 1 3 3 4 5; 1 4 4 4 5; 1 5 5 5 5],
+            [1 2 3 4 5; 2 2 2 2 2; 3 2 3 3 3; 4 2 3 4 4; 5 2 3 4 5],
+            [1 2 3 4 5; 2 2 2 2 2; 3 2 3 3 3; 4 2 3 4 4; 5 2 3 4 5],
+        ),
+        (
+            G6,
+            [1 1 1 1 1 1; 1 2 3 4 5 6; 1 3 3 4 5 6; 1 4 4 4 5 6; 1 5 5 5 5 6; 1 6 6 6 6 6],
+            [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 3 3 3; 4 2 3 4 4 4; 5 2 3 4 5 5; 6 2 3 4 5 6],
+            [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 3 3 3; 4 2 3 4 4 4; 5 2 3 4 5 5; 6 2 3 4 5 6],
+        ),
         (Ł3, [1 1 1; 1 2 3; 1 3 3], [1 2 3; 2 2 2; 3 2 3], [1 2 3; 2 2 2; 3 2 2]),
-        (Ł4, [1 1 1 1; 1 2 3 4; 1 3 3 4; 1 4 4 4], [1 2 3 4; 2 2 2 2; 3 2 3 3; 4 2 3 4], [1 2 3 4; 2 2 2 2; 3 2 2 2; 4 2 2 3]),
-        (H4, [1 1 1 1; 1 2 3 4; 1 3 3 1; 1 4 1 4], [1 2 3 4; 2 2 2 2; 3 2 3 2; 4 2 2 4], [1 2 3 4; 2 2 2 2; 3 2 3 2; 4 2 2 4]),
-        (H6, [1 1 1 1 1 1; 1 2 3 4 5 6; 1 3 3 6 5 6; 1 4 6 4 1 6; 1 5 5 1 5 1; 1 6 6 6 1 6], [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 2 3 3; 4 2 2 4 2 4; 5 2 3 2 5 3; 6 2 3 4 3 6], [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 2 3 3; 4 2 2 4 2 4; 5 2 3 2 5 3; 6 2 3 4 3 6]),
-        (H6_1, [1 1 1 1 1 1; 1 2 3 4 5 6; 1 3 3 5 5 6; 1 4 5 4 5 6; 1 5 5 5 5 6; 1 6 6 6 6 6], [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 2 3 3; 4 2 2 4 4 4; 5 2 3 4 5 5; 6 2 3 4 5 6], [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 2 3 3; 4 2 2 4 4 4; 5 2 3 4 5 5; 6 2 3 4 5 6]),
-        (H6_2, [1 1 1 1 1 1; 1 2 3 4 5 6; 1 3 3 4 5 6; 1 4 4 4 6 6; 1 5 5 6 5 6; 1 6 6 6 6 6], [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 3 3 3; 4 2 3 4 3 4; 5 2 3 3 5 5; 6 2 3 4 5 6], [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 3 3 3; 4 2 3 4 3 4; 5 2 3 3 5 5; 6 2 3 4 5 6]),
-        (H6_3, [1 1 1 1 1 1; 1 2 3 4 5 6; 1 3 3 4 5 6; 1 4 4 4 5 6; 1 5 5 5 5 1; 1 6 6 6 1 6], [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 3 3 3; 4 2 3 4 4 4; 5 2 3 4 5 4; 6 2 3 4 4 6], [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 3 3 3; 4 2 3 4 4 4; 5 2 3 4 5 4; 6 2 3 4 4 6]),
-        (H9, [1 1 1 1 1 1 1 1 1; 1 2 3 4 5 6 7 8 9; 1 3 3 6 5 6 9 8 9; 1 4 6 4 8 6 7 8 9; 1 5 5 8 5 8 1 8 1; 1 6 6 6 8 6 9 8 9; 1 7 9 7 1 9 7 1 9; 1 8 8 8 8 8 1 8 1; 1 9 9 9 1 9 9 1 9], [1 2 3 4 5 6 7 8 9; 2 2 2 2 2 2 2 2 2; 3 2 3 2 3 3 2 3 3; 4 2 2 4 2 4 4 4 4; 5 2 3 2 5 3 2 5 3; 6 2 3 4 3 6 4 6 6; 7 2 2 4 2 4 7 4 7; 8 2 3 4 5 6 4 8 6; 9 2 3 4 3 6 7 6 9], [1 2 3 4 5 6 7 8 9; 2 2 2 2 2 2 2 2 2; 3 2 3 2 3 3 2 3 3; 4 2 2 4 2 4 4 4 4; 5 2 3 2 5 3 2 5 3; 6 2 3 4 3 6 4 6 6; 7 2 2 4 2 4 7 4 7; 8 2 3 4 5 6 4 8 6; 9 2 3 4 3 6 7 6 9]),
+        (
+            Ł4,
+            [1 1 1 1; 1 2 3 4; 1 3 3 4; 1 4 4 4],
+            [1 2 3 4; 2 2 2 2; 3 2 3 3; 4 2 3 4],
+            [1 2 3 4; 2 2 2 2; 3 2 2 2; 4 2 2 3],
+        ),
+        (
+            H4,
+            [1 1 1 1; 1 2 3 4; 1 3 3 1; 1 4 1 4],
+            [1 2 3 4; 2 2 2 2; 3 2 3 2; 4 2 2 4],
+            [1 2 3 4; 2 2 2 2; 3 2 3 2; 4 2 2 4],
+        ),
+        (
+            H6,
+            [1 1 1 1 1 1; 1 2 3 4 5 6; 1 3 3 6 5 6; 1 4 6 4 1 6; 1 5 5 1 5 1; 1 6 6 6 1 6],
+            [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 2 3 3; 4 2 2 4 2 4; 5 2 3 2 5 3; 6 2 3 4 3 6],
+            [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 2 3 3; 4 2 2 4 2 4; 5 2 3 2 5 3; 6 2 3 4 3 6],
+        ),
+        (
+            H6_1,
+            [1 1 1 1 1 1; 1 2 3 4 5 6; 1 3 3 5 5 6; 1 4 5 4 5 6; 1 5 5 5 5 6; 1 6 6 6 6 6],
+            [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 2 3 3; 4 2 2 4 4 4; 5 2 3 4 5 5; 6 2 3 4 5 6],
+            [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 2 3 3; 4 2 2 4 4 4; 5 2 3 4 5 5; 6 2 3 4 5 6],
+        ),
+        (
+            H6_2,
+            [1 1 1 1 1 1; 1 2 3 4 5 6; 1 3 3 4 5 6; 1 4 4 4 6 6; 1 5 5 6 5 6; 1 6 6 6 6 6],
+            [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 3 3 3; 4 2 3 4 3 4; 5 2 3 3 5 5; 6 2 3 4 5 6],
+            [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 3 3 3; 4 2 3 4 3 4; 5 2 3 3 5 5; 6 2 3 4 5 6],
+        ),
+        (
+            H6_3,
+            [1 1 1 1 1 1; 1 2 3 4 5 6; 1 3 3 4 5 6; 1 4 4 4 5 6; 1 5 5 5 5 1; 1 6 6 6 1 6],
+            [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 3 3 3; 4 2 3 4 4 4; 5 2 3 4 5 4; 6 2 3 4 4 6],
+            [1 2 3 4 5 6; 2 2 2 2 2 2; 3 2 3 3 3 3; 4 2 3 4 4 4; 5 2 3 4 5 4; 6 2 3 4 4 6],
+        ),
+        (
+            H9,
+            [
+                1 1 1 1 1 1 1 1 1
+                1 2 3 4 5 6 7 8 9
+                1 3 3 6 5 6 9 8 9
+                1 4 6 4 8 6 7 8 9
+                1 5 5 8 5 8 1 8 1
+                1 6 6 6 8 6 9 8 9
+                1 7 9 7 1 9 7 1 9
+                1 8 8 8 8 8 1 8 1
+                1 9 9 9 1 9 9 1 9
+            ],
+            [
+                1 2 3 4 5 6 7 8 9
+                2 2 2 2 2 2 2 2 2
+                3 2 3 2 3 3 2 3 3
+                4 2 2 4 2 4 4 4 4
+                5 2 3 2 5 3 2 5 3
+                6 2 3 4 3 6 4 6 6
+                7 2 2 4 2 4 7 4 7
+                8 2 3 4 5 6 4 8 6
+                9 2 3 4 3 6 7 6 9
+            ],
+            [
+                1 2 3 4 5 6 7 8 9
+                2 2 2 2 2 2 2 2 2
+                3 2 3 2 3 3 2 3 3
+                4 2 2 4 2 4 4 4 4
+                5 2 3 2 5 3 2 5 3
+                6 2 3 4 3 6 4 6 6
+                7 2 2 4 2 4 7 4 7
+                8 2 3 4 5 6 4 8 6
+                9 2 3 4 3 6 7 6 9
+            ],
+        ),
     )
     for (a, expected_join, expected_lattice_meet, expected_fusion) in named
         @test a isa FiniteFLewAlgebra
@@ -36,16 +116,26 @@
 
     # Differential tests for the Float64 chain fast paths and the general
     # integer-table construction.
-    indexof(level, n) = level == 0.0 ? UInt8(2) : level == 1.0 ? UInt8(1) : UInt8(round(Int, level * (n - 1)) + 2)
+    function indexof(level, n)
+        return if level == 0.0
+            UInt8(2)
+        elseif level == 1.0
+            UInt8(1)
+        else
+            UInt8(round(Int, level * (n - 1)) + 2)
+        end
+    end
     for n in 2:12
-        for (specialized, kind) in ((GodelAlgebra(n), :godel), (LukasiewiczAlgebra(n), :lukasiewicz))
+        for (specialized, kind) in
+            ((GodelAlgebra(n), :godel), (LukasiewiczAlgebra(n), :lukasiewicz))
             general = Aletheia._chain_flew(n, kind)
             vals = collect(levels(specialized))
             for x in vals, y in vals
                 ix, iy = indexof(x, n), indexof(y, n)
                 @test meet(general, ix, iy) == indexof(meet(specialized, x, y), n)
                 @test join(general, ix, iy) == indexof(join(specialized, x, y), n)
-                @test implication(general, ix, iy) == indexof(implication(specialized, x, y), n)
+                @test implication(general, ix, iy) ==
+                      indexof(implication(specialized, x, y), n)
                 @test negation(general, ix) == indexof(negation(specialized, x), n)
             end
         end
@@ -69,8 +159,14 @@
     @test isfinitechain(BooleanFLewAlgebra)
     forged_tables = ones(FiniteTruth, 2, 2)
     @test_throws MethodError FiniteFLewAlgebra{2}(
-        forged_tables, forged_tables, forged_tables, forged_tables,
-        FiniteTruth(1), FiniteTruth(2), Val(:validated))
+        forged_tables,
+        forged_tables,
+        forged_tables,
+        forged_tables,
+        FiniteTruth(1),
+        FiniteTruth(2),
+        Val(:validated),
+    )
     @test_throws ArgumentError FiniteFLewAlgebra([1, 2, 3], [1, 2, 3], [1, 2, 3], 2, 1)
     @test_throws ArgumentError FiniteFLewAlgebra{2}(:bad, [1 2; 2 2], [1 2; 2 2], 2, 1)
     @test_throws ArgumentError FiniteFLewAlgebra{2}([1 1; 1 2], :bad, [1 2; 2 2], 2, 1)
@@ -81,8 +177,14 @@
     pool = FormulaPool(sig)
     p, q = atom(pool, "p"), atom(pool, "q")
     frame = Frame((:a, :b), Dict(:R => Dict(:a => [:b], :b => [:b])); index=true)
-    model = Model(frame, H4, Dict("p" => Dict(:a => UInt8(3), :b => UInt8(4)),
-        "q" => Dict(:a => UInt8(4), :b => UInt8(3))))
+    model = Model(
+        frame,
+        H4,
+        Dict(
+            "p" => Dict(:a => UInt8(3), :b => UInt8(4)),
+            "q" => Dict(:a => UInt8(4), :b => UInt8(3)),
+        ),
+    )
     conjunction = branch(pool, ∧, p, q)
     diamond = branch(pool, Diamond(:R), p)
     box = branch(pool, Box(:R), p)
@@ -111,9 +213,12 @@
     end
     expect_bad([1 2 1; 1 2 3; 1 3 3], valid_meet, valid_fusion, "commutativity")
     expect_bad(valid_join, [1 1 3; 2 2 2; 3 2 3], valid_fusion, "commutativity")
-    expect_bad([1 1 1 1; 1 2 3 4; 1 3 3 1; 1 4 1 4],
+    expect_bad(
+        [1 1 1 1; 1 2 3 4; 1 3 3 1; 1 4 1 4],
         [1 2 3 4; 2 2 2 2; 3 2 3 1; 4 2 1 4],
-        [1 2 3 4; 2 2 2 2; 3 2 3 1; 4 2 1 4], "absorption")
+        [1 2 3 4; 2 2 2 2; 3 2 3 1; 4 2 1 4],
+        "absorption",
+    )
     expect_bad([1 1 1; 1 2 1; 1 1 3], valid_meet, valid_fusion, "absorption")
     expect_bad(valid_join, valid_meet, [1 2 3; 1 2 3; 3 3 3], "commutativity")
     expect_bad(valid_join, valid_meet, [1 1 1; 1 2 2; 1 2 2], "neutral")
@@ -122,6 +227,10 @@
     expect_bad(valid_join, [1 2; 2 2], [1 2; 2 2], "table") # inconsistent dimensions
     @test_throws ArgumentError FiniteFLewAlgebra([1 0; 1 2], [1 2; 2 2], [1 2; 2 2], 2, 1)
     drastic = [1 2 3 4; 2 2 2 2; 3 2 2 2; 4 2 2 2]
-    expect_bad([1 1 1 1; 1 2 3 4; 1 3 3 1; 1 4 1 4],
-        [1 2 3 4; 2 2 2 2; 3 2 3 2; 4 2 2 4], drastic, "residuum")
+    expect_bad(
+        [1 1 1 1; 1 2 3 4; 1 3 3 1; 1 4 1 4],
+        [1 2 3 4; 2 2 2 2; 3 2 3 2; 4 2 2 4],
+        drastic,
+        "residuum",
+    )
 end

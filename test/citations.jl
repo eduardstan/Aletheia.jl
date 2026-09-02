@@ -1,12 +1,18 @@
 normalize_eol(text) = replace(text, "\r\n" => "\n")
-normalized_occurs(needle, haystack) = occursin(normalize_eol(needle), normalize_eol(haystack))
+function normalized_occurs(needle, haystack)
+    return occursin(normalize_eol(needle), normalize_eol(haystack))
+end
 
 @testset "citation integrity" begin
     @test normalized_occurs("a\nb", "a\r\nb")
-    semantics_source = read(joinpath(@__DIR__, "..", "lib", "AletheiaCore", "src", "semantics.jl"), String)
+    semantics_source = read(
+        joinpath(@__DIR__, "..", "lib", "AletheiaCore", "src", "semantics.jl"), String
+    )
     @test !normalized_occurs("chain operation; see Goranko", semantics_source)
 
-    relations_source = read(joinpath(@__DIR__, "..", "lib", "AletheiaCore", "src", "relations.jl"), String)
+    relations_source = read(
+        joinpath(@__DIR__, "..", "lib", "AletheiaCore", "src", "relations.jl"), String
+    )
     @test !normalized_occurs("Halpern", relations_source)
 
     learning = read(joinpath(@__DIR__, "..", "docs", "src", "learning.md"), String)
@@ -25,7 +31,9 @@ normalized_occurs(needle, haystack) = occursin(normalize_eol(needle), normalize_
     relation_docs = read(joinpath(@__DIR__, "..", "docs", "src", "relations.md"), String)
     @test normalized_occurs("transitivity with `4` [blackburn2001;", relation_docs)
 
-    bisimulation_source = read(joinpath(@__DIR__, "..", "lib", "AletheiaCore", "src", "bisimulation.jl"), String)
+    bisimulation_source = read(
+        joinpath(@__DIR__, "..", "lib", "AletheiaCore", "src", "bisimulation.jl"), String
+    )
     @test normalized_occurs("derived implementation bounds", bisimulation_source)
     theory = read(joinpath(@__DIR__, "..", "docs", "src", "theory.md"), String)
     @test normalized_occurs("derived implementation bounds", theory)
@@ -41,7 +49,14 @@ end
     quickstart = read(joinpath(root, "docs", "src", "quickstart.md"), String)
     semantics = read(joinpath(root, "docs", "src", "semantics.md"), String)
     algebras = read(joinpath(root, "docs", "src", "algebras.md"), String)
-    docs_sources = join(read.(filter(p -> endswith(p, ".md"), readdir(joinpath(root, "docs", "src"); join=true)), String))
+    docs_sources = join(
+        read.(
+            filter(
+                p -> endswith(p, ".md"), readdir(joinpath(root, "docs", "src"); join=true)
+            ),
+            String,
+        ),
+    )
 
     for retracted in ("6" * ".81×", "9" * ".67×", "0" * ".92×", "45" * ".70×")
         @test !normalized_occurs(retracted, readme)
@@ -75,22 +90,49 @@ end
     @test !normalized_occurs("changing one import line", index)
     @test normalized_occurs("selected\nSoleLogics consumers", index)
     @test normalized_occurs("107 of 142", compatibility)
-    @test normalized_occurs("64 decisions over eight algebra/height configurations", compatibility)
-    @test normalized_occurs("42 of them carrying at least one truth-constant leaf", compatibility)
+    @test normalized_occurs(
+        "64 decisions over eight algebra/height configurations", compatibility
+    )
+    @test normalized_occurs(
+        "42 of them carrying at least one truth-constant leaf", compatibility
+    )
     @test normalized_occurs("verdicts differ | **0**", compatibility)
     @test normalized_occurs("wall-clock fact, not a capability difference", compatibility)
     @test !normalized_occurs("Both sides produced 72 decisions", compatibility)
     @test !normalized_occurs("pre-parsed tableau search", compatibility)
-    for name in ("AbstractAssignment", "AbstractDimensionalFrame", "AbstractInterpretation",
-                 "AbstractKripkeStructure", "CONJUNCTION", "CheckAlgorithm", "Full0DFrame",
-                 "Full1DFrame", "Full2DFrame", "LogicalInstance", "OneWorld", "Point3D",
-                 "SyntaxToken", "X", "Y", "Z", "composeformulas", "frametype",
-                 "intervals2D_in", "intervals_in", "ndisjuncts", "nparameters", "nworlds",
-                 "short_intervals_in", "valuetype")
+    for name in (
+        "AbstractAssignment",
+        "AbstractDimensionalFrame",
+        "AbstractInterpretation",
+        "AbstractKripkeStructure",
+        "CONJUNCTION",
+        "CheckAlgorithm",
+        "Full0DFrame",
+        "Full1DFrame",
+        "Full2DFrame",
+        "LogicalInstance",
+        "OneWorld",
+        "Point3D",
+        "SyntaxToken",
+        "X",
+        "Y",
+        "Z",
+        "composeformulas",
+        "frametype",
+        "intervals2D_in",
+        "intervals_in",
+        "ndisjuncts",
+        "nparameters",
+        "nworlds",
+        "short_intervals_in",
+        "valuetype",
+    )
         @test normalized_occurs(name, compatibility)
     end
     @test normalized_occurs("Extension results are not cached across instances", families)
-    @test normalized_occurs("relation adjacency\non a shared `Frame` may be cached and reused", families)
+    @test normalized_occurs(
+        "relation adjacency\non a shared `Frame` may be cached and reused", families
+    )
     @test !normalized_occurs("one or more named accessibility relations", quickstart)
     @test !normalized_occurs("one or more\nnamed accessibility relations", semantics)
     @test normalized_occurs("zero or more", quickstart)

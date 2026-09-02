@@ -22,6 +22,8 @@ include("presentation.jl")
     if pkgversion(JET) < v"0.11"
         JET.test_package(AletheiaCore; target_defined_modules=true)
     else
-        JET.test_package(AletheiaCore; target_modules=(AletheiaCore,), analyze_from_definitions=true)
+        JET.test_package(
+            AletheiaCore; target_modules=(AletheiaCore,), analyze_from_definitions=true
+        )
     end
 end

@@ -15,7 +15,9 @@ function paired_timed_sample(f)
     elapsed = time_ns() - start
     diff = Base.GC_Diff(Base.gc_num(), gc_start)
     allocations = Int(diff.malloc + diff.realloc + diff.poolalloc + diff.bigalloc)
-    PairedTimedSample(Float64(elapsed), Float64(diff.total_time), allocations, Int(diff.allocd))
+    return PairedTimedSample(
+        Float64(elapsed), Float64(diff.total_time), allocations, Int(diff.allocd)
+    )
 end
 
 function paired_measure(f; samples=5, before=nothing)
@@ -26,5 +28,5 @@ function paired_measure(f; samples=5, before=nothing)
     end
     times = getfield.(observations, :time)
     target = median(times)
-    observations[argmin(abs.(times .- target))]
+    return observations[argmin(abs.(times .- target))]
 end

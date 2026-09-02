@@ -121,8 +121,8 @@ than assumed from the family type.
 """
 function _same_frame(left::Frame, right::Frame)
     return worlds(left) == worlds(right) &&
-               relations(left) == relations(right) &&
-               world_index(left) == world_index(right)
+           relations(left) == relations(right) &&
+           world_index(left) == world_index(right)
 end
 
 """

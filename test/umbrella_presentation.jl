@@ -26,9 +26,17 @@ const Extension = Aletheia.Extension
 
     # Model headers describe chain carriers without exposing type parameters.
     m_unit_godel = Model(f1, GodelAlgebra(), Dict("p" => Dict(:w1 => 0.5, :w2 => 1.0)))
-    m_unit_lukasiewicz = Model(f1, LukasiewiczAlgebra(), Dict("p" => Dict(:w1 => 0.5, :w2 => 1.0)))
-    @test occursin("GodelAlgebra (unit interval [0.0, 1.0])", sprint(show, MIME("text/plain"), m_unit_godel))
-    @test occursin("LukasiewiczAlgebra (unit interval [0.0, 1.0])", sprint(show, MIME("text/plain"), m_unit_lukasiewicz))
+    m_unit_lukasiewicz = Model(
+        f1, LukasiewiczAlgebra(), Dict("p" => Dict(:w1 => 0.5, :w2 => 1.0))
+    )
+    @test occursin(
+        "GodelAlgebra (unit interval [0.0, 1.0])",
+        sprint(show, MIME("text/plain"), m_unit_godel),
+    )
+    @test occursin(
+        "LukasiewiczAlgebra (unit interval [0.0, 1.0])",
+        sprint(show, MIME("text/plain"), m_unit_lukasiewicz),
+    )
     @test !occursin("{0}", sprint(show, MIME("text/plain"), m_unit_godel))
     @test !occursin("{0}", sprint(show, MIME("text/plain"), m_unit_lukasiewicz))
 
@@ -39,8 +47,12 @@ const Extension = Aletheia.Extension
     # Callable relations / valuation
     f_callable = Frame((:w1, :w2), (w, r) -> (:w2,); index=true)
     m_callable = Model(f_callable, (a, w) -> true, BOOLEAN)
-    @test occursin("relations supplied on demand", sprint(show, MIME("text/plain"), f_callable))
-    @test occursin("relations supplied on demand", sprint(show, MIME("text/plain"), m_callable))
+    @test occursin(
+        "relations supplied on demand", sprint(show, MIME("text/plain"), f_callable)
+    )
+    @test occursin(
+        "relations supplied on demand", sprint(show, MIME("text/plain"), m_callable)
+    )
     @test occursin("<callable>", sprint(show, MIME("text/plain"), f_callable))
     @test occursin("<function>", sprint(show, MIME("text/plain"), m_callable))
 
@@ -50,11 +62,16 @@ const Extension = Aletheia.Extension
     @test !occursin("1 relation", generated_display)
 
     # 2. Algebras
-    @test sprint(show, MIME("text/plain"), BOOLEAN) == "BooleanAlgebra (carrier Bool: {false, true})"
+    @test sprint(show, MIME("text/plain"), BOOLEAN) ==
+          "BooleanAlgebra (carrier Bool: {false, true})"
     @test occursin("GodelAlgebra{3}", sprint(show, MIME("text/plain"), GodelAlgebra(3)))
-    @test occursin("LukasiewiczAlgebra{4}", sprint(show, MIME("text/plain"), LukasiewiczAlgebra(4)))
-    @test sprint(show, MIME("text/plain"), GodelAlgebra()) == "GodelAlgebra (unit interval [0.0, 1.0])"
-    @test sprint(show, MIME("text/plain"), LukasiewiczAlgebra()) == "LukasiewiczAlgebra (unit interval [0.0, 1.0])"
+    @test occursin(
+        "LukasiewiczAlgebra{4}", sprint(show, MIME("text/plain"), LukasiewiczAlgebra(4))
+    )
+    @test sprint(show, MIME("text/plain"), GodelAlgebra()) ==
+          "GodelAlgebra (unit interval [0.0, 1.0])"
+    @test sprint(show, MIME("text/plain"), LukasiewiczAlgebra()) ==
+          "LukasiewiczAlgebra (unit interval [0.0, 1.0])"
 
     s_h4 = sprint(show, MIME("text/plain"), H4)
     @test occursin("FiniteFLewAlgebra{4}", s_h4)
@@ -114,9 +131,11 @@ const Extension = Aletheia.Extension
     s_cs = sprint(show, MIME("text/plain"), cs)
     @test occursin("ClauseSet (2 clauses)", s_cs)
     @test occursin("p(x) :- q(y)", s_cs)
-    @test sprint(show, MIME("text/plain"),
-        HornClause(Predicate(:father, Constant(:a)), Predicate(:parent, Constant(:a)))) ==
-        "father(a) :- parent(a)"
+    @test sprint(
+        show,
+        MIME("text/plain"),
+        HornClause(Predicate(:father, Constant(:a)), Predicate(:parent, Constant(:a))),
+    ) == "father(a) :- parent(a)"
 
     sub = Substitution(x => Constant("a"))
     @test sprint(show, sub) == "Substitution(x => \"a\")"
@@ -126,30 +145,45 @@ const Extension = Aletheia.Extension
     ie = InterpretationExample(m1; positive=true)
     pe = ProofExample("proof"; positive=false)
     @test occursin("EntailmentExample (+): p(x)", sprint(show, MIME("text/plain"), ee))
-    @test occursin("InterpretationExample (+): Model(2 worlds", sprint(show, MIME("text/plain"), ie))
+    @test occursin(
+        "InterpretationExample (+): Model(2 worlds", sprint(show, MIME("text/plain"), ie)
+    )
     @test occursin("ProofExample (-): proof", sprint(show, MIME("text/plain"), pe))
-
 
     # Branch coverage: bounded displays and edge cases.
     @test sprint(show, MIME("text/plain"), Extension(BitVector([0, 0]), m1)) ==
-        "Extension (0 of 2 worlds satisfy)\n  Satisfied at: (none)\n  Unsatisfied at: :w1, :w2"
+          "Extension (0 of 2 worlds satisfy)\n  Satisfied at: (none)\n  Unsatisfied at: :w1, :w2"
     @test sprint(show, MIME("text/plain"), Extension(BitVector([1, 1]), m1)) ==
-        "Extension (2 of 2 worlds satisfy)\n  Satisfied at: :w1, :w2\n  Unsatisfied at: (none)"
+          "Extension (2 of 2 worlds satisfy)\n  Satisfied at: :w1, :w2\n  Unsatisfied at: (none)"
     @test sprint(show, Extension(BitVector([0, 0]), m1)) == "Extension(Bool[0, 0])"
 
     # Exercise the large Boolean extension's elision branch and its terse form.
-    ext_large = Extension(BitVector(ones(Bool, length(large_worlds))), f_large.worlds, BOOLEAN)
+    ext_large = Extension(
+        BitVector(ones(Bool, length(large_worlds))), f_large.worlds, BOOLEAN
+    )
     s_ext_large = sprint(show, MIME("text/plain"), ext_large)
-    @test occursin("Satisfied at: :w1, :w2, :w3, :w4, :w5, :w6, :w7, :w8, :w9, :w10, … (10 elided)", s_ext_large)
-    @test sprint(show, ext_large) == "Extension(Bool[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])"
+    @test occursin(
+        "Satisfied at: :w1, :w2, :w3, :w4, :w5, :w6, :w7, :w8, :w9, :w10, … (10 elided)",
+        s_ext_large,
+    )
+    @test sprint(show, ext_large) ==
+          "Extension(Bool[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])"
 
     # Valuation summaries accept the supported world/atom dictionary shapes.
-    m_world_nested = Model(f1, BOOLEAN, Dict(:w1 => Dict("p" => true), :w2 => Dict("p" => false)))
-    @test occursin("p: {:w1 => true, :w2 => false}", sprint(show, MIME("text/plain"), m_world_nested))
-    m_pairs = Model(f1, BOOLEAN, Dict((:w1, "p") => true, ("q", :w2) => true, ("unused", :w1) => false))
+    m_world_nested = Model(
+        f1, BOOLEAN, Dict(:w1 => Dict("p" => true), :w2 => Dict("p" => false))
+    )
+    @test occursin(
+        "p: {:w1 => true, :w2 => false}", sprint(show, MIME("text/plain"), m_world_nested)
+    )
+    m_pairs = Model(
+        f1, BOOLEAN, Dict((:w1, "p") => true, ("q", :w2) => true, ("unused", :w1) => false)
+    )
     @test occursin("p: {:w1}", sprint(show, MIME("text/plain"), m_pairs))
     @test occursin("q: {:w2}", sprint(show, MIME("text/plain"), m_pairs))
-    m_atom_map = Model(f1, BOOLEAN, Dict("p" => Dict(:w1 => true), "empty" => Dict(:ghost => true)))
+    m_atom_map = Model(
+        f1, BOOLEAN, Dict("p" => Dict(:w1 => true), "empty" => Dict(:ghost => true))
+    )
     s_atom_map = sprint(show, MIME("text/plain"), m_atom_map)
     @test occursin("empty: {}", s_atom_map)
     @test occursin("p: {:w1}", s_atom_map)
@@ -169,8 +203,10 @@ const Extension = Aletheia.Extension
     # Both terse and rich forms of finite algebras remain distinct.
     @test sprint(show, H4) == "FiniteFLewAlgebra{4}(bottom=⊥, top=⊤)"
     @test sprint(show, MIME("text/plain"), H4) isa String
-    @test occursin("Order: ⊥ < α < β < γ < δ < ε < ζ < η < θ < ι < ⊤",
-        sprint(show, MIME("text/plain"), Aletheia._chain_flew(11, :godel)))
+    @test occursin(
+        "Order: ⊥ < α < β < γ < δ < ε < ζ < η < θ < ι < ⊤",
+        sprint(show, MIME("text/plain"), Aletheia._chain_flew(11, :godel)),
+    )
 
     # Large quotient output elides classes after the first five.
     worlds_11 = tuple([Symbol("u", i) for i in 1:11]...)
@@ -193,7 +229,9 @@ const Extension = Aletheia.Extension
 
     clauses_16 = ClauseSet([HornClause(Predicate(:p, (Variable(:z),))) for _ in 1:16])
     # ClauseSet canonicalization removes duplicates; use distinct predicates for elision.
-    clauses_16 = ClauseSet([HornClause(Predicate(Symbol("p", i), (Variable(:z),))) for i in 1:16])
+    clauses_16 = ClauseSet([
+        HornClause(Predicate(Symbol("p", i), (Variable(:z),))) for i in 1:16
+    ])
     @test occursin("… (6 elided)", sprint(show, MIME("text/plain"), clauses_16))
 
     # Empty ILP bodies and rich/terse substitution displays.
@@ -206,40 +244,51 @@ const Extension = Aletheia.Extension
 
     # 6. Element-labelled algebra displays.  The carrier is a one-based UInt8
     # index; no display may present that index as if it were an element.
-    @test sprint(show, MIME("text/plain"), G3) == join([
-        "FiniteFLewAlgebra{3} (3 values, chain, bottom=⊥, top=⊤)",
-        "  Order: ⊥ < α < ⊤",
-        "",
-        "  Meet (∧)      Fusion (⊗)      Join (∨)      Implication (→)",
-        " ∧ │ ⊥ α ⊤     ⊗ │ ⊥ α ⊤       ∨ │ ⊥ α ⊤     → │ ⊥ α ⊤",
-        "───┼──────    ───┼──────      ───┼──────    ───┼──────",
-        " ⊥ │ ⊥ ⊥ ⊥     ⊥ │ ⊥ ⊥ ⊥       ⊥ │ ⊥ α ⊤     ⊥ │ ⊤ ⊤ ⊤",
-        " α │ ⊥ α α     α │ ⊥ α α       α │ α α ⊤     α │ ⊥ ⊤ ⊤",
-        " ⊤ │ ⊥ α ⊤     ⊤ │ ⊥ α ⊤       ⊤ │ ⊤ ⊤ ⊤     ⊤ │ ⊥ α ⊤",
-    ], "\n")
+    @test sprint(show, MIME("text/plain"), G3) == join(
+        [
+            "FiniteFLewAlgebra{3} (3 values, chain, bottom=⊥, top=⊤)",
+            "  Order: ⊥ < α < ⊤",
+            "",
+            "  Meet (∧)      Fusion (⊗)      Join (∨)      Implication (→)",
+            " ∧ │ ⊥ α ⊤     ⊗ │ ⊥ α ⊤       ∨ │ ⊥ α ⊤     → │ ⊥ α ⊤",
+            "───┼──────    ───┼──────      ───┼──────    ───┼──────",
+            " ⊥ │ ⊥ ⊥ ⊥     ⊥ │ ⊥ ⊥ ⊥       ⊥ │ ⊥ α ⊤     ⊥ │ ⊤ ⊤ ⊤",
+            " α │ ⊥ α α     α │ ⊥ α α       α │ α α ⊤     α │ ⊥ ⊤ ⊤",
+            " ⊤ │ ⊥ α ⊤     ⊤ │ ⊥ α ⊤       ⊤ │ ⊤ ⊤ ⊤     ⊤ │ ⊥ α ⊤",
+        ],
+        "\n",
+    )
 
     # H4 is not a chain, so its display says so instead of implying that the
     # carrier order ranks its elements.
-    @test sprint(show, MIME("text/plain"), H4) == join([
-        "FiniteFLewAlgebra{4} (4 values, not a chain, bottom=⊥, top=⊤)",
-        "  Elements: ⊥, α, β, ⊤",
-        "",
-        "  Meet (∧)        Fusion (⊗)      Join (∨)        Implication (→)",
-        " ∧ │ ⊥ α β ⊤     ⊗ │ ⊥ α β ⊤     ∨ │ ⊥ α β ⊤     → │ ⊥ α β ⊤",
-        "───┼────────    ───┼────────    ───┼────────    ───┼────────",
-        " ⊥ │ ⊥ ⊥ ⊥ ⊥     ⊥ │ ⊥ ⊥ ⊥ ⊥     ⊥ │ ⊥ α β ⊤     ⊥ │ ⊤ ⊤ ⊤ ⊤",
-        " α │ ⊥ α ⊥ α     α │ ⊥ α ⊥ α     α │ α α ⊤ ⊤     α │ β ⊤ β ⊤",
-        " β │ ⊥ ⊥ β β     β │ ⊥ ⊥ β β     β │ β ⊤ β ⊤     β │ α α ⊤ ⊤",
-        " ⊤ │ ⊥ α β ⊤     ⊤ │ ⊥ α β ⊤     ⊤ │ ⊤ ⊤ ⊤ ⊤     ⊤ │ ⊥ α β ⊤",
-    ], "\n")
-    for algebra in (G3, G4, G5, G6, Ł3, Ł4, H4, H6, H6_1, H6_2, H6_3, H9, BooleanFLewAlgebra)
+    @test sprint(show, MIME("text/plain"), H4) == join(
+        [
+            "FiniteFLewAlgebra{4} (4 values, not a chain, bottom=⊥, top=⊤)",
+            "  Elements: ⊥, α, β, ⊤",
+            "",
+            "  Meet (∧)        Fusion (⊗)      Join (∨)        Implication (→)",
+            " ∧ │ ⊥ α β ⊤     ⊗ │ ⊥ α β ⊤     ∨ │ ⊥ α β ⊤     → │ ⊥ α β ⊤",
+            "───┼────────    ───┼────────    ───┼────────    ───┼────────",
+            " ⊥ │ ⊥ ⊥ ⊥ ⊥     ⊥ │ ⊥ ⊥ ⊥ ⊥     ⊥ │ ⊥ α β ⊤     ⊥ │ ⊤ ⊤ ⊤ ⊤",
+            " α │ ⊥ α ⊥ α     α │ ⊥ α ⊥ α     α │ α α ⊤ ⊤     α │ β ⊤ β ⊤",
+            " β │ ⊥ ⊥ β β     β │ ⊥ ⊥ β β     β │ β ⊤ β ⊤     β │ α α ⊤ ⊤",
+            " ⊤ │ ⊥ α β ⊤     ⊤ │ ⊥ α β ⊤     ⊤ │ ⊤ ⊤ ⊤ ⊤     ⊤ │ ⊥ α β ⊤",
+        ],
+        "\n",
+    )
+    for algebra in
+        (G3, G4, G5, G6, Ł3, Ł4, H4, H6, H6_1, H6_2, H6_3, H9, BooleanFLewAlgebra)
         rich = sprint(show, MIME("text/plain"), algebra)
         @test occursin("bottom=⊥, top=⊤", rich)
-        @test occursin(occursin("not a chain", rich) ? "Elements: ⊥, " : "Order: ⊥ < ", rich)
+        @test occursin(
+            occursin("not a chain", rich) ? "Elements: ⊥, " : "Order: ⊥ < ", rich
+        )
     end
     @test occursin("not a chain", sprint(show, MIME("text/plain"), H9))
     @test occursin("chain", sprint(show, MIME("text/plain"), G6))
-    @test Aletheia.truthlabel(1) == "⊤" && Aletheia.truthlabel(2) == "⊥" && Aletheia.truthlabel(3) == "α"
+    @test Aletheia.truthlabel(1) == "⊤" &&
+          Aletheia.truthlabel(2) == "⊥" &&
+          Aletheia.truthlabel(3) == "α"
     @test Aletheia.truthlabel(H4, 4) == "β"
     # A carrier laid out the other way round still labels its own bottom and top.
     flipped = FiniteFLewAlgebra([1 2; 2 2], [1 1; 1 2], [1 1; 1 2], 1, 2)
@@ -252,10 +301,14 @@ const Extension = Aletheia.Extension
     # Graded models and extensions report elements, not carrier indices.
     m_finite = Model(f1, G3, Dict("p" => Dict(:w1 => UInt8(3), :w2 => UInt8(1))))
     @test occursin("p: {:w1 => α, :w2 => ⊤}", sprint(show, MIME("text/plain"), m_finite))
-    s_ext_finite = sprint(show, MIME("text/plain"), Extension(extension(p, m_finite), m_finite))
+    s_ext_finite = sprint(
+        show, MIME("text/plain"), Extension(extension(p, m_finite), m_finite)
+    )
     @test occursin(":w1 => α", s_ext_finite)
     @test occursin(":w2 => ⊤", s_ext_finite)
-    @test occursin(":w1 => α", sprint(show, MIME("text/plain"), Extension(UInt8[3, 1], f1.worlds, G3)))
+    @test occursin(
+        ":w1 => α", sprint(show, MIME("text/plain"), Extension(UInt8[3, 1], f1.worlds, G3))
+    )
     @test_throws MethodError Extension(UInt8[3, 1], f1.worlds)
 
     # Directly supplied algebras also label non-chain lattice values.
@@ -264,28 +317,53 @@ const Extension = Aletheia.Extension
     @test occursin(":w2 => β", s_ext_lattice)
 
     # 7. Colour is emitted only when the IO context reports it.
-    coloured(value) = sprint(io -> show(IOContext(io, :color => true), MIME("text/plain"), value))
-    for value in (G3, H4, f1, m1, ext_view, ext_g_view, q, cs, sub, ee, ie, pe, BOOLEAN, GodelAlgebra(3))
+    function coloured(value)
+        return sprint(io -> show(IOContext(io, :color => true), MIME("text/plain"), value))
+    end
+    for value in (
+        G3,
+        H4,
+        f1,
+        m1,
+        ext_view,
+        ext_g_view,
+        q,
+        cs,
+        sub,
+        ee,
+        ie,
+        pe,
+        BOOLEAN,
+        GodelAlgebra(3),
+    )
         @test !occursin('\e', sprint(show, MIME("text/plain"), value))
         @test occursin('\e', coloured(value))
     end
 
     # 8. `:limit => false` in the IO context disables every truncation.
-    unlimited(value) = sprint(io -> show(IOContext(io, :limit => false), MIME("text/plain"), value))
+    function unlimited(value)
+        return sprint(io -> show(IOContext(io, :limit => false), MIME("text/plain"), value))
+    end
     @test !occursin("elided", unlimited(f_large)) && occursin(":w20", unlimited(f_large))
     @test !occursin("elided", unlimited(m_large)) && occursin(":w20", unlimited(m_large))
-    @test !occursin("elided", unlimited(ext_large)) && occursin(":w20", unlimited(ext_large))
+    @test !occursin("elided", unlimited(ext_large)) &&
+          occursin(":w20", unlimited(ext_large))
     @test !occursin("elided", unlimited(ext_g_large))
     @test !occursin("elided", unlimited(q_11)) && occursin("Class 11", unlimited(q_11))
-    @test !occursin("elided", unlimited(clauses_16)) && occursin("p9(z)", unlimited(clauses_16))
+    @test !occursin("elided", unlimited(clauses_16)) &&
+          occursin("p9(z)", unlimited(clauses_16))
     @test !occursin("elided", unlimited(Aletheia._chain_flew(11, :godel)))
 
     # 9. Long relation edge lists and valuation world sets stay bounded.
-    edges = Frame(large_worlds, Dict(:R => Dict(w => [w] for w in large_worlds)); index=true)
+    edges = Frame(
+        large_worlds, Dict(:R => Dict(w => [w] for w in large_worlds)); index=true
+    )
     @test occursin("… (10 elided)", sprint(show, MIME("text/plain"), edges))
     @test occursin(":w10 → :w10, … (10 elided)", sprint(show, MIME("text/plain"), edges))
-    @test occursin("p: {:w1, :w2, :w3, :w4, :w5, :w6, :w7, :w8, :w9, :w10, … (10 elided)}",
-        sprint(show, MIME("text/plain"), m_large))
+    @test occursin(
+        "p: {:w1, :w2, :w3, :w4, :w5, :w6, :w7, :w8, :w9, :w10, … (10 elided)}",
+        sprint(show, MIME("text/plain"), m_large),
+    )
 
     # 6. Display edge cases: singular forms, empty relations, and elision.
     f_single = Frame((:w1,), Dict(:R => Dict(:w1 => Symbol[])); index=true)
@@ -294,17 +372,27 @@ const Extension = Aletheia.Extension
     @test occursin("Frame (1 world, 1 relation)", s_f_single)
     @test occursin("(none)", s_f_single)
 
-    f_multi_rel = Frame((:w1, :w2), Dict(:R => Dict(:w1 => [:w2]), :S => Dict(:w2 => [:w1])); index=true)
-    @test occursin("Frame (2 worlds, 2 relations)", sprint(show, MIME("text/plain"), f_multi_rel))
+    f_multi_rel = Frame(
+        (:w1, :w2), Dict(:R => Dict(:w1 => [:w2]), :S => Dict(:w2 => [:w1])); index=true
+    )
+    @test occursin(
+        "Frame (2 worlds, 2 relations)", sprint(show, MIME("text/plain"), f_multi_rel)
+    )
 
     w20 = tuple([Symbol("w", i) for i in 1:20]...)
     f20 = Frame(w20, Dict(:R => Dict(:w1 => [:w2])); index=true)
     s_f20 = sprint(show, MIME("text/plain"), f20)
-    @test occursin("Worlds (20): :w1, :w2, :w3, :w4, :w5, :w6, :w7, :w8, :w9, :w10, … (10 elided)", s_f20)
+    @test occursin(
+        "Worlds (20): :w1, :w2, :w3, :w4, :w5, :w6, :w7, :w8, :w9, :w10, … (10 elided)",
+        s_f20,
+    )
     @test occursin("Relations:\n    :R: :w1 → :w2", s_f20)
 
     m_single = Model(f_single, BOOLEAN, Dict("p" => Set([:w1])))
-    @test occursin("Model (1 world, 1 relation, BooleanAlgebra())", sprint(show, MIME("text/plain"), m_single))
+    @test occursin(
+        "Model (1 world, 1 relation, BooleanAlgebra())",
+        sprint(show, MIME("text/plain"), m_single),
+    )
     m20 = Model(f20, BOOLEAN, Dict("p" => Set([:w1])))
     s_m20 = sprint(show, MIME("text/plain"), m20)
     @test occursin("Model (20 worlds, 1 relation, BooleanAlgebra())", s_m20)
@@ -323,11 +411,15 @@ const Extension = Aletheia.Extension
     @test occursin("Satisfied at: :w1, :w2", s_ext_full)
     @test occursin("Unsatisfied at: (none)", s_ext_full)
     ext_single = Extension(BitVector([1]), f_single.worlds, BOOLEAN)
-    @test occursin("Extension (1 of 1 world satisfy)", sprint(show, MIME("text/plain"), ext_single))
+    @test occursin(
+        "Extension (1 of 1 world satisfy)", sprint(show, MIME("text/plain"), ext_single)
+    )
     ext20_sat10 = Extension(BitVector([i <= 10 for i in 1:20]), w20, BOOLEAN)
     s_ext20_sat10 = sprint(show, MIME("text/plain"), ext20_sat10)
     @test occursin("Extension (10 of 20 worlds satisfy)", s_ext20_sat10)
-    @test occursin("Satisfied at: :w1, :w2, :w3, :w4, :w5, :w6, :w7, :w8, :w9, :w10", s_ext20_sat10)
+    @test occursin(
+        "Satisfied at: :w1, :w2, :w3, :w4, :w5, :w6, :w7, :w8, :w9, :w10", s_ext20_sat10
+    )
     ext20_sat0 = Extension(BitVector([0 for _ in 1:20]), w20, BOOLEAN)
     @test occursin("Satisfied at: (none)", sprint(show, MIME("text/plain"), ext20_sat0))
 
@@ -340,23 +432,32 @@ const Extension = Aletheia.Extension
     @test occursin("Extension (20 worlds)", s_ext_g20)
     @test occursin("… (10 elided)", s_ext_g20)
 
-
     # Quotient and ILP displays also handle complete/partial collapse and elision.
     q_0 = bisimulation_contraction(m1)
     @test occursin("0% collapse ratio", sprint(show, MIME("text/plain"), q_0))
     f_coll = Frame((:w1, :w2), Dict(:R => Dict()); index=true)
     m_coll = Model(f_coll, BOOLEAN, Dict("p" => Set([:w1, :w2])))
-    @test occursin("50% collapse ratio", sprint(show, MIME("text/plain"), bisimulation_contraction(m_coll)))
+    @test occursin(
+        "50% collapse ratio",
+        sprint(show, MIME("text/plain"), bisimulation_contraction(m_coll)),
+    )
     m20_diff = Model(f20, BOOLEAN, Dict("p$i" => Set([Symbol("w", i)]) for i in 1:20))
-    @test occursin("Classes (20):", sprint(show, MIME("text/plain"), bisimulation_contraction(m20_diff)))
-    @test occursin("… (10 elided)", sprint(show, MIME("text/plain"), bisimulation_contraction(m20_diff)))
+    @test occursin(
+        "Classes (20):",
+        sprint(show, MIME("text/plain"), bisimulation_contraction(m20_diff)),
+    )
+    @test occursin(
+        "… (10 elided)",
+        sprint(show, MIME("text/plain"), bisimulation_contraction(m20_diff)),
+    )
 
     @test sprint(show, Substitution()) == "Substitution()"
     @test sprint(show, MIME("text/plain"), Substitution()) == "Substitution: {}"
-    @test occursin("ClauseSet (1 clause)", sprint(show, MIME("text/plain"), ClauseSet([hc1])))
+    @test occursin(
+        "ClauseSet (1 clause)", sprint(show, MIME("text/plain"), ClauseSet([hc1]))
+    )
     hc_list = [HornClause(Predicate(Symbol("p", i), (x,))) for i in 1:20]
     s_cs20 = sprint(show, MIME("text/plain"), ClauseSet(hc_list))
     @test occursin("ClauseSet (20 clauses)", s_cs20)
     @test occursin("… (10 elided)", s_cs20)
-
 end

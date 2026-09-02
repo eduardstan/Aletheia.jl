@@ -12,8 +12,7 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
 
 @testset "frame, world, and relation vocabulary" begin
     worlds_small = (:a, :b, :c)
-    frame_small = Frame(worlds_small,
-        Dict(:R => Dict(:a => (:b,), :b => (:c,), :c => ())))
+    frame_small = Frame(worlds_small, Dict(:R => Dict(:a => (:b,), :b => (:c,), :c => ())))
 
     # SoleLogics GlobalRel is universal and IdentityRel is equality.  The
     # AtWorldRelation implementation returns exactly its stored target.
@@ -33,7 +32,8 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
     @test lazy isa Base.Generator
     @test !(lazy isa AbstractVector)
     @test collect(lazy) == collect(worlds_small)
-    @test AletheiaSole.SoleLogics.accessibles(frame_small, globalrel) === worlds(frame_small)
+    @test AletheiaSole.SoleLogics.accessibles(frame_small, globalrel) ===
+          worlds(frame_small)
 
     # Converse properties from the SoleLogics relation traits.
     @test inverse(inverse(globalrel)) === globalrel
@@ -60,26 +60,36 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
     interval = interval_frame(4)
     @test emptyworld(interval) == Interval(-1, 0)
     @test centralworld(interval) == Interval(2, 4)
-    @test collect(AletheiaSole.SoleLogics.accessibles(interval, centralworld(interval), tocenterrel)) == [centralworld(interval)]
+    @test collect(
+        AletheiaSole.SoleLogics.accessibles(interval, centralworld(interval), tocenterrel)
+    ) == [centralworld(interval)]
 
     # Exhaustive Boolean world-set collation over a three-world frame.
-    allsets = [Set(worlds_small[i] for i in eachindex(worlds_small) if mask & (1 << (i - 1)) != 0)
-               for mask in 0:(2^length(worlds_small) - 1)]
+    allsets = [
+        Set(worlds_small[i] for i in eachindex(worlds_small) if mask & (1 << (i - 1)) != 0)
+        for mask in 0:(2^length(worlds_small) - 1)
+    ]
     for left in allsets, right in allsets
         @test Set(collateworlds(frame_small, ∧, (left, right))) == intersect(left, right)
         @test Set(collateworlds(frame_small, ∨, (left, right))) == union(left, right)
-        @test Set(collateworlds(frame_small, →, (left, right))) == setdiff(Set(worlds_small), left) ∪ right
-        @test Set(collateworlds(frame_small, ¬, (left,))) == setdiff(Set(worlds_small), left)
-        expected_diamond = Set(source for source in worlds_small if
-            any(target -> target in left, accessible(frame_small, source, :R)))
-        expected_box = Set(source for source in worlds_small if
-            all(target -> target in left, accessible(frame_small, source, :R)))
+        @test Set(collateworlds(frame_small, →, (left, right))) ==
+              setdiff(Set(worlds_small), left) ∪ right
+        @test Set(collateworlds(frame_small, ¬, (left,))) ==
+              setdiff(Set(worlds_small), left)
+        expected_diamond = Set(
+            source for source in worlds_small if
+            any(target -> target in left, accessible(frame_small, source, :R))
+        )
+        expected_box = Set(
+            source for source in worlds_small if
+            all(target -> target in left, accessible(frame_small, source, :R))
+        )
         @test Set(collateworlds(frame_small, Diamond(:R), (left,))) == expected_diamond
         @test Set(collateworlds(frame_small, Box(:R), (left,))) == expected_box
         # A second relation checks that collation uses the connective's value,
         # not a hard-coded relation name.
         @test Set(collateworlds(frame_small, Diamond(globalrel), (left,))) ==
-            (isempty(left) ? Set{Symbol}() : Set(worlds_small))
+              (isempty(left) ? Set{Symbol}() : Set(worlds_small))
     end
     @test_throws ArgumentError collateworlds(frame_small, ¬, ())
 
@@ -113,28 +123,45 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
     @test !isgrounded(atom_p)
     @test isgrounded(branch(pool, Diamond(globalrel), atom_p))
     @test !isgrounded(branch(pool, Diamond(:R), atom_p))
-    @test isgrounded(branch(pool, ∧, branch(pool, Diamond(globalrel), atom_p),
-        branch(pool, Diamond(globalrel), atom_p)))
+    @test isgrounded(
+        branch(
+            pool,
+            ∧,
+            branch(pool, Diamond(globalrel), atom_p),
+            branch(pool, Diamond(globalrel), atom_p),
+        ),
+    )
     @test !isgrounded(branch(pool, ∧, branch(pool, Diamond(globalrel), atom_p), atom_p))
 
     # Differential randomized check: collate the same formula bottom-up and
     # compare its world set with the shared evaluator's per-world `check`.
     rng = MersenneTwister(0xD2B)
-    formula_pool = FormulaPool(Signature((¬, ∧, ∨, →,
-        Diamond(IA_L), Box(IA_L), Diamond(globalrel), Box(globalrel))))
+    formula_pool = FormulaPool(
+        Signature((
+            ¬, ∧, ∨, →, Diamond(IA_L), Box(IA_L), Diamond(globalrel), Box(globalrel)
+        )),
+    )
     p = atom(formula_pool, :p)
     ops = (¬, ∧, ∨, →, Diamond(IA_L), Box(IA_L), Diamond(globalrel), Box(globalrel))
     function random_formula(rng, depth)
         depth == 0 && return p
         op = rand(rng, ops)
-        arity(op) == 1 ? branch(formula_pool, op, random_formula(rng, depth - 1)) :
-            branch(formula_pool, op, random_formula(rng, depth - 1), random_formula(rng, depth - 1))
+        return if arity(op) == 1
+            branch(formula_pool, op, random_formula(rng, depth - 1))
+        else
+            branch(
+                formula_pool,
+                op,
+                random_formula(rng, depth - 1),
+                random_formula(rng, depth - 1),
+            )
+        end
     end
     function collated(formula, atomset, fr)
         isatom(formula) && return atomset
         op = operator(formula)
         child_sets = Tuple(collated(child, atomset, fr) for child in children(formula))
-        collateworlds(fr, op, child_sets)
+        return collateworlds(fr, op, child_sets)
     end
     for _ in 1:80
         atomset = Set(world for world in worlds(interval) if rand(rng, Bool))
@@ -151,17 +178,35 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
     @test AletheiaSole.SoleLogics.tocenterrel === tocenterrel
     @test AletheiaSole.SoleLogics.AbstractFrame === AbstractFrame
     @test AletheiaSole.SoleLogics.AbstractWorld === AbstractWorld
-    @test AletheiaSole.SoleLogics.RCC8Relations ===
-        (AletheiaSole.SoleLogics.Topo_DC, AletheiaSole.SoleLogics.Topo_EC, AletheiaSole.SoleLogics.Topo_PO,
-        AletheiaSole.SoleLogics.Topo_TPP, AletheiaSole.SoleLogics.Topo_TPPi,
-        AletheiaSole.SoleLogics.Topo_NTPP, AletheiaSole.SoleLogics.Topo_NTPPi)
+    @test AletheiaSole.SoleLogics.RCC8Relations === (
+        AletheiaSole.SoleLogics.Topo_DC,
+        AletheiaSole.SoleLogics.Topo_EC,
+        AletheiaSole.SoleLogics.Topo_PO,
+        AletheiaSole.SoleLogics.Topo_TPP,
+        AletheiaSole.SoleLogics.Topo_TPPi,
+        AletheiaSole.SoleLogics.Topo_NTPP,
+        AletheiaSole.SoleLogics.Topo_NTPPi,
+    )
 
     # Exercise the complete SoleLogics value vocabulary, including display and
     # trait methods that consumers use for dispatch tables.
     io = IOBuffer()
-    display_relations = (globalrel, identityrel, at_b, tocenterrel,
-        ALLEN_RELATIONS..., IA_AorO, IA_DorBorE, IA_AiorOi, IA_DiorBiorEi, IA_I,
-        POINT_RELATIONS..., RCC8_RELATIONS..., RCC5_RELATIONS..., POINT2D_RELATIONS...)
+    display_relations = (
+        globalrel,
+        identityrel,
+        at_b,
+        tocenterrel,
+        ALLEN_RELATIONS...,
+        IA_AorO,
+        IA_DorBorE,
+        IA_AiorOi,
+        IA_DiorBiorEi,
+        IA_I,
+        POINT_RELATIONS...,
+        RCC8_RELATIONS...,
+        RCC5_RELATIONS...,
+        POINT2D_RELATIONS...,
+    )
     for relation_value in display_relations
         show(io, relation_value)
         @test !isempty(AletheiaCore._relation_name(relation_value))
@@ -207,10 +252,12 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
     @test Base.invokelatest(ismodal, Diamond(globalrel))
     @test Base.invokelatest(isbox, :plain) == false
     @test !Base.invokelatest(isbox, Diamond) && Base.invokelatest(isbox, Box)
-    @test !Base.invokelatest(isbox, Diamond(globalrel)) && Base.invokelatest(isbox, Box(globalrel))
+    @test !Base.invokelatest(isbox, Diamond(globalrel)) &&
+          Base.invokelatest(isbox, Box(globalrel))
     @test Base.invokelatest(isdiamond, :plain) == false
     @test !Base.invokelatest(isdiamond, Box) && Base.invokelatest(isdiamond, Diamond)
-    @test !Base.invokelatest(isdiamond, Box(globalrel)) && Base.invokelatest(isdiamond, Diamond(globalrel))
+    @test !Base.invokelatest(isdiamond, Box(globalrel)) &&
+          Base.invokelatest(isdiamond, Diamond(globalrel))
     @test Base.isequal(atom_p, branch(pool, Diamond(globalrel), atom_p)) == false
     @test (atom_p == branch(pool, Diamond(globalrel), atom_p)) == false
 
@@ -228,10 +275,14 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
     @test_throws KeyError accessible(frame_small, :not_a_world, globalrel)
     @test_throws KeyError accessible(frame_small, :not_a_world, at_b)
     @test_throws KeyError accessible(frame_small, :not_a_world, tocenterrel)
-    stored_identity = Frame(worlds_small, Dict(identityrel => Dict(:a => (:b,), :b => (), :c => ())))
+    stored_identity = Frame(
+        worlds_small, Dict(identityrel => Dict(:a => (:b,), :b => (), :c => ()))
+    )
     @test collect(accessible(stored_identity, :a, identityrel)) == [:b]
-    callable_relations = Frame(worlds_small, (world, relation) ->
-        relation == identityrel ? (world == :a ? (:b,) : ()) : ())
+    callable_relations = Frame(
+        worlds_small,
+        (world, relation) -> relation == identityrel ? (world == :a ? (:b,) : ()) : (),
+    )
     @test collect(accessible(callable_relations, :a, identityrel)) == [:b]
     @test collect(accessible(callable_relations, :a, globalrel)) == []
 
@@ -242,13 +293,24 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
     any_frame = Frame((:w1, :w2))
     @test check(any_p, Model(any_frame, BOOLEAN, Dict("p" => Set([:w2]))), AnyWorld())
     @test !check(any_p, Model(any_frame, BOOLEAN, Dict("p" => Set{Symbol}())), AnyWorld())
-    @test check(branch(any_pool, ¬, any_p),
-        Model(any_frame, BOOLEAN, Dict("p" => Set([:w2]))), AnyWorld())
-    @test check(any_p, Model(any_frame, GodelAlgebra(),
-        Dict("p" => Dict(:w1 => 1.0, :w2 => 0.5))), AnyWorld())
-    @test !check(any_p, Model(any_frame, GodelAlgebra(),
-        Dict("p" => Dict(:w1 => 0.9, :w2 => 0.5))), AnyWorld())
-    @test_throws ArgumentError collateworlds(frame_small, VocabularyUnknownConnective(), (Set([:a]),))
+    @test check(
+        branch(any_pool, ¬, any_p),
+        Model(any_frame, BOOLEAN, Dict("p" => Set([:w2]))),
+        AnyWorld(),
+    )
+    @test check(
+        any_p,
+        Model(any_frame, GodelAlgebra(), Dict("p" => Dict(:w1 => 1.0, :w2 => 0.5))),
+        AnyWorld(),
+    )
+    @test !check(
+        any_p,
+        Model(any_frame, GodelAlgebra(), Dict("p" => Dict(:w1 => 0.9, :w2 => 0.5))),
+        AnyWorld(),
+    )
+    @test_throws ArgumentError collateworlds(
+        frame_small, VocabularyUnknownConnective(), (Set([:a]),)
+    )
 
     # Point and rectangle dimensional defaults share the ordinary Frame API.
     points = point_frame(3)
@@ -271,7 +333,9 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
 
     # Grounding relations reach the same worlds from every source.
     center = centralworld(interval)
-    center_pool = FormulaPool(Signature((Diamond(tocenterrel), Box(tocenterrel), Diamond(globalrel))))
+    center_pool = FormulaPool(
+        Signature((Diamond(tocenterrel), Box(tocenterrel), Diamond(globalrel)))
+    )
     center_p = atom(center_pool, "p")
     center_diamond = branch(center_pool, Diamond(tocenterrel), center_p)
     center_box = branch(center_pool, Box(tocenterrel), center_p)
@@ -285,11 +349,12 @@ struct VocabularyBareFrame <: AbstractMultiModalFrame{Symbol} end
     @test !any(extension(branch(center_pool, Diamond(globalrel), center_p), nowhere))
 
     # A stored adjacency keeps precedence over the natural grounding reading.
-    stored_global = Frame(worlds_small,
-        Dict(globalrel => Dict(:a => (:b,), :b => (:c,), :c => ())))
+    stored_global = Frame(
+        worlds_small, Dict(globalrel => Dict(:a => (:b,), :b => (:c,), :c => ()))
+    )
     stored_pool = FormulaPool(Signature((Diamond(globalrel),)))
     stored_p = atom(stored_pool, "p")
     stored_model = Model(stored_global, BOOLEAN, Dict("p" => Set([:c])))
     @test extension(branch(stored_pool, Diamond(globalrel), stored_p), stored_model) ==
-        BitVector([false, true, false])
+          BitVector([false, true, false])
 end

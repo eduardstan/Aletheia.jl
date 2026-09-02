@@ -18,22 +18,52 @@ values. `cores` is supplied by the caller so this remains a pure function of
 the recorded values and the machine's measured core count."""
 function benchmark_load_verdict(start_load, end_load, seed_loads, cores::Integer)
     cores > 0 || throw(ArgumentError("core count must be positive"))
-    start_load === missing && return (publishable=false, reason=:missing_start_load,
-        peak_load=missing, rise=missing, peak_per_core=missing, rise_per_core=missing,
-        peak_limit=missing, rise_limit=missing)
-    end_load === missing && return (publishable=false, reason=:missing_end_load,
-        peak_load=missing, rise=missing, peak_per_core=missing, rise_per_core=missing,
-        peak_limit=missing, rise_limit=missing)
-    isfinite(start_load) || return (publishable=false, reason=:invalid_start_load,
-        peak_load=missing, rise=missing, peak_per_core=missing, rise_per_core=missing,
-        peak_limit=missing, rise_limit=missing)
-    isfinite(end_load) || return (publishable=false, reason=:invalid_end_load,
-        peak_load=missing, rise=missing, peak_per_core=missing, rise_per_core=missing,
-        peak_limit=missing, rise_limit=missing)
+    start_load === missing && return (
+        publishable=false,
+        reason=:missing_start_load,
+        peak_load=missing,
+        rise=missing,
+        peak_per_core=missing,
+        rise_per_core=missing,
+        peak_limit=missing,
+        rise_limit=missing,
+    )
+    end_load === missing && return (
+        publishable=false,
+        reason=:missing_end_load,
+        peak_load=missing,
+        rise=missing,
+        peak_per_core=missing,
+        rise_per_core=missing,
+        peak_limit=missing,
+        rise_limit=missing,
+    )
+    isfinite(start_load) || return (
+        publishable=false,
+        reason=:invalid_start_load,
+        peak_load=missing,
+        rise=missing,
+        peak_per_core=missing,
+        rise_per_core=missing,
+        peak_limit=missing,
+        rise_limit=missing,
+    )
+    isfinite(end_load) || return (
+        publishable=false,
+        reason=:invalid_end_load,
+        peak_load=missing,
+        rise=missing,
+        peak_per_core=missing,
+        rise_per_core=missing,
+        peak_limit=missing,
+        rise_limit=missing,
+    )
 
     samples = Float64[start_load, end_load]
-    append!(samples, Float64[value for value in seed_loads
-        if value !== missing && isfinite(value)])
+    append!(
+        samples,
+        Float64[value for value in seed_loads if value !== missing && isfinite(value)],
+    )
     peak_load = maximum(samples)
     rise = end_load - start_load
     peak_per_core = peak_load / cores
@@ -45,13 +75,26 @@ function benchmark_load_verdict(start_load, end_load, seed_loads, cores::Integer
     # Compare raw loads so decimal midpoint boundaries remain inclusive despite
     # floating-point rounding; the equivalent per-core values are recorded.
     publishable = peak_load <= peak_limit_raw && rise <= rise_limit_raw
-    reason = publishable ? :acceptable : peak_load > peak_limit_raw ? :peak_load : :load_rise
-    (publishable=publishable, reason=reason, peak_load=peak_load, rise=rise,
-        peak_per_core=peak_per_core, rise_per_core=rise_per_core,
-        peak_limit=peak_limit, rise_limit=rise_limit)
+    reason = if publishable
+        :acceptable
+    elseif peak_load > peak_limit_raw
+        :peak_load
+    else
+        :load_rise
+    end
+    return (
+        publishable=publishable,
+        reason=reason,
+        peak_load=peak_load,
+        rise=rise,
+        peak_per_core=peak_per_core,
+        rise_per_core=rise_per_core,
+        peak_limit=peak_limit,
+        rise_limit=rise_limit,
+    )
 end
 
 function parse_load_average(uptime_text)
     match = Base.match(r"load average: ([0-9]+(?:\.[0-9]+)?)", uptime_text)
-    match === nothing ? missing : parse(Float64, match.captures[1])
+    return match === nothing ? missing : parse(Float64, match.captures[1])
 end

@@ -22,24 +22,34 @@ function _generated_boundaries(rng, count)
         push!(values, value)
         value += rand(rng, 1:3)
     end
-    values
+    return values
 end
 _generated_points(rng, count) = _generated_boundaries(rng, count)
-_intervals_over(boundaries) = [Interval(boundaries[i], boundaries[j])
-    for i in eachindex(boundaries) for j in (i + 1):length(boundaries)]
+function _intervals_over(boundaries)
+    return [
+        Interval(boundaries[i], boundaries[j]) for i in eachindex(boundaries) for
+        j in (i + 1):length(boundaries)
+    ]
+end
 
 # Domains include the degenerate ones: two boundaries give a single interval,
 # a one-value point domain gives a single point, and a 1x1 grid a single cell.
 const _INTERVAL_BOUNDARIES = [_generated_boundaries(_RELATION_RNG, k) for k in (2, 3, 4, 5)]
-const _RECTANGLE_BOUNDARIES = [(_generated_boundaries(_RELATION_RNG, k),
-    _generated_boundaries(_RELATION_RNG, l)) for (k, l) in ((2, 2), (3, 2), (3, 3), (4, 3))]
+const _RECTANGLE_BOUNDARIES = [
+    (_generated_boundaries(_RELATION_RNG, k), _generated_boundaries(_RELATION_RNG, l)) for
+    (k, l) in ((2, 2), (3, 2), (3, 3), (4, 3))
+]
 const _POINT_DOMAINS = [_generated_points(_RELATION_RNG, k) for k in (1, 2, 4, 5)]
-const _GRID_DOMAINS = [(_generated_points(_RELATION_RNG, k), _generated_points(_RELATION_RNG, l))
-    for (k, l) in ((1, 1), (3, 2), (3, 4))]
+const _GRID_DOMAINS = [
+    (_generated_points(_RELATION_RNG, k), _generated_points(_RELATION_RNG, l)) for
+    (k, l) in ((1, 1), (3, 2), (3, 4))
+]
 
 const _INTERVAL_WORLDS = [_intervals_over(b) for b in _INTERVAL_BOUNDARIES]
-const _RECTANGLE_WORLDS = [[Rectangle(x, y) for x in _intervals_over(xb) for y in _intervals_over(yb)]
-    for (xb, yb) in _RECTANGLE_BOUNDARIES]
+const _RECTANGLE_WORLDS = [
+    [Rectangle(x, y) for x in _intervals_over(xb) for y in _intervals_over(yb)] for
+    (xb, yb) in _RECTANGLE_BOUNDARIES
+]
 const _POINT_WORLDS = _POINT_DOMAINS
 const _GRID_WORLDS = [[Point(x, y) for x in xs for y in ys] for (xs, ys) in _GRID_DOMAINS]
 
@@ -49,15 +59,19 @@ const _EXPORTED_RELATIONS = let values = Any[]
     for name in names(Aletheia)
         isdefined(Aletheia, name) || continue
         value = getproperty(Aletheia, name)
-        value isa Aletheia.RelationFamily && !any(other -> other === value, values) &&
+        value isa Aletheia.RelationFamily &&
+            !any(other -> other === value, values) &&
             push!(values, value)
     end
     values
 end
 
 # Generated rectangle relations: the axis pair is drawn, not fixed.
-const _RECTANGLE_RELATIONS = [rectangle_relation(rand(_RELATION_RNG, ALLEN_RELATIONS),
-    rand(_RELATION_RNG, ALLEN_RELATIONS)) for _ in 1:6]
+const _RECTANGLE_RELATIONS = [
+    rectangle_relation(
+        rand(_RELATION_RNG, ALLEN_RELATIONS), rand(_RELATION_RNG, ALLEN_RELATIONS)
+    ) for _ in 1:6
+]
 
 # Relations excluded from the converse and involution properties, by name:
 #
@@ -77,21 +91,33 @@ _has_converse(relation) = !any(excluded -> excluded === relation, _NO_CONVERSE)
 # The domains a relation family is defined over. Domain-agnostic relations
 # (identity, global) are checked on both an interval and a point domain.
 function _relation_domains(relation)
-    relation isa Aletheia.IntervalRelation ? _INTERVAL_WORLDS :
-    relation isa Aletheia.RCCRelation ? vcat(_INTERVAL_WORLDS, _RECTANGLE_WORLDS) :
-    relation isa Aletheia.PointRelation ? _POINT_WORLDS :
-    relation isa Aletheia.Point2DRelation ? _GRID_WORLDS :
-    vcat(_INTERVAL_WORLDS, _POINT_WORLDS)
+    return if relation isa Aletheia.IntervalRelation
+        _INTERVAL_WORLDS
+    elseif relation isa Aletheia.RCCRelation
+        vcat(_INTERVAL_WORLDS, _RECTANGLE_WORLDS)
+    elseif relation isa Aletheia.PointRelation
+        _POINT_WORLDS
+    elseif relation isa Aletheia.Point2DRelation
+        _GRID_WORLDS
+    else
+        vcat(_INTERVAL_WORLDS, _POINT_WORLDS)
+    end
 end
 
-_converse_mismatches(relation, ws) =
-    [(a, b) for a in ws for b in ws
-        if relation_holds(inverse(relation), a, b, ws) != relation_holds(relation, b, a, ws)]
+function _converse_mismatches(relation, ws)
+    return [
+        (a, b) for a in ws for b in ws if
+        relation_holds(inverse(relation), a, b, ws) != relation_holds(relation, b, a, ws)
+    ]
+end
 
 @testset "relation properties over generated domains" begin
-    @test length(_EXPORTED_RELATIONS) >= length(ALLEN_RELATIONS) + length(RCC8_RELATIONS) + length(POINT_RELATIONS)
-    @test all(relation -> relation in _EXPORTED_RELATIONS,
-        (ALLEN_RELATIONS..., RCC8_RELATIONS..., POINT_RELATIONS...))
+    @test length(_EXPORTED_RELATIONS) >=
+          length(ALLEN_RELATIONS) + length(RCC8_RELATIONS) + length(POINT_RELATIONS)
+    @test all(
+        relation -> relation in _EXPORTED_RELATIONS,
+        (ALLEN_RELATIONS..., RCC8_RELATIONS..., POINT_RELATIONS...),
+    )
 
     @testset "inverse is the converse" begin
         for relation in _EXPORTED_RELATIONS
@@ -124,14 +150,20 @@ _converse_mismatches(relation, ws) =
 
     @testset "Allen and RCC8 are jointly exhaustive and pairwise disjoint" begin
         for ws in _INTERVAL_WORLDS
-            @test [(a, b) for a in ws for b in ws
-                if count(r -> relation_holds(r, a, b), ALLEN_RELATIONS) != 1] == []
-            @test [(a, b) for a in ws for b in ws
-                if count(r -> relation_holds(r, a, b), RCC8_RELATIONS) != 1] == []
+            @test [
+                (a, b) for a in ws for
+                b in ws if count(r -> relation_holds(r, a, b), ALLEN_RELATIONS) != 1
+            ] == []
+            @test [
+                (a, b) for a in ws for
+                b in ws if count(r -> relation_holds(r, a, b), RCC8_RELATIONS) != 1
+            ] == []
         end
         for ws in _RECTANGLE_WORLDS
-            @test [(a, b) for a in ws for b in ws
-                if count(r -> relation_holds(r, a, b), RCC8_RELATIONS) != 1] == []
+            @test [
+                (a, b) for a in ws for
+                b in ws if count(r -> relation_holds(r, a, b), RCC8_RELATIONS) != 1
+            ] == []
         end
     end
 
@@ -143,33 +175,52 @@ _converse_mismatches(relation, ws) =
         for source in ws
             expected = Set(t for t in ws if relation_holds(relation, source, t, ws))
             fast = relation_successors(relation, source, ws)
-            streams = fast === nothing ? Any[("accessible", accessible(frame, source, relation))] :
-                Any[("relation_successors", fast), ("accessible", accessible(frame, source, relation))]
+            streams = if fast === nothing
+                Any[("accessible", accessible(frame, source, relation))]
+            else
+                Any[
+                    ("relation_successors", fast),
+                    ("accessible", accessible(frame, source, relation)),
+                ]
+            end
             for (label, targets) in streams
                 got = collect(targets)
                 allunique(got) || push!(defects, (label, source, :duplicate, got))
                 Set(got) == expected || push!(defects, (label, source, :set, got))
             end
         end
-        defects
+        return defects
     end
 
     @testset "optimised successors agree with the generic predicate" begin
-        interval_frames = [(interval_frame(b), _intervals_over(b)) for b in _INTERVAL_BOUNDARIES]
-        rectangle_frames = [(rectangle_frame(xb, yb),
-            [Rectangle(x, y) for x in _intervals_over(xb) for y in _intervals_over(yb)])
-            for (xb, yb) in _RECTANGLE_BOUNDARIES]
+        interval_frames = [
+            (interval_frame(b), _intervals_over(b)) for b in _INTERVAL_BOUNDARIES
+        ]
+        rectangle_frames = [
+            (
+                rectangle_frame(xb, yb),
+                [Rectangle(x, y) for x in _intervals_over(xb) for y in _intervals_over(yb)],
+            ) for (xb, yb) in _RECTANGLE_BOUNDARIES
+        ]
         point_frames = [(point_frame(d), d) for d in _POINT_DOMAINS]
-        grid_frames = [(point_frame(xs, ys), [Point(x, y) for x in xs for y in ys])
-            for (xs, ys) in _GRID_DOMAINS]
+        grid_frames = [
+            (point_frame(xs, ys), [Point(x, y) for x in xs for y in ys]) for
+            (xs, ys) in _GRID_DOMAINS
+        ]
         for relation in _EXPORTED_RELATIONS
             # tocenterrel has no source/target predicate to compare against.
             relation === tocenterrel && continue
-            frames = relation isa Aletheia.IntervalRelation ? interval_frames :
-                relation isa Aletheia.RCCRelation ? vcat(interval_frames, rectangle_frames) :
-                relation isa Aletheia.PointRelation ? point_frames :
-                relation isa Aletheia.Point2DRelation ? grid_frames :
+            frames = if relation isa Aletheia.IntervalRelation
+                interval_frames
+            elseif relation isa Aletheia.RCCRelation
+                vcat(interval_frames, rectangle_frames)
+            elseif relation isa Aletheia.PointRelation
+                point_frames
+            elseif relation isa Aletheia.Point2DRelation
+                grid_frames
+            else
                 vcat(interval_frames, point_frames)
+            end
             for (frame, ws) in frames
                 @test _successor_defects(relation, ws, frame) == []
             end
@@ -183,7 +234,9 @@ _converse_mismatches(relation, ws) =
         sparse_worlds = [Rectangle((1, 5), (1, 2)), Rectangle((1, 5), (2, 3))]
         source = Rectangle((1, 5), (4, 5))
         relation = rectangle_relation(EQUALS, AFTER)
-        expected = Set(target for target in sparse_worlds if relation_holds(relation, source, target))
+        expected = Set(
+            target for target in sparse_worlds if relation_holds(relation, source, target)
+        )
         successors = collect(relation_successors(relation, source, sparse_worlds))
         @test Set(successors) == expected
         @test all(target in sparse_worlds for target in successors)
@@ -191,12 +244,18 @@ _converse_mismatches(relation, ws) =
     end
 
     @testset "IA3 and IA7 composites are exactly their unions" begin
-        composites = ((IA_AorO, IA72IARelations(IA_AorO)), (IA_DorBorE, IA72IARelations(IA_DorBorE)),
-            (IA_AiorOi, IA72IARelations(IA_AiorOi)), (IA_DiorBiorEi, IA72IARelations(IA_DiorBiorEi)),
-            (IA_I, IA32IARelations(IA_I)))
+        composites = (
+            (IA_AorO, IA72IARelations(IA_AorO)),
+            (IA_DorBorE, IA72IARelations(IA_DorBorE)),
+            (IA_AiorOi, IA72IARelations(IA_AiorOi)),
+            (IA_DiorBiorEi, IA72IARelations(IA_DiorBiorEi)),
+            (IA_I, IA32IARelations(IA_I)),
+        )
         for (coarse, members) in composites, ws in _INTERVAL_WORLDS
-            @test [(a, b) for a in ws for b in ws
-                if relation_holds(coarse, a, b) != any(m -> relation_holds(m, a, b), members)] == []
+            @test [
+                (a, b) for a in ws for b in ws if
+                relation_holds(coarse, a, b) != any(m -> relation_holds(m, a, b), members)
+            ] == []
         end
     end
 end

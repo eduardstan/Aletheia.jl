@@ -8,8 +8,8 @@ const SoleDataFamily = Aletheia.SoleDataFamily
 
 function sole_check_all(formula, dataset, i_instance)
     source_worlds = SoleData.allworlds(SoleData.frame(dataset, i_instance))
-    BitVector(
-        SoleData.check(formula, dataset, i_instance, world; perform_normalization=false)
-        for world in source_worlds
+    return BitVector(
+        SoleData.check(formula, dataset, i_instance, world; perform_normalization=false) for
+        world in source_worlds
     )
 end

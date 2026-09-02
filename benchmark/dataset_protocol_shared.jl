@@ -22,7 +22,9 @@ atomrecipe(condition) = DRecipe(:atom, (), condition)
 recipe(op, children...) = DRecipe(op, children, nothing)
 
 function make_dataset(ninstances, nworlds; uniform=false)
-    rng = MersenneTwister(DATASET_SEED + ninstances * 1009 + nworlds * 9176 + (uniform ? 1 : 0))
+    rng = MersenneTwister(
+        DATASET_SEED + ninstances * 1009 + nworlds * 9176 + (uniform ? 1 : 0)
+    )
     features = SoleData.Feature.("f" .* string.(1:6))
     W = typeof(SoleLogics.World(1))
     F = typeof(features[1])
@@ -31,8 +33,11 @@ function make_dataset(ninstances, nworlds; uniform=false)
     for i_instance in 1:ninstances
         worlds = SoleLogics.World.(1:nworlds)
         graph = Graphs.SimpleDiGraph(nworlds)
-        edges = uniform ? shared_edges :
+        edges = if uniform
+            shared_edges
+        else
             [(i, j) for i in 1:nworlds for j in 1:nworlds if rand(rng) < 0.30]
+        end
         for edge in edges
             Graphs.add_edge!(graph, edge[1], edge[2])
         end
@@ -43,15 +48,14 @@ function make_dataset(ninstances, nworlds; uniform=false)
         row = (values, SoleLogics.SimpleModalFrame(worlds, graph))
         rows = rows === nothing ? [row] : push!(rows, row)
     end
-    SoleData.ExplicitModalLogiset(rows)
+    return SoleData.ExplicitModalLogiset(rows)
 end
 
 function make_conditions(rng; supported=false)
-    features = supported ?
-        SoleData.VariableValue.(1:2) :
-        SoleData.Feature.("f" .* string.(1:6))
+    features =
+        supported ? SoleData.VariableValue.(1:2) : SoleData.Feature.("f" .* string.(1:6))
     operators = (>, <, >=, <=)
-    [
+    return [
         SoleData.ScalarCondition(
             features[1 + mod(i - 1, length(features))],
             operators[1 + mod(i - 1, length(operators))],
@@ -62,14 +66,14 @@ end
 
 function make_supported_dataset(ninstances, npoints)
     rng = MersenneTwister(DATASET_SEED + ninstances * 1009 + npoints * 9176)
-    dataset = DataFrame(
+    dataset = DataFrame(;
         v1=[rand(rng, npoints) for _ in 1:ninstances],
         v2=[rand(rng, npoints) for _ in 1:ninstances],
     )
     features = SoleData.VariableValue.(1:2)
     metaconditions = [SoleData.ScalarMetaCondition(feature, >) for feature in features]
     relations = SoleData.readrelations(:IA3, dataset)
-    SoleData.scalarlogiset(
+    return SoleData.scalarlogiset(
         dataset,
         features;
         conditions=metaconditions,
@@ -82,7 +86,7 @@ end
 
 function supported_memo(dataset)
     support = SoleData.supports(dataset)[1]
-    SoleData.SupportedLogiset(
+    return SoleData.SupportedLogiset(
         SoleData.base(dataset);
         conditions=support.metaconditions,
         relations=support.relations,
@@ -96,54 +100,96 @@ function random_recipe(rng, depth, modal_probability, conditions)
         return atomrecipe(rand(rng, conditions))
     end
     if rand(rng) < modal_probability
-        return recipe(rand(rng, (:diamond, :box)),
-            random_recipe(rng, depth - 1, modal_probability, conditions))
+        return recipe(
+            rand(rng, (:diamond, :box)),
+            random_recipe(rng, depth - 1, modal_probability, conditions),
+        )
     end
     op = rand(rng, (:not, :and, :or, :implies))
-    op === :not ? recipe(op, random_recipe(rng, depth - 1, modal_probability, conditions)) :
-        recipe(op, random_recipe(rng, depth - 1, modal_probability, conditions),
-            random_recipe(rng, depth - 1, modal_probability, conditions))
+    return if op === :not
+        recipe(op, random_recipe(rng, depth - 1, modal_probability, conditions))
+    else
+        recipe(
+            op,
+            random_recipe(rng, depth - 1, modal_probability, conditions),
+            random_recipe(rng, depth - 1, modal_probability, conditions),
+        )
+    end
 end
 
-const AOPS = Dict(:not => Aletheia.NEGATION, :and => Aletheia.CONJUNCTION,
-    :or => Aletheia.DISJUNCTION, :implies => Aletheia.IMPLICATION,
-    :diamond => Aletheia.Diamond(:R), :box => Aletheia.Box(:R))
-const SOPS = Dict(:not => SoleLogics.:(¬), :and => SoleLogics.:(∧),
-    :or => SoleLogics.:(∨), :implies => SoleLogics.:(→),
-    :diamond => SoleLogics.◊, :box => SoleLogics.□)
+const AOPS = Dict(
+    :not => Aletheia.NEGATION,
+    :and => Aletheia.CONJUNCTION,
+    :or => Aletheia.DISJUNCTION,
+    :implies => Aletheia.IMPLICATION,
+    :diamond => Aletheia.Diamond(:R),
+    :box => Aletheia.Box(:R),
+)
+const SOPS = Dict(
+    :not => SoleLogics.:(¬),
+    :and => SoleLogics.:(∧),
+    :or => SoleLogics.:(∨),
+    :implies => SoleLogics.:(→),
+    :diamond => SoleLogics.◊,
+    :box => SoleLogics.□,
+)
 
 function build_a(recipe, pool)
     recipe.op === :atom && return Aletheia.atom(pool, recipe.condition)
-    Aletheia.branch(pool, AOPS[recipe.op], (build_a(child, pool) for child in recipe.children)...)
+    return Aletheia.branch(
+        pool, AOPS[recipe.op], (build_a(child, pool) for child in recipe.children)...
+    )
 end
 
 function build_s(recipe; supported=false)
     recipe.op === :atom && return SoleLogics.Atom(recipe.condition)
-    operators = supported ? merge(SOPS, Dict(
-        :diamond => SoleLogics.DiamondRelationalConnective(SoleLogics.IA_L),
-        :box => SoleLogics.BoxRelationalConnective(SoleLogics.IA_L))) : SOPS
-    SoleLogics.SyntaxBranch(operators[recipe.op],
-        (build_s(child; supported=supported) for child in recipe.children)...)
+    operators = if supported
+        merge(
+            SOPS,
+            Dict(
+                :diamond => SoleLogics.DiamondRelationalConnective(SoleLogics.IA_L),
+                :box => SoleLogics.BoxRelationalConnective(SoleLogics.IA_L),
+            ),
+        )
+    else
+        SOPS
+    end
+    return SoleLogics.SyntaxBranch(
+        operators[recipe.op],
+        (build_s(child; supported=supported) for child in recipe.children)...,
+    )
 end
 
 function make_pair(depth, modal_probability, seed; supported=false)
     rng = MersenneTwister(seed)
     conditions = make_conditions(rng; supported=supported)
     recipe = random_recipe(rng, depth, modal_probability, conditions)
-    pool = Aletheia.FormulaPool(Aletheia.Signature((Aletheia.NEGATION,
-        Aletheia.CONJUNCTION, Aletheia.DISJUNCTION, Aletheia.IMPLICATION,
-        Aletheia.Diamond(:R), Aletheia.Box(:R))))
-    build_a(recipe, pool), build_s(recipe; supported=supported)
+    pool = Aletheia.FormulaPool(
+        Aletheia.Signature((
+            Aletheia.NEGATION,
+            Aletheia.CONJUNCTION,
+            Aletheia.DISJUNCTION,
+            Aletheia.IMPLICATION,
+            Aletheia.Diamond(:R),
+            Aletheia.Box(:R),
+        )),
+    )
+    return build_a(recipe, pool), build_s(recipe; supported=supported)
 end
 
 function parse_case(argument)
     fields = split(argument, ':')
     length(fields) == 5 || error("case must be ninstances:nworlds:depth:modal:uniform")
-    (parse(Int, fields[1]), parse(Int, fields[2]), parse(Int, fields[3]),
-        parse(Float64, fields[4]), parse(Int, fields[5]) == 1)
+    return (
+        parse(Int, fields[1]),
+        parse(Int, fields[2]),
+        parse(Int, fields[3]),
+        parse(Float64, fields[4]),
+        parse(Int, fields[5]) == 1,
+    )
 end
 
 function measure(f)
     m = paired_measure(f; samples=5)
-    println(m.time, " ", m.allocs, " ", m.memory)
+    return println(m.time, " ", m.allocs, " ", m.memory)
 end

@@ -1,6 +1,8 @@
 struct ExternalFamilyRelation end
 Base.show(io::IO, ::ExternalFamilyRelation) = print(io, "external")
-Aletheia.relation_holds(::ExternalFamilyRelation, source::Int, target::Int) = iseven(source + target)
+function Aletheia.relation_holds(::ExternalFamilyRelation, source::Int, target::Int)
+    return iseven(source + target)
+end
 
 struct HookedPointRelation end
 const hooked_point_calls = Ref(0)
@@ -55,26 +57,41 @@ const Full1DPointFrame = Aletheia.Full1DPointFrame
 const Full2DPointFrame = Aletheia.Full2DPointFrame
 function Aletheia.relation_successors(::HookedPointRelation, source::Int, worlds)
     hooked_point_calls[] += 1
-    (source,)
+    return (source,)
 end
 
 # Independent endpoint oracle: this intentionally does not call relation_holds or inverse.
 function allen_definition(relation, source::Interval, target::Interval)
     sx, sy, tx, ty = source.x, source.y, target.x, target.y
-    relation === BEFORE ? sy < tx :
-    relation === MEETS ? sy == tx :
-    relation === OVERLAPS ? sx < tx < sy < ty :
-    relation === STARTS ? sx == tx && sy < ty :
-    relation === DURING ? tx < sx && sy < ty :
-    relation === FINISHES ? tx < sx && sy == ty :
-    relation === EQUALS ? sx == tx && sy == ty :
-    relation === AFTER ? ty < sx :
-    relation === MET_BY ? sx == ty :
-    relation === OVERLAPPED_BY ? tx < sx < ty < sy :
-    relation === STARTED_BY ? sx == tx && ty < sy :
-    relation === CONTAINS ? sx < tx && ty < sy :
-    relation === FINISHED_BY ? sx < tx && sy == ty :
-    throw(ArgumentError("unknown Allen relation"))
+    return if relation === BEFORE
+        sy < tx
+    elseif relation === MEETS
+        sy == tx
+    elseif relation === OVERLAPS
+        sx < tx < sy < ty
+    elseif relation === STARTS
+        sx == tx && sy < ty
+    elseif relation === DURING
+        tx < sx && sy < ty
+    elseif relation === FINISHES
+        tx < sx && sy == ty
+    elseif relation === EQUALS
+        sx == tx && sy == ty
+    elseif relation === AFTER
+        ty < sx
+    elseif relation === MET_BY
+        sx == ty
+    elseif relation === OVERLAPPED_BY
+        tx < sx < ty < sy
+    elseif relation === STARTED_BY
+        sx == tx && ty < sy
+    elseif relation === CONTAINS
+        sx < tx && ty < sy
+    elseif relation === FINISHED_BY
+        sx < tx && sy == ty
+    else
+        throw(ArgumentError("unknown Allen relation"))
+    end
 end
 
 @testset "relation families and dimensional frames" begin
@@ -86,9 +103,19 @@ end
     @test_throws MethodError inverse(BareRelation())
     @test IA72IARelations(IA_AiorOi) == (IA_Ai, IA_Oi)
     @test IA72IARelations(IA_DiorBiorEi) == (IA_Di, IA_Bi, IA_Ei)
-    named_relations = (ALLEN_RELATIONS..., IA_AorO, IA_DorBorE, IA_AiorOi,
-        IA_DiorBiorEi, IA_I, IDENTITY, POINT_RELATIONS..., RCC8_RELATIONS...,
-        RCC5Relations..., POINT2D_RELATIONS...)
+    named_relations = (
+        ALLEN_RELATIONS...,
+        IA_AorO,
+        IA_DorBorE,
+        IA_AiorOi,
+        IA_DiorBiorEi,
+        IA_I,
+        IDENTITY,
+        POINT_RELATIONS...,
+        RCC8_RELATIONS...,
+        RCC5Relations...,
+        POINT2D_RELATIONS...,
+    )
     @test all(Aletheia._relation_name(r) isa String for r in named_relations)
     I = Interval
     a, b = I(1, 3), I(3, 5)
@@ -100,12 +127,19 @@ end
     right = I(4, 6)
 
     examples = (
-        (BEFORE, a, right), (MEETS, a, b), (OVERLAPS, overlap_a, overlap_b),
-        (STARTS, same_start, long), (DURING, inner, long),
-        (FINISHES, same_end, long), (EQUALS, a, a),
-        (AFTER, right, a), (MET_BY, b, a),
-        (OVERLAPPED_BY, overlap_b, overlap_a), (STARTED_BY, long, same_start),
-        (CONTAINS, long, inner), (FINISHED_BY, long, same_end),
+        (BEFORE, a, right),
+        (MEETS, a, b),
+        (OVERLAPS, overlap_a, overlap_b),
+        (STARTS, same_start, long),
+        (DURING, inner, long),
+        (FINISHES, same_end, long),
+        (EQUALS, a, a),
+        (AFTER, right, a),
+        (MET_BY, b, a),
+        (OVERLAPPED_BY, overlap_b, overlap_a),
+        (STARTED_BY, long, same_start),
+        (CONTAINS, long, inner),
+        (FINISHED_BY, long, same_end),
     )
     @test length(ALLEN_RELATIONS) == 13
     for (r, source, target) in examples
@@ -117,10 +151,12 @@ end
     @test inverse(EQUALS) === EQUALS
     @test inverse(IDENTITY) === IDENTITY
     @test sprint(show, IDENTITY) == "identity"
-    @test_throws MethodError relation_holds(:not-a-relation, a, b)
-    @test_throws MethodError inverse(:not-a-relation)
-    @test_throws MethodError Base.invokelatest(Aletheia.relation_holds, :not-a-relation, a, b)
-    @test_throws MethodError Base.invokelatest(Aletheia.inverse, :not-a-relation)
+    @test_throws MethodError relation_holds(:not - a - relation, a, b)
+    @test_throws MethodError inverse(:not - a - relation)
+    @test_throws MethodError Base.invokelatest(
+        Aletheia.relation_holds, :not - a - relation, a, b
+    )
+    @test_throws MethodError Base.invokelatest(Aletheia.inverse, :not - a - relation)
     for r in ALLEN_RELATIONS
         @test sprint(show, r) isa String
     end
@@ -139,36 +175,56 @@ end
     @test IA3Relations == (IA_I, IA_L, IA_Li)
     @test IA72IARelations(IA_AorO) == (IA_A, IA_O)
     @test IA72IARelations(IA_DorBorE) == (IA_D, IA_B, IA_E)
-    @test IA32IARelations(IA_I) == (IA_A, IA_O, IA_D, IA_B, IA_E,
-        IA_Ai, IA_Oi, IA_Di, IA_Bi, IA_Ei)
+    @test IA32IARelations(IA_I) ==
+          (IA_A, IA_O, IA_D, IA_B, IA_E, IA_Ai, IA_Oi, IA_Di, IA_Bi, IA_Ei)
     @test collect(accessible(interval_frame(5), I(2, 4), IA_B)) == [I(2, 3)]
     interval_worlds = worlds(interval_frame(3))
     @test collect(relation_successors(BEFORE, I(1, 2), interval_worlds)) ==
-        collect(accessible(interval_frame(3), I(1, 2), BEFORE))
-    @test all(sum(relation_holds(r, source, target) for r in ALLEN_RELATIONS) == 1
-        for source in interval_worlds for target in interval_worlds)
-    @test all(relation_holds(r, source, target) == allen_definition(r, source, target)
-        for r in ALLEN_RELATIONS for source in interval_worlds for target in interval_worlds)
-    @test all(collect(relation_successors(r, source, interval_worlds)) ==
-        [target for target in interval_worlds if relation_holds(r, source, target)]
-        for r in ALLEN_RELATIONS for source in interval_worlds)
+          collect(accessible(interval_frame(3), I(1, 2), BEFORE))
+    @test all(
+        sum(relation_holds(r, source, target) for r in ALLEN_RELATIONS) == 1 for
+        source in interval_worlds for target in interval_worlds
+    )
+    @test all(
+        relation_holds(r, source, target) == allen_definition(r, source, target) for
+        r in ALLEN_RELATIONS for source in interval_worlds for target in interval_worlds
+    )
+    @test all(
+        collect(relation_successors(r, source, interval_worlds)) ==
+        [target for target in interval_worlds if relation_holds(r, source, target)] for
+        r in ALLEN_RELATIONS for source in interval_worlds
+    )
     coarse_relations = (IA_AorO, IA_DorBorE, IA_AiorOi, IA_DiorBiorEi, IA_I)
-    for (coarse, primitives) in zip(coarse_relations,
-            ((IA_A, IA_O), (IA_D, IA_B, IA_E), (IA_Ai, IA_Oi),
-                (IA_Di, IA_Bi, IA_Ei), IA32IARelations(IA_I)))
-        @test all(relation_holds(coarse, source, target) ==
-            any(relation_holds(r, source, target) for r in primitives)
-            for source in interval_worlds for target in interval_worlds)
-        @test all(Set(relation_successors(coarse, source, interval_worlds)) ==
-            Set(target for target in interval_worlds if relation_holds(coarse, source, target))
-            for source in interval_worlds)
+    for (coarse, primitives) in zip(
+        coarse_relations,
+        (
+            (IA_A, IA_O),
+            (IA_D, IA_B, IA_E),
+            (IA_Ai, IA_Oi),
+            (IA_Di, IA_Bi, IA_Ei),
+            IA32IARelations(IA_I),
+        ),
+    )
+        @test all(
+            relation_holds(coarse, source, target) ==
+            any(relation_holds(r, source, target) for r in primitives) for
+            source in interval_worlds for target in interval_worlds
+        )
+        @test all(
+            Set(relation_successors(coarse, source, interval_worlds)) == Set(
+                target for
+                target in interval_worlds if relation_holds(coarse, source, target)
+            ) for source in interval_worlds
+        )
     end
     provider_frame = interval_frame(3)
     provider_worlds = worlds(provider_frame)
     for r in (coarse_relations..., RCC8_RELATIONS..., RCC5Relations...)
-        @test all(Set(accessible(provider_frame, source, r)) ==
+        @test all(
+            Set(accessible(provider_frame, source, r)) ==
             Set(target for target in provider_worlds if relation_holds(r, source, target))
-            for source in provider_worlds)
+            for source in provider_worlds
+        )
     end
 
     @test relation_holds(DC, I(1, 2), I(3, 4))
@@ -187,24 +243,32 @@ end
     @test RCC5Relations == (DR, PO, PP, PPi)
     @test Aletheia.PPi === PPi && Aletheia.PP === PP
     @test inverse(Topo_DR) === Topo_DR && inverse(Topo_PP) === Topo_PPi
-    @test all(inverse(inverse(r)) === r for r in (IA_AorO, IA_DorBorE, IA_AiorOi, IA_DiorBiorEi, IA_I,
-        Topo_DR, Topo_PP, Topo_PPi))
-    @test all(sprint(show, r) isa String for r in (IA_AorO, IA_DorBorE, IA_AiorOi, IA_DiorBiorEi,
-        IA_I, Topo_DR, Topo_PP, Topo_PPi))
+    @test all(
+        inverse(inverse(r)) === r for r in
+        (IA_AorO, IA_DorBorE, IA_AiorOi, IA_DiorBiorEi, IA_I, Topo_DR, Topo_PP, Topo_PPi)
+    )
+    @test all(
+        sprint(show, r) isa String for r in
+        (IA_AorO, IA_DorBorE, IA_AiorOi, IA_DiorBiorEi, IA_I, Topo_DR, Topo_PP, Topo_PPi)
+    )
     @test relation_holds(DR, I(1, 2), I(2, 3))
     @test relation_holds(PP, I(1, 2), I(1, 4))
     @test relation_holds(PPi, I(1, 4), I(1, 2))
     @test !relation_holds(Aletheia.PPi, I(1, 2), I(1, 4))
     @test relation_holds(Aletheia.PPi, I(1, 4), I(1, 2))
     for r in RCC8_RELATIONS
-        @test all(Set(relation_successors(r, source, interval_worlds)) ==
+        @test all(
+            Set(relation_successors(r, source, interval_worlds)) ==
             Set(target for target in interval_worlds if relation_holds(r, source, target))
-            for source in interval_worlds)
+            for source in interval_worlds
+        )
     end
     for r in RCC5Relations
-        @test all(Set(relation_successors(r, source, interval_worlds)) ==
+        @test all(
+            Set(relation_successors(r, source, interval_worlds)) ==
             Set(target for target in interval_worlds if relation_holds(r, source, target))
-            for source in interval_worlds)
+            for source in interval_worlds
+        )
     end
 
     rectangles = worlds(rectangle_frame(2, 2))
@@ -218,21 +282,33 @@ end
     @test relation_holds(NTPP, Rectangle((2, 3), (2, 3)), Rectangle((1, 4), (1, 4)))
     @test relation_holds(TPPi, Rectangle((1, 3), (1, 3)), Rectangle((1, 2), (1, 2)))
     @test relation_holds(NTPPi, Rectangle((1, 4), (1, 4)), Rectangle((2, 3), (2, 3)))
-    @test all(sum(relation_holds(r, source, target) for r in RCC8_RELATIONS) == 1
-        for source in rectangles for target in rectangles)
-    @test all(collect(relation_successors(r, source, rectangles)) ==
-        [target for target in rectangles if relation_holds(r, source, target)]
-        for r in RCC8_RELATIONS for source in rectangles)
-    @test all(sum(relation_holds(r, source, target) for r in RCC5Relations) == 1
-        for source in rectangles for target in rectangles if !relation_holds(RCC_EQ, source, target))
-    @test all(Set(relation_successors(r, source, rectangles)) ==
-        Set(target for target in rectangles if relation_holds(r, source, target))
-        for r in RCC5Relations for source in rectangles)
+    @test all(
+        sum(relation_holds(r, source, target) for r in RCC8_RELATIONS) == 1 for
+        source in rectangles for target in rectangles
+    )
+    @test all(
+        collect(relation_successors(r, source, rectangles)) ==
+        [target for target in rectangles if relation_holds(r, source, target)] for
+        r in RCC8_RELATIONS for source in rectangles
+    )
+    @test all(
+        sum(relation_holds(r, source, target) for r in RCC5Relations) == 1 for
+        source in rectangles for
+        target in rectangles if !relation_holds(RCC_EQ, source, target)
+    )
+    @test all(
+        Set(relation_successors(r, source, rectangles)) ==
+        Set(target for target in rectangles if relation_holds(r, source, target)) for
+        r in RCC5Relations for source in rectangles
+    )
     rectangle_frame_value = rectangle_frame(2)
     rectangle_frame_worlds = collect(worlds(rectangle_frame_value))
-    @test all(Set(accessible(rectangle_frame_value, source, r)) ==
-        Set(target for target in rectangle_frame_worlds if relation_holds(r, source, target))
-        for r in (RCC8_RELATIONS..., RCC5Relations...) for source in rectangle_frame_worlds)
+    @test all(
+        Set(accessible(rectangle_frame_value, source, r)) == Set(
+            target for target in rectangle_frame_worlds if relation_holds(r, source, target)
+        ) for r in (RCC8_RELATIONS..., RCC5Relations...) for
+        source in rectangle_frame_worlds
+    )
     rr = rectangle_relation(MEETS, MEETS)
     @test inverse(rr) == rectangle_relation(MET_BY, MET_BY)
     @test isequal(rr, rectangle_relation(MEETS, MEETS))
@@ -241,7 +317,9 @@ end
     @test relation_successors(rr, Rectangle((1, 2), (1, 2)), rectangles) !== nothing
 
     struct CustomPointRelation <: Aletheia.PointRelation end
-    Aletheia.relation_holds(::CustomPointRelation, source::Int, target::Int) = source == target
+    function Aletheia.relation_holds(::CustomPointRelation, source::Int, target::Int)
+        return source == target
+    end
 
     points = point_frame([10, 20, 40])
     @test worlds(points) == (10, 20, 40)
@@ -265,9 +343,11 @@ end
     @test relation_holds(MINIMUM, 20, 10, worlds(points))
     @test relation_holds(MAXIMUM, 20, 40, worlds(points))
     for r in POINT_RELATIONS
-        @test all((target in collect(accessible(points, source, r))) ==
-                  relation_holds(r, source, target, worlds(points))
-                  for source in worlds(points), target in worlds(points))
+        @test all(
+            (target in collect(accessible(points, source, r))) ==
+            relation_holds(r, source, target, worlds(points)) for source in worlds(points),
+            target in worlds(points)
+        )
         @test sprint(show, r) isa String
         r === MINIMUM || r === MAXIMUM || @test inverse(inverse(r)) == r
     end
@@ -287,7 +367,9 @@ end
     @test length(Rectangle((1, 2), (1, 3))) == 2
     @test Aletheia._point_worlds((1, 2)) == (1, 2)
     @test Aletheia._point_relation_holds(CustomPointRelation(), 10, 10, worlds(points))
-    @test Aletheia._dimensional_relation_holds(CustomPointRelation(), 10, 10, worlds(points))
+    @test Aletheia._dimensional_relation_holds(
+        CustomPointRelation(), 10, 10, worlds(points)
+    )
     @test Rectangle((1, 2), (1, 3)) == Rectangle(Interval(1, 2), Interval(1, 3))
     @test interval_frame(1:4).worlds == interval_frame([1, 2, 3, 4]).worlds
     @test rectangle_frame([1, 2], [1, 2]).worlds == rectangle_frame(1, 1).worlds
@@ -306,8 +388,14 @@ end
         @test Point2DRelations == (CL_N, CL_S, CL_E, CL_W, CL_NE, CL_NW, CL_SE, CL_SW)
 
         display_pairs = [
-            (CL_N, "N"), (CL_S, "S"), (CL_E, "E"), (CL_W, "W"),
-            (CL_NE, "NE"), (CL_NW, "NW"), (CL_SE, "SE"), (CL_SW, "SW")
+            (CL_N, "N"),
+            (CL_S, "S"),
+            (CL_E, "E"),
+            (CL_W, "W"),
+            (CL_NE, "NE"),
+            (CL_NW, "NW"),
+            (CL_SE, "SE"),
+            (CL_SW, "SW"),
         ]
         for (r, expected_str) in display_pairs
             @test sprint(show, r) == expected_str
@@ -317,10 +405,14 @@ end
         end
 
         converses = [
-            (CL_N, CL_S), (CL_S, CL_N),
-            (CL_E, CL_W), (CL_W, CL_E),
-            (CL_NE, CL_SW), (CL_SW, CL_NE),
-            (CL_NW, CL_SE), (CL_SE, CL_NW),
+            (CL_N, CL_S),
+            (CL_S, CL_N),
+            (CL_E, CL_W),
+            (CL_W, CL_E),
+            (CL_NE, CL_SW),
+            (CL_SW, CL_NE),
+            (CL_NW, CL_SE),
+            (CL_SE, CL_NW),
         ]
         for (r1, r2) in converses
             @test inverse(r1) === r2
@@ -345,7 +437,8 @@ end
         sw_corner = Point(1, 1)
         @test collect(accessible(pf3x3, sw_corner, CL_N)) == [Point(1, 2), Point(1, 3)]
         @test collect(accessible(pf3x3, sw_corner, CL_E)) == [Point(2, 1), Point(3, 1)]
-        @test collect(accessible(pf3x3, sw_corner, CL_NE)) == [Point(2, 2), Point(2, 3), Point(3, 2), Point(3, 3)]
+        @test collect(accessible(pf3x3, sw_corner, CL_NE)) ==
+              [Point(2, 2), Point(2, 3), Point(3, 2), Point(3, 3)]
         @test isempty(accessible(pf3x3, sw_corner, CL_S))
         @test isempty(accessible(pf3x3, sw_corner, CL_W))
         @test isempty(accessible(pf3x3, sw_corner, CL_SW))
@@ -408,18 +501,23 @@ end
     @test hooked_point_calls[] > 0
 
     external_frame = point_frame(1:4)
-    @test relation_successors(ExternalFamilyRelation(), 1, worlds(external_frame)) === nothing
+    @test relation_successors(ExternalFamilyRelation(), 1, worlds(external_frame)) ===
+          nothing
     @test collect(accessible(external_frame, 1, ExternalFamilyRelation())) == [1, 3]
     @test collect(accessible(external_frame, 2, ExternalFamilyRelation())) == [2, 4]
     external_pool = FormulaPool(Signature((Diamond(ExternalFamilyRelation()),)))
     external_atom = atom(external_pool, "p")
-    external_formula = branch(external_pool, Diamond(ExternalFamilyRelation()), external_atom)
+    external_formula = branch(
+        external_pool, Diamond(ExternalFamilyRelation()), external_atom
+    )
     external_model = Model(external_frame, BOOLEAN, Dict("p" => Set([1, 3])))
-    @test extension(external_formula, external_model) == BitVector([true, false, true, false])
+    @test extension(external_formula, external_model) ==
+          BitVector([true, false, true, false])
 
     syntax_pool = FormulaPool(Signature((Diamond(BEFORE), Box(BEFORE))))
     syntax_atom = atom(syntax_pool, "p")
-    @test parse(syntax_pool, "⟨before⟩p") == branch(syntax_pool, Diamond(BEFORE), syntax_atom)
+    @test parse(syntax_pool, "⟨before⟩p") ==
+          branch(syntax_pool, Diamond(BEFORE), syntax_atom)
     @test parse(syntax_pool, "[before]p") == branch(syntax_pool, Box(BEFORE), syntax_atom)
 
     sig = Signature((Diamond(BEFORE), Box(BEFORE), Implication()))
@@ -437,24 +535,33 @@ end
     noindex_frame = interval_frame(3; index=false)
     noindex_worlds = collect(worlds(noindex_frame))
     noindex_positions = Dict(world => i for (i, world) in enumerate(noindex_worlds))
-    @test Aletheia._relation_adjacency(noindex_frame, BEFORE, noindex_positions).rows ==
-        [[noindex_positions[target] for target in noindex_worlds if relation_holds(BEFORE, source, target)]
-            for source in noindex_worlds]
-    permuted = Dict(world => length(noindex_worlds) - i + 1 for (i, world) in enumerate(noindex_worlds))
+    @test Aletheia._relation_adjacency(noindex_frame, BEFORE, noindex_positions).rows == [
+        [
+            noindex_positions[target] for
+            target in noindex_worlds if relation_holds(BEFORE, source, target)
+        ] for source in noindex_worlds
+    ]
+    permuted = Dict(
+        world => length(noindex_worlds) - i + 1 for (i, world) in enumerate(noindex_worlds)
+    )
     permuted_frame = interval_frame(3; index=permuted)
     permuted_adjacency = Aletheia._relation_adjacency(permuted_frame, BEFORE, permuted)
     expected_permuted = Vector{Vector{Int}}(undef, length(noindex_worlds))
     for source in noindex_worlds
-        expected_permuted[permuted[source]] =
-            [permuted[target] for target in noindex_worlds if relation_holds(BEFORE, source, target)]
+        expected_permuted[permuted[source]] = [
+            permuted[target] for
+            target in noindex_worlds if relation_holds(BEFORE, source, target)
+        ]
     end
     @test permuted_adjacency.rows == expected_permuted
-    @test Aletheia._relation_adjacency(interval_frame(3), MEETS,
-        noindex_positions).rows ==
-        [[noindex_positions[target] for target in noindex_worlds if relation_holds(MEETS, source, target)]
-            for source in noindex_worlds]
+    @test Aletheia._relation_adjacency(interval_frame(3), MEETS, noindex_positions).rows ==
+          [
+        [
+            noindex_positions[target] for
+            target in noindex_worlds if relation_holds(MEETS, source, target)
+        ] for source in noindex_worlds
+    ]
 end
-
 
 @testset "frame class traits and correspondence axioms" begin
     reflexive_frame = Frame((1, 2), Dict(:R => Dict(1 => [1, 2], 2 => [1, 2])); index=true)
@@ -462,7 +569,9 @@ end
     symmetric_frame = Frame((1, 2), Dict(:R => Dict(1 => [2], 2 => [1])); index=true)
     serial_frame = Frame((1, 2), Dict(:R => Dict(1 => [2], 2 => [2])); index=true)
     nonserial = Frame((1, 2), Dict(:R => Dict(1 => [], 2 => [2])); index=true)
-    nontransitive = Frame((1, 2, 3), Dict(:R => Dict(1 => [1, 2], 2 => [2, 3], 3 => [3])); index=true)
+    nontransitive = Frame(
+        (1, 2, 3), Dict(:R => Dict(1 => [1, 2], 2 => [2, 3], 3 => [3])); index=true
+    )
     @test isreflexive(reflexive_frame, :R)
     @test istransitive(reflexive_frame, :R)
     @test issymmetric(reflexive_frame, :R)
@@ -477,7 +586,8 @@ end
     @test symmetric(reflexive_frame, :R) && serial(reflexive_frame, :R)
     @test isreflexive(reflexive_frame) && istransitive(reflexive_frame)
     @test satisfies(serial_frame, SERIAL, :R) && !satisfies(nonserial, SERIAL, :R)
-    @test Aletheia.checkclass(reflexive_frame, T, :R) && Aletheia.validclass(reflexive_frame, T, :R)
+    @test Aletheia.checkclass(reflexive_frame, T, :R) &&
+          Aletheia.validclass(reflexive_frame, T, :R)
     @test istransitive(preorder, :R) && !issymmetric(preorder, :R)
     @test !istransitive(nontransitive, :R) && isreflexive(nontransitive, :R)
     @test !isreflexive(preorder, :R)
@@ -510,7 +620,12 @@ end
     @test length(axioms(pool, S5; relation=:R)) == 3
     @test length(axioms(pool, K; relation=:R)) == 1
     @test length(axioms(pool, SERIAL; relation=:R)) == 1
-    @test isbranch(t_axiom) && isbranch(s4_axiom) && isbranch(s5_axiom) && isbranch(b_axiom) && isbranch(d_axiom) && isbranch(k_axiom)
+    @test isbranch(t_axiom) &&
+          isbranch(s4_axiom) &&
+          isbranch(s5_axiom) &&
+          isbranch(b_axiom) &&
+          isbranch(d_axiom) &&
+          isbranch(k_axiom)
     p = atom(pool, "p")
     valuation = Dict("p" => Set([2]), "q" => Set([2]))
     conforming = Model(reflexive_frame, BOOLEAN, valuation)
@@ -524,9 +639,18 @@ end
     @test validates(t_axiom, conforming)
     @test !validates(failing, t_axiom)
     @test !validates(failing, s4_axiom)
-    @test !validates(Model(nontransitive, BOOLEAN, Dict("p" => Set([1, 2]), "q" => Set([1, 2]))), s4_axiom)
-    @test validates(Model(symmetric_frame, BOOLEAN, Dict("p" => Set([1]), "q" => Set([1]))), b_axiom)
+    @test !validates(
+        Model(nontransitive, BOOLEAN, Dict("p" => Set([1, 2]), "q" => Set([1, 2]))),
+        s4_axiom,
+    )
+    @test validates(
+        Model(symmetric_frame, BOOLEAN, Dict("p" => Set([1]), "q" => Set([1]))), b_axiom
+    )
     @test_throws ArgumentError axiom(FormulaPool(Signature((Box(:R),))), T; relation=:R)
-    @test_throws ArgumentError axioms(pool, FrameClass(:unknown, (:unknown_condition,)); relation=:R)
-    @test_throws ArgumentError axiom(FormulaPool(Signature((Box(:R), Implication()))), S5; relation=:R)
+    @test_throws ArgumentError axioms(
+        pool, FrameClass(:unknown, (:unknown_condition,)); relation=:R
+    )
+    @test_throws ArgumentError axiom(
+        FormulaPool(Signature((Box(:R), Implication()))), S5; relation=:R
+    )
 end

@@ -516,13 +516,15 @@ function _chain_flew(n::Int, kind::Symbol)
     join_table = Matrix{FiniteTruth}(undef, n, n)
     meet_table = Matrix{FiniteTruth}(undef, n, n)
     fusion_table = Matrix{FiniteTruth}(undef, n, n)
-    levels_ = [if i == 1
-        1//1
-    elseif i == 2
-        0//1
-    else
-        (i - 2)//(n - 1)
-    end for i in 1:n]
+    levels_ = [
+        if i == 1
+            1//1
+        elseif i == 2
+            0//1
+        else
+            (i - 2)//(n - 1)
+        end for i in 1:n
+    ]
     for i in 1:n, j in 1:n
         join_table[i, j] = _chain_index(max(levels_[i], levels_[j]), n)
         meet_table[i, j] = _chain_index(min(levels_[i], levels_[j]), n)
