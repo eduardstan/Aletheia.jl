@@ -6,10 +6,10 @@ semantics and formula evaluation.
 """
 module AletheiaSoleDataExt
 
-using AletheiaSole: AletheiaSole
-using AletheiaCore: AletheiaCore
-using AletheiaData: AletheiaData
-using SoleData: SoleData
+import AletheiaSole
+import AletheiaCore
+import AletheiaData
+import SoleData
 
 const Aletheia = AletheiaCore
 
@@ -32,43 +32,35 @@ struct SoleDataFamily{D,M,R} <: AletheiaData.AbstractModelFamily
 end
 
 function _source_accessibles(source_frame, world, relation)
-    return if isnothing(relation)
-        SoleData.accessibles(source_frame, world)
-    else
+    isnothing(relation) ?
+        SoleData.accessibles(source_frame, world) :
         SoleData.accessibles(source_frame, world, relation)
-    end
 end
 
 function _aletheia_frame(source_frame, relation)
     source_worlds = collect(SoleData.allworlds(source_frame))
     adjacency = Dict(
-        world => Tuple(_source_accessibles(source_frame, world, relation)) for
-        world in source_worlds
+        world => Tuple(_source_accessibles(source_frame, world, relation))
+        for world in source_worlds
     )
-    return Aletheia.Frame(source_worlds, Dict(:R => adjacency); index=true)
+    Aletheia.Frame(source_worlds, Dict(:R => adjacency); index=true)
 end
 
 function _aletheia_model(dataset, i_instance, vectorized, converted_frame)
-    scalar =
-        (condition, world) -> SoleData.checkcondition(condition, dataset, i_instance, world)
-    batch = if vectorized
-        (
-            (condition, worlds) -> BitVector(
-                SoleData.checkcondition(condition, dataset, i_instance, world) for
-                world in worlds
-            )
-        )
-    else
-        nothing
-    end
+    scalar = (condition, world) ->
+        SoleData.checkcondition(condition, dataset, i_instance, world)
+    batch = vectorized ?
+        ((condition, worlds) -> BitVector(
+            SoleData.checkcondition(condition, dataset, i_instance, world)
+            for world in worlds
+        )) : nothing
     valuation = Aletheia.ValuationCallback(scalar; vectorized=batch)
-    return Aletheia.Model(converted_frame, Aletheia.BOOLEAN, valuation)
+    Aletheia.Model(converted_frame, Aletheia.BOOLEAN, valuation)
 end
 
 """Construct a `SoleDataFamily` from an `AbstractModalLogiset`."""
-function SoleDataFamily(
-    dataset::SoleData.AbstractModalLogiset; vectorized::Bool=true, relation=nothing
-)
+function SoleDataFamily(dataset::SoleData.AbstractModalLogiset;
+        vectorized::Bool=true, relation=nothing)
     # Keep one converted Frame for equal source frames.  This preserves
     # Aletheia's valuation-independent adjacency cache without assuming that
     # all SoleData instances have the same frame.
@@ -83,18 +75,19 @@ function SoleDataFamily(
             push!(converted_frames, _aletheia_frame(source_frame, relation))
             slot = length(converted_frames)
         end
-        push!(
-            models, _aletheia_model(dataset, i_instance, vectorized, converted_frames[slot])
-        )
+        push!(models, _aletheia_model(
+            dataset, i_instance, vectorized, converted_frames[slot]))
     end
-    return SoleDataFamily(dataset, models, relation)
+    SoleDataFamily(dataset, models, relation)
 end
 
-AletheiaData.instance_count(family::SoleDataFamily) = SoleData.ninstances(family.dataset)
-function AletheiaData.eachinstance(family::SoleDataFamily)
-    return Base.OneTo(SoleData.ninstances(family.dataset))
-end
-AletheiaData.instance_model(family::SoleDataFamily, i_instance) = family.models[i_instance]
+AletheiaData.instance_count(family::SoleDataFamily) =
+    SoleData.ninstances(family.dataset)
+AletheiaData.eachinstance(family::SoleDataFamily) =
+    Base.OneTo(SoleData.ninstances(family.dataset))
+AletheiaData.instance_model(family::SoleDataFamily, i_instance) =
+    family.models[i_instance]
+
 
 # SoleData's `featvalue(feature, dataset, instance, world)` is adapted to the
 # core's source protocol.  The wrapper keeps SoleData out of Aletheia's core
@@ -103,78 +96,41 @@ AletheiaData.instance_model(family::SoleDataFamily, i_instance) = family.models[
 struct _SoleDataSource{D}
     dataset::D
 end
-function AletheiaData.feature_value(source::_SoleDataSource, instance, world, feature)
-    return SoleData.featvalue(feature, source.dataset, instance, world)
-end
+AletheiaData.feature_value(source::_SoleDataSource, instance, world, feature) =
+    SoleData.featvalue(feature, source.dataset, instance, world)
 
 function _sole_features(dataset, requested)
-    return if requested === nothing || !isempty(requested)
-        collect(requested)
-    else
-        collect(SoleData.features(dataset))
-    end
+    requested === nothing || !isempty(requested) ? collect(requested) : collect(SoleData.features(dataset))
 end
 
 """Prepare a SoleData modal logiset through Aletheia's scalar protocol."""
-function AletheiaData.prepare_scalar(
-    dataset::SoleData.AbstractModalLogiset;
-    features=nothing,
-    frames=nothing,
-    relations=(),
-    relation=nothing,
-    precompute_features=true,
-    precompute_aggregates=(),
-    instances=nothing,
-    worlds=nothing,
-    version=nothing,
-)
+function AletheiaData.prepare_scalar(dataset::SoleData.AbstractModalLogiset;
+        features=nothing, frames=nothing, relations=(), relation=nothing,
+        precompute_features=true, precompute_aggregates=(), instances=nothing,
+        worlds=nothing, version=nothing)
     n = SoleData.ninstances(dataset)
     labels = instances === nothing ? collect(1:n) : collect(instances)
     source_frames = [SoleData.frame(dataset, i) for i in labels]
-    converted = [
-        Aletheia.Frame(
-            collect(SoleData.allworlds(fr)),
-            Dict(
-                :R => Dict(
-                    w => Tuple(
-                        if isnothing(relation)
-                            SoleData.accessibles(fr, w)
-                        else
-                            SoleData.accessibles(fr, w, relation)
-                        end,
-                    ) for w in SoleData.allworlds(fr)
-                ),
-            );
-            index=true,
-        ) for fr in source_frames
-    ]
+    converted = [Aletheia.Frame(collect(SoleData.allworlds(fr)),
+        Dict(:R => Dict(w => Tuple(isnothing(relation) ?
+            SoleData.accessibles(fr, w) : SoleData.accessibles(fr, w, relation))
+            for w in SoleData.allworlds(fr))); index=true) for fr in source_frames]
     feature_list = _sole_features(dataset, features)
-    return AletheiaData.prepare_scalar(
-        _SoleDataSource(dataset);
-        features=feature_list,
-        frames=converted,
-        relations=isempty(relations) ? (:R,) : relations,
+    AletheiaData.prepare_scalar(_SoleDataSource(dataset); features=feature_list,
+        frames=converted, relations=isempty(relations) ? (:R,) : relations,
         precompute_features=precompute_features,
-        precompute_aggregates=precompute_aggregates,
-        instances=labels,
-        worlds=worlds,
-        version=version,
-    )
+        precompute_aggregates=precompute_aggregates, instances=labels,
+        worlds=worlds, version=version)
 end
 
 # Existing SoleData condition payloads remain usable in pooled atoms.  The
 # adapter deliberately delegates the single-world predicate to SoleData while
 # all formula and aggregate traversal stays in Aletheia.
-function AletheiaData.scalar_check(
-    condition::SoleData.AbstractScalarCondition,
-    data::AletheiaData.PreparedScalarData,
-    instance,
-    world,
-)
+function AletheiaData.scalar_check(condition::SoleData.AbstractScalarCondition,
+        data::AletheiaData.PreparedScalarData, instance, world)
     source = data.source
-    source isa _SoleDataSource ||
-        throw(ArgumentError("prepared data was not built from SoleData"))
-    return SoleData.checkcondition(condition, source.dataset, instance, world)
+    source isa _SoleDataSource || throw(ArgumentError("prepared data was not built from SoleData"))
+    SoleData.checkcondition(condition, source.dataset, instance, world)
 end
 
 # Install convenient aliases after the extension is loaded.  Parent modules are
@@ -184,7 +140,7 @@ function __init__()
     Core.eval(Aletheia, :(const SoleDataFamily = $SoleDataFamily))
     Core.eval(Aletheia, :(export SoleDataFamily))
     Core.eval(AletheiaSole.SoleLogics, :(const SoleDataFamily = $SoleDataFamily))
-    return Core.eval(AletheiaSole.SoleLogics, :(export SoleDataFamily))
+    Core.eval(AletheiaSole.SoleLogics, :(export SoleDataFamily))
 end
 
 end

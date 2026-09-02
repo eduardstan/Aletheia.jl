@@ -37,61 +37,36 @@ X_train, y_train = load_arff_dataset("NATOPS", :train; path=natops_dir)
 max_instances = parse(Int, get(ENV, "NATOPS_MAX_INSTANCES", "0"))
 max_variables = parse(Int, get(ENV, "NATOPS_MAX_VARIABLES", "0"))
 if max_instances > 0
-    selected = unique(
-        round.(Int, range(1, size(X_train, 1); length=min(max_instances, size(X_train, 1))))
-    )
+    selected = unique(round.(Int, range(1, size(X_train, 1), length=min(max_instances, size(X_train, 1)))))
     X_train = X_train[selected, :]
     y_train = y_train[selected]
 end
 max_variables > 0 && (X_train = X_train[:, 1:min(max_variables, size(X_train, 2))])
-println(
-    "NATOPS_INSTANCES=",
-    size(X_train, 1),
-    " VARIABLES=",
-    size(X_train, 2),
-    " REDUCED=",
-    max_instances > 0 || max_variables > 0,
-)
+println("NATOPS_INSTANCES=", size(X_train, 1), " VARIABLES=", size(X_train, 2),
+    " REDUCED=", max_instances > 0 || max_variables > 0)
 
-Xs = SoleData.autologiset(
-    X_train;
-    downsize=SoleData.make_downsizing_function(Val(1)),
-    conditions=nothing,
-    featvaltype=Float64,
-    relations=nothing,
-    fixcallablenans=false,
-    force_i_variables=false,
-    passive_mode=false,
-)
+Xs = SoleData.autologiset(X_train;
+    downsize=SoleData.make_downsizing_function(Val(1)), conditions=nothing,
+    featvaltype=Float64, relations=nothing, fixcallablenans=false,
+    force_i_variables=false, passive_mode=false)
 Xs = Xs isa Tuple ? first(Xs) : Xs
 Xs = Xs isa SoleData.MultiLogiset ? Xs : SoleData.MultiLogiset(Xs)
 
 # ModalDecisionTrees' published NATOPS training shape: min_samples_leaf=4.
-tree = ModalDecisionTrees.build_tree(
-    Xs,
-    String.(y_train);
-    min_samples_leaf=4,
-    rng=MersenneTwister(LEARNER_SEED),
-    print_progress=false,
-)
+tree = ModalDecisionTrees.build_tree(Xs, String.(y_train);
+    min_samples_leaf=4, rng=MersenneTwister(LEARNER_SEED), print_progress=false)
 sole_model = ModalDecisionTrees.translate(tree)
 rules = SoleModels.listrules(sole_model)
-decision_list = SoleModels.DecisionList(
-    rules[1:(end - 1)], SoleModels.consequent(rules[end])
-)
+decision_list = SoleModels.DecisionList(rules[1:end-1], SoleModels.consequent(rules[end]))
 
 batch_masks = batch_checkantecedents(rules, Xs)
 incumbent_masks = [BitVector(SoleModels.checkantecedent(rule, Xs)) for rule in rules]
 comparisons = length(rules) * SoleData.ninstances(Xs)
-mismatches = sum(
-    batch_masks[rule][instance] != incumbent_masks[rule][instance] for
-    rule in eachindex(rules), instance in 1:SoleData.ninstances(Xs)
-)
+mismatches = sum(batch_masks[rule][instance] != incumbent_masks[rule][instance]
+    for rule in eachindex(rules), instance in 1:SoleData.ninstances(Xs))
 apply_expected = SoleModels.apply(decision_list, Xs)
 apply_batch = batch_apply(decision_list, Xs)
-apply_mismatches = sum(
-    apply_batch[i] != apply_expected[i] for i in eachindex(apply_expected)
-)
+apply_mismatches = sum(apply_batch[i] != apply_expected[i] for i in eachindex(apply_expected))
 
 println("GLOBAL_SEED=", GLOBAL_SEED, " LEARNER_SEED=", LEARNER_SEED)
 println("RULES=", length(rules), " RULE_INSTANCE_COMPARISONS=", comparisons)

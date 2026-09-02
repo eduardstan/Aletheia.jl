@@ -15,10 +15,10 @@ end
         event = compile_event(DSProgram([choice]), :yes)
         certificate = validate(event.circuit)
         return certificate.determinism &&
-               certificate.smoothness &&
-               all(
-                   node.var == 0 || node.var in eachindex(event.circuit.variables) for
-                   node in event.circuit.nodes
-               )
+                   certificate.smoothness &&
+                   all(
+                       node.var == 0 || node.var in eachindex(event.circuit.variables) for
+                       node in event.circuit.nodes
+                   )
     end
 end

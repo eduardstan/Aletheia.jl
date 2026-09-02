@@ -57,8 +57,7 @@ end
     fusion_formula = branch(pool, ⊗, p, q)
     @test string(fusion_formula) == "p ⊗ q"
     @test parse(pool, string(fusion_formula)) == fusion_formula
-    @test string(parse(pool, "¬1→0"; atom_parser=x -> Base.parse(Float64, x))) ==
-          "¬1.0 → 0.0"
+    @test string(parse(pool, "¬1→0"; atom_parser=x -> Base.parse(Float64, x))) == "¬1.0 → 0.0"
     @test string(parse(pool, "¬a → b ∧ c")) == "¬a → b ∧ c"
 
     left_nested = branch(pool, ∧, branch(pool, →, p, q), q)
@@ -86,6 +85,7 @@ end
     @test atom(other_pool, "p") != p
     @test nsubterms(pool) == length(subterms(pool))
     @test arity(sig, TestXor()) == 2
+
 end
 
 @testset "syntax edge cases and API" begin
@@ -198,8 +198,8 @@ end
     @test !invoke_trait(isbranch, p) && invoke_trait(isbranch, t)
     @test Base.invokelatest(Atom, pool, "new") == atom(pool, "new")
     @test Base.invokelatest(Branch, pool, ∧, (p, q)) == branch(pool, ∧, p, q)
-    @test :_TrustedFormulaHandle ∉ names(Aletheia; all=false)
-    @test :_trusted_formula_handle ∉ names(Aletheia; all=false)
+    @test :_TrustedFormulaHandle ∉ names(Aletheia, all=false)
+    @test :_trusted_formula_handle ∉ names(Aletheia, all=false)
     @test Base.invokelatest(Branch, pool, ∧, p, q) == branch(pool, ∧, p, q)
     @test invoke_trait3(isequal, t, t)
     @test !invoke_trait3(isequal, p, t) && !invoke_trait3(isequal, t, p)

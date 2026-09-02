@@ -26,17 +26,9 @@ const Extension = Aletheia.Extension
 
     # Model headers describe chain carriers without exposing type parameters.
     m_unit_godel = Model(f1, GodelAlgebra(), Dict("p" => Dict(:w1 => 0.5, :w2 => 1.0)))
-    m_unit_lukasiewicz = Model(
-        f1, LukasiewiczAlgebra(), Dict("p" => Dict(:w1 => 0.5, :w2 => 1.0))
-    )
-    @test occursin(
-        "GodelAlgebra (unit interval [0.0, 1.0])",
-        sprint(show, MIME("text/plain"), m_unit_godel),
-    )
-    @test occursin(
-        "LukasiewiczAlgebra (unit interval [0.0, 1.0])",
-        sprint(show, MIME("text/plain"), m_unit_lukasiewicz),
-    )
+    m_unit_lukasiewicz = Model(f1, LukasiewiczAlgebra(), Dict("p" => Dict(:w1 => 0.5, :w2 => 1.0)))
+    @test occursin("GodelAlgebra (unit interval [0.0, 1.0])", sprint(show, MIME("text/plain"), m_unit_godel))
+    @test occursin("LukasiewiczAlgebra (unit interval [0.0, 1.0])", sprint(show, MIME("text/plain"), m_unit_lukasiewicz))
     @test !occursin("{0}", sprint(show, MIME("text/plain"), m_unit_godel))
     @test !occursin("{0}", sprint(show, MIME("text/plain"), m_unit_lukasiewicz))
 
@@ -47,12 +39,8 @@ const Extension = Aletheia.Extension
     # Callable relations / valuation
     f_callable = Frame((:w1, :w2), (w, r) -> (:w2,); index=true)
     m_callable = Model(f_callable, (a, w) -> true, BOOLEAN)
-    @test occursin(
-        "relations supplied on demand", sprint(show, MIME("text/plain"), f_callable)
-    )
-    @test occursin(
-        "relations supplied on demand", sprint(show, MIME("text/plain"), m_callable)
-    )
+    @test occursin("relations supplied on demand", sprint(show, MIME("text/plain"), f_callable))
+    @test occursin("relations supplied on demand", sprint(show, MIME("text/plain"), m_callable))
     @test occursin("<callable>", sprint(show, MIME("text/plain"), f_callable))
     @test occursin("<function>", sprint(show, MIME("text/plain"), m_callable))
 
@@ -62,16 +50,11 @@ const Extension = Aletheia.Extension
     @test !occursin("1 relation", generated_display)
 
     # 2. Algebras
-    @test sprint(show, MIME("text/plain"), BOOLEAN) ==
-          "BooleanAlgebra (carrier Bool: {false, true})"
+    @test sprint(show, MIME("text/plain"), BOOLEAN) == "BooleanAlgebra (carrier Bool: {false, true})"
     @test occursin("GodelAlgebra{3}", sprint(show, MIME("text/plain"), GodelAlgebra(3)))
-    @test occursin(
-        "LukasiewiczAlgebra{4}", sprint(show, MIME("text/plain"), LukasiewiczAlgebra(4))
-    )
-    @test sprint(show, MIME("text/plain"), GodelAlgebra()) ==
-          "GodelAlgebra (unit interval [0.0, 1.0])"
-    @test sprint(show, MIME("text/plain"), LukasiewiczAlgebra()) ==
-          "LukasiewiczAlgebra (unit interval [0.0, 1.0])"
+    @test occursin("LukasiewiczAlgebra{4}", sprint(show, MIME("text/plain"), LukasiewiczAlgebra(4)))
+    @test sprint(show, MIME("text/plain"), GodelAlgebra()) == "GodelAlgebra (unit interval [0.0, 1.0])"
+    @test sprint(show, MIME("text/plain"), LukasiewiczAlgebra()) == "LukasiewiczAlgebra (unit interval [0.0, 1.0])"
 
     s_h4 = sprint(show, MIME("text/plain"), H4)
     @test occursin("FiniteFLewAlgebra{4}", s_h4)
@@ -114,4 +97,5 @@ const Extension = Aletheia.Extension
     s_q = sprint(show, MIME("text/plain"), q)
     @test occursin("BisimulationContraction (2 →", s_q)
     @test occursin("Classes (", s_q)
+
 end

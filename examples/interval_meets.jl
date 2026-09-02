@@ -18,12 +18,12 @@ println("Model with p at the target interval:")
 show(stdout, MIME"text/plain"(), model)
 println()
 println("worlds: ", collect(worlds(intervals)))
-println(
-    "MEETS successors of (1,2): ", collect(accessible(intervals, Interval(1, 2), MEETS))
-)
+println("MEETS successors of (1,2): ",
+    collect(accessible(intervals, Interval(1, 2), MEETS)))
 println("target valuation: ", target)
 println("check ⟨MEETS⟩p at (1,2): ", check(formula, model, Interval(1, 2)))
-println("relation predicate agrees: ", relation_holds(MEETS, Interval(1, 2), target))
+println("relation predicate agrees: ",
+    relation_holds(MEETS, Interval(1, 2), target))
 # BEGIN EXPECTED OUTPUT
 # Interval frame:
 # Frame (6 worlds, relations supplied on demand)

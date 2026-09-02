@@ -15,24 +15,16 @@ end
 function _measurement_status(time, note)
     time !== missing && return :measured
     startswith(lowercase(String(note)), "timeout") && return :timeout
-    return :failed
+    :failed
 end
-function Measurement(time, allocs, memory)
-    return Measurement(time, allocs, memory, "", missing, _measurement_status(time, ""))
-end
-function Measurement(time, allocs, memory, note::AbstractString)
-    return Measurement(
-        time, allocs, memory, String(note), missing, _measurement_status(time, note)
-    )
-end
-function Measurement(time, allocs, memory, note::AbstractString, load)
-    return Measurement(
-        time, allocs, memory, String(note), load, _measurement_status(time, note)
-    )
-end
-function Measurement(time, allocs, memory, note::AbstractString, load, status::Symbol)
-    return Measurement(time, allocs, memory, String(note), load, status)
-end
+Measurement(time, allocs, memory) = Measurement(time, allocs, memory, "", missing,
+    _measurement_status(time, ""))
+Measurement(time, allocs, memory, note::AbstractString) = Measurement(time, allocs, memory,
+    String(note), missing, _measurement_status(time, note))
+Measurement(time, allocs, memory, note::AbstractString, load) = Measurement(time, allocs, memory,
+    String(note), load, _measurement_status(time, note))
+Measurement(time, allocs, memory, note::AbstractString, load, status::Symbol) =
+    Measurement(time, allocs, memory, String(note), load, status)
 
 is_measured(m::Measurement) = m.status === :measured && m.time !== missing
 is_timeout_exitcode(exitcode) = exitcode in (124, 137, 143)
@@ -45,40 +37,24 @@ function outcome_summary(measurements)
     if failed > 0
         failure = findfirst(m -> m.status === :failed, measurements)
         note = measurements[failure].note
-        suffix = if measured > 0 || timed_out > 0
-            "; $(measured) measured, $(timed_out) timed out"
-        else
-            ""
-        end
+        suffix = measured > 0 || timed_out > 0 ? "; $(measured) measured, $(timed_out) timed out" : ""
         return "failed ($(failed)/$(total) seeds): $(note)$(suffix)"
     elseif timed_out > 0
         suffix = measured > 0 ? "; $(measured) measured" : ""
         return "timed out ($(timed_out)/$(total) seeds)$(suffix)"
     end
-    return nothing
+    nothing
 end
 
 function combine_measurements(first_measurement, second_measurement)
-    is_measured(first_measurement) &&
-        is_measured(second_measurement) &&
-        return Measurement(
-            first_measurement.time + second_measurement.time,
-            missing,
-            missing,
-            "",
-            missing,
-            :measured,
-        )
+    is_measured(first_measurement) && is_measured(second_measurement) &&
+        return Measurement(first_measurement.time + second_measurement.time, missing, missing,
+            "", missing, :measured)
     if first_measurement.status === :failed
-        return Measurement(
-            missing, missing, missing, first_measurement.note, missing, :failed
-        )
+        return Measurement(missing, missing, missing, first_measurement.note, missing, :failed)
     elseif second_measurement.status === :failed
-        return Measurement(
-            missing, missing, missing, second_measurement.note, missing, :failed
-        )
+        return Measurement(missing, missing, missing, second_measurement.note, missing, :failed)
     end
-    note =
-        isempty(first_measurement.note) ? second_measurement.note : first_measurement.note
-    return Measurement(missing, missing, missing, note, missing, :timeout)
+    note = isempty(first_measurement.note) ? second_measurement.note : first_measurement.note
+    Measurement(missing, missing, missing, note, missing, :timeout)
 end

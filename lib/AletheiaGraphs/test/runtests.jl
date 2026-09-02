@@ -50,12 +50,12 @@ end
     m = AletheiaGraphs.model(g; relation_map=r -> r.id, concept_valuation=valuation)
     @test AletheiaCore.extension(formula, m) == BitVector([true, false, false])
     @test concept_extension(atom(:trusted), g; concept_valuation=valuation) ==
-          BitVector([false, true, false])
+        BitVector([false, true, false])
     fuzzy = concept_extension(
         atom(:trusted),
         g;
         algebra=GodelAlgebra(3),
-        concept_valuation=(n, e) -> e.id == :alice ? 1.0 : 0.5,
+        concept_valuation=(n, e)->e.id == :alice ? 1.0 : 0.5,
     )
     @test fuzzy == [1.0, 0.5, 0.5]
 end

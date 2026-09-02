@@ -6,7 +6,7 @@ struct _Token
 end
 
 function _tokenize(source::AbstractString, signature::Signature)
-    operators = sort!(collect(notation.(signature.connectives)); by=length, rev=true)
+    operators = sort!(collect(notation.(signature.connectives)), by=length, rev=true)
     tokens = _Token[]
     chars = String(source)
     i = firstindex(chars)
@@ -30,9 +30,7 @@ function _tokenize(source::AbstractString, signature::Signature)
                     i = nextind(chars, i)
                     i <= last || throw(ArgumentError("unterminated quoted atom"))
                     escaped = chars[i]
-                    escaped == '"' ||
-                        escaped == '\\' ||
-                        throw(ArgumentError("unsupported escape in quoted atom"))
+                    escaped == '"' || escaped == '\\' || throw(ArgumentError("unsupported escape in quoted atom"))
                     print(buffer, escaped)
                 else
                     print(buffer, c)
@@ -43,17 +41,11 @@ function _tokenize(source::AbstractString, signature::Signature)
             push!(tokens, _Token(:atom, String(take!(buffer))))
             continue
         elseif c == '('
-            push!(tokens, _Token(:lparen, "("))
-            i = nextind(chars, i)
-            continue
+            push!(tokens, _Token(:lparen, "(")); i = nextind(chars, i); continue
         elseif c == ')'
-            push!(tokens, _Token(:rparen, ")"))
-            i = nextind(chars, i)
-            continue
+            push!(tokens, _Token(:rparen, ")")); i = nextind(chars, i); continue
         elseif c == ','
-            push!(tokens, _Token(:comma, ","))
-            i = nextind(chars, i)
-            continue
+            push!(tokens, _Token(:comma, ",")); i = nextind(chars, i); continue
         end
         matched = nothing
         for op in operators
@@ -67,19 +59,16 @@ function _tokenize(source::AbstractString, signature::Signature)
         start = i
         while i <= last
             c = chars[i]
-            if isspace(c) ||
-               c in ('(', ')', ',') ||
-               any(op -> startswith(SubString(chars, i, last), op), operators)
+            if isspace(c) || c in ('(', ')', ',') || any(op -> startswith(SubString(chars, i, last), op), operators)
                 break
             end
             i = nextind(chars, i)
         end
-        i == start &&
-            throw(ArgumentError("cannot tokenize input near $(repr(chars[i:end]))"))
+        i == start && throw(ArgumentError("cannot tokenize input near $(repr(chars[i:end]))"))
         push!(tokens, _Token(:atom, String(chars[start:prevind(chars, i)])))
     end
     push!(tokens, _Token(:end, ""))
-    return tokens
+    tokens
 end
 
 mutable struct _Parser{F}
@@ -94,7 +83,7 @@ end
 @inline function _advance!(parser::_Parser)
     token = _current(parser)
     parser.position += 1
-    return token
+    token
 end
 
 function _parse_prefix!(parser::_Parser)
@@ -112,8 +101,7 @@ function _parse_prefix!(parser::_Parser)
         if n == 0
             if _current(parser).kind == :lparen
                 _advance!(parser)
-                _current(parser).kind == :rparen ||
-                    throw(ArgumentError("expected ')' after nullary connective"))
+                _current(parser).kind == :rparen || throw(ArgumentError("expected ')' after nullary connective"))
                 _advance!(parser)
             end
             return branch(parser.pool, connective)
@@ -122,19 +110,15 @@ function _parse_prefix!(parser::_Parser)
             if _current(parser).kind == :lparen
                 _advance!(parser)
                 child = _parse_expression!(parser, 0)
-                _current(parser).kind == :rparen ||
-                    throw(ArgumentError("expected ')' after unary connective"))
+                _current(parser).kind == :rparen || throw(ArgumentError("expected ')' after unary connective"))
                 _advance!(parser)
             else
                 child = _parse_expression!(parser, precedence(connective))
             end
             return branch(parser.pool, connective, child)
         else
-            _current(parser).kind == :lparen || throw(
-                ArgumentError(
-                    "connective $(repr(token.text)) with arity $n needs function notation",
-                ),
-            )
+            _current(parser).kind == :lparen ||
+                throw(ArgumentError("connective $(repr(token.text)) with arity $n needs function notation"))
             _advance!(parser)
             parsed = Any[]
             if _current(parser).kind != :rparen
@@ -144,15 +128,13 @@ function _parse_prefix!(parser::_Parser)
                     _advance!(parser)
                 end
             end
-            _current(parser).kind == :rparen ||
-                throw(ArgumentError("expected ')' after connective arguments"))
+            _current(parser).kind == :rparen || throw(ArgumentError("expected ')' after connective arguments"))
             _advance!(parser)
-            length(parsed) == n ||
-                throw(ArgumentError("connective $(repr(token.text)) expects $n arguments"))
+            length(parsed) == n || throw(ArgumentError("connective $(repr(token.text)) expects $n arguments"))
             return branch(parser.pool, connective, Tuple(parsed))
         end
     end
-    return throw(ArgumentError("unexpected token $(repr(token.text))"))
+    throw(ArgumentError("unexpected token $(repr(token.text))"))
 end
 
 function _parse_expression!(parser::_Parser, minimum_precedence::Int)
@@ -169,7 +151,7 @@ function _parse_expression!(parser::_Parser, minimum_precedence::Int)
         right = _parse_expression!(parser, next_minimum)
         left = branch(parser.pool, connective, left, right)
     end
-    return left
+    left
 end
 
 """
@@ -197,15 +179,13 @@ function parse(pool::FormulaPool, source::AbstractString; atom_parser=identity)
     bynotation = Dict{String,Any}()
     for connective in pool.signature.connectives
         text = notation(connective)
-        haskey(bynotation, text) &&
-            throw(ArgumentError("duplicate connective notation $(repr(text))"))
+        haskey(bynotation, text) && throw(ArgumentError("duplicate connective notation $(repr(text))"))
         bynotation[text] = connective
     end
     parser = _Parser(_tokenize(source, pool.signature), 1, pool, bynotation, atom_parser)
     result = _parse_expression!(parser, 0)
-    _current(parser).kind == :end ||
-        throw(ArgumentError("unexpected token $(repr(_current(parser).text))"))
-    return result
+    _current(parser).kind == :end || throw(ArgumentError("unexpected token $(repr(_current(parser).text))"))
+    result
 end
 
 """Parse with the pool as the second argument; a convenience spelling for [`parse`](@ref)."""
@@ -223,6 +203,4 @@ change what `parse("...")` means for every package loaded alongside Aletheia.
 Dispatching on `Formula` keeps the method Aletheia's own and follows Base's
 own `parse(T, string)` convention.
 """
-function parse(::Type{<:Formula}, source::AbstractString; kwargs...)
-    return parse(DEFAULT_POOL, source; kwargs...)
-end
+parse(::Type{<:Formula}, source::AbstractString; kwargs...) = parse(DEFAULT_POOL, source; kwargs...)

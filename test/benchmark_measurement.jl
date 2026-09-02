@@ -3,9 +3,8 @@ include(joinpath(@__DIR__, "..", "benchmark", "measurement.jl"))
 @testset "benchmark outcomes" begin
     measured = Measurement(1.0, 2, 3)
     timed_out = Measurement(missing, missing, missing, "timeout (120s)")
-    failed = Measurement(
-        missing, missing, missing, "failed (exit code 1): UndefVarError: stale_name"
-    )
+    failed = Measurement(missing, missing, missing,
+        "failed (exit code 1): UndefVarError: stale_name")
 
     @test measured.status === :measured
     @test timed_out.status === :timeout
