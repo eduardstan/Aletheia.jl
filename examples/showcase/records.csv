@@ -1,0 +1,5 @@
+id,hot,dry,cool,target
+r1,100,100,0,alert
+r2,75,25,25,review
+r3,25,25,100,calm
+r4,25,75,75,calm
