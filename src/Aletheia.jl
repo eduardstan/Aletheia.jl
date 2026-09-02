@@ -337,6 +337,7 @@ export check,
     EvaluationCache,
     clear!,
     Valuation,
+    ValuationCallback,
     Model,
     frame,
     algebra,
@@ -454,6 +455,7 @@ export world_map,
 
 # Keep qualified access to the historical, non-exported display helpers.
 const Extension = AletheiaCore.Extension
+const ValuationCallback = AletheiaCore.ValuationCallback
 const truthlabel = AletheiaCore.truthlabel
 const _chain_flew = AletheiaCore._chain_flew
 const _display_truth = AletheiaCore._display_truth

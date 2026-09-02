@@ -389,6 +389,89 @@ consumer, first decide whether you are measuring cold adapter construction,
 steady reuse, or fresh-family churn; this page provides evidence for each, not a
 universal speedup.
 
+## Deployed-model apply paths
+
+This is a separate apply-path experiment against the fully optimized Sole
+stack. The fixture is one seeded `ModalDecisionTrees` model trained on a
+16-instance, 8-point supported scalar dataset. The same translated formula
+roots, source data, and world order are used by every mode. The differential
+gate compares every formula extension, antecedent mask, and prediction before
+any timing.
+
+The Sole rows name the path being measured. **Sole formula-check** calls
+`SoleData.check` with full memoization and one-step memoization enabled,
+including global precomputation and explicit relational-precompute=false.
+**Deployed modal-tree apply** calls `ModalDecisionTrees.apply`, whose direct
+`modalstep`/`checkcondition` hot path bypasses SoleData formula memos.
+**Decision-list apply** calls `SoleModels.apply` and therefore routes antecedent
+checks through `SoleLogics.check`. Aletheia's callback rows use a prepared model family and the same converted
+roots: **scalar callback** disables the batch callback, while **vectorized batch
+callback** supplies it. The **prepared scalar-data** rows instead use
+`DenseFeatureStore`, `prepare_scalar`, and `scalar_family` over materialized
+world × instance × feature values; their store/preparation cost is reported
+separately from apply. Preparation and frame/model conversion are reported
+separately for both paths.
+
+The five seed medians shown here are aggregated by median across seeds
+(`0xA1E7_2024`, `0x5EED_2025`, `0xC0FF_EE42`, `0x1234_5678`, and
+`0x9ABC_DEF0`); the paired allocation/byte observation is the one nearest that
+aggregate median. The raw artifact records five time/allocation-paired samples for timed phases,
+the sample nearest the median with its allocations and bytes, fixed seeds, cache controls,
+Julia/package versions, child niceness, and uptime before and after each
+section. It also records fresh-dataset churn separately from first use and warm
+reuse. The published values below are scope-limited.
+
+| mode | steady/cold first-use (ms; allocations / bytes) | fresh-dataset churn (ms; allocations / bytes) |
+| --- | ---: | ---: |
+| Sole formula-check | 11.517; 103,127 / 4,028,272 | 18.359; 222,979 / 10,762,736 |
+| supported-cold (construction + first check) | 18.833; 223,554 / 10,934,488 | 19.904; 223,554 / 10,934,488 |
+| supported-warm | 10.524; 103,127 / 4,028,272 | 18.743; 222,979 / 10,762,736 |
+| deployed modal-tree apply | 0.192; 470 / 34,016 | 0.074; 470 / 34,016 |
+| decision-list apply | 4.348; 36,515 / 1,415,616 | 11.128; 109,330 / 6,100,080 |
+| Aletheia scalar callback | 1.249; 14,358 / 3,759,120 | 15.958; 117,494 / 21,367,056 |
+| Aletheia vectorized batch callback | 0.749; 7,414 / 1,274,512 | 18.235; 110,550 / 18,882,448 |
+| Aletheia bridge scalar-data | 1.256; 14,371 / 4,117,952 bytes | 15.252; 117,507 / 21,725,888 bytes |
+| Aletheia bridge vectorized scalar-data | 0.683; 7,427 / 1,384,256 bytes | 16.148; 110,563 / 18,992,192 bytes |
+| Aletheia dense scalar-data | 1.268; 14,371 / 4,117,952 bytes | 17.244; 117,507 / 21,725,888 bytes |
+| Aletheia dense vectorized scalar-data | 0.871; 7,427 / 1,384,256 bytes | 16.019; 110,563 / 18,992,192 bytes |
+
+The scale sweep keeps the trained formula roots fixed and changes only the
+supported dataset size. It compares native `SoleModels.apply` with prepared
+Aletheia scalar and vectorized callbacks under the same five seeds. Each child
+runs under a 6 GB resident-memory limit and a 900-second section timeout; its
+peak RSS is retained in the raw artifact. The largest completed case is the
+largest one shown as measured below; memory- or time-limited cases are shown as
+skipped rather than imputed.
+
+| instances × points | native decision-list warm / churn (ms) | Aletheia scalar warm / churn (ms) | Aletheia vectorized warm / churn (ms) |
+| --- | ---: | ---: | ---: |
+| 32 × 8 | 8.804 / 23.152 ms | 1.933 / 41.266 ms | 1.645 / 36.654 ms |
+| 64 × 8 | 14.168 / 38.021 ms | 8.157 / 79.684 ms | 3.051 / 77.516 ms |
+| 128 × 8 | 23.382 / 66.419 ms | 16.619 / 185.868 ms | 7.559 / 166.299 ms |
+| 256 × 8 | 51.334 / 148.870 ms | 36.094 / 389.007 ms | 12.506 / 353.174 ms |
+| 512 × 8 | 113.189 / 352.923 ms | 98.969 / 706.175 ms | 26.180 / 727.951 ms |
+
+A one-iteration `Profile.Allocs` profile is recorded beside the scale rows. It
+runs the exact apply call on a never-used fresh fixture after a separate
+profiler warm-up and reports aggregated stack-frame file:line sites, bytes, and
+counts for the callback, native decision list, and dense-store path. The top
+vectorized callback site is `AletheiaCore/src/evaluation.jl:528` (16,781,888
+bytes), with `AletheiaData/src/dataset.jl:109` next (15,733,020 bytes). The
+dense-store profile has the same evaluator sites (`:528`, 16,891,200 bytes;
+`AletheiaData/src/dataset.jl:109`, 15,835,500 bytes). Native apply is led by
+`SoleModels/.../other.jl:149` (5,554,802 bytes) and `:165` (5,501,874 bytes),
+with `SoleLogics/.../rule-and-branch.jl:490` next (5,501,570 bytes). The
+profile therefore attributes the measured fresh-fixture gap to Aletheia
+extension/data evaluation allocation sites, not to eager dense feature
+materialization in the apply call; preparation remains outside apply timing.
+
+The construction and first-use values are intentionally not folded into warm
+reuse. This is a result for the declared workload and mode, never
+"universally faster". Reproduce it with the package paths and command in
+[`benchmark/README.md`](https://github.com/eduardstan/Aletheia.jl/blob/main/benchmark/README.md);
+this run is publishable because both recorded gates pass. The full per-seed output is retained in
+[`data/benchmark-run/deployed-apply.txt`](https://github.com/eduardstan/Aletheia.jl/blob/main/data/benchmark-run/deployed-apply.txt).
+
 ## Correctness and coverage
 
 `benchmark/differential.jl` uses the same fixed seed and passes its syntax and

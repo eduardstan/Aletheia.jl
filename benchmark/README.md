@@ -74,6 +74,43 @@ both cold first-check and warm repeated-check medians.  The report is
 GNU `timeout`, temporary files, medians, and allocation counts; no benchmark
 output is piped.
 
+## Deployed-model apply-path protocol
+
+`benchmark/deployed_apply.jl` measures a trained `ModalDecisionTrees` model and
+its translated `SoleModels.DecisionList` against the same supported dataset,
+formula roots, and world order. It develops Aletheia, SoleLogics, SoleData,
+SoleModels, and ModalDecisionTrees into a temporary environment; no dependency
+checkout is modified. Set all package paths before running:
+
+```sh
+SOLELOGICS_PATH=/path/to/SoleLogics.jl \
+SOLEDATA_PATH=/path/to/SoleData.jl \
+SOLEMODELS_PATH=/path/to/SoleModels.jl \
+MODALDECISIONTREES_PATH=/path/to/ModalDecisionTrees.jl \
+julia --startup-file=no --project=benchmark benchmark/deployed_apply.jl
+```
+
+The deterministic gate in `benchmark/deployed_apply_differential.jl` runs before
+any timing. It compares world extensions and per-instance antecedent masks for
+scalar and vectorized `ValuationCallback`s, then compares predictions from the
+deployed modal tree, native decision list, and both Aletheia callbacks. The
+Sole formula row measures `SoleData.check` with full and one-step memoization;
+the deployed modal-tree row measures `ModalDecisionTrees.apply`'s direct
+`modalstep`/`checkcondition` path, which bypasses formula memos; the decision-list
+row measures `SoleModels.apply` through `SoleLogics.check`.
+
+Each section records uptime before and after timing. Children run at nice level
+15 with `OPENBLAS_NUM_THREADS=1` and `JULIA_NUM_PRECOMPILE_TASKS=2`. Construction,
+first use, warm reuse, and fresh-dataset churn are separate phases. Aletheia
+frame/model-family conversion is measured separately and excluded from steady
+apply. A failed quiet-machine or parity gate makes the artifact
+non-publishable. Raw results and package paths/versions belong in
+`data/benchmark-run/deployed-apply.txt`. The scale sweep uses 32, 64, 128, 256, and 512 instances with 8 points.
+Each child has a 6 GB resident-memory cap and a 900-second section bound;
+memory- and time-limited cases are recorded as skipped with their peak RSS.
+The artifact also contains cold one-iteration allocation attribution profiles
+for the callback, native decision list, and dense-store path.
+
 ## SoleModels consumer comparison
 
 This experiment is a narrow consumer comparison: it compares the installed

@@ -204,6 +204,7 @@ using Aletheia
         :EvaluationCache,
         :clear!,
         :Valuation,
+        :ValuationCallback,
         :Model,
         :frame,
         :algebra,
