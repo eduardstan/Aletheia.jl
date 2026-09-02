@@ -12,6 +12,8 @@ AletheiaLearn
 AletheiaSole
 AletheiaCircuits
 AletheiaGraphs
+AletheiaAudit
+AletheiaNeSy
 Aletheia.SoleLogics
 ```
 
@@ -68,6 +70,24 @@ Order = [:type, :function, :constant]
 
 ```@autodocs
 Modules = [AletheiaGraphs]
+Public = true
+Private = false
+Order = [:type, :function, :constant]
+```
+
+## Audit artifacts
+
+```@autodocs
+Modules = [AletheiaAudit]
+Public = true
+Private = false
+Order = [:type, :function, :constant]
+```
+
+## Neural-symbolic interface
+
+```@autodocs
+Modules = [AletheiaNeSy]
 Public = true
 Private = false
 Order = [:type, :function, :constant]

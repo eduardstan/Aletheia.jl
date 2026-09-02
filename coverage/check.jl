@@ -16,6 +16,8 @@ source_roots = vcat(
             "AletheiaSole",
             "AletheiaCircuits",
             "AletheiaGraphs",
+            "AletheiaAudit",
+            "AletheiaNeSy",
         )
     ],
 )

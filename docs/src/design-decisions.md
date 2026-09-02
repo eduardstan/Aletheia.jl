@@ -93,3 +93,27 @@ package remains directly usable.
 exact claims for the declared fragment. Function symbols, cycles, unnormalized
 choices, and zero-mass evidence fail with typed exceptions. Gradients, EM,
 and general AMC remain deliberately outside this contract.
+
+## 2026-09-02 — Traces by default
+
+**Context.** Audited symbolic decisions need checkable execution evidence, not only a final answer.
+
+**Choice.** Every audited artifact evaluation emits a minimal deterministic trace. Sampling or redaction is explicit and records its scope.
+
+**Consequence.** Consumers can serialize and replay an evaluation, while privacy-sensitive consumers can account for deliberate omissions.
+
+## 2026-09-02 — Metric applicability is explicit
+
+**Context.** Uncovered and out-of-vocabulary cases are not negative predictions.
+
+**Choice.** Every audit metric carries its population, numerator, denominator, scope, and applicability. An inapplicable metric is missing rather than zero.
+
+**Consequence.** Coverage and fidelity cannot hide undefined cases through denominator choices. This follows the metric requirements of symbolic XAI [stan2026](@cite).
+
+## 2026-09-02 — Semantic loss requires a soundness profile
+
+**Context.** Forward symbolic evaluation does not establish a reverse-mode gradient contract.
+
+**Choice.** The neural-symbolic package exposes exact extraction and verification first. Semantic loss remains a typed, disabled placeholder until carrier and gradient soundness are proven.
+
+**Consequence.** Hard symbolic claims are not confused with an unverified differentiable relaxation [stan2026; riguzzi2023](@cite).

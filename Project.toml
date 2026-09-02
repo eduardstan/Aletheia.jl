@@ -10,6 +10,8 @@ AletheiaData = "74ea9182-2ae2-40c1-8d48-286e4f6c8d81"
 AletheiaLearn = "dd9ab238-975a-464e-adea-60655e279e0b"
 AletheiaSole = "668d19f0-cf9f-4c81-ba74-1183708b87c8"
 AletheiaCircuits = "f2f2c2cc-9ec4-4b98-ae6d-f76c6e1f4e8a"
+AletheiaAudit = "9b1fc5e2-2bc8-4d3e-b86c-7f8dd7c3a201"
+AletheiaNeSy = "c6a28e09-b8be-46e4-9a57-5d5b5ab5c402"
 
 [compat]
 AletheiaCore = "0.2"
@@ -18,6 +20,8 @@ AletheiaData = "0.2"
 AletheiaLearn = "0.2"
 AletheiaSole = "0.2"
 AletheiaCircuits = "0.2"
+AletheiaAudit = "0.2"
+AletheiaNeSy = "0.2"
 Aqua = "0.8"
 AllocCheck = "0.2"
 Coverage = "1"
@@ -48,3 +52,5 @@ AletheiaData = {path = "lib/AletheiaData"}
 AletheiaLearn = {path = "lib/AletheiaLearn"}
 AletheiaSole = {path = "lib/AletheiaSole"}
 AletheiaCircuits = {path = "lib/AletheiaCircuits"}
+AletheiaAudit = {path = "lib/AletheiaAudit"}
+AletheiaNeSy = {path = "lib/AletheiaNeSy"}

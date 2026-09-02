@@ -5,6 +5,12 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
 
 ## Unreleased
 
+- Added focused `AletheiaAudit` and `AletheiaNeSy` packages. Audit artifacts emit
+  deterministic replayable traces and applicability-aware metrics; the neural
+  interface validates callable network leaves and supports exact finite
+  symbolic round trips. Semantic loss remains disabled until a sound gradient
+  profile exists.
+
 - Added the focused `AletheiaCircuits` package for finite distribution
   semantics: normalized independent choices, ground acyclic rules, certified
   reduced ordered event diagrams, and separate Float64/Rational WMC and

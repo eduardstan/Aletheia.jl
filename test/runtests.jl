@@ -319,6 +319,14 @@ using Aletheia
         :isvalid,
         :entails,
         :SoleLogics,
+        :SymbolicArtifact, :ArtifactState, :ArtifactOperation, :ArtifactCase, :Provenance,
+        :TraceStep, :ExecutionTrace, :VerificationReport, :MetricValue, :MetricBundle,
+        :AuditRecord, :ArtifactRule, :RuleArtifact, :TreeArtifact, :eval_artifact,
+        :extract_artifact, :inject!, :verify_artifact, :metric_bundle, :audit, :replay,
+        :serialize_trace, :deserialize_trace, :stable_hash, :provenance, :rules, :nodes,
+        :test_interface, :NeSyContractError, :InvalidNeuralValueError, :MalformedCaseError,
+        :SemanticLossError, :ChoiceLabelError, :NeuralLeafValuation, :SKERoundTrip,
+        :neural_valuation, :neural_choice_labels, :ske_roundtrip, :semantic_loss,
     ])
     union!(
         expected,
