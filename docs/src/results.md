@@ -437,24 +437,6 @@ reuse. The published values below are scope-limited.
 | Aletheia dense scalar-data | 1.268; 14,371 / 4,117,952 bytes | 17.244; 117,507 / 21,725,888 bytes |
 | Aletheia dense vectorized scalar-data | 0.871; 7,427 / 1,384,256 bytes | 16.019; 110,563 / 18,992,192 bytes |
 
-### After allocation fix
-
-The rerun recorded in `data/benchmark-run/deployed-apply-after.txt` uses the same five
-seeds and caps the scale sweep at 128 instances. Differential and scale parity
-passed. The raw run is marked non-publishable because the final quiet-machine gate
-observed host load above its limit and the profiler emitted no attribution; its
-measurements are reported with those limitations.
-
-| mode | steady/cold first-use (ms; allocations / bytes) | fresh-dataset churn (ms; allocations / bytes) |
-| --- | ---: | ---: |
-| decision-list apply | 4.773; 36,693 / 1,421,888 | 15.206; 110,135 / 6,103,200 |
-| Aletheia scalar callback | 1.069; 12,369 / 3,607,984 | 2.025; 18,815 / 4,708,480 |
-| Aletheia vectorized batch callback | 0.617; 4,529 / 635,056 | 1.994; 10,975 / 1,735,552 |
-| Aletheia bridge scalar-data | 1.234; 12,965 / 3,996,384 | 18.841; 116,101 / 21,604,320 |
-| Aletheia bridge vectorized scalar-data | 0.771; 5,797 / 1,251,936 | 17.321; 108,933 / 18,859,872 |
-| Aletheia dense scalar-data | 2.085; 12,965 / 3,996,384 | 21.438; 116,101 / 21,604,320 |
-| Aletheia dense vectorized scalar-data | 0.592; 5,797 / 1,251,936 | 17.023; 108,933 / 18,859,872 |
-
 The scale sweep keeps the trained formula roots fixed and changes only the
 supported dataset size. It compares native `SoleModels.apply` with prepared
 Aletheia scalar and vectorized callbacks under the same five seeds. Each child
@@ -472,14 +454,6 @@ skipped rather than imputed.
 | 128 × 8 | 23.382 / 66.419 ms | 16.619 / 185.868 ms | 7.559 / 166.299 ms |
 | 256 × 8 | 51.334 / 148.870 ms | 36.094 / 389.007 ms | 12.506 / 353.174 ms |
 | 512 × 8 | 113.189 / 352.923 ms | 98.969 / 706.175 ms | 26.180 / 727.951 ms |
-
-### After allocation fix (scope-limited scale sweep)
-
-| instances × points | native decision-list warm / churn (ms) | Aletheia scalar warm / churn (ms) | Aletheia vectorized warm / churn (ms) |
-| --- | ---: | ---: | ---: |
-| 32 × 8 | 9.189 / 23.219 ms | 2.030 / 2.685 ms | 1.048 / 1.789 ms |
-| 64 × 8 | 13.161 / 35.686 ms | 6.207 / 4.188 ms | 2.101 / 2.692 ms |
-| 128 × 8 | 25.983 / 58.040 ms | 13.690 / 12.930 ms | 5.350 / 6.083 ms |
 
 A one-iteration `Profile.Allocs` profile is recorded beside the scale rows. It
 runs the exact apply call on a never-used fresh fixture after a separate
