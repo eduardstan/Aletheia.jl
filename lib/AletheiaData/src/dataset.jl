@@ -118,8 +118,28 @@ for an empty or non-uniform family.  Equality is checked on the frames rather
 than assumed from the family type.
 """
 function _same_frame(left::Frame, right::Frame)
-    worlds(left) == worlds(right) && relations(left) == relations(right) &&
-        world_index(left) == world_index(right)
+    # Frame identity is intentionally irrelevant here: an equal world order and
+    # relation mapping provide the same evaluation plan.  The world index is an
+    # implementation detail and does not change frame semantics.
+    isequal(worlds(left), worlds(right)) &&
+        isequal(relations(left), relations(right))
+end
+
+# Retain the first frame for each equal world/relation signature.  This is
+# deduplication only; frames with different semantics keep their identity.
+function _share_frames(frames)
+    representatives = Any[]
+    for position in eachindex(frames)
+        candidate = frames[position]
+        representative = findfirst(frame -> _same_frame(frame, candidate),
+            representatives)
+        if representative === nothing
+            push!(representatives, candidate)
+        else
+            frames[position] = representatives[representative]
+        end
+    end
+    frames
 end
 
 """
