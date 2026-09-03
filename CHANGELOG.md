@@ -5,6 +5,10 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
 
 ## Unreleased
 
+- Closed the finite-value, numeric-normalization, ownership, replay-authentication,
+  and representation-symmetry boundaries with cycle-safe checks, immutable audit
+  sequences, finite label scaling, and typed mixed-family rejection.
+
 - Exact rational WMC now uses an unbounded carrier and tuple normalization for Float64 weights; neural extraction canonicalizes leaves through the validated algebra path; mutable callback values and graph metadata are owned at their boundaries.
 - Trace replay now requires artifact and graph context (including a graph hash), and `ModelFamily` rejects mixed truth algebras with a typed error.
 - Fixed interval-subset benchmark relation bindings and kept deployed scale cases aligned through 128 instances.

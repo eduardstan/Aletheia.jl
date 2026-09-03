@@ -4,6 +4,24 @@ This page records the choices that shape Aletheia's public architecture. Each
 entry gives the context, the choice, and the consequence for users and
 contributors.
 
+## 2026-09-04 — Checked values and immutable audit material
+
+**Context.** Public boundaries must validate the complete accepted value domain,
+keep numeric normalization finite, and prevent callers from changing retained
+results or replay context.
+
+**Choice.** Constructors route finite ground values through one cycle-safe
+checked path. Tuple alternatives are treated as atoms when present as whole
+world values. Neural labels scale before summation. Public audit sequences are
+stored as tuples, cached scalar results are copied, and replay authenticates
+artifact identity, provenance, and every step. Model-family vectors containing
+models use the same algebra check regardless of their element type. Graph
+metadata consumers accept both dictionary and named-tuple records.
+
+**Consequence.** Invalid recursive values fail with typed errors, accepted tuple
+alternatives have matching query semantics, finite labels remain normalized,
+and audit and family boundaries cannot be bypassed by mutable or erased inputs.
+
 ## 2026-09-03 — Exact and owned boundary values
 
 **Context.** Numeric, callback, graph, and family boundaries must not silently

@@ -43,6 +43,12 @@ function _weight_is_valid(weight)
 end
 
 function _validate_choice(id, alternatives, weights)
+    # Route public choice values through the common finite-ground validator before
+    # equality or arithmetic checks, so recursive values fail closed.
+    _validate_ground(id, "choice identifier")
+    for alternative in alternatives
+        _validate_ground(alternative, "choice alternative")
+    end
     isempty(alternatives) && throw(
         ProgramValidationError(
             :nonempty_alternatives, "choice variables need at least one alternative"
@@ -199,6 +205,7 @@ struct ProbabilisticFact{A,P}
     atom::A
     probability::P
     function ProbabilisticFact(atom, probability)
+        _validate_ground(atom, "probabilistic fact")
         _weight_is_valid(probability) && probability <= one(probability) || throw(
             InvalidProbabilityError(
                 :unit_interval, "a probabilistic fact probability must lie in [0, 1]"
@@ -222,6 +229,11 @@ GroundRule{Symbol, Tuple{Symbol, Symbol}}(:a, (:b, :c))
 struct GroundRule{H,B<:Tuple}
     head::H
     body::B
+    function GroundRule{H,B}(head::H, body::B) where {H,B<:Tuple}
+        _validate_ground(head, "rule head")
+        _validate_ground(body, "rule body")
+        return new{H,B}(head, body)
+    end
 end
 
 function _body_tuple(body)
@@ -230,9 +242,12 @@ function _body_tuple(body)
     body isa AbstractVector && return tuple(body...)
     return (body,)
 end
+function GroundRule(head, body)
+    body_tuple = _body_tuple(body)
+    return GroundRule{typeof(head),typeof(body_tuple)}(head, body_tuple)
+end
 GroundRule(head) = GroundRule(head, ())
 GroundRule(head, body::AbstractVector) = GroundRule(head, tuple(body...))
-GroundRule(head, body) = GroundRule(head, _body_tuple(body))
 GroundRule(head, first, rest...) = GroundRule(head, (first, rest...))
 
 """Conjunction and disjunction are explicit event expressions for queries.
@@ -567,19 +582,19 @@ true
 """
 const DSWorld = Set{Any}
 
-function _first_feature(values)
+function _first_feature(values, seen=IdDict{Any,Bool}())
     for value in values
-        feature = _contains_feature(value)
+        feature = _contains_feature(value, seen)
         feature === nothing || return feature
     end
     return nothing
 end
 
-function _contains_feature(value)
+function _contains_feature(value, seen=IdDict{Any,Bool}())
     value isa AletheiaCore.FunctionTerm && return :function_symbols
     value isa AletheiaCore.Variable && return :variables
-    value isa AletheiaCore.Predicate && return _first_feature(value.arguments)
-    value isa AletheiaCore.Equality && return _first_feature((value.left, value.right))
+    value isa AletheiaCore.Predicate && return _first_feature(value.arguments, seen)
+    value isa AletheiaCore.Equality && return _first_feature((value.left, value.right), seen)
     value isa Union{
         AletheiaCore.FONegation,
         AletheiaCore.FOConjunction,
@@ -588,15 +603,23 @@ function _contains_feature(value)
         AletheiaCore.Exists,
         AletheiaCore.Forall,
     } && return :first_order_formulas
-    value isa AletheiaCore.Constant && return _contains_feature(value.value)
-    value isa EventNot && return _contains_feature(value.child)
-    value isa EventAnd && return _first_feature(value.children)
-    value isa EventOr && return _first_feature(value.children)
-    value isa Pair && return _first_feature((value.first, value.second))
-    value isa NamedTuple && return _first_feature(values(value))
-    value isa Tuple && return _first_feature(value)
-    value isa AbstractArray && return _first_feature(value)
-    return nothing
+    value isa AletheiaCore.Constant && return _contains_feature(value.value, seen)
+    value isa EventNot && return _contains_feature(value.child, seen)
+    value isa EventAnd && return _first_feature(value.children, seen)
+    value isa EventOr && return _first_feature(value.children, seen)
+    value isa Pair && return _first_feature((value.first, value.second), seen)
+    value isa NamedTuple && return _first_feature(values(value), seen)
+    value isa Tuple && return _first_feature(value, seen)
+    value isa AbstractArray || value isa AbstractSet || value isa AbstractDict || return nothing
+    haskey(seen, value) && return nothing
+    seen[value] = true
+    feature = if value isa AbstractDict
+        _first_feature((pair for pair in value), seen)
+    else
+        _first_feature(value, seen)
+    end
+    delete!(seen, value)
+    return feature
 end
 
 function _expression_atoms(expression)
@@ -870,6 +893,9 @@ end
 
 function _expression_value(expression, atoms::Set{Any})
     expression isa Bool && return expression
+    # A tuple present as a whole world value is an atom; absent tuples retain
+    # their explicit conjunction syntax.
+    expression isa Tuple && expression in atoms && return true
     expression isa EventNot && return !_expression_value(expression.child, atoms)
     expression isa EventAnd &&
         return all(_expression_value(v, atoms) for v in expression.children)

@@ -17,7 +17,9 @@ acyclic rule dependency graph. Consequences are two-valued. Queries and
 evidence can use atoms and explicit `Not`, `And`, and `Or` event expressions.
 The front end enumerates the finite primitive choices to build a reduced
 ordered choice decision diagram. Enumeration is a simple, auditable grounding
-strategy for this fragment. Reduced circuit representations and their
+strategy for this fragment. A ground tuple is an atomic alternative when the
+whole tuple is present in a world; a tuple not present in the world retains its
+legacy conjunction syntax. Reduced circuit representations and their
 tractable operations are the knowledge-compilation boundary described by
 Darwiche and Marquis [darwiche2002](@cite). The resulting circuit certificate
 records the choice order, every node's support, disjoint decision branches, and

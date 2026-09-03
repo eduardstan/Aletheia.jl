@@ -101,20 +101,45 @@
     )
 end
 
-
 @testset "rational profile converts Float64 weights" begin
     p = DSProgram(choices=[ChoiceVariable(:c, (:yes, :no), (0.1, 0.9))])
     @test wmc(compile_event(p, :yes); semiring=RationalProfile()) == 1//10
 end
 
-
 @testset "finite containers and rational normalization" begin
     cyclic = Dict{Symbol,Any}(); cyclic[:self] = cyclic
-    program = DSProgram(choices=[ChoiceVariable(:c, (cyclic, nothing), (1//2, 1//2))])
-    @test_throws UnsupportedFeatureError validate_program(program)
+    @test_throws UnsupportedFeatureError ChoiceVariable(
+        :c, (cyclic, nothing), (1//2, 1//2)
+    )
     weights = (0.123456789, 0.234567891, 0.64197532)
     pfloat = DSProgram(choices=[ChoiceVariable(:c, Tuple(Symbol.("a", 1:3)), weights)])
     tautology = compile_event(pfloat, Or(:a1, :a2, :a3))
     @test wmc(tautology; semiring=RationalProfile()) == 1 // 1
     @test wmc(tautology; semiring=RationalProfile()) isa Rational
+end
+
+@testset "finite ground values are checked and queryable" begin
+    values = Any[
+        :atom, 'x', "text", 7, 1//2,
+        (:left, :right),
+        (tag=:record,),
+        Set([:member]),
+        Dict(:key => :value),
+    ]
+    for value in values
+        choice = ChoiceVariable(:value, (value, nothing), (1//2, 1//2))
+        program = DSProgram(choices=[choice])
+        @test validate_program(program) === nothing
+        @test wmc(compile_event(program, value); semiring=RationalProfile()) == 1//2
+    end
+    for cyclic in (Any[], Dict{Symbol,Any}())
+        if cyclic isa AbstractVector
+            push!(cyclic, cyclic)
+        else
+            cyclic[:self] = cyclic
+        end
+        @test_throws UnsupportedFeatureError ChoiceVariable(
+            :cyclic, (cyclic, nothing), (1//2, 1//2)
+        )
+    end
 end

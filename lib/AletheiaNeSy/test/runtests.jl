@@ -167,6 +167,11 @@ end
         () -> 1, nothing; profile=(finite=true,)
     )
     @test neural_choice_labels(x -> [1, 1], x -> x; profile=(finite=true,)) == [0.5, 0.5]
+    for weights in ((1e308, 1e308), (floatmax(Float64), floatmax(Float64)))
+        labels = neural_choice_labels(() -> weights, nothing; profile=(finite=true,))
+        @test labels == [0.5, 0.5]
+        @test sum(labels) == 1.0
+    end
     @test_throws MalformedCaseError ske_roundtrip(mlp, encoder, ())
     @test_throws MalformedCaseError ske_roundtrip(mlp, encoder, [])
     named_cases = [(input=(1.0, 0.0), state=(1.0, 0.0), oracle_output=true, scope=:local)]

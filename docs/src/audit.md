@@ -30,10 +30,12 @@ requirements for symbolic explanation evaluation in Stan et al. [stan2026](@cite
 
 `eval_artifact` returns both the artifact result and a deterministic trace.
 Trace steps record the selected operation, input and output hashes, and the
-artifact profile. `serialize_trace` and `deserialize_trace` provide a
-serialization boundary. Artifact-verdict replay requires the attached artifact;
-graph-path replay requires the attached graph, its recorded graph hash, and a path
-that passes `path_valid`. These checks make an execution inspectable without
+artifact profile. Replay authenticates the attached artifact identity and
+provenance and checks every step; a profile recorded in a step must be supplied
+again. `serialize_trace` and `deserialize_trace` provide a serialization
+boundary. Artifact-verdict replay requires the attached artifact; graph-path
+replay requires the attached graph, its recorded graph hash, and a path that
+passes `path_valid`. These checks make an execution inspectable without
 treating a trace as a logical proof.
 
 ## Explicit metric scope

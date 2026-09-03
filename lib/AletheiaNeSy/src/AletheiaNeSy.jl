@@ -126,9 +126,18 @@ function _normalise(xs)
     isempty(vals) && throw(ChoiceLabelError("a finite label vector cannot be empty"))
     all(x -> x isa Real && isfinite(x) && x >= 0, vals) ||
         throw(ChoiceLabelError("labels must be finite nonnegative numbers"))
-    total = sum(vals)
-    total > 0 || throw(ChoiceLabelError("labels must have positive total mass"))
-    return vals ./ total
+    # Scale before summing so finite Float64 labels cannot overflow to Inf and
+    # produce an all-zero normalized vector.
+    scale = maximum(vals)
+    scale > 0 || throw(ChoiceLabelError("labels must have positive total mass"))
+    scaled = [value / scale for value in vals]
+    total = sum(scaled)
+    isfinite(total) && total > 0 ||
+        throw(ChoiceLabelError("labels have no finite positive normalization"))
+    normalized = [value / total for value in scaled]
+    all(value -> isfinite(value) && value >= 0, normalized) ||
+        throw(ChoiceLabelError("labels have no finite positive normalization"))
+    return normalized
 end
 
 """Return normalized finite choice labels on a path separate from truth values.

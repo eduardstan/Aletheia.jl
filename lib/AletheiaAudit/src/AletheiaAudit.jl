@@ -50,7 +50,7 @@ struct TraceStep
 end
 """A minimal deterministic execution trace."""
 struct ExecutionTrace
-    steps::Vector{TraceStep}
+    steps::Tuple
     provenance::Provenance
     reported_result::Any
     input_hash::String
@@ -59,11 +59,11 @@ struct ExecutionTrace
     artifact::Any
 end
 function ExecutionTrace(steps, provenance, result, input_hash::String, output_hash::String, scope::Symbol; artifact=nothing)
-    return ExecutionTrace(TraceStep[steps...], provenance, result, input_hash, output_hash, scope, artifact)
+    return ExecutionTrace(tuple(steps...), provenance, result, input_hash, output_hash, scope, artifact)
 end
 function ExecutionTrace(steps, provenance, result)
     return ExecutionTrace(
-        TraceStep[steps...], provenance, result, "", _stable_hash(result), :global, nothing
+        tuple(steps...), provenance, result, "", _stable_hash(result), :global, nothing
     )
 end
 
@@ -125,13 +125,23 @@ end
 """A complete immutable audit record."""
 struct AuditRecord
     artifact_id::String
-    input_hashes::Vector{String}
-    output_hashes::Vector{String}
+    input_hashes::Tuple
+    output_hashes::Tuple
     # Hashes of evaluated states; these correspond to trace input_hash.
-    state_hashes::Vector{String}
-    trace::Vector{ExecutionTrace}
+    state_hashes::Tuple
+    trace::Tuple
     provenance::Provenance
     metrics::MetricBundle
+end
+function AuditRecord(artifact_id::String, input_hashes, output_hashes, state_hashes,
+    trace, provenance::Provenance, metrics::MetricBundle)
+    return AuditRecord(artifact_id, tuple(input_hashes...), tuple(output_hashes...),
+        tuple(state_hashes...), tuple(trace...), provenance, metrics)
+end
+function Base.getproperty(record::AuditRecord, name::Symbol)
+    name in (:input_hashes, :output_hashes, :state_hashes, :trace) &&
+        return collect(getfield(record, name))
+    return getfield(record, name)
 end
 
 """An exact input/output rule used by `RuleArtifact` and `TreeArtifact`."""
@@ -235,10 +245,10 @@ function eval_artifact(
         _stable_hash(state),
         result,
     )
-    provenance_value = provenance(artifact)
+    provenance_value = _trace_provenance(artifact)
     tr = trace ? ExecutionTrace(
-        [step], provenance_value, result, _stable_hash(state), _stable_hash(result), scope,
-        artifact
+        [step], provenance_value, result, _stable_hash(state), _stable_hash(result), scope;
+        artifact=artifact,
     ) : nothing
     return result, tr
 end
@@ -286,16 +296,31 @@ function _provenance_value(values, key::Symbol)
     return nothing
 end
 
-"""Replay a trace and verify hashes, metadata, and the reported result."""
+function _trace_provenance(artifact)
+    source = provenance(artifact)
+    hashes = source.hashes
+    traced = if hashes isa NamedTuple
+        merge(hashes, (artifact_id=_stable_hash(artifact), provenance_id=_stable_hash(source)))
+    elseif hashes isa AbstractDict
+        Dict{Any,Any}(hashes)
+    else
+        (provided=hashes, artifact_id=_stable_hash(artifact), provenance_id=_stable_hash(source))
+    end
+    if traced isa AbstractDict
+        traced[:artifact_id] = _stable_hash(artifact)
+        traced[:provenance_id] = _stable_hash(source)
+    end
+    return Provenance(source.versions, source.sources, traced)
+end
+
+"""Replay a trace and verify hashes, context, every step, and the reported result."""
 function replay(trace::ExecutionTrace, state; profile=nothing)
     failures = String[]
     expected_input = _stable_hash(state)
-    trace.input_hash != "" &&
-        trace.input_hash != expected_input &&
+    trace.input_hash != "" && trace.input_hash != expected_input &&
         push!(failures, "input hash mismatch")
     isempty(trace.steps) && push!(failures, "trace has no execution step")
-    if !isempty(trace.steps)
-        step = trace.steps[end]
+    for step in trace.steps
         step.kind in (:artifact_evaluation, :test, :graph_path) ||
             push!(failures, "step kind mismatch")
         if step.kind === :artifact_evaluation
@@ -303,8 +328,50 @@ function replay(trace::ExecutionTrace, state; profile=nothing)
                 push!(failures, "step input metadata mismatch")
             trace.artifact === nothing &&
                 push!(failures, "artifact is required to replay an artifact verdict")
+            if !(step.payload isa NamedTuple) ||
+               !hasproperty(step.payload, :artifact) ||
+               !hasproperty(step.payload, :selected) ||
+               !hasproperty(step.payload, :profile)
+                push!(failures, "step payload metadata malformed")
+            elseif trace.artifact !== nothing
+                trace.artifact isa Union{RuleArtifact,TreeArtifact} ||
+                    push!(failures, "artifact context has an unsupported type")
+                if trace.artifact isa Union{RuleArtifact,TreeArtifact}
+                    artifact_id = _provenance_value(trace.provenance.hashes, :artifact_id)
+                    provenance_id = _provenance_value(trace.provenance.hashes, :provenance_id)
+                    artifact_id === nothing && push!(failures, "artifact identity metadata missing")
+                    provenance_id === nothing && push!(failures, "artifact provenance metadata missing")
+                    artifact_id !== nothing && !isequal(artifact_id, _stable_hash(trace.artifact)) &&
+                        push!(failures, "artifact identity mismatch")
+                    provenance_id !== nothing && !isequal(provenance_id, _stable_hash(provenance(trace.artifact))) &&
+                        push!(failures, "artifact provenance mismatch")
+                    !isequal(trace.provenance, _trace_provenance(trace.artifact)) &&
+                        push!(failures, "artifact provenance mismatch")
+                    entries = trace.artifact isa RuleArtifact ? trace.artifact.rules : trace.artifact.nodes
+                    selected = missing
+                    for (i, rule) in enumerate(entries)
+                        if _matches(rule.condition, state)
+                            selected = i
+                            break
+                        end
+                    end
+                    !isequal(step.payload.artifact, string(nameof(typeof(trace.artifact)))) &&
+                        push!(failures, "step artifact metadata mismatch")
+                    !isequal(step.payload.selected, selected) &&
+                        push!(failures, "step selection metadata mismatch")
+                    if step.payload.profile === nothing
+                        profile !== nothing && push!(failures, "step profile metadata mismatch")
+                    elseif profile === nothing || !isequal(step.payload.profile, profile)
+                        push!(failures, "step profile metadata mismatch")
+                    end
+                    predicted = _predict(trace.artifact, state)
+                    !isequal(step.output, predicted) && push!(failures, "step result mismatch")
+                end
+            end
         elseif step.kind === :graph_path
             graph_hash = _provenance_value(trace.provenance.hashes, :graph)
+            (!isequal(step.inputs, state) && !isequal(step.inputs, expected_input)) &&
+                push!(failures, "graph step input metadata mismatch")
             if trace.artifact === nothing || graph_hash === nothing ||
                !(step.payload isa NamedTuple) || !hasproperty(step.payload, :path)
                 push!(failures, "graph trace context, hash, or path metadata missing")
@@ -314,30 +381,13 @@ function replay(trace::ExecutionTrace, state; profile=nothing)
                 !_trace_context_valid(trace.artifact, step.payload.path) &&
                     push!(failures, "graph path is not valid in the recorded graph")
             end
+        elseif trace.artifact !== nothing
+            push!(failures, "step kind mismatch")
         end
-        if step.kind === :artifact_evaluation &&
-           (!(step.payload isa NamedTuple) || !hasproperty(step.payload, :artifact) ||
-           !hasproperty(step.payload, :selected) || !hasproperty(step.payload, :profile))
-            push!(failures, "step payload metadata malformed")
-        elseif step.kind === :artifact_evaluation && trace.artifact !== nothing
-            entries = trace.artifact isa RuleArtifact ? trace.artifact.rules : trace.artifact.nodes
-            selected = missing
-            for (i, rule) in enumerate(entries)
-                if _matches(rule.condition, state)
-                    selected = i
-                    break
-                end
-            end
-            !isequal(step.payload.artifact, string(nameof(typeof(trace.artifact)))) &&
-                push!(failures, "step artifact metadata mismatch")
-            !isequal(step.payload.selected, selected) &&
-                push!(failures, "step selection metadata mismatch")
-            profile !== nothing && !isequal(step.payload.profile, profile) &&
-                push!(failures, "step profile metadata mismatch")
-            predicted = _predict(trace.artifact, state)
-            !isequal(step.output, predicted) && push!(failures, "step result mismatch")
-        end
-        !isequal(step.output, trace.reported_result) &&
+    end
+    if !isempty(trace.steps)
+        final = trace.steps[end]
+        !isequal(final.output, trace.reported_result) &&
             push!(failures, "reported result mismatch")
         trace.output_hash != _stable_hash(trace.reported_result) &&
             push!(failures, "output hash mismatch")

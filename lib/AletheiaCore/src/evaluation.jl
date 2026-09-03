@@ -336,8 +336,8 @@ The cache is tied to the exact model object passed to this constructor.  It is
 correct only while that model's valuation, frame, and algebra (including any
 mutable objects reachable through them) remain unchanged.  The cache does not
 inspect or snapshot those objects, so call [`clear!`](@ref) after changing one.
-Cached `extension` calls return a deep copy, so changing that returned vector
-or its mutable carrier values does not change the retained result.  `clear!(cache)`
+Cached `extension` and `check` calls return deep copies, so changing a returned
+vector or mutable carrier value does not change the retained result.  `clear!(cache)`
 removes all retained extensions and permits the cache to be used with a new
 formula pool, while retaining its model binding.  If a model is mutated, discard
 the cache; `clear!` cannot repair relation adjacency already cached by its
@@ -620,7 +620,7 @@ end
 function check(formula::Formula, model::Model{T}, world; cache=nothing)::T where T
     position = world_position(frame(model), world)
     values = _evaluate_with_cache(formula, model, Vector{T}, cache)
-    values[position]
+    cache === nothing ? values[position] : deepcopy(values[position])
 end
 
 """Check whether a formula holds at some world via the SoleLogics marker."""

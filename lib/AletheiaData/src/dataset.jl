@@ -129,9 +129,14 @@ function _canonical_model_vector(models)
     end
     result
 end
-function ModelFamily(models::AbstractVector{<:Model})
-    canonical = _canonical_model_vector(models)
-    ModelFamily{typeof(canonical)}(canonical)
+function ModelFamily(models::AbstractVector)
+    # Route every model collection through the checked constructor, including
+    # collections whose element type has been erased to `Any`.
+    if all(model -> model isa Model, models)
+        canonical = _canonical_model_vector(models)
+        return ModelFamily{typeof(canonical)}(canonical)
+    end
+    return ModelFamily{typeof(models)}(models)
 end
 function ModelFamily(models::Tuple{Vararg{<:Model}})
     canonical = _canonical_model_vector(models)
