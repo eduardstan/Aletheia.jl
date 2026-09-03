@@ -105,7 +105,10 @@ first use, warm reuse, and fresh-dataset churn are separate phases. Aletheia
 frame/model-family conversion is measured separately and excluded from steady
 apply. A failed quiet-machine or parity gate makes the artifact
 non-publishable. Raw results and package paths/versions belong in
-`data/benchmark-run/deployed-apply.txt`. The scale sweep uses 32, 64, 128, 256, and 512 instances with 8 points.
+`data/benchmark-run/deployed-apply.txt`. The scale sweep uses 32, 64, and 128 instances with 8 points. The supported
+dataset generator is seeded with the logged `APPLY_DATA_SEED`; Sole formula rows
+enable global and one-step memoization but deliberately disable relational
+precomputation (`relational-precompute=false`).
 Each child has a 6 GB resident-memory cap and a 900-second section bound;
 memory- and time-limited cases are recorded as skipped with their peak RSS.
 The artifact also contains cold one-iteration allocation attribution profiles

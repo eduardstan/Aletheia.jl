@@ -18,7 +18,7 @@ const DEPENDENCIES = Dict(
     "AletheiaLearn" => ("AletheiaCore",),
     "AletheiaSole" => ("AletheiaCore", "AletheiaData"),
     "AletheiaCircuits" => ("AletheiaCore",),
-    "AletheiaGraphs" => ("AletheiaCore",),
+    "AletheiaGraphs" => ("AletheiaCore", "AletheiaAudit"),
     "AletheiaAudit" => ("AletheiaCore",),
     "AletheiaNeSy" => ("AletheiaCore", "AletheiaData", "AletheiaAudit"),
 )

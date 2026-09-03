@@ -222,6 +222,7 @@ using Aletheia
         :ThresholdCondition,
         :DenseFeatureStore,
         :PreparedScalarData,
+        :ScalarWorldDomainError,
         :AggregateMemoStore,
         :ScalarEvaluationCache,
         :ScalarRelationIndex,

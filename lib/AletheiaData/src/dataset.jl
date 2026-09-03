@@ -106,6 +106,32 @@ struct ModelFamily{M} <: AbstractModelFamily
     models::M
 end
 
+# Canonicalize semantically equal model frames at the family boundary so a
+# uniform family uses one Core adjacency cache.
+function _canonical_model_vector(models)
+    result = Any[]
+    representatives = Frame[]
+    for model in models
+        model_frame = frame(model)
+        representative = findfirst(candidate -> _same_frame(candidate, model_frame), representatives)
+        if representative === nothing
+            push!(representatives, model_frame)
+            push!(result, model)
+        else
+            push!(result, Model(representatives[representative], algebra(model), valuation(model)))
+        end
+    end
+    result
+end
+function ModelFamily(models::AbstractVector{<:Model})
+    canonical = _canonical_model_vector(models)
+    ModelFamily{typeof(canonical)}(canonical)
+end
+function ModelFamily(models::Tuple{Vararg{<:Model}})
+    canonical = _canonical_model_vector(models)
+    ModelFamily{typeof(canonical)}(canonical)
+end
+
 instance_count(family::ModelFamily) = length(family.models)
 eachinstance(family::ModelFamily) = eachindex(family.models)
 instance_model(family::ModelFamily, instance) = family.models[instance]

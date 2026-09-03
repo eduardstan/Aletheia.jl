@@ -365,6 +365,7 @@ export ModelFamily,
     ThresholdCondition,
     DenseFeatureStore,
     PreparedScalarData,
+    ScalarWorldDomainError,
     AggregateMemoStore
 export ScalarEvaluationCache,
     ScalarRelationIndex,

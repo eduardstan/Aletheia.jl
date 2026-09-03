@@ -12,6 +12,7 @@ KGEntity{Symbol, Symbol, @NamedTuple{}}(:e1, :entity, NamedTuple())
 module AletheiaGraphs
 
 using AletheiaCore
+using AletheiaAudit
 using Graphs
 using MetaGraphsNext
 
@@ -264,6 +265,8 @@ end
 
 """Alias for [`path_valid`](@ref), naming the graph-membership field explicitly."""
 path_validity(path::KGPath, graph::KnowledgeGraph) = path_valid(path, graph)
+
+AletheiaAudit._trace_context_valid(graph::KnowledgeGraph, path::KGPath) = path_valid(path, graph)
 
 """Enumerate one bounded reachable subgraph from `source`, retaining traversed edges."""
 function subgraphs(graph::KnowledgeGraph, source; max_hops)

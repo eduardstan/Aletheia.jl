@@ -5,8 +5,8 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
 
 ## Unreleased
 
-- Closed adversarial contract gaps: finite-carrier validation now rejects invalid and Boolean indices; neural extraction shares encoder dispatch with verification; uncovered outputs fail verification; circuit programs reject non-ground values and Boolean choices; Float64 weights convert through the exact rational profile; metric scopes and perturbation stability are validated; trace replay checks metadata; graph endpoints require full identity; benchmark hexadecimal seeds parse consistently; and trace omission is honored.
-- Updated audit, circuit, neural, showcase, benchmark, and provenance documentation to describe these boundaries and pin evidence links to the audited revision.
+- Closed adversarial contract gaps: finite-carrier validation now rejects invalid and Boolean indices; neural extraction shares encoder dispatch with verification; uncovered outputs fail verification; circuit programs reject non-ground, cyclic, and non-closing values; Float64 weights convert through the exact rational profile with typed closure checks; the declared neural algebra validates round trips; metric scopes and permutation-invariant perturbation stability are explicit; graph traces replay against their recorded graph; audit input/state hashes are named separately; scalar world domains are checked during preparation; graph endpoints require full identity; benchmark scales, seeds, and relational-precompute settings match their provenance; and trace omission is honored.
+- Updated audit, circuit, neural, showcase, benchmark, and provenance documentation to describe these boundaries; source links track `main` by design as stated in the development guide.
 
 - Corrected documentation paths, profiler line references, compatibility
   normalization claims, and the description of Documenter page-size thresholds

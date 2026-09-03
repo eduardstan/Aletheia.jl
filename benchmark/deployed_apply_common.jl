@@ -43,7 +43,7 @@ end
 
 function build_apply_fixture(; ninstances=APPLY_NINSTANCES, npoints=APPLY_NPOINTS,
         train_seed=APPLY_TRAIN_SEED, scalar_layer=false)
-    dataset = make_supported_dataset(ninstances, npoints)
+    dataset = make_supported_dataset(ninstances, npoints; seed=APPLY_DATA_SEED)
     modalities = SoleData.MultiLogiset(dataset)
     labels = [isodd(i) ? "class-a" : "class-b" for i in 1:ninstances]
     tree = ModalDecisionTrees.build_tree(modalities, labels;
@@ -255,7 +255,7 @@ function fresh_fixture(base, dataset; scalar_layer=base.bridge_scalar !== nothin
 end
 
 function churn_fixtures(base; count=6)
-    [fresh_fixture(base, make_supported_dataset(APPLY_NINSTANCES, APPLY_NPOINTS))
+    [fresh_fixture(base, make_supported_dataset(APPLY_NINSTANCES, APPLY_NPOINTS; seed=APPLY_DATA_SEED))
         for _ in 1:count]
 end
 

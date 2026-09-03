@@ -191,3 +191,9 @@ end
         AletheiaNeSy; target_modules=(AletheiaNeSy,), analyze_from_definitions=true
     )
 end
+
+
+@testset "round trip validates the declared algebra" begin
+    @test_throws InvalidNeuralValueError ske_roundtrip(
+        x -> 0.5, identity, [:case]; algebra=BOOLEAN)
+end

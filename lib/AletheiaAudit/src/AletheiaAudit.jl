@@ -58,8 +58,8 @@ struct ExecutionTrace
     scope::Symbol
     artifact::Any
 end
-function ExecutionTrace(steps, provenance, result, input_hash::String, output_hash::String, scope::Symbol)
-    return ExecutionTrace(TraceStep[steps...], provenance, result, input_hash, output_hash, scope, nothing)
+function ExecutionTrace(steps, provenance, result, input_hash::String, output_hash::String, scope::Symbol; artifact=nothing)
+    return ExecutionTrace(TraceStep[steps...], provenance, result, input_hash, output_hash, scope, artifact)
 end
 function ExecutionTrace(steps, provenance, result)
     return ExecutionTrace(
@@ -127,6 +127,8 @@ struct AuditRecord
     artifact_id::String
     input_hashes::Vector{String}
     output_hashes::Vector{String}
+    # Hashes of evaluated states; these correspond to trace input_hash.
+    state_hashes::Vector{String}
     trace::Vector{ExecutionTrace}
     provenance::Provenance
     metrics::MetricBundle
@@ -275,6 +277,9 @@ function _encoded_input(encoder, atom, world)
     throw(ArgumentError("encoder must accept (atom, world) or (world)"))
 end
 
+"""Validate a context-specific trace payload."""
+_trace_context_valid(context, payload) = false
+
 """Replay a trace and verify hashes, metadata, and the reported result."""
 function replay(trace::ExecutionTrace, state; profile=nothing)
     failures = String[]
@@ -290,6 +295,13 @@ function replay(trace::ExecutionTrace, state; profile=nothing)
         if step.kind === :artifact_evaluation
             !isequal(step.inputs, expected_input) &&
                 push!(failures, "step input metadata mismatch")
+        elseif step.kind === :graph_path
+            if trace.artifact === nothing || !(step.payload isa NamedTuple) ||
+               !hasproperty(step.payload, :path)
+                push!(failures, "graph trace context or path metadata missing")
+            elseif !_trace_context_valid(trace.artifact, step.payload.path)
+                push!(failures, "graph path is not valid in the recorded graph")
+            end
         end
         if step.kind === :artifact_evaluation &&
            (!(step.payload isa NamedTuple) || !hasproperty(step.payload, :artifact) ||
@@ -394,9 +406,12 @@ function metric_bundle(
     stability = if isempty(perturbations) || isempty(selected)
         MetricValue(missing, missing, missing, scope, false)
     else
+        # Canonicalize the baseline by stable state hash, not caller order.
+        baseline_case = first(sort(selected; by=c -> _stable_hash(
+            c.state === nothing ? c.input : c.state)))
         baseline = begin
-            state = selected[1].state === nothing ? selected[1].input : selected[1].state
-            eval_artifact(artifact, state; scope=selected[1].scope)[1]
+            state = baseline_case.state === nothing ? baseline_case.input : baseline_case.state
+            eval_artifact(artifact, state; scope=baseline_case.scope)[1]
         end
         if baseline === missing
             MetricValue(missing, missing, missing, scope, false)
@@ -441,6 +456,7 @@ function audit(
     traces = ExecutionTrace[]
     ih = String[]
     oh = String[]
+    sh = String[]
     prepared = ArtifactCase[]
     for c in cs
         expected = if oracle === nothing
@@ -454,11 +470,13 @@ function audit(
         push!(traces, tr)
         push!(ih, _stable_hash(c.input))
         push!(oh, _stable_hash(out))
+        push!(sh, _stable_hash(state))
     end
     return AuditRecord(
         _stable_hash(artifact),
         ih,
         oh,
+        sh,
         traces,
         provenance,
         metric_bundle(artifact, prepared; scope=scope, versions=versions),

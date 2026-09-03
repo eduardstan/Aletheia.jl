@@ -24,7 +24,9 @@ println(batch_apply([formula], data)[1][1])
 Bool[1, 0]
 ```
 
-`prepare_scalar` stores values in world × instance × feature order. Feature
+`prepare_scalar` stores values in world × instance × feature order. An explicit
+`worlds` list must exactly match every supplied frame domain and otherwise raises
+`ScalarWorldDomainError` during preparation. Feature
 lookup and aggregate memos are separate from formula caches. Global
 `minimum`/`maximum` aggregates can be prepared eagerly; relation-specific
 aggregates are filled lazily. Empty successor sets return `nothing` from

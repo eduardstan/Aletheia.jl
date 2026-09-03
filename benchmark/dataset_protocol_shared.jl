@@ -60,8 +60,8 @@ function make_conditions(rng; supported=false)
     ]
 end
 
-function make_supported_dataset(ninstances, npoints)
-    rng = MersenneTwister(DATASET_SEED + ninstances * 1009 + npoints * 9176)
+function make_supported_dataset(ninstances, npoints; seed=DATASET_SEED)
+    rng = MersenneTwister(seed + ninstances * 1009 + npoints * 9176)
     dataset = DataFrame(
         v1=[rand(rng, npoints) for _ in 1:ninstances],
         v2=[rand(rng, npoints) for _ in 1:ninstances],

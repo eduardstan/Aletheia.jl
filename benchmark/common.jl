@@ -353,7 +353,7 @@ end
 function interval_adjacency_a(frame, relation_name, frame_worlds)
     positions = Aletheia.world_index(frame)
     positions === nothing && (positions = Dict(world => position for (position, world) in enumerate(frame_worlds)))
-    Aletheia._relation_adjacency(frame, relation_name, positions)
+    Aletheia.AletheiaCore._relation_adjacency(frame, relation_name, positions)
 end
 function interval_adjacency_s(frame, frame_worlds)
     world_count = length(frame_worlds)

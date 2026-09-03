@@ -111,8 +111,12 @@ function _as_carrier(::ProbabilitySemiring{T}, value) where {T}
     converted = if value isa T
         value
     elseif T <: Rational && value isa AbstractFloat
-        # Float64 inputs are converted to the nearest rational within an eight-ulp tolerance.
-        convert(T, rationalize(Int, value; tol=eps(value) * 8))
+        try
+            convert(T, rationalize(Int, value; tol=eps(value) * 8))
+        catch
+            throw(InvalidProbabilityError(:normalization_tolerance,
+                "Float64 value $(repr(value)) exceeds the rational carrier or eight-ulp tolerance"))
+        end
     else
         try
             convert(T, value)
@@ -121,11 +125,7 @@ function _as_carrier(::ProbabilitySemiring{T}, value) where {T}
         end
     end
     converted isa Real && isfinite(converted) && converted >= zero(T) || throw(
-        InvalidProbabilityError(
-            :nonnegative_closed_carrier,
-            "semiring values must be finite and nonnegative",
-        ),
-    )
+        InvalidProbabilityError(:nonnegative_closed_carrier, "semiring values must be finite and nonnegative"))
     return converted
 end
 
@@ -140,7 +140,13 @@ julia> add(ProbabilitySemiring(), 0.3, 0.4)
 ```
 """
 function add(s::ProbabilitySemiring{T}, left, right) where {T}
-    value = _as_carrier(s, left) + _as_carrier(s, right)
+    value = try
+        _as_carrier(s, left) + _as_carrier(s, right)
+    catch e
+        e isa OverflowError && throw(InvalidProbabilityError(:normalization_tolerance,
+            "exact rational arithmetic overflowed its fixed-width carrier"))
+        rethrow()
+    end
     return _as_carrier(s, value)
 end
 """Multiply two values in a probability semiring.
@@ -154,7 +160,13 @@ julia> mul(ProbabilitySemiring(), 0.3, 0.4)
 ```
 """
 function mul(s::ProbabilitySemiring{T}, left, right) where {T}
-    value = _as_carrier(s, left) * _as_carrier(s, right)
+    value = try
+        _as_carrier(s, left) * _as_carrier(s, right)
+    catch e
+        e isa OverflowError && throw(InvalidProbabilityError(:normalization_tolerance,
+            "exact rational arithmetic overflowed its fixed-width carrier"))
+        rethrow()
+    end
     return _as_carrier(s, value)
 end
 
@@ -252,19 +264,14 @@ julia> neutral_sum(ProbabilitySemiring(), :c1, Dict(:c1 => (0.4, 0.6)))
 """
 function neutral_sum(s::ProbabilitySemiring{T}, variable, labels) where {T}
     if variable isa ChoiceVariable
-        return foldl(
-            (acc, index) -> add(
-                s,
-                acc,
-                literal_label(
-                    s,
-                    ChoiceLiteral(ChoiceAlternative(variable.id, index), true),
-                    labels,
-                ),
-            ),
-            eachindex(variable.alternatives);
-            init=zero(s),
-        )
+        values = [literal_label(s, ChoiceLiteral(ChoiceAlternative(variable.id, index), true), labels)
+            for index in eachindex(variable.alternatives)]
+        total = foldl((acc, value) -> add(s, acc, value), values; init=zero(s))
+        if T <: Rational && any(x -> x isa AbstractFloat, variable.weights) && total != one(s)
+            throw(InvalidProbabilityError(:normalization_tolerance,
+                "Float64 choice weights do not close to one after eight-ulp rationalization"))
+        end
+        return total
     end
     found, value = _lookup_label(labels, variable)
     found || throw(

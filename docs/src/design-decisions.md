@@ -122,6 +122,14 @@ honors `trace=false` by returning `nothing` for the trace.
 events cannot collide with choice atoms, and callers can deliberately omit trace
 material rather than receiving an ignored option.
 
+## 2026-09-03 — Adversarial boundary contracts
+
+**Context.** Boundary validation must terminate and preserve the distinctions that callers use for exact computation, replay, metrics, scalar domains, and benchmark provenance.
+
+**Choice.** Cyclic mutable circuit values fail closed with a typed validation error. Rational evaluation rejects Float64 conversions that do not preserve normalized closure or that overflow the exact carrier. `ske_roundtrip` validates leaves with its declared algebra. Graph-path traces retain graph context and replay checks endpoints, edges, and provenance. Audit records distinguish declared input hashes from evaluated-state hashes, and stability chooses its baseline by canonical state hash. Scalar preparation rejects explicit world lists that do not match every frame domain. Uniform model-family status is canonicalized to shared frame identity. Benchmark source uses the documented scale cap and logs the seed passed to its generator.
+
+**Consequence.** Invalid or ambiguous inputs fail at the boundary, metrics are permutation-invariant, graph traces are verifiable, and published benchmark protocols can be reproduced from their recorded settings.
+
 ## 2026-09-02 — Traces by default
 
 **Context.** Audited symbolic decisions need checkable execution evidence, not only a final answer.

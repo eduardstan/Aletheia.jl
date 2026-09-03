@@ -4,6 +4,7 @@ using Test
 using Serialization
 using AletheiaGraphs
 using AletheiaCore
+using AletheiaAudit
 
 alice = KGEntity(:alice; kind=:person)
 bob = KGEntity(:bob; kind=:person)
@@ -118,4 +119,16 @@ end
             AletheiaGraphs; target_modules=(AletheiaGraphs,), analyze_from_definitions=true
         )
     end
+end
+
+
+@testset "graph path traces require graph context" begin
+    path = paths(g, :alice; target=:bob, max_hops=1)[1]
+    trace = ExecutionTrace([TraceStep(:graph_path, (path=path,), :alice, path.entities)],
+        Provenance(), path.entities, stable_hash(:alice), stable_hash(path.entities), :global; artifact=g)
+    @test replay(trace, :alice).valid
+    forged = TraceStep(:graph_path, (path=KGPath((alice, bob), (visits,), (p2,)),), :alice, (alice, bob))
+    forged_trace = ExecutionTrace([forged], trace.provenance, (alice, bob), stable_hash(:alice), stable_hash((alice, bob)), :global; artifact=g)
+    @test !replay(forged_trace, :alice).valid
+    @test !replay(ExecutionTrace([TraceStep(:graph_path, (path=path,), :alice, path.entities)], Provenance(), path.entities, stable_hash(:alice), stable_hash(path.entities), :global), :alice).valid
 end

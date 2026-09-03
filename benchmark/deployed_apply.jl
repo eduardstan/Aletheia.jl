@@ -81,7 +81,7 @@ try
         println(io, "modaldecisiontrees_path=$(MODALDECISIONTREES_PATH)")
         println(io, "seeds=0xA1E7_2024,0x5EED_2025,0xC0FF_EE42,0x1234_5678,0x9ABC_DEF0 data_seed=$(APPLY_DATA_SEED) train_seed_default=$(APPLY_TRAIN_SEED)")
         println(io, "workload=instances=$(APPLY_NINSTANCES),points=$(APPLY_NPOINTS),depth=$(APPLY_DEPTH)")
-        println(io, "scale_cases=32:8,64:8,128:8,256:8,512:8; scale_modes=decision-list-apply,aletheia-scalar,aletheia-vectorized; scale_timeout_s=900; scale_samples=3; scale_address_space_kb=6000000")
+        println(io, "scale_cases=32:8,64:8,128:8; scale_modes=decision-list-apply,aletheia-scalar,aletheia-vectorized; scale_timeout_s=900; scale_samples=3; scale_address_space_kb=6000000")
         println(io, "profile=Profile.Allocs sample_rate=1 on one never-used fresh-dataset churn apply; vectorized callback versus native decision-list apply")
         println(io, "sole_controls=full_memo=true one_step_memo=true global_precompute=true relational_precompute=false")
         println(io, "sole_paths=formula-check=SoleData.check; modal-tree=ModalDecisionTrees.apply/modalstep/checkcondition; decision-list=SoleModels.apply/SoleLogics.check")
@@ -134,7 +134,7 @@ try
 
     # Scaling compares only native decision-list apply with the two prepared
     # Aletheia callbacks. Each case retains all five seeded rows.
-    for (ninstances, npoints) in ((32, 8), (64, 8), (128, 8), (256, 8), (512, 8))
+    for (ninstances, npoints) in ((32, 8), (64, 8), (128, 8))
         before = quiet_check(uptime_line())
         outpath, outio = mktemp(ROOT); close(outio)
         errpath, errio = mktemp(ROOT); close(errio)

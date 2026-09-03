@@ -5,6 +5,7 @@ authors = ["Ionel Eduard STAN"]
 
 [deps]
 AletheiaCore = "454358c0-307f-42e0-96b9-2536c30efc25"
+AletheiaAudit = "9b1fc5e2-2bc8-4d3e-b86c-7f8dd7c3a201"
 Graphs = "86223c79-3864-5bf0-83f7-82e725a168b6"
 MetaGraphsNext = "fa8bd995-216d-47f1-8a91-f3b68fbeb377"
 
@@ -17,6 +18,7 @@ Supposition = "0.3"
 Serialization = "1"
 Test = "1"
 AletheiaCore = "0.2"
+AletheiaAudit = "0.2"
 Graphs = "1"
 MetaGraphsNext = "0.7"
 julia = "1.10"
@@ -35,3 +37,4 @@ test = ["Aqua", "AllocCheck", "Interfaces", "JET", "Supposition", "Test", "Seria
 
 [sources]
 AletheiaCore = {path = "../AletheiaCore"}
+AletheiaAudit = {path = "../AletheiaAudit"}

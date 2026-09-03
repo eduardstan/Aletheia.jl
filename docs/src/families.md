@@ -59,9 +59,10 @@ on a shared `Frame` may be cached and reused.
 ## When instances share a frame
 
 Instances frequently differ only in their valuation. [`uniform_frame`](@ref)
-returns the shared frame when every instance's frame is equal, and `nothing`
-otherwise; [`isuniform`](@ref) is the predicate form. Equality is checked on
-the frames themselves rather than assumed from the family type.
+returns a representative frame when every instance's frame is semantically
+equal, and `nothing` otherwise; [`isuniform`](@ref) is the predicate form.
+Equality is checked on the frames themselves; `ModelFamily` canonicalizes equal
+frames so uniform models share one adjacency cache.
 
 ```jldoctest families
 println(isuniform(family))
@@ -74,8 +75,8 @@ true
 ```
 
 This matters for cost, not just for description: relation adjacency is cached
-on the `Frame`, so instances that reuse one frame value also reuse one
-adjacency index. Instances with their own frames each build their own.
+on the `Frame`, so uniform `ModelFamily` instances reuse one adjacency index. External adapters
+that provide equal but distinct frames should not assume identity-level sharing.
 
 ## Adapting an external dataset
 

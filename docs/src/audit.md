@@ -18,7 +18,9 @@ true
 ```
 
 The trace records the selected artifact operation, deterministic input/output
-hashes, provenance, and result. `serialize_trace` and `deserialize_trace` let a
+hashes, provenance, and result. For an audit record, `input_hashes` identify the
+declared case inputs; `state_hashes` identify the evaluated states and match each
+trace's `input_hash`. `serialize_trace` and `deserialize_trace` let a
 consumer retain and replay it. `MetricValue` keeps its numerator, denominator,
 scope, and applicability together, so an uncovered case is missing rather than
 silently scored as a negative result. The metric vocabulary follows the
@@ -40,7 +42,10 @@ applicability. An uncovered or otherwise inapplicable case is represented by
 `missing`, not silently counted as a negative. `metric_bundle` reports fidelity, coverage, stability, complexity, constraints,
 trace validity, and resource cost as separate fields. Scope is restricted to
 `:all`, `:global`, or `:local`; stability is computed from supplied perturbations
-and is otherwise inapplicable. This separation follows the requirements for evaluating
+and is otherwise inapplicable. With perturbations, stability uses the artifact
+output for the selected case whose evaluated-state hash is lexicographically
+smallest as its order-independent baseline, then reports the fraction of supplied
+perturbations with the same output. This separation follows the requirements for evaluating
 symbolic explanations and their coverage and fidelity claims
 [stan2026; pp. 1–60](@cite).
 

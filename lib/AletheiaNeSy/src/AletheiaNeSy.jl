@@ -212,8 +212,9 @@ function ske_roundtrip(
     expected = ArtifactCase[]
     for c in cs
         raw = _raw(network, encoder, c.input, c.state === nothing ? c.input : c.state)
-        # SKE compares model outputs directly; truth validation is separate from extraction.
-        push!(expected, ArtifactCase(c.input, c.state, raw, c.scope))
+        # The declared algebra governs every neural leaf, including round-trip oracles.
+        checked = _checked(algebra, raw)
+        push!(expected, ArtifactCase(c.input, c.state, checked, c.scope))
     end
     extracted = extract_artifact(
         network,
@@ -224,7 +225,7 @@ function ske_roundtrip(
         provenance=provenance,
     )
     oracle =
-        (input, state) -> _raw(network, encoder, input, state === nothing ? input : state)
+        (input, state) -> _checked(algebra, _raw(network, encoder, input, state === nothing ? input : state))
     verification = verify_artifact(extracted, expected; oracle=oracle, profile=profile)
     metrics = metric_bundle(extracted, expected; scope=:all)
     record = audit(extracted, expected; oracle=oracle, provenance=provenance, scope=:all)

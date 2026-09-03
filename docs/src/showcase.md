@@ -2,7 +2,7 @@
 
 This page follows one small, synthetic dataset through the same ordered
 journey as the runnable bundle in
-[`examples/showcase/`](https://github.com/eduardstan/Aletheia.jl/tree/9f71902c0b08d69b72f94fa0a5693b05b33fa469/examples/showcase).
+[`examples/showcase/`](https://github.com/eduardstan/Aletheia.jl/tree/main/examples/showcase).
 The four records are committed in `records.csv`; the example has no run-time
 download and uses the pinned seed `0x5EED_2025`.
 

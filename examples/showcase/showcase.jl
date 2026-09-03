@@ -317,6 +317,7 @@ function run_showcase(; io=stdout)
                     query=:r1_to_alert,
                     relation=:has_concept,
                     provenance=path_provenance(alert_path),
+                    path=alert_path,
                 ),
                 :r1,
                 alert_path.entities,
@@ -326,7 +327,8 @@ function run_showcase(; io=stdout)
         alert_path.entities,
         stable_hash(:r1),
         stable_hash(alert_path.entities),
-        :global,
+        :global;
+        artifact=graph,
     )
     graph_replay = replay(graph_trace, :r1)
     @assert graph_replay.valid

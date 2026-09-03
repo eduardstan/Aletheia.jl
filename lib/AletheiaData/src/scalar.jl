@@ -569,7 +569,13 @@ function _normalise_instances(data, instance_spec, features, values=nothing)
 end
 
 function _normalise_worlds(frames, world_spec)
-    world_spec !== nothing && return collect(world_spec)
+    if world_spec !== nothing
+        requested = collect(world_spec)
+        domains = [collect(worlds(frame)) for frame in frames]
+        all(domain == requested for domain in domains) || throw(
+            ScalarWorldDomainError(requested, domains))
+        return requested
+    end
     isempty(frames) && return AnyWorld[]
     first_worlds = collect(worlds(first(frames)))
     all(frame -> collect(worlds(frame)) == first_worlds, frames) ||
@@ -638,6 +644,7 @@ function prepare_scalar(data; features=(), frames=nothing, relations=(),
         world_list = worlds === nothing ? collect(data.worlds) : collect(worlds)
         all(world -> haskey(data.world_positions, world), world_list) || throw(KeyError("world"))
         frames_list = _share_frames(_normalise_frames(data, frames, instance_labels, world_list))
+        _normalise_worlds(frames_list, world_list)
         # A store can be prepared with a subset of its dimensions, but values
         # remain source-authoritative and are copied into the requested order.
         dense_values = Array{eltype(data.values)}(undef, length(world_list), length(instance_labels), length(feature_list))

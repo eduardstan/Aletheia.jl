@@ -146,3 +146,15 @@ end
         AletheiaAudit; target_modules=(AletheiaAudit,), analyze_from_definitions=true
     )
 end
+
+
+@testset "stability baseline is permutation invariant and hashes identify states" begin
+    artifact = RuleArtifact([1 => true]; default=false)
+    first = [ArtifactCase(1, true), ArtifactCase(2, false)]
+    second = reverse(first)
+    @test metric_bundle(artifact, first; perturbations=[1]).stability ==
+        metric_bundle(artifact, second; perturbations=[1]).stability
+    record = audit(artifact, [ArtifactCase(:key, :state, true)])
+    @test record.state_hashes[1] == record.trace[1].input_hash
+    @test record.input_hashes[1] != record.state_hashes[1]
+end
