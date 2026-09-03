@@ -71,7 +71,7 @@ end
 function _raw(network, encoder, atom, world)
     return network(_encoded(encoder, atom, world))
 end
-function _checked(algebra, raw; threshold=nothing)
+function _canonical_neural_value(algebra, raw; threshold=nothing)
     T = truth_type(algebra)
     value = if T === Bool && threshold !== nothing && raw isa Real
         raw >= threshold
@@ -102,13 +102,13 @@ function neural_valuation(
 )
     scalar =
         (atom, world) ->
-            _checked(algebra, _raw(network, encoder, atom, world); threshold=threshold)
+            _canonical_neural_value(algebra, _raw(network, encoder, atom, world); threshold=threshold)
     batch = if vectorized === false
         nothing
     else
         (
             (atom, worlds) -> [
-                _checked(algebra, _raw(network, encoder, atom, world); threshold=threshold) for world in worlds
+                _canonical_neural_value(algebra, _raw(network, encoder, atom, world); threshold=threshold) for world in worlds
             ]
         )
     end
@@ -213,7 +213,7 @@ function ske_roundtrip(
     for c in cs
         raw = _raw(network, encoder, c.input, c.state === nothing ? c.input : c.state)
         # The declared algebra governs every neural leaf, including round-trip oracles.
-        checked = _checked(algebra, raw)
+        checked = _canonical_neural_value(algebra, raw)
         push!(expected, ArtifactCase(c.input, c.state, checked, c.scope))
     end
     extracted = extract_artifact(
@@ -223,9 +223,10 @@ function ske_roundtrip(
         artifact=artifact,
         profile=profile,
         provenance=provenance,
+        output_transform=raw -> _canonical_neural_value(algebra, raw),
     )
     oracle =
-        (input, state) -> _checked(algebra, _raw(network, encoder, input, state === nothing ? input : state))
+        (input, state) -> _canonical_neural_value(algebra, _raw(network, encoder, input, state === nothing ? input : state))
     verification = verify_artifact(extracted, expected; oracle=oracle, profile=profile)
     metrics = metric_bundle(extracted, expected; scope=:all)
     record = audit(extracted, expected; oracle=oracle, provenance=provenance, scope=:all)

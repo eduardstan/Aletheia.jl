@@ -4,6 +4,31 @@ This page records the choices that shape Aletheia's public architecture. Each
 entry gives the context, the choice, and the consequence for users and
 contributors.
 
+## 2026-09-03 — Exact and owned boundary values
+
+**Context.** Numeric, callback, graph, and family boundaries must not silently
+change semantic values or accept ambiguous ownership.
+
+**Choice.** `RationalProfile` uses an unbounded exact carrier and normalizes
+converted finite weight tuples. Vectorized valuation results copy mutable
+carriers. Graph entity and relation constructors copy metadata. `ModelFamily`
+rejects models with unequal truth algebras using `MixedAlgebraError`.
+
+**Consequence.** Accepted probability choices close exactly, scalar and batch
+evaluation agree for reusable mutable callback values, graph metadata remains
+owned by its record, and family batch results have one carrier contract.
+
+## 2026-09-03 — Context-authenticated trace replay
+
+**Context.** A replayed graph path or artifact verdict needs the context that
+produced it, not only self-consistent fields.
+
+**Choice.** Artifact-verdict traces require an attached artifact. Graph-path
+traces require an attached graph, a recorded graph hash, and `path_valid`.
+
+**Consequence.** Mutated or context-free traces are rejected rather than
+reported as valid.
+
 ## 2026-09-02 — API reference sizing
 
 **Context.** The exported-symbol documentation sweep outgrew Documenter’s

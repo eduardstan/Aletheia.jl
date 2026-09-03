@@ -115,3 +115,11 @@ end
     fresh_bytes = @allocated extension(formulas, family)
     @test fresh_bytes <= 1_500_000
 end
+
+
+@testset "model families have one truth algebra" begin
+    frame = Frame((:w,), Dict(); index=true)
+    boolean_model = Model(frame, BOOLEAN, Dict((:w, :p) => true))
+    godel_model = Model(frame, GodelAlgebra(), Dict((:w, :p) => 0.5))
+    @test_throws MixedAlgebraError ModelFamily([boolean_model, godel_model])
+end

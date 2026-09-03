@@ -14,7 +14,9 @@ An implementation supplies [`instance_count`](@ref) and
 [`instance_model`](@ref); [`eachinstance`](@ref) and
 [`instance_frame`](@ref) have defaults derived from those two.
 [`ModelFamily`](@ref) is the concrete family over an indexable collection of
-models, useful when the models are already materialized.
+models, useful when the models are already materialized. Its models must carry
+the same truth algebra; construction rejects mixed-algebra families with
+`MixedAlgebraError`.
 
 ```jldoctest families
 using Aletheia

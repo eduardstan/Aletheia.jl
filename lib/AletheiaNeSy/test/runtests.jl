@@ -197,3 +197,10 @@ end
     @test_throws InvalidNeuralValueError ske_roundtrip(
         x -> 0.5, identity, [:case]; algebra=BOOLEAN)
 end
+
+@testset "finite-chain extraction uses neural canonicalization" begin
+    result = ske_roundtrip(x -> 0.5000000000000001, identity, [:case];
+        algebra=GodelAlgebra(3))
+    @test result.extracted(:case) == 0.5
+    @test result.verification.valid
+end

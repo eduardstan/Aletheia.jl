@@ -115,7 +115,6 @@ end
     weights = (0.123456789, 0.234567891, 0.64197532)
     pfloat = DSProgram(choices=[ChoiceVariable(:c, Tuple(Symbol.("a", 1:3)), weights)])
     tautology = compile_event(pfloat, Or(:a1, :a2, :a3))
-    err = try wmc(tautology; semiring=RationalProfile()); nothing catch e; e end
-    @test err isa InvalidProbabilityError
-    @test occursin("tolerance", sprint(showerror, err))
+    @test wmc(tautology; semiring=RationalProfile()) == 1 // 1
+    @test wmc(tautology; semiring=RationalProfile()) isa Rational
 end

@@ -280,6 +280,12 @@ end
 """Validate a context-specific trace payload."""
 _trace_context_valid(context, payload) = false
 
+function _provenance_value(values, key::Symbol)
+    values isa NamedTuple && hasproperty(values, key) && return getproperty(values, key)
+    values isa AbstractDict && haskey(values, key) && return values[key]
+    return nothing
+end
+
 """Replay a trace and verify hashes, metadata, and the reported result."""
 function replay(trace::ExecutionTrace, state; profile=nothing)
     failures = String[]
@@ -295,12 +301,18 @@ function replay(trace::ExecutionTrace, state; profile=nothing)
         if step.kind === :artifact_evaluation
             !isequal(step.inputs, expected_input) &&
                 push!(failures, "step input metadata mismatch")
+            trace.artifact === nothing &&
+                push!(failures, "artifact is required to replay an artifact verdict")
         elseif step.kind === :graph_path
-            if trace.artifact === nothing || !(step.payload isa NamedTuple) ||
-               !hasproperty(step.payload, :path)
-                push!(failures, "graph trace context or path metadata missing")
-            elseif !_trace_context_valid(trace.artifact, step.payload.path)
-                push!(failures, "graph path is not valid in the recorded graph")
+            graph_hash = _provenance_value(trace.provenance.hashes, :graph)
+            if trace.artifact === nothing || graph_hash === nothing ||
+               !(step.payload isa NamedTuple) || !hasproperty(step.payload, :path)
+                push!(failures, "graph trace context, hash, or path metadata missing")
+            else
+                !isequal(graph_hash, _stable_hash(trace.artifact)) &&
+                    push!(failures, "graph context hash mismatch")
+                !_trace_context_valid(trace.artifact, step.payload.path) &&
+                    push!(failures, "graph path is not valid in the recorded graph")
             end
         end
         if step.kind === :artifact_evaluation &&
@@ -575,6 +587,7 @@ function extract_artifact(
     encoder=nothing,
     artifact=:rule,
     artifact_type=nothing,
+    output_transform=identity,
 )
     cs = _cases(cases)
     rs = ArtifactRule[]
@@ -590,7 +603,7 @@ function extract_artifact(
     for c in cs
         state = c.state === nothing ? c.input : c.state
         encoded = _encoded_input(encoder, c.input, state)
-        output = source(encoded)
+        output = output_transform(source(encoded))
         push!(rs, ArtifactRule(state, output))
     end
     return if selected === :tree

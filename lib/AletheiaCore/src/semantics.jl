@@ -878,7 +878,7 @@ end
 ValuationCallback(scalar; vectorized=nothing) =
     ValuationCallback{typeof(scalar),typeof(vectorized)}(scalar, vectorized)
 
-(valuation::ValuationCallback)(atom_value, world) = valuation.scalar(atom_value, world)
+(valuation::ValuationCallback)(atom_value, world) = _owned_callback_value(valuation.scalar(atom_value, world))
 
 function _nested_value(data, world)
     if data isa Function
@@ -955,6 +955,9 @@ function _lookup_atom(data::Valuation, atom::Atom, world)
     _lookup_valuation(data, value(atom), world)
 end
 _lookup_atom(data, atom::Atom, world) = _lookup_valuation(data, value(atom), world)
+# Callback results belong to the evaluator. Copy mutable carriers so a
+# callback may reuse an internal object without aliasing values across worlds.
+_owned_callback_value(value) = isimmutable(value) ? value : deepcopy(value)
 _lookup_atom(data::ValuationCallback, atom::Atom, world) = data(value(atom), world)
 
 function (valuation::Valuation)(atom_value, world)
@@ -964,7 +967,8 @@ end
 """Return atom values in the supplied world order, using a batch callback when available.
 
 The vector returned by a batch callback is consumed synchronously during formula
-extension evaluation, so callbacks may reuse an internal buffer on the next call.
+extension evaluation. Mutable carrier values are copied at this boundary, so
+callbacks may reuse an internal buffer or value on the next call.
 """
 function atom_values(valuation, atom::Atom, worlds)
     [ _lookup_atom(valuation, atom, world) for world in worlds ]
@@ -974,7 +978,8 @@ function atom_values(valuation::ValuationCallback, atom::Atom, worlds)
     batch = valuation.vectorized
     batch === nothing && return [valuation.scalar(value(atom), world) for world in worlds]
     result = batch(value(atom), worlds)
-    result isa AbstractVector ? result : collect(result)
+    values = result isa AbstractVector ? result : collect(result)
+    [_owned_callback_value(value) for value in values]
 end
 
 

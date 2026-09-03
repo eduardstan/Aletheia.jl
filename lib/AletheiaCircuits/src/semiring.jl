@@ -41,9 +41,11 @@ ProbabilityProfile(::Type{T}) where {T} = ProbabilityProfile{T}()
 
 """The probability semiring used for WMC.
 
-`Float64` is the practical profile. `Rational{Int}` gives exact finite-world
+`Float64` is the practical profile. `Rational{BigInt}` gives exact finite-world
 answers; Float64 weights are converted with `rationalize` using an eight-ulp
-tolerance before rational evaluation.
+tolerance before rational evaluation. The rational profile uses an unbounded
+integer carrier and normalizes each finite weight tuple after conversion, so
+accepted normalized choices have exact unit mass.
 
 # Examples
 ```jldoctest
@@ -96,10 +98,10 @@ Construct an exact Rational closed nonnegative probability semiring.
 julia> using AletheiaCircuits
 
 julia> RationalProfile()
-ProbabilitySemiring{Rational{Int64}}(:rational)
+ProbabilitySemiring{Rational{BigInt}}(:rational)
 ```
 """
-RationalProfile() = ProbabilitySemiring{Rational{Int}}(:rational)
+RationalProfile() = ProbabilitySemiring{Rational{BigInt}}(:rational)
 
 function _carrier(s::ProbabilitySemiring{T}) where {T}
     return T
@@ -112,7 +114,7 @@ function _as_carrier(::ProbabilitySemiring{T}, value) where {T}
         value
     elseif T <: Rational && value isa AbstractFloat
         try
-            convert(T, rationalize(Int, value; tol=eps(value) * 8))
+            convert(T, rationalize(BigInt, value; tol=eps(value) * 8))
         catch
             throw(InvalidProbabilityError(:normalization_tolerance,
                 "Float64 value $(repr(value)) exceeds the rational carrier or eight-ulp tolerance"))
@@ -191,20 +193,20 @@ function _label_value(
         found, value = _lookup_label(labels, id)
     end
     if found
-        if value isa ChoiceVariable
-            index <= length(value) || throw(
-                InvalidProbabilityError(
-                    :literal_label, "alternative index exceeds choice-variable arity"
-                ),
-            )
-            value = value.weights[index]
+        weights = if value isa ChoiceVariable
+            value.weights
         elseif value isa AbstractVector || value isa Tuple
-            index <= length(value) || throw(
+            value
+        else
+            nothing
+        end
+        if weights !== nothing
+            index <= length(weights) || throw(
                 InvalidProbabilityError(
                     :literal_label, "alternative index exceeds label arity"
                 ),
             )
-            value = value[index]
+            value = _weight_tuple(s, weights)[index]
         elseif variable isa ChoiceAlternative
             # A scalar label is the positive probability of a binary variable.
             index <= 2 || throw(
@@ -262,16 +264,22 @@ julia> neutral_sum(ProbabilitySemiring(), :c1, Dict(:c1 => (0.4, 0.6)))
 1.0
 ```
 """
+function _weight_tuple(s::ProbabilitySemiring{T}, values) where {T}
+    converted = tuple((_as_carrier(s, value) for value in values)...)
+    T <: Rational || return converted
+    total = foldl((acc, value) -> add(s, acc, value), converted; init=zero(s))
+    total > zero(s) || throw(InvalidProbabilityError(:normalization_tolerance,
+        "choice weights have no positive mass after eight-ulp rationalization"))
+    # Dividing by the exact converted total gives a common-denominator,
+    # normalized tuple whose sum is exactly one.
+    return tuple((value / total for value in converted)...)
+end
+
 function neutral_sum(s::ProbabilitySemiring{T}, variable, labels) where {T}
     if variable isa ChoiceVariable
         values = [literal_label(s, ChoiceLiteral(ChoiceAlternative(variable.id, index), true), labels)
             for index in eachindex(variable.alternatives)]
-        total = foldl((acc, value) -> add(s, acc, value), values; init=zero(s))
-        if T <: Rational && any(x -> x isa AbstractFloat, variable.weights) && total != one(s)
-            throw(InvalidProbabilityError(:normalization_tolerance,
-                "Float64 choice weights do not close to one after eight-ulp rationalization"))
-        end
-        return total
+        return foldl((acc, value) -> add(s, acc, value), values; init=zero(s))
     end
     found, value = _lookup_label(labels, variable)
     found || throw(
@@ -280,10 +288,11 @@ function neutral_sum(s::ProbabilitySemiring{T}, variable, labels) where {T}
         ),
     )
     if value isa ChoiceVariable
-        values = value.weights
+        values = _weight_tuple(s, value.weights)
         return foldl((acc, x) -> add(s, acc, x), values; init=zero(s))
     elseif value isa Tuple || value isa AbstractVector
-        return foldl((acc, x) -> add(s, acc, x), value; init=zero(s))
+        values = _weight_tuple(s, value)
+        return foldl((acc, x) -> add(s, acc, x), values; init=zero(s))
     end
     # A scalar label denotes the positive side of a binary choice.
     return add(s, value, one(s) - value)

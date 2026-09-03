@@ -145,4 +145,4 @@ Documentation across Aletheia follows a single uniform notation and terminology 
 
 ### Documentation source links
 
-Documentation source links track `main` by design. Historical benchmark and audit artifacts remain pinned by their own recorded provenance; source links are not claims that the current page was generated from that historical revision.
+Documentation source links track `main` by design. Links in the engine and results pages to historical benchmark or audit artifacts are pinned by those artifacts’ recorded provenance; they are historical references, not claims that the current page was generated from that revision.

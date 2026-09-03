@@ -125,10 +125,46 @@ end
 @testset "graph path traces require graph context" begin
     path = paths(g, :alice; target=:bob, max_hops=1)[1]
     trace = ExecutionTrace([TraceStep(:graph_path, (path=path,), :alice, path.entities)],
-        Provenance(), path.entities, stable_hash(:alice), stable_hash(path.entities), :global; artifact=g)
+        Provenance(; hashes=(graph=stable_hash(g),)), path.entities,
+        stable_hash(:alice), stable_hash(path.entities), :global; artifact=g)
     @test replay(trace, :alice).valid
     forged = TraceStep(:graph_path, (path=KGPath((alice, bob), (visits,), (p2,)),), :alice, (alice, bob))
     forged_trace = ExecutionTrace([forged], trace.provenance, (alice, bob), stable_hash(:alice), stable_hash((alice, bob)), :global; artifact=g)
     @test !replay(forged_trace, :alice).valid
     @test !replay(ExecutionTrace([TraceStep(:graph_path, (path=path,), :alice, path.entities)], Provenance(), path.entities, stable_hash(:alice), stable_hash(path.entities), :global), :alice).valid
+end
+
+
+@testset "graph replay authenticates graph context" begin
+    local_graph = KnowledgeGraph(
+        [alice, bob, carol], [knows, visits],
+        [KGEdge(alice, knows, bob, p1), KGEdge(bob, visits, carol, p2)],
+    )
+    path = paths(local_graph, :alice; target=:bob, max_hops=1)[1]
+    trace = ExecutionTrace([TraceStep(:graph_path, (path=path,), :alice, path.entities)],
+        Provenance(; hashes=(graph=stable_hash(local_graph),)), path.entities,
+        stable_hash(:alice), stable_hash(path.entities), :global; artifact=local_graph)
+    @test replay(trace, :alice).valid
+    empty!(local_graph.edges)
+    push!(local_graph.edges, KGEdge(alice, visits, carol, p2))
+    @test !replay(trace, :alice).valid
+end
+
+@testset "graph metadata is owned" begin
+    metadata = Dict(:source => "before")
+    entity = KGEntity(:owned; metadata=metadata)
+    metadata[:source] = "after"
+    @test entity.metadata[:source] == "before"
+    positional_metadata = Dict(:source => "before")
+    positional_entity = KGEntity(:positional, :entity, positional_metadata)
+    positional_metadata[:source] = "after"
+    @test positional_entity.metadata[:source] == "before"
+    relation_metadata = Dict(:source => "before")
+    relation = KGRelation(:owned; metadata=relation_metadata)
+    relation_metadata[:source] = "after"
+    @test relation.metadata[:source] == "before"
+    positional_relation_metadata = Dict(:source => "before")
+    positional_relation = KGRelation(:positional, :Any, :Any, positional_relation_metadata)
+    positional_relation_metadata[:source] = "after"
+    @test positional_relation.metadata[:source] == "before"
 end
