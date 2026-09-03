@@ -202,3 +202,11 @@ struct OtherScalarCondition <: AbstractScalarCondition end
     point_prep = prepare_scalar([[3.0, 7.0]]; features=[identity], frames=[point_frame], instances=[1])
     @test feature_value(point_prep, 1, point_world, identity) == 7.0
 end
+
+
+@testset "explicit scalar worlds match frame domains" begin
+    f1 = Frame((1, 2), Dict(); index=true); f2 = Frame((1, 2, 3), Dict(); index=true)
+    @test_throws ScalarWorldDomainError prepare_scalar(nothing;
+        features=[(data, instance, world) -> world], frames=[f1, f2],
+        instances=[1, 2], worlds=[1, 2])
+end

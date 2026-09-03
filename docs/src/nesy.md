@@ -48,7 +48,7 @@ account [riguzzi2023; chs. 2 and 8](@cite).
 
 ## Exact extraction round trip
 
-`ske_roundtrip` enumerates a declared finite case set, extracts an exact
+`ske_roundtrip` enumerates a declared finite case set, validates outputs against the declared algebra, extracts an exact
 `RuleArtifact` or `TreeArtifact`, verifies the artifact against the callable,
 and returns its verification report, metrics, and audit record. Unknown cases
 remain uncovered. This is an exact finite-case contract, not a claim about

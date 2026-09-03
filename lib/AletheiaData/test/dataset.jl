@@ -41,6 +41,8 @@ struct EmptyFamily <: AbstractModelFamily end
     @test isuniform(uniform)
     @test uniform_frame(uniform) == frame
     @test extension(p, uniform) == [BitVector([false, true]), BitVector([false, true])]
+    distinct_equal = ModelFamily([first_model, Model(Frame((1, 2), Dict(:R => Dict(1 => [2], 2 => [2])); index=true), BOOLEAN, Dict("p" => Set([2])))])
+    @test instance_frame(distinct_equal, 1) === instance_frame(distinct_equal, 2)
 
     gcallback = Aletheia.ValuationCallback((name, world) -> 0.5;
         vectorized=(name, worlds) -> [0.5, 1.0])

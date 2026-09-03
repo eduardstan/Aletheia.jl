@@ -106,3 +106,16 @@ end
     p = DSProgram(choices=[ChoiceVariable(:c, (:yes, :no), (0.1, 0.9))])
     @test wmc(compile_event(p, :yes); semiring=RationalProfile()) == 1//10
 end
+
+
+@testset "finite containers and rational normalization" begin
+    cyclic = Dict{Symbol,Any}(); cyclic[:self] = cyclic
+    program = DSProgram(choices=[ChoiceVariable(:c, (cyclic, nothing), (1//2, 1//2))])
+    @test_throws UnsupportedFeatureError validate_program(program)
+    weights = (0.123456789, 0.234567891, 0.64197532)
+    pfloat = DSProgram(choices=[ChoiceVariable(:c, Tuple(Symbol.("a", 1:3)), weights)])
+    tautology = compile_event(pfloat, Or(:a1, :a2, :a3))
+    err = try wmc(tautology; semiring=RationalProfile()); nothing catch e; e end
+    @test err isa InvalidProbabilityError
+    @test occursin("tolerance", sprint(showerror, err))
+end

@@ -28,7 +28,8 @@ probability evaluator is intentionally not a `TruthAlgebra`: truth values at a
 world and a measure over worlds are different semantic objects
 [riguzzi2023; chs. 2 and 8](@cite). WMC uses the closed nonnegative
 `Float64Profile()` by default, or exact `RationalProfile()` (Float64 weights are
-converted with `rationalize` using an eight-ulp tolerance), following the
+converted with `rationalize` using an eight-ulp tolerance; a conversion that does
+not preserve normalized closure is rejected with `InvalidProbabilityError`), following the
 semiring abstraction of algebraic model counting [kimmig2017](@cite).
 
 ```@example circuits

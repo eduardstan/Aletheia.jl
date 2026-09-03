@@ -644,12 +644,20 @@ function _ground_value(value, seen=IdDict{Any,Bool}())
     value isa Tuple && return all(x -> _ground_value(x, seen), value)
     value isa NamedTuple && return all(x -> _ground_value(x, seen), values(value))
     value isa AbstractArray || value isa AbstractSet || value isa AbstractDict || return false
-    haskey(seen, value) && return true
+    # Mutable containers are tracked while descending. A revisit before the
+    # container is removed is a cycle, not a finite shared subvalue.
+    haskey(seen, value) && return false
     seen[value] = true
-    if value isa AbstractDict
-        return all(_ground_value(k, seen) && _ground_value(v, seen) for (k, v) in value)
+    valid = try
+        if value isa AbstractDict
+            all(_ground_value(k, seen) && _ground_value(v, seen) for (k, v) in value)
+        else
+            all(_ground_value(x, seen) for x in value)
+        end
+    finally
+        delete!(seen, value)
     end
-    return all(_ground_value(x, seen) for x in value)
+    return valid
 end
 
 function _validate_ground(value, context)

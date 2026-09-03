@@ -141,3 +141,8 @@ Documentation across Aletheia follows a single uniform notation and terminology 
   - Package names: `[`AletheiaCore`](api.md)`, `[`AletheiaData`](families.md)`, `[`AletheiaLearn`](learning.md)`, `[`AletheiaSole`](compatibility.md)`, `[`AletheiaCircuits`](circuits.md)`, `[`AletheiaGraphs`](graphs.md)`, `[`AletheiaAudit`](audit.md)`, `[`AletheiaNeSy`](nesy.md)`, `Aletheia`.
 - **Headings**: sentence case throughout headings.
 - **Cross-references**: every mention of a package or documentation page links once per section to its corresponding page.
+
+
+### Documentation source links
+
+Documentation source links track `main` by design. Historical benchmark and audit artifacts remain pinned by their own recorded provenance; source links are not claims that the current page was generated from that historical revision.

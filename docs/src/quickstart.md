@@ -215,5 +215,5 @@ in `[0, 1]` is legal. A finite chain such as `GodelAlgebra(3)` admits only its
 own levels — `0.0`, `0.5`, `1.0` — and rejects anything else. The Gödel and Łukasiewicz operations on these chains are standard examples in the many-valued setting [hajek1998; Example 2.1.2, p. 28](@cite), and the finite Łukasiewicz chains are MV-algebras [cignoli2000; §1.1, Definition 1.1.1 and pp. 7–8](@cite).
 
 Each idea in this guide also exists as a runnable script under
-[`examples/`](https://github.com/eduardstan/Aletheia.jl/tree/9f71902c0b08d69b72f94fa0a5693b05b33fa469/examples); run
+[`examples/`](https://github.com/eduardstan/Aletheia.jl/tree/main/examples); run
 one with `julia --project=. examples/quickstart.jl`.

@@ -31,18 +31,18 @@ length(ARGS) == 2 || error("usage: deployed_apply_scale_worker.jl INSTANCES POIN
 ninstances, npoints = parse.(Int, ARGS)
 for seed in APPLY_SEEDS
     base = build_apply_fixture(train_seed=seed)
-    scale_fixture = fresh_fixture(base, make_supported_dataset(ninstances, npoints))
+    scale_fixture = fresh_fixture(base, make_supported_dataset(ninstances, npoints; seed=APPLY_DATA_SEED))
     gate = run_parity_gate(scale_fixture)
     println("scale-parity=PASS seed=$(seed) instances=$(ninstances) points=$(npoints) " *
         "rules=$(gate.rules) extension_cases=$(gate.extension_cases)")
     for mode in ("decision-list-apply", "aletheia-scalar", "aletheia-vectorized")
         apply_mode(scale_fixture, mode)
-        first_fixture = fresh_fixture(base, make_supported_dataset(ninstances, npoints))
+        first_fixture = fresh_fixture(base, make_supported_dataset(ninstances, npoints; seed=APPLY_DATA_SEED))
         first = measure(() -> apply_mode(first_fixture, mode); warm=false)
         emit(mode, "first-use", seed, ninstances, npoints, first)
         warm = measure(() -> apply_mode(scale_fixture, mode))
         emit(mode, "warm-reuse", seed, ninstances, npoints, warm)
-        churn = [fresh_fixture(base, make_supported_dataset(ninstances, npoints)) for _ in 1:6]
+        churn = [fresh_fixture(base, make_supported_dataset(ninstances, npoints; seed=APPLY_DATA_SEED)) for _ in 1:6]
         cursor = Ref(0)
         churn_measurement = measure(; warm=false, samples=length(churn)) do
             cursor[] += 1

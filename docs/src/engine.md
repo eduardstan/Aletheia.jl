@@ -5,7 +5,7 @@ formula syntax is evaluated in a model, while each focused package supplies a
 reading or an application boundary. This follows the separation between
 similarity types, formulas, frames, models, and satisfaction in modal
 semantics [blackburn2001; §§1.2–1.3, pp. 9–26](@cite). The implementation map
-is visible in the [package workspace](https://github.com/eduardstan/Aletheia.jl/tree/9f71902c0b08d69b72f94fa0a5693b05b33fa469/lib) and the package pages
+is visible in the [package workspace](https://github.com/eduardstan/Aletheia.jl/tree/main/lib) and the package pages
 listed below.
 
 ## The shared engine: a pooled syntax DAG
@@ -118,17 +118,17 @@ contracts are described in [Neural-symbolic interface](nesy.md).
 
 The focused packages can be read in dependency order:
 
-1. [`AletheiaCore`](https://github.com/eduardstan/Aletheia.jl/tree/9f71902c0b08d69b72f94fa0a5693b05b33fa469/lib/AletheiaCore) — pooled syntax, models,
+1. [`AletheiaCore`](https://github.com/eduardstan/Aletheia.jl/tree/main/lib/AletheiaCore) — pooled syntax, models,
    algebras, relations, evaluation, and theory utilities.
-2. [`AletheiaData`](https://github.com/eduardstan/Aletheia.jl/tree/9f71902c0b08d69b72f94fa0a5693b05b33fa469/lib/AletheiaData) — scalar preparation and
+2. [`AletheiaData`](https://github.com/eduardstan/Aletheia.jl/tree/main/lib/AletheiaData) — scalar preparation and
    model-family protocols.
-3. [`AletheiaCircuits`](https://github.com/eduardstan/Aletheia.jl/tree/9f71902c0b08d69b72f94fa0a5693b05b33fa469/lib/AletheiaCircuits) — finite
+3. [`AletheiaCircuits`](https://github.com/eduardstan/Aletheia.jl/tree/main/lib/AletheiaCircuits) — finite
    distribution-semantics circuits and semiring inference.
-4. [`AletheiaGraphs`](https://github.com/eduardstan/Aletheia.jl/tree/9f71902c0b08d69b72f94fa0a5693b05b33fa469/lib/AletheiaGraphs) — typed graph and frame
+4. [`AletheiaGraphs`](https://github.com/eduardstan/Aletheia.jl/tree/main/lib/AletheiaGraphs) — typed graph and frame
    adapters.
-5. [`AletheiaLearn`](https://github.com/eduardstan/Aletheia.jl/tree/9f71902c0b08d69b72f94fa0a5693b05b33fa469/lib/AletheiaLearn) — ILP foundations over
+5. [`AletheiaLearn`](https://github.com/eduardstan/Aletheia.jl/tree/main/lib/AletheiaLearn) — ILP foundations over
    the core evaluator.
-6. [`AletheiaSole`](https://github.com/eduardstan/Aletheia.jl/tree/9f71902c0b08d69b72f94fa0a5693b05b33fa469/lib/AletheiaSole) — opt-in compatibility
+6. [`AletheiaSole`](https://github.com/eduardstan/Aletheia.jl/tree/main/lib/AletheiaSole) — opt-in compatibility
    adapters.
 7. [`AletheiaAudit`](audit.md) — traces, replay, and audit metrics.
 8. [`AletheiaNeSy`](nesy.md) — validated neural leaves and exact symbolic extraction.
