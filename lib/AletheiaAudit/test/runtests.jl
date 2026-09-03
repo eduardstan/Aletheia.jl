@@ -158,3 +158,13 @@ end
     @test record.state_hashes[1] == record.trace[1].input_hash
     @test record.input_hashes[1] != record.state_hashes[1]
 end
+
+
+@testset "replay requires artifact and graph context" begin
+    artifact = RuleArtifact([:yes => true])
+    _, trace = eval_artifact(artifact, :yes)
+    forged = ExecutionTrace([TraceStep(:artifact_evaluation,
+        (artifact="RuleArtifact", selected=999, profile=nothing), stable_hash(:yes), false)],
+        trace.provenance, false, stable_hash(:yes), stable_hash(false), :global)
+    @test !replay(forged, :yes).valid
+end

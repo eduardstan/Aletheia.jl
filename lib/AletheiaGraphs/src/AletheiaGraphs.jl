@@ -21,11 +21,14 @@ abstract type AbstractKGEntity end
 """Abstract supertype for typed graph relations."""
 abstract type AbstractKGRelation end
 
-"""A typed graph entity with an identifier, kind, and immutable metadata."""
+"""A typed graph entity with an identifier, kind, and owned metadata."""
 struct KGEntity{I,K,M} <: AbstractKGEntity
     id::I
     kind::K
     metadata::M
+    function KGEntity(id::I, kind::K, metadata::M) where {I,K,M}
+        return new{I,K,M}(id, kind, deepcopy(metadata))
+    end
 end
 KGEntity(id; kind=:entity, metadata=NamedTuple()) = KGEntity(id, kind, metadata)
 
@@ -35,6 +38,9 @@ struct KGRelation{I,D,R,M} <: AbstractKGRelation
     domain::D
     range::R
     metadata::M
+    function KGRelation(id::I, domain::D, range::R, metadata::M) where {I,D,R,M}
+        return new{I,D,R,M}(id, domain, range, deepcopy(metadata))
+    end
 end
 function KGRelation(id; domain=:Any, range=:Any, metadata=NamedTuple())
     return KGRelation(id, domain, range, metadata)

@@ -22,6 +22,9 @@ include(joinpath(@__DIR__, "..", "benchmark", "measurement.jl"))
     @test !occursin("1.0", failure_summary)
 
     source = read(joinpath(@__DIR__, "..", "benchmark", "warmup.jl"), String)
-    @test occursin("Aletheia.RCC5_RELATIONS", source)
+    @test occursin("Aletheia.AletheiaCore.IA3Relations", source)
+    @test occursin("Aletheia.AletheiaCore.IA7Relations", source)
+    @test occursin("Aletheia.AletheiaCore.RCC5_RELATIONS", source)
+    @test !occursin("Aletheia.IA3Relations", source)
     @test !occursin("Aletheia.RCC5Relations", source)
 end

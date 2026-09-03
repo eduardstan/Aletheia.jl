@@ -1,6 +1,6 @@
 # Knowledge graphs as relational structures
 
-A knowledge graph is a collection of typed entities and directed, typed edges. `[`AletheiaGraphs`](graphs.md)` keeps the source record for every edge, then maps entities to worlds and relation schemas to named relations in an Aletheia frame. Construction requires every edge endpoint to match the graph entity by full identity (identifier and value). This makes graph traversal and modal evaluation two views of the same finite relational structure, following the standard relational-frame reading of modal logic [blackburn2001](@cite).
+A knowledge graph is a collection of typed entities and directed, typed edges. `[`AletheiaGraphs`](graphs.md)` copies metadata at entity and relation construction, keeps the source record for every edge, then maps entities to worlds and relation schemas to named relations in an Aletheia frame. Construction requires every edge endpoint to match the graph entity by full identity (identifier and value). This makes graph traversal and modal evaluation two views of the same finite relational structure, following the standard relational-frame reading of modal logic [blackburn2001](@cite).
 
 ```@example graphs
 using Aletheia, AletheiaGraphs
@@ -10,7 +10,7 @@ graph = KnowledgeGraph(people, [knows], [KGEdge(people[1], knows, people[2], KGP
 length(paths(graph, :alice; max_hops=1))
 ```
 
-The path record contains entities, relation schemas, and edge provenance. `path_valid` checks replay against the graph snapshot. It does not turn path presence into a proof of ontology entailment. Provenance identifies the source; it is a separate field from validity. A numeric or neural confidence, when supplied by an application, remains a score and never a proof.
+The path record contains entities, relation schemas, and edge provenance. `path_valid` checks replay against the supplied graph. Trace replay additionally checks the recorded graph hash before calling `path_valid`. It does not turn path presence into a proof of ontology entailment. Provenance identifies the source; it is a separate field from validity. A numeric or neural confidence, when supplied by an application, remains a score and never a proof.
 
 ## A fuzzy-KG reading
 

@@ -111,6 +111,12 @@ end
 function _canonical_model_vector(models)
     result = Any[]
     representatives = Frame[]
+    isempty(models) && return result
+    expected_algebra = algebra(first(models))
+    for (instance, model) in enumerate(models)
+        isequal(algebra(model), expected_algebra) ||
+            throw(MixedAlgebraError(expected_algebra, algebra(model), instance))
+    end
     for model in models
         model_frame = frame(model)
         representative = findfirst(candidate -> _same_frame(candidate, model_frame), representatives)

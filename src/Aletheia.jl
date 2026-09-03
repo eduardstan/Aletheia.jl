@@ -366,6 +366,7 @@ export ModelFamily,
     DenseFeatureStore,
     PreparedScalarData,
     ScalarWorldDomainError,
+    MixedAlgebraError,
     AggregateMemoStore
 export ScalarEvaluationCache,
     ScalarRelationIndex,

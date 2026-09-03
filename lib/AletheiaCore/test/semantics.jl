@@ -189,3 +189,33 @@ end
     @test_throws ArgumentError interpret(p, Model(f, Dict("p"=>Dict(:w1=>true)), GodelAlgebra()), :w1)
     @test_throws MethodError interpret(branch(pool, ¬, p), boolmodel, :w1)
 end
+
+
+mutable struct MutableTruth
+    value::Int
+end
+struct MutableTruthAlgebra <: TruthAlgebra{MutableTruth} end
+Aletheia.truth_type(::Type{MutableTruthAlgebra}) = MutableTruth
+Aletheia.top(::MutableTruthAlgebra) = MutableTruth(10)
+Aletheia.bottom(::MutableTruthAlgebra) = MutableTruth(0)
+Aletheia.meet(::MutableTruthAlgebra, a::MutableTruth, b::MutableTruth) = MutableTruth(min(a.value, b.value))
+Aletheia.fusion(::MutableTruthAlgebra, a::MutableTruth, b::MutableTruth) = MutableTruth(min(a.value, b.value))
+Aletheia.join(::MutableTruthAlgebra, a::MutableTruth, b::MutableTruth) = MutableTruth(max(a.value, b.value))
+Aletheia.implication(::MutableTruthAlgebra, a::MutableTruth, b::MutableTruth) = MutableTruth(max(0, 10 - a.value + b.value))
+Aletheia.negation(::MutableTruthAlgebra, a::MutableTruth) = MutableTruth(10 - a.value)
+
+@testset "vectorized callbacks own mutable values" begin
+    frame = Frame((:w,), Dict(); index=true)
+    p = atom(:p)
+    q = atom(:q)
+    formula = Conjunction()(p, q)
+    buffer = [MutableTruth(0)]
+    scalar = (name, world) -> name === :p ? MutableTruth(1) : MutableTruth(2)
+    batch = (name, worlds) -> begin
+        buffer[1].value = name === :p ? 1 : 2
+        buffer
+    end
+    vectorized = Model(frame, MutableTruthAlgebra(), Aletheia.ValuationCallback(scalar; vectorized=batch))
+    scalar_model = Model(frame, MutableTruthAlgebra(), Aletheia.ValuationCallback(scalar))
+    @test extension(formula, vectorized)[1].value == extension(formula, scalar_model)[1].value == 1
+end

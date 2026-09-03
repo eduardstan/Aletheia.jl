@@ -5,6 +5,11 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
 
 ## Unreleased
 
+- Exact rational WMC now uses an unbounded carrier and tuple normalization for Float64 weights; neural extraction canonicalizes leaves through the validated algebra path; mutable callback values and graph metadata are owned at their boundaries.
+- Trace replay now requires artifact and graph context (including a graph hash), and `ModelFamily` rejects mixed truth algebras with a typed error.
+- Fixed interval-subset benchmark relation bindings and kept deployed scale cases aligned through 128 instances.
+
+
 - Closed adversarial contract gaps: finite-carrier validation now rejects invalid and Boolean indices; neural extraction shares encoder dispatch with verification; uncovered outputs fail verification; circuit programs reject non-ground, cyclic, and non-closing values; Float64 weights convert through the exact rational profile with typed closure checks; the declared neural algebra validates round trips; metric scopes and permutation-invariant perturbation stability are explicit; graph traces replay against their recorded graph; audit input/state hashes are named separately; scalar world domains are checked during preparation; graph endpoints require full identity; benchmark scales, seeds, and relational-precompute settings match their provenance; and trace omission is honored.
 - Updated audit, circuit, neural, showcase, benchmark, and provenance documentation to describe these boundaries; source links track `main` by design as stated in the development guide.
 
