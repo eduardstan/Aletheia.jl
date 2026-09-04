@@ -406,9 +406,9 @@ function _contains_callable(value, seen=IdDict{Any,Bool}())
                 (k, v) in value
             )
         elseif value isa AbstractArray ||
-               value isa AbstractSet ||
-               value isa Tuple ||
-               value isa NamedTuple
+            value isa AbstractSet ||
+            value isa Tuple ||
+            value isa NamedTuple
             return any(_contains_callable(x, seen) for x in value)
         end
         return any(
@@ -509,9 +509,9 @@ function replay(trace::ExecutionTrace, state; profile=nothing)
             trace_artifact === nothing &&
                 push!(failures, "artifact is required to replay an artifact verdict")
             if !(step.payload isa NamedTuple) ||
-               !hasproperty(step.payload, :artifact) ||
-               !hasproperty(step.payload, :selected) ||
-               !hasproperty(step.payload, :profile)
+                !hasproperty(step.payload, :artifact) ||
+                !hasproperty(step.payload, :selected) ||
+                !hasproperty(step.payload, :profile)
                 push!(failures, "step payload metadata malformed")
             elseif trace_artifact !== nothing
                 trace_artifact isa Union{RuleArtifact,TreeArtifact} ||
@@ -557,9 +557,9 @@ function replay(trace::ExecutionTrace, state; profile=nothing)
             (!isequal(step.inputs, state) && !isequal(step.inputs, expected_input)) &&
                 push!(failures, "graph step input metadata mismatch")
             if trace_artifact === nothing ||
-               graph_hash === nothing ||
-               !(step.payload isa NamedTuple) ||
-               !hasproperty(step.payload, :path)
+                graph_hash === nothing ||
+                !(step.payload isa NamedTuple) ||
+                !hasproperty(step.payload, :path)
                 push!(failures, "graph trace context, hash, or path metadata missing")
             else
                 !isequal(graph_hash, _stable_hash(trace_artifact)) &&

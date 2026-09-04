@@ -126,9 +126,17 @@ struct OwnershipError <: Exception
     value_type::DataType
     requirement::String
 end
-OwnershipError(value) = OwnershipError(typeof(value), "semantic records require immutable opaque values")
+function OwnershipError(value)
+    return OwnershipError(typeof(value), "semantic records require immutable opaque values")
+end
 function Base.showerror(io::IO, error::OwnershipError)
-    return print(io, "ownership contract violated by mutable opaque value of type ", error.value_type, "; ", error.requirement)
+    return print(
+        io,
+        "ownership contract violated by mutable opaque value of type ",
+        error.value_type,
+        "; ",
+        error.requirement,
+    )
 end
 
 _immutable_copy(value::Function) = value

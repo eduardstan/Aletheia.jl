@@ -160,12 +160,8 @@ end
     @test changed.stability.value == 0.0
     @test changed.stability.numerator == 0
     @test changed.stability.denominator == 1
-    @test !metric_bundle(
-        artifact, [ArtifactCase(1, true)]; scope=:local
-    ).stability.applicable
-    @test !metric_bundle(
-        artifact, [ArtifactCase(1, true)]; perturbations=()
-    ).stability.applicable
+    @test !metric_bundle(artifact, [ArtifactCase(1, true)]; scope=:local).stability.applicable
+    @test !metric_bundle(artifact, [ArtifactCase(1, true)]; perturbations=()).stability.applicable
     @test_throws ArgumentError metric_bundle(
         artifact, [ArtifactCase(1, true)]; scope=:bogus
     )
@@ -183,7 +179,7 @@ end
     first = [ArtifactCase(1, true), ArtifactCase(2, false)]
     second = reverse(first)
     @test metric_bundle(artifact, first; perturbations=[1]).stability ==
-          metric_bundle(artifact, second; perturbations=[1]).stability
+        metric_bundle(artifact, second; perturbations=[1]).stability
     record = audit(artifact, [ArtifactCase(:key, :state, true)])
     @test record.state_hashes[1] == record.trace[1].input_hash
     @test record.input_hashes[1] != record.state_hashes[1]
@@ -256,10 +252,19 @@ end
     @test_throws OwnershipError ArtifactCase(:input, payload, :output)
 
     provenance = Provenance(; hashes=Dict(:x => [1]))
-    trace = ExecutionTrace((TraceStep(:test, nothing, nothing, :ok),), provenance, :ok,
-        "", "", :global, nothing)
+    trace = ExecutionTrace(
+        (TraceStep(:test, nothing, nothing, :ok),),
+        provenance,
+        :ok,
+        "",
+        "",
+        :global,
+        nothing,
+    )
     @test getfield(trace, :provenance) === provenance
-    @test_throws CanonicalIndexError (getfield(getfield(trace, :provenance), :hashes)[:x][1] = 2)
+    @test_throws CanonicalIndexError (
+        getfield(getfield(trace, :provenance), :hashes)[:x][1] = 2
+    )
 end
 
 @testset "public audit boundaries own nested values" begin

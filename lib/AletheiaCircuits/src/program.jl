@@ -451,7 +451,12 @@ struct DSProgram{C,F,R,D} <: AbstractDSProgram
         owned_facts = _immutable_copy(facts)
         owned_rules = _immutable_copy(rules)
         owned_domain = _immutable_copy(domain)
-        return new{typeof(owned_choices),typeof(owned_facts),typeof(owned_rules),typeof(owned_domain)}(
+        return new{
+            typeof(owned_choices),
+            typeof(owned_facts),
+            typeof(owned_rules),
+            typeof(owned_domain),
+        }(
             owned_choices, owned_facts, owned_rules, owned_domain
         )
     end

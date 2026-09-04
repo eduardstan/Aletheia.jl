@@ -495,11 +495,15 @@ struct Frame{W<:Tuple,RS,I} <: AbstractMultiModalFrame{eltype(W)}
     relations::RS
     index::I
     cache::_ModelEvaluationCache
-    function Frame(worlds::W, relations::RS, index::I, cache::_ModelEvaluationCache) where {W<:Tuple,RS,I}
+    function Frame(
+        worlds::W, relations::RS, index::I, cache::_ModelEvaluationCache
+    ) where {W<:Tuple,RS,I}
         owned_worlds = _immutable_copy(worlds)
         owned_relations = _immutable_copy(relations)
         owned_index = _immutable_copy(index)
-        return new{typeof(owned_worlds),typeof(owned_relations),typeof(owned_index)}(owned_worlds, owned_relations, owned_index, cache)
+        return new{typeof(owned_worlds),typeof(owned_relations),typeof(owned_index)}(
+            owned_worlds, owned_relations, owned_index, cache
+        )
     end
 end
 
@@ -539,9 +543,9 @@ end
 function _targets(worlds::Tuple, target)
     _is_world(worlds, target) && return (target,)
     if target isa AbstractString ||
-       target isa Symbol ||
-       target isa Number ||
-       target isa Char
+        target isa Symbol ||
+        target isa Number ||
+        target isa Char
         return (target,)
     end
     try
@@ -1083,8 +1087,16 @@ struct Model{T,A<:TruthAlgebra{T},F<:Frame,V}
     algebra::A
     valuation::V
     cache::_ModelEvaluationCache
-    function Model(frame::F, algebra::A, valuation::V, cache::_ModelEvaluationCache) where {T,A<:TruthAlgebra{T},F<:Frame,V}
-        owned = valuation isa AbstractDict ? Valuation(valuation).data : valuation isa Valuation ? valuation.data : _immutable_copy(valuation)
+    function Model(
+        frame::F, algebra::A, valuation::V, cache::_ModelEvaluationCache
+    ) where {T,A<:TruthAlgebra{T},F<:Frame,V}
+        owned = if valuation isa AbstractDict
+            Valuation(valuation).data
+        elseif valuation isa Valuation
+            valuation.data
+        else
+            _immutable_copy(valuation)
+        end
         return new{T,A,F,typeof(owned)}(frame, algebra, owned, cache)
     end
 end

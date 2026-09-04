@@ -58,7 +58,9 @@ struct KGRelation{I,D,R,M} <: AbstractKGRelation
         owned_metadata = _immutable_copy(metadata)
         return new{
             typeof(owned_id),typeof(owned_domain),typeof(owned_range),typeof(owned_metadata)
-        }(owned_id, owned_domain, owned_range, owned_metadata)
+        }(
+            owned_id, owned_domain, owned_range, owned_metadata
+        )
     end
 end
 function KGRelation(id; domain=:Any, range=:Any, metadata=NamedTuple())
@@ -122,12 +124,19 @@ struct KnowledgeGraph{E<:Tuple,R<:Tuple,G<:Tuple,P}
     relations::R
     edges::G
     provenance::P
-    function KnowledgeGraph(::_OwnedGraphValue, entities::E, relations::R, edges::G, provenance::P) where {E<:Tuple,R<:Tuple,G<:Tuple,P}
+    function KnowledgeGraph(
+        ::_OwnedGraphValue, entities::E, relations::R, edges::G, provenance::P
+    ) where {E<:Tuple,R<:Tuple,G<:Tuple,P}
         owned_entities = _immutable_copy(entities)
         owned_relations = _immutable_copy(relations)
         owned_edges = _immutable_copy(edges)
         owned_provenance = _immutable_copy(provenance)
-        return new{typeof(owned_entities),typeof(owned_relations),typeof(owned_edges),typeof(owned_provenance)}(
+        return new{
+            typeof(owned_entities),
+            typeof(owned_relations),
+            typeof(owned_edges),
+            typeof(owned_provenance),
+        }(
             owned_entities, owned_relations, owned_edges, owned_provenance
         )
     end
@@ -138,7 +147,9 @@ struct KGPath{E<:Tuple,R<:Tuple,P<:Tuple}
     entities::E
     relations::R
     edge_provenance::P
-    function KGPath(::_OwnedGraphValue, entities::E, relations::R, edge_provenance::P) where {E<:Tuple,R<:Tuple,P<:Tuple}
+    function KGPath(
+        ::_OwnedGraphValue, entities::E, relations::R, edge_provenance::P
+    ) where {E<:Tuple,R<:Tuple,P<:Tuple}
         owned_entities = _immutable_copy(entities)
         owned_relations = _immutable_copy(relations)
         owned_provenance = _immutable_copy(edge_provenance)
@@ -208,9 +219,9 @@ function KnowledgeGraph(entities, relations, edges; provenance=())
     for edge in gs
         edge isa KGEdge || throw(ArgumentError("edges must be KGEdge values"))
         haskey(entity_by_id, edge.source.id) &&
-            isequal(entity_by_id[edge.source.id], edge.source) &&
-            haskey(entity_by_id, edge.target.id) &&
-            isequal(entity_by_id[edge.target.id], edge.target) || throw(
+        isequal(entity_by_id[edge.source.id], edge.source) &&
+        haskey(entity_by_id, edge.target.id) &&
+        isequal(entity_by_id[edge.target.id], edge.target) || throw(
             ArgumentError(
                 "every edge endpoint must match a graph entity by full identity (id and value)",
             ),
@@ -227,11 +238,7 @@ function KnowledgeGraph(entities, relations, edges; provenance=())
     owned_edges = _immutable_copy(tuple(gs...))
     owned_provenance = _immutable_copy(provenance)
     return KnowledgeGraph(
-        _OWNED_GRAPH_VALUE,
-        owned_entities,
-        owned_relations,
-        owned_edges,
-        owned_provenance,
+        _OWNED_GRAPH_VALUE, owned_entities, owned_relations, owned_edges, owned_provenance
     )
 end
 function KnowledgeGraph(entities, relations, edge::KGEdge; provenance=())
@@ -353,9 +360,9 @@ function path_valid(path::KGPath, graph::KnowledgeGraph)
         any(
             edge ->
                 isequal(edge.source, path.entities[i]) &&
-                    isequal(edge.target, path.entities[i + 1]) &&
-                    isequal(edge.relation, path.relations[i]) &&
-                    isequal(edge.provenance, path.edge_provenance[i]),
+                isequal(edge.target, path.entities[i + 1]) &&
+                isequal(edge.relation, path.relations[i]) &&
+                isequal(edge.provenance, path.edge_provenance[i]),
             graph.edges,
         ) || return false
     end

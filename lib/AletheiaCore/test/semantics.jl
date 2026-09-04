@@ -12,8 +12,8 @@ Aletheia.negation(::TestSymbolAlgebra, ::Symbol) = :negation
     b = BooleanAlgebra()
     @test b isa TruthAlgebra{Bool}
     @test truth_type(b) === Bool &&
-          Aletheia.truthtype(b) === Bool &&
-          carrier(b) == (false, true)
+        Aletheia.truthtype(b) === Bool &&
+        carrier(b) == (false, true)
     @test top(b) && !bottom(b) && bot(b) == false
     @test meet(b, true, false) == false
     @test fusion(b, true, false) == false
@@ -51,7 +51,7 @@ Aletheia.negation(::TestSymbolAlgebra, ::Symbol) = :negation
     @test domain(LukasiewiczAlgebra(4)) == Tuple(collect(levels(LukasiewiczAlgebra(4))))
 
     @test Aletheia.GödelAlgebra === GodelAlgebra &&
-          Aletheia.ŁukasiewiczAlgebra === LukasiewiczAlgebra
+        Aletheia.ŁukasiewiczAlgebra === LukasiewiczAlgebra
     @test_throws ArgumentError GodelAlgebra(0)
     @test_throws ArgumentError GodelAlgebra(1)
     @test_throws ArgumentError LukasiewiczAlgebra(1)
@@ -102,8 +102,8 @@ end
     @test worlds(f) == (:w1, :w2) && length(f) == 2 && collect(f) == [:w1, :w2]
     @test relations(f) isa Dict && hasworldindex(f)
     @test Aletheia.world_index(f)[:w2] == 2 &&
-          world_position(f, :w1) == 1 &&
-          world_position(f, :w2) == 2
+        world_position(f, :w1) == 1 &&
+        world_position(f, :w2) == 2
     successors = accessible(f, :w1, :G)
     @test successors isa Base.Generator && collect(successors) == [:w2]
     @test collect(accessible(f, :w2, :G)) == [:w2]
@@ -277,6 +277,6 @@ end
     )
     scalar_model = Model(frame, MutableTruthAlgebra(), Aletheia.ValuationCallback(scalar))
     @test extension(formula, vectorized)[1].value ==
-          extension(formula, scalar_model)[1].value ==
-          1
+        extension(formula, scalar_model)[1].value ==
+        1
 end

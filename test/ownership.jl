@@ -123,8 +123,13 @@ end
 
     provenance = Aletheia.Provenance(; hashes=Dict(:x => [1]))
     trace = Aletheia.ExecutionTrace(
-        (Aletheia.TraceStep(:test, nothing, nothing, :ok),), provenance, :ok,
-        "", "", :global, nothing,
+        (Aletheia.TraceStep(:test, nothing, nothing, :ok),),
+        provenance,
+        :ok,
+        "",
+        "",
+        :global,
+        nothing,
     )
     @test trace.provenance === provenance
     @test_throws CanonicalIndexError (
@@ -136,14 +141,29 @@ end
     rules = Aletheia.GroundRule[]
     domain = [:a, :b]
     @test_throws MethodError Aletheia.DSProgram{
-        typeof(choices), typeof(facts), typeof(rules), typeof(domain)
-    }(choices, facts, rules, domain)
+        typeof(choices),typeof(facts),typeof(rules),typeof(domain)
+    }(
+        choices, facts, rules, domain
+    )
 
     owned_types = (
-        typeof(frame), typeof(model), typeof(program), typeof(case), typeof(trace),
-        typeof(Aletheia.KGEntity(:x)), typeof(Aletheia.KGRelation(:r)),
-        typeof(Aletheia.KGEdge(Aletheia.KGEntity(:x), Aletheia.KGRelation(:r), Aletheia.KGEntity(:y))),
-        typeof(Aletheia.KnowledgeGraph([Aletheia.KGEntity(:x)], Aletheia.KGRelation[], Aletheia.KGEdge[])),
+        typeof(frame),
+        typeof(model),
+        typeof(program),
+        typeof(case),
+        typeof(trace),
+        typeof(Aletheia.KGEntity(:x)),
+        typeof(Aletheia.KGRelation(:r)),
+        typeof(
+            Aletheia.KGEdge(
+                Aletheia.KGEntity(:x), Aletheia.KGRelation(:r), Aletheia.KGEntity(:y)
+            ),
+        ),
+        typeof(
+            Aletheia.KnowledgeGraph(
+                [Aletheia.KGEntity(:x)], Aletheia.KGRelation[], Aletheia.KGEdge[]
+            ),
+        ),
     )
     @test all(isempty(methods(T)) for T in owned_types if !isempty(T.parameters))
 end

@@ -66,8 +66,10 @@ end
     @test length(getfield(program, :choices)) == 1
     @test Tuple(getfield(program, :domain)) == (:a, :b)
     @test_throws MethodError DSProgram{
-        typeof(choices), typeof(facts), typeof(rules), typeof(domain)
-    }(choices, facts, rules, domain)
+        typeof(choices),typeof(facts),typeof(rules),typeof(domain)
+    }(
+        choices, facts, rules, domain
+    )
 end
 
 @testset "grounding profile and event expressions" begin
@@ -82,14 +84,15 @@ end
     @test_throws GroundingError world(p, Dict())
 end
 
-
 @testset "program validation closes the finite ground fragment" begin
     @test_throws GroundingError validate_program(
         DSProgram(rules=[GroundRule(nothing, (:a,))])
     )
     @test_throws UnsupportedFeatureError validate_program(
-        DSProgram(domain=Iterators.countfrom(1),
-            choices=[ChoiceVariable(:c, (:a, :b), (1//2, 1//2))])
+        DSProgram(
+            domain=Iterators.countfrom(1),
+            choices=[ChoiceVariable(:c, (:a, :b), (1//2, 1//2))],
+        ),
     )
     fn = x -> x
     @test_throws UnsupportedFeatureError validate_program(
