@@ -83,7 +83,10 @@ end
     )
     @test !metrics.coverage.applicable
     @test metrics.coverage.value === missing
-    @test !metrics.fidelity.applicable
+    @test metrics.fidelity.applicable
+    @test metrics.fidelity.value == 0.0
+    @test metrics.fidelity.numerator == 0
+    @test metrics.fidelity.denominator == 1
 end
 
 @testset "traces, deterministic serialization, and interface laws" begin
