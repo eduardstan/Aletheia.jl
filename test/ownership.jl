@@ -89,6 +89,12 @@ end
     for value in (valuation, choice, event.circuit, circuit, case, store)
         @test _structurally_owned(value)
     end
+    heterogeneous = Dict{Any,Any}(:state => 1, 2 => "ready")
+    heterogeneous_case = Aletheia.ArtifactCase(:input, heterogeneous, true)
+    frozen_state = getfield(heterogeneous_case, :state)
+    @test Dict(frozen_state) == heterogeneous
+    @test keytype(frozen_state) === Any
+    @test valtype(frozen_state) === Any
     # The cache is a deliberately mutable implementation detail of Frame.
     @test _structurally_owned(frame.worlds)
     mutable_probe = (payload=[1],)

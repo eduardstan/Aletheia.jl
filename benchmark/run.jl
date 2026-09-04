@@ -208,19 +208,12 @@ for measurements in contraction_measurements
         if measurement.load !== missing && isfinite(measurement.load)])
 end
 load_verdict = benchmark_load_verdict(start_load, end_load, recorded_seed_loads, Sys.CPU_THREADS)
-# A timeout is an incomplete measurement, so it is a failed run for
-# publication even when no child process returned an ordinary error.
-measurement_failed(measurement) = measurement.status in (:failed, :timeout)
-run_has_failures = let failed = false
-    for row in rows
-        failed |= any(measurement_failed, row.incumbent_seeds)
-        failed |= any(measurement_failed, row.aletheia_seeds)
-    end
-    for measurements in contraction_measurements
-        failed |= any(measurement_failed, measurements)
-    end
-    failed
-end
+all_measurements = Iterators.flatten((
+    Iterators.flatten((row.incumbent_seeds, row.aletheia_seeds) for row in rows),
+    Iterators.flatten(contraction_measurements),
+))
+measurement_verdict = benchmark_measurement_verdict(all_measurements)
+run_has_failures = !measurement_verdict.publishable
 load_status = load_verdict.publishable ? "publishable" : "non-publishable"
 overall_publishable = load_verdict.publishable && !run_has_failures
 overall_status = overall_publishable ? "publishable" : "non-publishable"
@@ -243,7 +236,7 @@ open(artifact, "w") do io
     println(io, "load_publishability=$(load_status)")
     println(io, "load_gate_reason=$(load_verdict.reason)")
     println(io, "failure_publishability=$(run_has_failures ? "non-publishable" : "publishable")")
-    println(io, "failure_gate_reason=$(run_has_failures ? "failed_or_incomplete_measurement" : "none")")
+    println(io, "failure_gate_reason=$(measurement_verdict.reason)")
     println(io, "publishability=$(overall_status)")
     isempty(load_marker) || println(io, load_marker)
     isempty(failure_marker) || println(io, failure_marker)

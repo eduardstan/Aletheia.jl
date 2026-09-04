@@ -20,8 +20,9 @@ end
     timed_out = Measurement(missing, missing, missing, "cell timeout", missing, :timeout)
     failed = Measurement(missing, missing, missing, "cell failure", missing, :failed)
     measured = Measurement(1.0, 1, 1, "", 0.0, :measured)
-    @test timed_out.status in (:failed, :timeout)
-    @test failed.status in (:failed, :timeout)
-    @test !(measured.status in (:failed, :timeout))
-    @test any(m -> m.status in (:failed, :timeout), [timed_out])
+    @test !benchmark_measurement_verdict([timed_out]).publishable
+    @test !benchmark_measurement_verdict([failed]).publishable
+    @test benchmark_measurement_verdict([measured]).publishable
+    @test benchmark_measurement_verdict([timed_out]).reason ===
+          :failed_or_incomplete_measurement
 end

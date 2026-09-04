@@ -34,9 +34,16 @@ Base.:(==)(left::AbstractArray, right::FrozenArray) = right == left
 struct FrozenDict{K,V} <: AbstractDict{K,V}
     entries::Tuple
 end
+function _field_typejoin(entries::Tuple, field::Symbol, fallback=Any)
+    isempty(entries) && return fallback
+    return reduce(typejoin, (typeof(getproperty(entry, field)) for entry in entries))
+end
 function FrozenDict(entries::Tuple)
     isempty(entries) && return FrozenDict{Any,Any}(entries)
-    return FrozenDict{typeof(first(entries).first),typeof(first(entries).second)}(entries)
+    return FrozenDict{
+        _field_typejoin(entries, :first),
+        _field_typejoin(entries, :second),
+    }(entries)
 end
 function FrozenDict{K,V}(entries::FrozenDict) where {K,V}
     return FrozenDict{K,V}(
@@ -71,7 +78,7 @@ struct FrozenSet{T} <: AbstractSet{T}
 end
 function FrozenSet(values::Tuple)
     isempty(values) && return FrozenSet{Any}(values)
-    return FrozenSet{typeof(first(values))}(values)
+    return FrozenSet{eltype(values)}(values)
 end
 Base.length(value::FrozenSet) = length(value.values)
 Base.iterate(value::FrozenSet, state...) = iterate(value.values, state...)
@@ -92,8 +99,8 @@ function _immutable_copy(value::AbstractArray)
 end
 function _immutable_copy(value::AbstractDict)
     items = tuple((_immutable_copy(k) => _immutable_copy(v) for (k, v) in value)...)
-    K = isempty(items) ? keytype(value) : typeof(first(items).first)
-    V = isempty(items) ? valtype(value) : typeof(first(items).second)
+    K = _field_typejoin(items, :first, keytype(value))
+    V = _field_typejoin(items, :second, valtype(value))
     return FrozenDict{K,V}(items)
 end
 function _immutable_copy(value::AbstractSet)

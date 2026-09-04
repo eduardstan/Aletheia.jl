@@ -29,6 +29,14 @@ Measurement(time, allocs, memory, note::AbstractString, load, status::Symbol) =
 is_measured(m::Measurement) = m.status === :measured && m.time !== missing
 is_timeout_exitcode(exitcode) = exitcode in (124, 137, 143)
 
+function benchmark_measurement_verdict(measurements)
+    publishable = all(is_measured, measurements)
+    return (
+        publishable=publishable,
+        reason=publishable ? :none : :failed_or_incomplete_measurement,
+    )
+end
+
 function outcome_summary(measurements)
     total = length(measurements)
     failed = count(m -> m.status === :failed, measurements)
