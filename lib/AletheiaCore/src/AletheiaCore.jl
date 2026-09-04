@@ -102,9 +102,27 @@ function Base.:(==)(left::FrozenDict, right::AbstractDict)
 end
 Base.:(==)(left::AbstractDict, right::FrozenDict) = right == left
 
+function _frozen_set_slots(values::Tuple)
+    isempty(values) && return ()
+    capacity = nextpow(2, 2 * length(values))
+    slots = zeros(Int, capacity)
+    for (value_index, value) in enumerate(values)
+        slot = Int(mod(hash(value), UInt(capacity))) + 1
+        while slots[slot] != 0
+            slot = mod1(slot + 1, capacity)
+        end
+        slots[slot] = value_index
+    end
+    return tuple(slots...)
+end
+
 """An immutable set snapshot used in certified public values."""
 struct FrozenSet{T} <: AbstractSet{T}
     values::Tuple
+    slots::Tuple
+    function FrozenSet{T}(values::Tuple) where {T}
+        return new{T}(values, _frozen_set_slots(values))
+    end
 end
 function FrozenSet(values::Tuple)
     isempty(values) && return FrozenSet{Any}(values)
@@ -112,7 +130,18 @@ function FrozenSet(values::Tuple)
 end
 Base.length(value::FrozenSet) = length(value.values)
 Base.iterate(value::FrozenSet, state...) = iterate(value.values, state...)
-Base.in(item, value::FrozenSet) = any(isequal(item, x) for x in value.values)
+function _frozen_set_entry(value::FrozenSet, item)
+    isempty(value.slots) && return 0
+    slot = Int(mod(hash(item), UInt(length(value.slots)))) + 1
+    for _ in eachindex(value.slots)
+        value_index = value.slots[slot]
+        value_index == 0 && return 0
+        isequal(value.values[value_index], item) && return value_index
+        slot = mod1(slot + 1, length(value.slots))
+    end
+    return 0
+end
+Base.in(item, value::FrozenSet) = _frozen_set_entry(value, item) != 0
 function Base.:(==)(left::FrozenSet, right::FrozenSet)
     return length(left) == length(right) && all(item -> item in right, left)
 end

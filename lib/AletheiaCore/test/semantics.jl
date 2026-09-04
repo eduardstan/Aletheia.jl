@@ -163,6 +163,8 @@ end
     @test boolmodel.cache === same_frame_model.cache
     @test frame(boolmodel) === f && algebra(boolmodel) isa BooleanAlgebra
     @test valuation(boolmodel)["p"] == Set([:w1])
+    frozen_worlds = valuation(boolmodel)["p"]
+    @test :w1 in frozen_worlds && :w2 ∉ frozen_worlds
     @test interpret(p, boolmodel, :w1) === true
     @test interpret(p, boolmodel, :w2) === false
     @test collect(accessible(boolmodel, :w1, :G)) == [:w2]

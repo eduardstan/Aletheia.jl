@@ -1022,6 +1022,21 @@ function _lookup_atom(data::AbstractDict, atom::Atom, world)
     return _lookup_valuation(data, value(atom), world)
 end
 
+# Model dictionaries are stored as `FrozenDict`s.  Their key type lets the
+# common atom-value presentation skip probes for the much larger `Atom` key
+# and pair-key hashes before resolving the nested world set.
+function _lookup_atom(data::FrozenDict{K}, atom::Atom, world) where {K}
+    if !(typeof(atom) <: K)
+        atom_value = value(atom)
+        if haskey(data, atom_value)
+            nested = data[atom_value]
+            nested isa FrozenSet && return world in nested
+            return _nested_value(nested, world)
+        end
+    end
+    return invoke(_lookup_atom, Tuple{AbstractDict,Atom,Any}, data, atom, world)
+end
+
 function _lookup_atom(data::Valuation, atom::Atom, world)
     raw = data.data
     if raw isa AbstractDict

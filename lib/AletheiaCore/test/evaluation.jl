@@ -30,6 +30,10 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
     one = Frame((:only,); index=true)
     propositional = Model(one, BOOLEAN, Dict("p" => Set([:only]), "q" => Set{Symbol}()))
     @test @inferred(check(p, propositional, :only)) === true
+    scalar_calls = Ref(0)
+    scalar_model = Model(Frame((:only,)), (value, world) -> (scalar_calls[] += 1; true), BOOLEAN)
+    @test check(p, scalar_model, :only) === true
+    @test scalar_calls[] == 1
     @test @inferred(check(conjunction, propositional, :only)) === false
     @test @inferred(check(fusion_formula, propositional, :only)) === false
     @test @inferred(extension(p, propositional)) == BitVector([true])

@@ -44,11 +44,10 @@ formula](families.md#When-instances-share-a-frame).
 A local 32-world microbenchmark (Julia 1.12.7, 20 batches of 100 calls) measured
 `Frame` construction at 63.3 → 67.2 μs and dictionary-`Model` construction at
 0.29 → 2.63 μs. The associated direct dictionary `check` apply path measured
-4.17 → 83.9 μs per call (the new frozen-set membership is the cost of this
-synthetic route). This is not a deployed consumer result; the documented
-callback/data apply benchmarks remain the workload evidence. The direct
-route's slowdown is recorded rather than hidden, and should be revisited before
-making a performance claim about dictionary-valued models.
+4.17 → 1.32 μs per call after atom checks were made scalar and frozen-set
+membership was indexed at construction. This is not a deployed consumer
+result; the documented callback/data apply benchmarks remain the workload
+evidence.
 
 ## 2026-09-04 — One defensive-copy rule at every public boundary
 
