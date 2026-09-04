@@ -599,8 +599,8 @@ end
     check(φ, model, world)
 
 Return the truth value of `φ` at `world`.  The result is exactly the carrier
-type of the model's algebra.  Evaluation uses the same DAG walk as
-[`extension`](@ref).
+type of the model's algebra. Compound formulas use the same DAG walk as
+[`extension`](@ref); atom formulas use the scalar interpretation directly.
 
 
 # Examples
