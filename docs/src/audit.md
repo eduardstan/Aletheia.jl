@@ -21,7 +21,9 @@ The trace records the selected artifact operation, deterministic input/output
 hashes, provenance, and result. For an audit record, `input_hashes` identify the
 declared case inputs; `state_hashes` identify the evaluated states and match each
 trace's `input_hash`. `serialize_trace` and `deserialize_trace` let a
-consumer retain and replay it. `MetricValue` keeps its numerator, denominator,
+consumer retain and replay data-only traces. Callable rule conditions and outputs
+are valid for in-memory replay but are rejected at serialization because Julia
+closures are not portable across that boundary. `MetricValue` keeps its numerator, denominator,
 scope, and applicability together, so an uncovered case is missing rather than
 silently scored as a negative result. The metric vocabulary follows the
 requirements for symbolic explanation evaluation in Stan et al. [stan2026](@cite).
@@ -55,6 +57,7 @@ symbolic explanations and their coverage and fidelity claims
 `verify_artifact` compares outputs with declared cases or an independent
 oracle; expected but uncovered outputs are verification failures and retain their
 expected values in the report. `audit` packages verification inputs, traces, provenance, and
-metrics into one immutable record. The [API reference](api.md) lists the
+metrics into one owned record. The record deep-copies nested material at
+construction and when its retained sequences or provenance are accessed. The [API reference](api.md) lists the
 exported artifact and metric types; [Neural-symbolic interface](nesy.md)
 uses this audit boundary for exact extraction.

@@ -3,7 +3,7 @@ module AletheiaAudit
 
 using SHA
 using Serialization
-using AletheiaCore: Formula
+using AletheiaCore: Formula, _boundary_copy
 
 const _CORE_FORMULA = Formula
 
@@ -36,10 +36,16 @@ struct Provenance
     versions::Any
     sources::Any
     hashes::Any
+    function Provenance(versions, sources, hashes)
+        new(_boundary_copy(versions), _boundary_copy(sources), _boundary_copy(hashes))
+    end
 end
 function Provenance(; versions=NamedTuple(), sources=NamedTuple(), hashes=NamedTuple())
-    return Provenance(versions, sources, hashes)
+    return Provenance(_boundary_copy(versions), _boundary_copy(sources), _boundary_copy(hashes))
 end
+Base.:(==)(left::Provenance, right::Provenance) =
+    left.versions == right.versions && left.sources == right.sources && left.hashes == right.hashes
+Base.isequal(left::Provenance, right::Provenance) = left == right
 
 """One deterministic step in an artifact execution."""
 struct TraceStep
@@ -57,9 +63,17 @@ struct ExecutionTrace
     output_hash::String
     scope::Symbol
     artifact::Any
+    function ExecutionTrace(steps::Tuple, provenance::Provenance, result,
+        input_hash::String, output_hash::String, scope::Symbol, artifact)
+        new(steps, provenance, result, input_hash, output_hash, scope, artifact)
+    end
 end
 function ExecutionTrace(steps, provenance, result, input_hash::String, output_hash::String, scope::Symbol; artifact=nothing)
-    return ExecutionTrace(tuple(steps...), provenance, result, input_hash, output_hash, scope, artifact)
+    owned_steps, owned_provenance, owned_result, owned_artifact = _boundary_copy(
+        (tuple(steps...), provenance, result, artifact)
+    )
+    return ExecutionTrace(owned_steps, owned_provenance, owned_result, input_hash, output_hash, scope,
+        owned_artifact)
 end
 function ExecutionTrace(steps, provenance, result)
     return ExecutionTrace(
@@ -135,12 +149,14 @@ struct AuditRecord
 end
 function AuditRecord(artifact_id::String, input_hashes, output_hashes, state_hashes,
     trace, provenance::Provenance, metrics::MetricBundle)
-    return AuditRecord(artifact_id, tuple(input_hashes...), tuple(output_hashes...),
-        tuple(state_hashes...), tuple(trace...), provenance, metrics)
+    return AuditRecord(_boundary_copy(artifact_id), _boundary_copy(tuple(input_hashes...)),
+        _boundary_copy(tuple(output_hashes...)), _boundary_copy(tuple(state_hashes...)),
+        _boundary_copy(tuple(trace...)), _boundary_copy(provenance), _boundary_copy(metrics))
 end
 function Base.getproperty(record::AuditRecord, name::Symbol)
     name in (:input_hashes, :output_hashes, :state_hashes, :trace) &&
-        return collect(getfield(record, name))
+        return collect(_boundary_copy(getfield(record, name)))
+    name === :provenance && return _boundary_copy(getfield(record, name))
     return getfield(record, name)
 end
 
@@ -167,7 +183,7 @@ function RuleArtifact(rules=ArtifactRule[]; default=missing, provenance=Provenan
         (rule isa ArtifactRule || rule isa Pair || (rule isa Tuple && length(rule) == 2)) ||
             throw(ArgumentError("rules must be ArtifactRule, Pair, or two-tuples"))
     end
-    return RuleArtifact(converted, default, provenance)
+    return RuleArtifact(_boundary_copy(converted), _boundary_copy(default), _boundary_copy(provenance))
 end
 
 """A typed tree artifact. Its nodes use the same exact rule protocol as rules."""
@@ -177,11 +193,8 @@ struct TreeArtifact <: SymbolicArtifact
     provenance::Provenance
 end
 function TreeArtifact(nodes=ArtifactRule[]; default=missing, provenance=Provenance())
-    return TreeArtifact(
-        RuleArtifact(nodes; default=default, provenance=provenance).rules,
-        default,
-        provenance,
-    )
+    prepared = RuleArtifact(nodes; default=default, provenance=provenance)
+    return TreeArtifact(_boundary_copy(prepared.rules), _boundary_copy(default), _boundary_copy(provenance))
 end
 
 """Stable serialized hash used by traces and audit records."""
@@ -197,10 +210,10 @@ end
 stable_hash(value) = _stable_hash(value)
 
 """Return an artifact's provenance."""
-provenance(a::Union{RuleArtifact,TreeArtifact}) = a.provenance
+provenance(a::Union{RuleArtifact,TreeArtifact}) = _boundary_copy(a.provenance)
 """Return an artifact's ordered rules/nodes."""
-rules(a::RuleArtifact) = a.rules
-nodes(a::TreeArtifact) = a.nodes
+rules(a::RuleArtifact) = _boundary_copy(a.rules)
+nodes(a::TreeArtifact) = _boundary_copy(a.nodes)
 
 function _matches(condition, state)
     if condition isa Function
@@ -256,8 +269,35 @@ function eval_artifact(::SymbolicArtifact, state; kwargs...)
     return throw(ArgumentError("artifact does not implement eval_artifact"))
 end
 
-"""Serialize a trace deterministically to bytes."""
+function _contains_callable(value, seen=IdDict{Any,Bool}())
+    value isa Function && return true
+    value isa Union{Nothing,Missing,Bool,Symbol,Char,AbstractString,Number} && return false
+    value isa Type && return false
+    traversable = value isa AbstractArray || value isa AbstractDict || value isa AbstractSet ||
+        value isa Tuple || value isa NamedTuple || isstructtype(typeof(value))
+    traversable || return false
+    haskey(seen, value) && return false
+    seen[value] = true
+    try
+        if value isa AbstractDict
+            return any(_contains_callable(k, seen) || _contains_callable(v, seen) for (k, v) in value)
+        elseif value isa AbstractArray || value isa AbstractSet || value isa Tuple || value isa NamedTuple
+            return any(_contains_callable(x, seen) for x in value)
+        end
+        return any(_contains_callable(getfield(value, field), seen) for field in 1:fieldcount(typeof(value)))
+    finally
+        delete!(seen, value)
+    end
+end
+
+"""Serialize a trace deterministically to bytes.
+
+Callable rule conditions and outputs are intentionally not serialization-portable.
+They are rejected here, while the in-memory trace remains replayable.
+"""
 function serialize_trace(trace::ExecutionTrace)
+    _contains_callable(trace) && throw(ArgumentError(
+        "traces containing callable artifact conditions or outputs are not serialization-portable"))
     io = IOBuffer()
     serialize(io, trace)
     return take!(io)
@@ -345,7 +385,7 @@ function replay(trace::ExecutionTrace, state; profile=nothing)
                         push!(failures, "artifact identity mismatch")
                     provenance_id !== nothing && !isequal(provenance_id, _stable_hash(provenance(trace.artifact))) &&
                         push!(failures, "artifact provenance mismatch")
-                    !isequal(trace.provenance, _trace_provenance(trace.artifact)) &&
+                    trace.provenance != _trace_provenance(trace.artifact) &&
                         push!(failures, "artifact provenance mismatch")
                     entries = trace.artifact isa RuleArtifact ? trace.artifact.rules : trace.artifact.nodes
                     selected = missing
@@ -653,8 +693,8 @@ function extract_artifact(
     for c in cs
         state = c.state === nothing ? c.input : c.state
         encoded = _encoded_input(encoder, c.input, state)
-        output = output_transform(source(encoded))
-        push!(rs, ArtifactRule(state, output))
+        output = _boundary_copy(output_transform(source(encoded)))
+        push!(rs, ArtifactRule(_boundary_copy(state), output))
     end
     return if selected === :tree
         TreeArtifact(rs; provenance=provenance)

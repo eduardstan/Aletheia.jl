@@ -4,6 +4,8 @@ using Aqua
 using JET
 using Aletheia
 
+include("ownership.jl")
+
 @testset "umbrella public API" begin
     expected = Set{Symbol}([
         :Signature,

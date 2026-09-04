@@ -125,7 +125,8 @@ function DenseFeatureStore(values::AbstractArray, worlds, features;
         version::Integer=0)
     ndims(values) == 3 || throw(ArgumentError(
         "dense scalar feature values must have dimensions world × instance × feature"))
-    ws, fs, ins = collect(worlds), collect(features), collect(instances)
+    ws, fs, ins = AletheiaCore._boundary_copy((collect(worlds), collect(features), collect(instances)))
+    values = AletheiaCore._boundary_copy(values)
     size(values, 1) == length(ws) || throw(ArgumentError("world index length does not match values"))
     size(values, 2) == length(ins) || throw(ArgumentError("instance index length does not match values"))
     size(values, 3) == length(fs) || throw(ArgumentError("feature index length does not match values"))

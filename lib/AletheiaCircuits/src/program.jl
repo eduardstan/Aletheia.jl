@@ -15,7 +15,7 @@ abstract type AbstractChoiceVariable end
 
 The alternatives are mutually exclusive outcomes and `weights` are their
 probabilities.  The alternatives may be atoms, `nothing` (no atom), or any
-other finite ground value except `Bool`, which is reserved for event constants.
+other finite ground value whose scalar numbers are immutable, except `Bool`, which is reserved for event constants.
 
 # Examples
 ```jldoctest
@@ -94,11 +94,11 @@ end
 
 The alternatives are mutually exclusive outcomes and `weights` are their
 probabilities.  The alternatives may be atoms, `nothing` (no atom), or any
-other finite ground value except `Bool`, which is reserved for event constants.
+other finite ground value whose scalar numbers are immutable, except `Bool`, which is reserved for event constants.
 """
 function ChoiceVariable(id, alternatives, weights)
-    a = alternatives isa Tuple ? alternatives : tuple(alternatives...)
-    w = weights isa Tuple ? weights : tuple(weights...)
+    a = _boundary_copy(alternatives isa Tuple ? alternatives : tuple(alternatives...))
+    w = _boundary_copy(weights isa Tuple ? weights : tuple(weights...))
     _validate_choice(id, a, w)
     return ChoiceVariable{typeof(id),typeof(a),typeof(w)}(id, a, w)
 end
@@ -117,7 +117,7 @@ julia> alternatives(c)
 (:a, :b)
 ```
 """
-alternatives(choice::ChoiceVariable) = choice.alternatives
+alternatives(choice::ChoiceVariable) = _boundary_copy(choice.alternatives)
 """
 Return the normalized outcome weights of a choice variable.
 
@@ -131,7 +131,7 @@ julia> weights(c)
 (0.4, 0.6)
 ```
 """
-weights(choice::ChoiceVariable) = choice.weights
+weights(choice::ChoiceVariable) = _boundary_copy(choice.weights)
 """
 Return a choice variable's stable identifier.
 
@@ -145,7 +145,7 @@ julia> choice_id(c)
 :c1
 ```
 """
-choice_id(choice::ChoiceVariable) = choice.id
+choice_id(choice::ChoiceVariable) = _boundary_copy(choice.id)
 Base.length(choice::ChoiceVariable) = length(choice.alternatives)
 Base.iterate(choice::ChoiceVariable, state...) = iterate(choice.alternatives, state...)
 
@@ -524,7 +524,7 @@ julia> choices(prog)
 (ChoiceVariable{Symbol, Tuple{Symbol, Symbol}, Tuple{Float64, Float64}}(:c1, (:a, :b), (0.4, 0.6)),)
 ```
 """
-choices(program::DSProgram) = program.choices
+choices(program::DSProgram) = _boundary_copy(program.choices)
 """
 Return the source probabilistic facts in a program.
 
@@ -538,7 +538,7 @@ julia> facts(prog)
 (ProbabilisticFact{Symbol, Float64}(:f1, 0.3),)
 ```
 """
-facts(program::DSProgram) = program.facts
+facts(program::DSProgram) = _boundary_copy(program.facts)
 """
 Return the ground rules in a program.
 
@@ -552,7 +552,7 @@ julia> rules(prog)
 (GroundRule{Symbol, Tuple{Symbol}}(:a, (:b,)),)
 ```
 """
-rules(program::DSProgram) = program.rules
+rules(program::DSProgram) = _boundary_copy(program.rules)
 """
 Return the finite domain tuple carried by a program.
 
@@ -566,7 +566,7 @@ julia> domain(prog)
 (:a, :b)
 ```
 """
-domain(program::DSProgram) = program.domain
+domain(program::DSProgram) = _boundary_copy(program.domain)
 
 # The alias keeps `world` lightweight while documenting its contract in the API.
 """
@@ -657,7 +657,18 @@ end
 
 function _ground_value(value, seen=IdDict{Any,Bool}())
     value === nothing && return true
-    value isa Union{Bool,Symbol,Char,AbstractString,Number,Missing} && return true
+    if value isa Number
+        Base.ismutabletype(typeof(value)) || return true
+        haskey(seen, value) && return false
+        seen[value] = true
+        valid = try
+            all(_ground_value(getfield(value, field), seen) for field in 1:fieldcount(typeof(value)))
+        finally
+            delete!(seen, value)
+        end
+        return valid
+    end
+    value isa Union{Bool,Symbol,Char,AbstractString,Missing} && return true
     value isa Function && return false
     value isa AletheiaCore.Constant && return _ground_value(value.value, seen)
     value isa Union{EventNot,EventAnd,EventOr} && return _ground_value(
@@ -706,7 +717,7 @@ function _validate_ground(value, context)
     _ground_value(value) || throw(
         UnsupportedFeatureError(
             :ground_values,
-            "$(context) must be a finite ground value: nothing, Bool, Symbol, Char, string, number, or finite tuple/record/collection",
+            "$(context) must be a finite ground value: nothing, Bool, Symbol, Char, string, immutable number, or finite tuple/record/collection",
         ),
     )
     return nothing

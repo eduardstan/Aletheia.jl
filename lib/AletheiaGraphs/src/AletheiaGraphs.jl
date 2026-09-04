@@ -139,7 +139,10 @@ function KnowledgeGraph(entities, relations, edges; provenance=())
         _kind_matches(edge.relation.range, edge.target.kind) ||
             throw(ArgumentError("edge target kind violates relation range"))
     end
-    return KnowledgeGraph(es, rs, gs, provenance)
+    owned_entities, owned_relations, owned_edges, owned_provenance =
+        AletheiaCore._boundary_copy((es, rs, gs, provenance))
+    return KnowledgeGraph{typeof(owned_entities),typeof(owned_relations),typeof(owned_edges),typeof(owned_provenance)}(
+        owned_entities, owned_relations, owned_edges, owned_provenance)
 end
 function KnowledgeGraph(entities, relations, edge::KGEdge; provenance=())
     return KnowledgeGraph(entities, relations, [edge]; provenance=provenance)
@@ -154,15 +157,15 @@ function _kind_matches(expected, actual)
 end
 
 """Return the entities in stable graph order."""
-entities(graph::KnowledgeGraph) = graph.entities
+entities(graph::KnowledgeGraph) = AletheiaCore._boundary_copy(graph.entities)
 """Return the relation schemas in stable graph order."""
-relations(graph::KnowledgeGraph) = graph.relations
+relations(graph::KnowledgeGraph) = AletheiaCore._boundary_copy(graph.relations)
 """Return the graph edges in stable insertion order."""
-edges(graph::KnowledgeGraph) = graph.edges
+edges(graph::KnowledgeGraph) = AletheiaCore._boundary_copy(graph.edges)
 """Return graph-level provenance."""
-provenance(graph::KnowledgeGraph) = graph.provenance
+provenance(graph::KnowledgeGraph) = AletheiaCore._boundary_copy(graph.provenance)
 """Return a path's edge provenance, without interpreting it as a proof."""
-path_provenance(path::KGPath) = path.edge_provenance
+path_provenance(path::KGPath) = AletheiaCore._boundary_copy(path.edge_provenance)
 
 function _entity(graph, x)
     x isa KGEntity && any(isequal(x), graph.entities) && return x

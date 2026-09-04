@@ -11,6 +11,7 @@ true
 module AletheiaCircuits
 
 using AletheiaCore
+import AletheiaCore: _boundary_copy
 import Base: zero, one
 
 include("errors.jl")

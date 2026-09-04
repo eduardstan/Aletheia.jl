@@ -143,3 +143,27 @@ end
         )
     end
 end
+
+
+@testset "public circuit boundaries own mutable values" begin
+    mutable struct BoundaryNumber <: Number
+        child::Any
+    end
+    Base.hash(x::BoundaryNumber, h::UInt) = hash(:boundary_number, h)
+    Base.:(==)(x::BoundaryNumber, y::BoundaryNumber) = x === y
+    Base.isequal(x::BoundaryNumber, y::BoundaryNumber) = x === y
+    x = BoundaryNumber(nothing)
+    x.child = x
+    @test_throws UnsupportedFeatureError ChoiceVariable(:cycle, (x, missing), (1 // 2, 1 // 2))
+
+    program = DSProgram(choices=[ChoiceVariable(:choice, (:yes, :no), (0.4, 0.6))])
+    event = compile_event(program, :yes)
+    table = nodes(event.circuit)
+    table[3] = BDDNode(1, 1, 2)
+    @test wmc(event) == 0.4
+    @test validate(event.circuit) isa CircuitCertificate
+
+    algebra_table = AletheiaCore.implication_table(G3)
+    algebra_table[1, 1] = 0
+    @test implication(G3, UInt8(1), UInt8(1)) != 0
+end

@@ -83,10 +83,10 @@ struct BDD <: AbstractEventCircuit
 end
 function BDD(nodes, roots; variables=(), alternatives=())
     return BDD(
-        Vector{BDDNode}(nodes),
-        roots isa Tuple ? roots : tuple(roots...),
-        variables isa Tuple ? variables : tuple(variables...),
-        alternatives isa Tuple ? alternatives : tuple(alternatives...),
+        _boundary_copy(Vector{BDDNode}(nodes)),
+        _boundary_copy(roots isa Tuple ? roots : tuple(roots...)),
+        _boundary_copy(variables isa Tuple ? variables : tuple(variables...)),
+        _boundary_copy(alternatives isa Tuple ? alternatives : tuple(alternatives...)),
     )
 end
 
@@ -110,7 +110,8 @@ struct CircuitCertificate
 end
 function CircuitCertificate(support, variable_order, decomposition, determinism, smoothness)
     return CircuitCertificate(
-        support, variable_order, decomposition, determinism, smoothness, Dict{Int,Any}()
+        _boundary_copy(support), _boundary_copy(variable_order),
+        _boundary_copy(decomposition), determinism, smoothness, Dict{Int,Any}()
     )
 end
 
@@ -137,11 +138,11 @@ function CertifiedCircuit(
     nodes, roots, certificate::CircuitCertificate; variables=(), alternatives=()
 )
     return CertifiedCircuit{typeof(nodes),typeof(roots),typeof(certificate)}(
-        nodes,
-        roots isa Tuple ? roots : tuple(roots...),
-        certificate,
-        variables isa Tuple ? variables : tuple(variables...),
-        alternatives isa Tuple ? alternatives : tuple(alternatives...),
+        _boundary_copy(nodes),
+        _boundary_copy(roots isa Tuple ? roots : tuple(roots...)),
+        _boundary_copy(certificate),
+        _boundary_copy(variables isa Tuple ? variables : tuple(variables...)),
+        _boundary_copy(alternatives isa Tuple ? alternatives : tuple(alternatives...)),
     )
 end
 
@@ -160,7 +161,7 @@ julia> nodes(ev.circuit) isa Vector{BDDNode}
 true
 ```
 """
-nodes(circuit::AbstractEventCircuit) = circuit.nodes
+nodes(circuit::AbstractEventCircuit) = _boundary_copy(circuit.nodes)
 """
 Return root node indices of a circuit.
 
@@ -176,7 +177,7 @@ julia> roots(ev.circuit)
 (3,)
 ```
 """
-roots(circuit::AbstractEventCircuit) = circuit.roots
+roots(circuit::AbstractEventCircuit) = _boundary_copy(circuit.roots)
 """
 Return the variable order recorded by a certificate.
 
@@ -192,8 +193,8 @@ julia> variable_order(ev.circuit)
 (:c1,)
 ```
 """
-variable_order(circuit::CertifiedCircuit) = circuit.certificate.variable_order
-variable_order(circuit::BDD) = circuit.variables
+variable_order(circuit::CertifiedCircuit) = _boundary_copy(circuit.certificate.variable_order)
+variable_order(circuit::BDD) = _boundary_copy(circuit.variables)
 
 function _node_index(circuit, node::Integer)
     1 <= node <= length(circuit.nodes) || throw(
@@ -253,7 +254,7 @@ function support(circuit::CertifiedCircuit, node::Union{Integer,BDDNode})
     haskey(circuit.certificate.support, index) || throw(
         InvalidCircuitError(:support_certificate, "support is missing for node $(index)"),
     )
-    return circuit.certificate.support[index]
+    return _boundary_copy(circuit.certificate.support[index])
 end
 support(circuit::CertifiedCircuit) = support(circuit, circuit.roots[1])
 function support(circuit::BDD, node)
@@ -280,7 +281,7 @@ true
 function source_provenance(circuit::CertifiedCircuit, node::Union{Integer,BDDNode})
     validate(circuit)
     index = _node_index(circuit, node)
-    return get(circuit.certificate.provenance, index, nothing)
+    return _boundary_copy(get(circuit.certificate.provenance, index, nothing))
 end
 source_provenance(circuit::CertifiedCircuit) = source_provenance(circuit, circuit.roots[1])
 function source_provenance(circuit::BDD, node)

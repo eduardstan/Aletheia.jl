@@ -4,23 +4,25 @@ This page records the choices that shape Aletheia's public architecture. Each
 entry gives the context, the choice, and the consequence for users and
 contributors.
 
-## 2026-09-04 — Checked values and immutable audit material
+## 2026-09-04 — One defensive-copy rule at every public boundary
 
-**Context.** Public boundaries must validate the complete accepted value domain,
-keep numeric normalization finite, and prevent callers from changing retained
-results or replay context.
+**Context.** Values crossing a public constructor, accessor, retained record, or
+callback boundary must not remain aliases of caller-owned mutable material.
 
-**Choice.** Constructors route finite ground values through one cycle-safe
-checked path. Tuple alternatives are treated as atoms when present as whole
-world values. Neural labels scale before summation. Public audit sequences are
-stored as tuples, cached scalar results are copied, and replay authenticates
-artifact identity, provenance, and every step. Model-family vectors containing
-models use the same algebra check regardless of their element type. Graph
-metadata consumers accept both dictionary and named-tuple records.
+**Choice.** Aletheia uses one repository-wide rule: **defensive copying at the
+boundary**. The shared `AletheiaCore._boundary_copy` mechanism deep-copies
+nested material when it is accepted, retained, or returned. Immutable values
+are naturally unchanged. Callable artifacts are explicitly rejected by
+`serialize_trace`, because Julia closures cannot be copied into a portable
+serialized representation; they remain valid for in-memory replay.
 
-**Consequence.** Invalid recursive values fail with typed errors, accepted tuple
-alternatives have matching query semantics, finite labels remain normalized,
-and audit and family boundaries cannot be bypassed by mutable or erased inputs.
+**Consequence and cost.** Public values cannot mutate certified semantics,
+extracted outputs, audit records, graph metadata, or algebra tables through an
+alias. Copying costs time and memory proportional to mutable material at each
+boundary; the hot evaluation loops retain their existing owned internal data
+and do not copy per-node results. The ownership inventory test derives its
+constructor and accessor set from each loaded package's public exports, so a
+new mutable boundary must use this mechanism before the test passes.
 
 ## 2026-09-03 — Exact and owned boundary values
 
