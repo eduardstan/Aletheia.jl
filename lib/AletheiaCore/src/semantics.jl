@@ -612,10 +612,12 @@ function _normalize_relations(relations, worlds::Tuple)
     return result
 end
 
-function Frame(worlds, relations; index=false, world_index=nothing)
+function Frame(worlds, relations; index=false, world_index=nothing)::Frame
     worldtuple = _world_tuple(worlds)
     requested = world_index === nothing ? index : world_index
-    normalized = _immutable_copy(_normalize_relations(relations, worldtuple))
+    normalized = _normalize_relations(relations, worldtuple)
+    normalized isa Function || normalized isa _RelationProvider ||
+        (normalized = _immutable_copy(normalized))
     indexed = _immutable_copy(_world_index(worldtuple, requested))
     positions = if indexed === nothing
         Dict{Any,Int}(world => position for (position, world) in enumerate(worldtuple))
@@ -628,7 +630,7 @@ function Frame(worlds, relations; index=false, world_index=nothing)
     return Frame(worldtuple, normalized, indexed, cache)
 end
 
-function Frame(worlds; index=false, world_index=nothing)
+function Frame(worlds; index=false, world_index=nothing)::Frame
     return Frame(worlds, Dict(); index=index, world_index=world_index)
 end
 """Return the worlds of a frame in stable enumeration order.
