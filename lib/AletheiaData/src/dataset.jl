@@ -130,11 +130,14 @@ function _rebase_valuation(
         nothing
     else
         (atom, worlds_value) -> valuation.vectorized(
-        atom,
-        tuple(
-            (_original_world(original, representative, world) for world in worlds_value)...,
-        ),
-    )
+            atom,
+            tuple(
+                (
+                    _original_world(original, representative, world) for
+                    world in worlds_value
+                )...,
+            ),
+        )
     end
     return ValuationCallback(scalar; vectorized=batch)
 end
@@ -211,7 +214,7 @@ function _same_frame(left::Frame, right::Frame)
     # relation mapping provide the same evaluation plan.  The world index is an
     # implementation detail and does not change frame semantics.
     return isequal(worlds(left), worlds(right)) &&
-        isequal(relations(left), relations(right))
+           isequal(relations(left), relations(right))
 end
 
 # Retain the first frame for each equal world/relation signature.  This is

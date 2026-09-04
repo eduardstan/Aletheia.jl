@@ -80,7 +80,7 @@ end
     frame = Aletheia.Frame([:w], Dict(:R => Dict(:w => [:w])); index=true)
     valuation = Aletheia.Valuation(Dict((:p, :w) => false))
     choice = Aletheia.ChoiceVariable(:c, ([1], :b), (0.5, 0.5))
-    program = Aletheia.DSProgram(choices=[choice])
+    program = Aletheia.DSProgram(; choices=[choice])
     event = Aletheia.compile_event(program, [1])
     certificate = Aletheia.CircuitCertificate(Dict(), (), Dict(), true, true)
     circuit = Aletheia.CertifiedCircuit(Aletheia.BDDNode[], (1,), certificate)

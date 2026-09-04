@@ -290,8 +290,7 @@ end
 stable_hash(value) = _stable_hash(value)
 
 """Return an artifact's provenance."""
-provenance(a::Union{RuleArtifact,TreeArtifact}) =
-    _boundary_copy(getfield(a, :provenance))
+provenance(a::Union{RuleArtifact,TreeArtifact}) = _boundary_copy(getfield(a, :provenance))
 """Return an artifact's ordered rules/nodes."""
 rules(a::RuleArtifact) = [r for r in getfield(a, :rules)]
 nodes(a::TreeArtifact) = [r for r in getfield(a, :nodes)]
@@ -348,8 +347,11 @@ function eval_artifact(
     scope in (:global, :local) ||
         throw(ArgumentError("trace scope must be :global or :local"))
     selected, rule = _selected_rule(artifact, state)
-    result = rule === nothing ? getfield(artifact, :default) :
-             _output(_boundary_copy(getfield(rule, :output)), state)
+    result = if rule === nothing
+        getfield(artifact, :default)
+    else
+        _output(_boundary_copy(getfield(rule, :output)), state)
+    end
     step = TraceStep(
         :artifact_evaluation,
         (artifact=string(nameof(typeof(artifact))), selected=selected, profile=profile),
@@ -359,14 +361,14 @@ function eval_artifact(
     provenance_value = _trace_provenance(artifact)
     tr = if trace
         ExecutionTrace(
-        [step],
-        provenance_value,
-        result,
-        _stable_hash(state),
-        _stable_hash(result),
-        scope;
-        artifact=artifact,
-    )
+            [step],
+            provenance_value,
+            result,
+            _stable_hash(state),
+            _stable_hash(result),
+            scope;
+            artifact=artifact,
+        )
     else
         nothing
     end
@@ -397,9 +399,9 @@ function _contains_callable(value, seen=IdDict{Any,Bool}())
                 (k, v) in value
             )
         elseif value isa AbstractArray ||
-            value isa AbstractSet ||
-            value isa Tuple ||
-            value isa NamedTuple
+               value isa AbstractSet ||
+               value isa Tuple ||
+               value isa NamedTuple
             return any(_contains_callable(x, seen) for x in value)
         end
         return any(
@@ -510,9 +512,7 @@ function replay(trace::ExecutionTrace, state; profile=nothing)
                 if trace_artifact isa Union{RuleArtifact,TreeArtifact}
                     provenance_hashes = getfield(trace_provenance, :hashes)
                     artifact_id = _provenance_value(provenance_hashes, :artifact_id)
-                    provenance_id = _provenance_value(
-                        provenance_hashes, :provenance_id
-                    )
+                    provenance_id = _provenance_value(provenance_hashes, :provenance_id)
                     artifact_id === nothing &&
                         push!(failures, "artifact identity metadata missing")
                     provenance_id === nothing &&
@@ -550,9 +550,9 @@ function replay(trace::ExecutionTrace, state; profile=nothing)
             (!isequal(step.inputs, state) && !isequal(step.inputs, expected_input)) &&
                 push!(failures, "graph step input metadata mismatch")
             if trace_artifact === nothing ||
-                graph_hash === nothing ||
-                !(step.payload isa NamedTuple) ||
-                !hasproperty(step.payload, :path)
+               graph_hash === nothing ||
+               !(step.payload isa NamedTuple) ||
+               !hasproperty(step.payload, :path)
                 push!(failures, "graph trace context, hash, or path metadata missing")
             else
                 !isequal(graph_hash, _stable_hash(trace_artifact)) &&
@@ -681,9 +681,7 @@ function metric_bundle(
         end
     end
     complexity = MetricValue(
-        Float64(
-            length(_artifact_entries(artifact))
-        ),
+        Float64(length(_artifact_entries(artifact))),
         length(_artifact_entries(artifact)),
         1,
         scope,

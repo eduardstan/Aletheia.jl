@@ -161,9 +161,9 @@ function KnowledgeGraph(entities, relations, edges; provenance=())
     for edge in gs
         edge isa KGEdge || throw(ArgumentError("edges must be KGEdge values"))
         haskey(entity_by_id, edge.source.id) &&
-        isequal(entity_by_id[edge.source.id], edge.source) &&
-        haskey(entity_by_id, edge.target.id) &&
-        isequal(entity_by_id[edge.target.id], edge.target) || throw(
+            isequal(entity_by_id[edge.source.id], edge.source) &&
+            haskey(entity_by_id, edge.target.id) &&
+            isequal(entity_by_id[edge.target.id], edge.target) || throw(
             ArgumentError(
                 "every edge endpoint must match a graph entity by full identity (id and value)",
             ),
@@ -307,9 +307,9 @@ function path_valid(path::KGPath, graph::KnowledgeGraph)
         any(
             edge ->
                 isequal(edge.source, path.entities[i]) &&
-                isequal(edge.target, path.entities[i + 1]) &&
-                isequal(edge.relation, path.relations[i]) &&
-                isequal(edge.provenance, path.edge_provenance[i]),
+                    isequal(edge.target, path.entities[i + 1]) &&
+                    isequal(edge.relation, path.relations[i]) &&
+                    isequal(edge.provenance, path.edge_provenance[i]),
             graph.edges,
         ) || return false
     end

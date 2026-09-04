@@ -495,9 +495,9 @@ function _raw_bdd(program::DSProgram, assignments, truth)
             children[1]
         else
             begin
-            push!(ns, BDDNode(level, childtuple))
-            length(ns)
-        end
+                push!(ns, BDDNode(level, childtuple))
+                length(ns)
+            end
         end
         memo[key] = nodeid
         return nodeid

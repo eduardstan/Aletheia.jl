@@ -58,10 +58,9 @@ end
 FrozenDict{K,V}() where {K,V} = FrozenDict{K,V}(())
 function FrozenDict(entries::Tuple)
     isempty(entries) && return FrozenDict{Any,Any}(entries)
-    return FrozenDict{
-        _field_typejoin(entries, :first),
-        _field_typejoin(entries, :second),
-    }(entries)
+    return FrozenDict{_field_typejoin(entries, :first),_field_typejoin(entries, :second)}(
+        entries
+    )
 end
 function FrozenDict{K,V}(entries::FrozenDict) where {K,V}
     return FrozenDict{K,V}(

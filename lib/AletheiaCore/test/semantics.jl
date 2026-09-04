@@ -11,7 +11,9 @@ Aletheia.negation(::TestSymbolAlgebra, ::Symbol) = :negation
 @testset "truth algebras" begin
     b = BooleanAlgebra()
     @test b isa TruthAlgebra{Bool}
-    @test truth_type(b) === Bool && Aletheia.truthtype(b) === Bool && carrier(b) == (false, true)
+    @test truth_type(b) === Bool &&
+          Aletheia.truthtype(b) === Bool &&
+          carrier(b) == (false, true)
     @test top(b) && !bottom(b) && bot(b) == false
     @test meet(b, true, false) == false
     @test fusion(b, true, false) == false
@@ -48,7 +50,8 @@ Aletheia.negation(::TestSymbolAlgebra, ::Symbol) = :negation
     @test collect(levels(LukasiewiczAlgebra(4))) == [0.0, 1 / 3, 2 / 3, 1.0]
     @test domain(LukasiewiczAlgebra(4)) == Tuple(collect(levels(LukasiewiczAlgebra(4))))
 
-    @test Aletheia.GödelAlgebra === GodelAlgebra && Aletheia.ŁukasiewiczAlgebra === LukasiewiczAlgebra
+    @test Aletheia.GödelAlgebra === GodelAlgebra &&
+          Aletheia.ŁukasiewiczAlgebra === LukasiewiczAlgebra
     @test_throws ArgumentError GodelAlgebra(0)
     @test_throws ArgumentError GodelAlgebra(1)
     @test_throws ArgumentError LukasiewiczAlgebra(1)
@@ -91,11 +94,16 @@ function Base.isequal(left::FrozenDictProbeKey, right::FrozenDictProbeKey)
 end
 
 @testset "frames and lazy accessibility" begin
-    f = Frame((:w1, :w2), Dict(:G => Dict(:w1 => [:w2], :w2 => [:w2]),
-                               :H => [(:w1, :w1)]); index=true)
+    f = Frame(
+        (:w1, :w2),
+        Dict(:G => Dict(:w1 => [:w2], :w2 => [:w2]), :H => [(:w1, :w1)]);
+        index=true,
+    )
     @test worlds(f) == (:w1, :w2) && length(f) == 2 && collect(f) == [:w1, :w2]
     @test relations(f) isa Dict && hasworldindex(f)
-    @test Aletheia.world_index(f)[:w2] == 2 && world_position(f, :w1) == 1 && world_position(f, :w2) == 2
+    @test Aletheia.world_index(f)[:w2] == 2 &&
+          world_position(f, :w1) == 1 &&
+          world_position(f, :w2) == 2
     successors = accessible(f, :w1, :G)
     @test successors isa Base.Generator && collect(successors) == [:w2]
     @test collect(accessible(f, :w2, :G)) == [:w2]
@@ -125,24 +133,24 @@ end
     @test_throws ArgumentError Frame((1, 2), Dict(); index=Dict(1 => "one", 2 => 2))
 
     function relation_function(world, rel)
-        rel == :R ? (world == 1 ? (2,) : ()) : ()
+        return rel == :R ? (world == 1 ? (2,) : ()) : ()
     end
     function adjacency_function(world)
-        world == 1 ? [2] : Int[]
+        return world == 1 ? [2] : Int[]
     end
     ff = Frame((1, 2), relation_function)
     fg = Frame((1, 2), Dict(:R => adjacency_function))
     @test collect(accessible(ff, 1, :R)) == [2]
     @test collect(accessible(fg, 1, :R)) == [2]
     @test Frame((1,), (x -> x)).worlds == (1,)
-    @test collect(accessible(Frame((1,), (x,y)->()), 1, :R)) == []
+    @test collect(accessible(Frame((1,), (x, y) -> ()), 1, :R)) == []
     reverse_relation(rel::Symbol, world::Int) = world == 1 ? (1,) : ()
     @test collect(accessible(Frame((1,), reverse_relation), 1, :R)) == [1]
     @test_throws ArgumentError accessible(Frame((1,), x -> x), 1, :R)
     @test Aletheia._targets((:w,), :other) == (:other,)
     @test Aletheia._targets((:w,), BadIndexData()) == (BadIndexData(),)
     @test_throws ArgumentError Aletheia._nested_value(BadIndexData(), :w)
-    @test !(accessible(Frame((1,), Dict(:R=>Dict(1=>[1]))), 1, :R) isa Vector)
+    @test !(accessible(Frame((1,), Dict(:R => Dict(1 => [1]))), 1, :R) isa Vector)
 end
 
 @testset "models and atom interpretation" begin
@@ -167,14 +175,18 @@ end
     finite_godel = Model(f, GodelAlgebra(3), Dict("p" => Dict(:w1 => 0.5, :w2 => 1.0)))
     @test interpret(p, finite_godel, :w1) === 0.5
     @test check(p, finite_godel, :w1) === 0.5
-    @test interpret(p, Model(f, GodelAlgebra(3), Dict("p" => Dict(:w1 => nextfloat(0.5)))), :w1) === 0.5
+    @test interpret(
+        p, Model(f, GodelAlgebra(3), Dict("p" => Dict(:w1 => nextfloat(0.5)))), :w1
+    ) === 0.5
     off_grid_godel = Model(f, GodelAlgebra(3), Dict("p" => Dict(:w1 => 0.25)))
     @test_throws ArgumentError interpret(p, off_grid_godel, :w1)
     @test_throws ArgumentError check(p, off_grid_godel, :w1)
     @test_throws ArgumentError extension(p, off_grid_godel)
     finite_lukasiewicz = Model(f, LukasiewiczAlgebra(4), Dict("p" => Dict(:w1 => 1 / 3)))
     @test interpret(p, finite_lukasiewicz, :w1) === 1 / 3
-    @test_throws ArgumentError interpret(p, Model(f, LukasiewiczAlgebra(4), Dict("p" => Dict(:w1 => 0.2))), :w1)
+    @test_throws ArgumentError interpret(
+        p, Model(f, LukasiewiczAlgebra(4), Dict("p" => Dict(:w1 => 0.2))), :w1
+    )
     @test interpret(p, Model(f, Dict(("p", :w1) => 0.75), GodelAlgebra()), :w1) === 0.75
     @test interpret(p, Model(f, Dict((:w1, "p") => 0.25), GodelAlgebra()), :w1) === 0.25
     @test interpret(p, Model(f, Dict(:w1 => Dict("p" => 0.4)), GodelAlgebra()), :w1) === 0.4
@@ -186,17 +198,25 @@ end
     @test interpret(p, Model(f, (value, world) -> 0.3, GodelAlgebra()), :w1) === 0.3
     @test interpret(p, Model(f, Dict("p" => :yes), TestSymbolAlgebra()), :w1) === :yes
     @test_throws KeyError interpret(p, boolmodel, :missing)
-    @test_throws KeyError interpret(p, Model(f, Dict("q"=>Set([:w1]))), :w1)
-    @test_throws ArgumentError interpret(p, Model(f, Dict("p"=>Set([:w1])), GodelAlgebra()), :w1)
-    @test interpret(p, Model(f, Dict("p"=>Set([:w1]))), :w1) === true
+    @test_throws KeyError interpret(p, Model(f, Dict("q" => Set([:w1]))), :w1)
+    @test_throws ArgumentError interpret(
+        p, Model(f, Dict("p" => Set([:w1])), GodelAlgebra()), :w1
+    )
+    @test interpret(p, Model(f, Dict("p" => Set([:w1]))), :w1) === true
     @test interpret(p, Model(f, Dict(p => Set([:w1]))), :w1) === true
     @test interpret(p, Model(f, Dict(:w1 => Dict(p => true))), :w1) === true
-    @test interpret(p, Model(f, Valuation(Dict(:w1 => Dict(p => true))), BooleanAlgebra()), :w1) === true
-    @test interpret(p, Model(f, Valuation(Dict(:w1 => Dict("p" => true))), BooleanAlgebra()), :w1) === true
+    @test interpret(
+        p, Model(f, Valuation(Dict(:w1 => Dict(p => true))), BooleanAlgebra()), :w1
+    ) === true
+    @test interpret(
+        p, Model(f, Valuation(Dict(:w1 => Dict("p" => true))), BooleanAlgebra()), :w1
+    ) === true
     @test interpret(p, Model(f, Dict((p, :w1) => true)), :w1) === true
     @test interpret(p, Model(f, Valuation(Dict(p => Dict(:w1 => true)))), :w1) === true
     @test_throws ArgumentError interpret(p, Model(f, 1), :w1)
-    @test_throws ArgumentError interpret(p, Model(f, Dict("p"=>Dict(:w1=>true)), GodelAlgebra()), :w1)
+    @test_throws ArgumentError interpret(
+        p, Model(f, Dict("p" => Dict(:w1 => true)), GodelAlgebra()), :w1
+    )
     @test_throws MethodError interpret(branch(pool, ¬, p), boolmodel, :w1)
 
     indexed_values = Dict(FrozenDictProbeKey(i) => i for i in 1:512)
@@ -206,7 +226,6 @@ end
     @test FROZEN_DICT_PROBES[] < 16
 end
 
-
 mutable struct MutableTruth
     value::Int
 end
@@ -214,10 +233,18 @@ struct MutableTruthAlgebra <: TruthAlgebra{MutableTruth} end
 Aletheia.truth_type(::Type{MutableTruthAlgebra}) = MutableTruth
 Aletheia.top(::MutableTruthAlgebra) = MutableTruth(10)
 Aletheia.bottom(::MutableTruthAlgebra) = MutableTruth(0)
-Aletheia.meet(::MutableTruthAlgebra, a::MutableTruth, b::MutableTruth) = MutableTruth(min(a.value, b.value))
-Aletheia.fusion(::MutableTruthAlgebra, a::MutableTruth, b::MutableTruth) = MutableTruth(min(a.value, b.value))
-Aletheia.join(::MutableTruthAlgebra, a::MutableTruth, b::MutableTruth) = MutableTruth(max(a.value, b.value))
-Aletheia.implication(::MutableTruthAlgebra, a::MutableTruth, b::MutableTruth) = MutableTruth(max(0, 10 - a.value + b.value))
+function Aletheia.meet(::MutableTruthAlgebra, a::MutableTruth, b::MutableTruth)
+    return MutableTruth(min(a.value, b.value))
+end
+function Aletheia.fusion(::MutableTruthAlgebra, a::MutableTruth, b::MutableTruth)
+    return MutableTruth(min(a.value, b.value))
+end
+function Aletheia.join(::MutableTruthAlgebra, a::MutableTruth, b::MutableTruth)
+    return MutableTruth(max(a.value, b.value))
+end
+function Aletheia.implication(::MutableTruthAlgebra, a::MutableTruth, b::MutableTruth)
+    return MutableTruth(max(0, 10 - a.value + b.value))
+end
 Aletheia.negation(::MutableTruthAlgebra, a::MutableTruth) = MutableTruth(10 - a.value)
 
 @testset "vectorized callbacks own mutable values" begin
@@ -231,7 +258,11 @@ Aletheia.negation(::MutableTruthAlgebra, a::MutableTruth) = MutableTruth(10 - a.
         buffer[1].value = name === :p ? 1 : 2
         buffer
     end
-    vectorized = Model(frame, MutableTruthAlgebra(), Aletheia.ValuationCallback(scalar; vectorized=batch))
+    vectorized = Model(
+        frame, MutableTruthAlgebra(), Aletheia.ValuationCallback(scalar; vectorized=batch)
+    )
     scalar_model = Model(frame, MutableTruthAlgebra(), Aletheia.ValuationCallback(scalar))
-    @test extension(formula, vectorized)[1].value == extension(formula, scalar_model)[1].value == 1
+    @test extension(formula, vectorized)[1].value ==
+          extension(formula, scalar_model)[1].value ==
+          1
 end
