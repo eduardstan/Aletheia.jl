@@ -194,3 +194,29 @@ end
         trace.scope; artifact=original)
     @test !replay(combined, :yes).valid
 end
+
+
+@testset "public audit boundaries own nested values" begin
+    buffer = Int[]
+    artifact = extract_artifact(x -> (push!(buffer, x); buffer), [1, 2])
+    @test artifact.rules[1].output == [1]
+    @test artifact.rules[2].output == [1, 2]
+    @test artifact.rules[1].output !== artifact.rules[2].output
+
+    mutable_provenance = Provenance(hashes=Dict{Any,Any}(:tag => :original))
+    owned_artifact = RuleArtifact([:x => 1]; provenance=mutable_provenance)
+    _, trace = eval_artifact(owned_artifact, :x)
+    @test replay(trace, :x).valid
+
+    callable_artifact = RuleArtifact([((x) -> x == 1) => ((x) -> x + 1)])
+    _, callable_trace = eval_artifact(callable_artifact, 1)
+    @test_throws ArgumentError serialize_trace(callable_trace)
+
+    output = [1]
+    record = audit(RuleArtifact([:x => output]; provenance=mutable_provenance), [:x])
+    exposed = record.trace[1].artifact
+    exposed.rules[1].output[1] = 9
+    exposed.provenance.hashes[:tag] = :changed
+    @test record.trace[1].artifact.rules[1].output == [1]
+    @test record.provenance.hashes[:tag] == :original
+end

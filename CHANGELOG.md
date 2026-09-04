@@ -5,6 +5,8 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
 
 ## Unreleased
 
+- Applied one defensive-copy rule at public boundaries, including certified circuit nodes, finite algebra tables, extracted outputs, nested audit material, graph records, and scalar stores. Mutable numeric cycles are rejected, data-only traces replay after serialization, and callable artifacts are rejected at serialization with a documented portability limit.
+
 - Closed the finite-value, numeric-normalization, ownership, replay-authentication,
   and representation-symmetry boundaries with cycle-safe checks, immutable audit
   sequences, finite label scaling, and typed mixed-family rejection.

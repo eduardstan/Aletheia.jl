@@ -957,7 +957,7 @@ end
 _lookup_atom(data, atom::Atom, world) = _lookup_valuation(data, value(atom), world)
 # Callback results belong to the evaluator. Copy mutable carriers so a
 # callback may reuse an internal object without aliasing values across worlds.
-_owned_callback_value(value) = isimmutable(value) ? value : deepcopy(value)
+_owned_callback_value(value) = _boundary_copy(value)
 _lookup_atom(data::ValuationCallback, atom::Atom, world) = data(value(atom), world)
 
 function (valuation::Valuation)(atom_value, world)

@@ -1,6 +1,10 @@
 """Dependency-free syntax and semantic foundations for Aletheia."""
 module AletheiaCore
 
+# Every public boundary uses this one defensive-copy mechanism. `deepcopy`
+# preserves nested ownership; callable values retain their executable identity.
+_boundary_copy(value) = value isa Function ? value : deepcopy(value)
+
 include("syntax.jl")
 include("parse.jl")
 include("display.jl")

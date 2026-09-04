@@ -255,10 +255,10 @@ true
     x, y = _checked_finite_index(algebra, left), _checked_finite_index(algebra, right)
     algebra.meet[Int(x), Int(y)]
 end
-join_table(algebra::FiniteFLewAlgebra) = algebra.join
-lattice_meet_table(algebra::FiniteFLewAlgebra) = algebra.meet
-fusion_table(algebra::FiniteFLewAlgebra) = algebra.fusion
-implication_table(algebra::FiniteFLewAlgebra) = algebra.implication
+join_table(algebra::FiniteFLewAlgebra) = _boundary_copy(algebra.join)
+lattice_meet_table(algebra::FiniteFLewAlgebra) = _boundary_copy(algebra.meet)
+fusion_table(algebra::FiniteFLewAlgebra) = _boundary_copy(algebra.fusion)
+implication_table(algebra::FiniteFLewAlgebra) = _boundary_copy(algebra.implication)
 
 """Return the monoid fusion `x ⊗ y` of two finite truth values.
 

@@ -143,8 +143,8 @@ end
         Provenance(; hashes=(graph=stable_hash(local_graph),)), path.entities,
         stable_hash(:alice), stable_hash(path.entities), :global; artifact=local_graph)
     @test replay(trace, :alice).valid
-    empty!(local_graph.edges)
-    push!(local_graph.edges, KGEdge(alice, visits, carol, p2))
+    empty!(trace.artifact.edges)
+    push!(trace.artifact.edges, KGEdge(alice, visits, carol, p2))
     @test !replay(trace, :alice).valid
 end
 
