@@ -268,7 +268,7 @@ end
     callback = Aletheia.ValuationCallback(
         (name, world) -> (buffer.value = world === :w2 ? 1 : 0; buffer)
     )
-    values = atom_values(callback, atom(:p), (:w1, :w2))
+    values = Aletheia.atom_values(callback, atom(:p), (:w1, :w2))
     @test values[1] !== values[2]
     @test values[1].value == 0
     @test values[2].value == 1
