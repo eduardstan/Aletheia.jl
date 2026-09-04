@@ -8,10 +8,21 @@ include(joinpath(@__DIR__, "..", "common.jl"))
     end
 end
 
-
 @testset "interval adjacency helper uses Core implementation" begin
-    frame = Aletheia.interval_frame(3); world_values = collect(Aletheia.worlds(frame))
+    frame = Aletheia.interval_frame(3)
+    world_values = collect(Aletheia.worlds(frame))
     adjacency = interval_adjacency_a(frame, Aletheia.BEFORE, world_values)
     @test length(adjacency.rows) == length(world_values)
     @test length(adjacency.columns) == length(world_values)
+end
+
+@testset "timed-out measurements refuse publication" begin
+    timed_out = Measurement(missing, missing, missing, "cell timeout", missing, :timeout)
+    failed = Measurement(missing, missing, missing, "cell failure", missing, :failed)
+    measured = Measurement(1.0, 1, 1, "", 0.0, :measured)
+    @test !benchmark_measurement_verdict([timed_out]).publishable
+    @test !benchmark_measurement_verdict([failed]).publishable
+    @test benchmark_measurement_verdict([measured]).publishable
+    @test benchmark_measurement_verdict([timed_out]).reason ===
+          :failed_or_incomplete_measurement
 end

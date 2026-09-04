@@ -6,6 +6,15 @@ using AletheiaAudit
 
 struct UnsupportedAuditArtifact <: SymbolicArtifact end
 
+struct AuditCopyProbe
+    value::Int
+end
+const AUDIT_COPY_PROBES = Ref(0)
+function Base.deepcopy_internal(value::AuditCopyProbe, ::IdDict)
+    AUDIT_COPY_PROBES[] += 1
+    return value
+end
+
 @testset "typed artifact protocol" begin
     @test test_interface(RuleArtifact)
     @test test_interface(TreeArtifact)
@@ -97,6 +106,10 @@ end
     @test RuleArtifact([ArtifactRule(x -> x > 0, true)]; default=false)(1)
     @test RuleArtifact([Dict(:x => true) => :hit])(:x) == :hit
     @test RuleArtifact([1 => (x -> x + 1)])(1) == 2
+    scan_artifact = RuleArtifact([[AuditCopyProbe(i)] => i for i in 1:64])
+    AUDIT_COPY_PROBES[] = 0
+    @test scan_artifact([AuditCopyProbe(64)]) == 64
+    @test AUDIT_COPY_PROBES[] == 0
     trace = ExecutionTrace([TraceStep(:test, nothing, nothing, :ok)], Provenance(), :ok)
     @test replay(trace, :anything).valid
     @test MetricValue(1, 1, 1, :global).applicable
@@ -121,9 +134,17 @@ end
     @test uncovered.claims.applicability == [false]
     _, trace = eval_artifact(artifact, :yes)
     original = trace.steps[1]
-    tampered_step = TraceStep(:forged, (selected=999, payload=:tampered), :forged_input, original.output)
-    tampered = ExecutionTrace([tampered_step], trace.provenance, trace.reported_result,
-        trace.input_hash, trace.output_hash, trace.scope)
+    tampered_step = TraceStep(
+        :forged, (selected=999, payload=:tampered), :forged_input, original.output
+    )
+    tampered = ExecutionTrace(
+        [tampered_step],
+        trace.provenance,
+        trace.reported_result,
+        trace.input_hash,
+        trace.output_hash,
+        trace.scope,
+    )
     @test !replay(tampered, :yes).valid
     _, no_trace = eval_artifact(artifact, :yes; trace=false)
     @test no_trace === nothing
@@ -135,9 +156,15 @@ end
     @test changed.stability.value == 0.0
     @test changed.stability.numerator == 0
     @test changed.stability.denominator == 1
-    @test !metric_bundle(artifact, [ArtifactCase(1, true)]; scope=:local).stability.applicable
-    @test !metric_bundle(artifact, [ArtifactCase(1, true)]; perturbations=()).stability.applicable
-    @test_throws ArgumentError metric_bundle(artifact, [ArtifactCase(1, true)]; scope=:bogus)
+    @test !metric_bundle(
+        artifact, [ArtifactCase(1, true)]; scope=:local
+    ).stability.applicable
+    @test !metric_bundle(
+        artifact, [ArtifactCase(1, true)]; perturbations=()
+    ).stability.applicable
+    @test_throws ArgumentError metric_bundle(
+        artifact, [ArtifactCase(1, true)]; scope=:bogus
+    )
 end
 
 @testset "AletheiaAudit quality" begin
@@ -152,7 +179,7 @@ end
     first = [ArtifactCase(1, true), ArtifactCase(2, false)]
     second = reverse(first)
     @test metric_bundle(artifact, first; perturbations=[1]).stability ==
-        metric_bundle(artifact, second; perturbations=[1]).stability
+          metric_bundle(artifact, second; perturbations=[1]).stability
     record = audit(artifact, [ArtifactCase(:key, :state, true)])
     @test record.state_hashes[1] == record.trace[1].input_hash
     @test record.input_hashes[1] != record.state_hashes[1]
@@ -161,9 +188,21 @@ end
 @testset "replay requires artifact and graph context" begin
     artifact = RuleArtifact([:yes => true])
     _, trace = eval_artifact(artifact, :yes)
-    forged = ExecutionTrace([TraceStep(:artifact_evaluation,
-        (artifact="RuleArtifact", selected=999, profile=nothing), stable_hash(:yes), false)],
-        trace.provenance, false, stable_hash(:yes), stable_hash(false), :global)
+    forged = ExecutionTrace(
+        [
+            TraceStep(
+                :artifact_evaluation,
+                (artifact="RuleArtifact", selected=999, profile=nothing),
+                stable_hash(:yes),
+                false,
+            ),
+        ],
+        trace.provenance,
+        false,
+        stable_hash(:yes),
+        stable_hash(false),
+        :global,
+    )
     @test !replay(forged, :yes).valid
 end
 
@@ -177,24 +216,36 @@ end
     inputs = record.input_hashes
     push!(inputs, "forged")
     @test length(record.input_hashes) == 1
-    @test_throws MethodError push!(record.trace[1].steps,
-        TraceStep(:forged, nothing, nothing, nothing))
+    @test_throws MethodError push!(
+        record.trace[1].steps, TraceStep(:forged, nothing, nothing, nothing)
+    )
 end
 
 @testset "replay authenticates artifact identity and every step" begin
     original = RuleArtifact([:yes => true])
     substitute = RuleArtifact([:yes => true, :no => false])
     _, trace = eval_artifact(original, :yes)
-    replaced = ExecutionTrace(trace.steps, trace.provenance, trace.reported_result,
-        trace.input_hash, trace.output_hash, trace.scope; artifact=substitute)
+    replaced = ExecutionTrace(
+        trace.steps,
+        trace.provenance,
+        trace.reported_result,
+        trace.input_hash,
+        trace.output_hash,
+        trace.scope;
+        artifact=substitute,
+    )
     @test !replay(replaced, :yes).valid
-    combined = ExecutionTrace([
-        TraceStep(:forged, (anything="bad",), "bad", false), trace.steps[1]],
-        trace.provenance, trace.reported_result, trace.input_hash, trace.output_hash,
-        trace.scope; artifact=original)
+    combined = ExecutionTrace(
+        [TraceStep(:forged, (anything="bad",), "bad", false), trace.steps[1]],
+        trace.provenance,
+        trace.reported_result,
+        trace.input_hash,
+        trace.output_hash,
+        trace.scope;
+        artifact=original,
+    )
     @test !replay(combined, :yes).valid
 end
-
 
 @testset "public audit boundaries own nested values" begin
     buffer = Int[]
@@ -203,7 +254,7 @@ end
     @test artifact.rules[2].output == [1, 2]
     @test artifact.rules[1].output !== artifact.rules[2].output
 
-    mutable_provenance = Provenance(hashes=Dict{Any,Any}(:tag => :original))
+    mutable_provenance = Provenance(; hashes=Dict{Any,Any}(:tag => :original))
     owned_artifact = RuleArtifact([:x => 1]; provenance=mutable_provenance)
     _, trace = eval_artifact(owned_artifact, :x)
     @test replay(trace, :x).valid

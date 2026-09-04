@@ -11,7 +11,7 @@ true
 module AletheiaCircuits
 
 using AletheiaCore
-import AletheiaCore: _boundary_copy
+import AletheiaCore: _boundary_copy, _immutable_copy
 import Base: zero, one
 
 include("errors.jl")
@@ -135,7 +135,6 @@ export CircuitError,
 @doc "Return the multiplicative identity of a probability semiring." one
 @doc "Construct a Float64 closed nonnegative probability semiring." Float64Profile
 @doc "Construct an exact Rational closed nonnegative probability semiring." RationalProfile
-
 
 @doc """
 Return the additive identity of a probability semiring.

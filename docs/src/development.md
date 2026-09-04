@@ -1,6 +1,6 @@
 # Development and validation
 
-Run these commands from the repository root. `[`AletheiaCore`](api.md)` has no runtime
+Run these commands from the repository root. [`AletheiaCore`](api.md) has no runtime
 dependencies; the test, documentation, benchmark, formatting, and coverage
 environments are separate Julia projects. The first invocation of each command
 may spend extra time resolving and precompiling Julia packages.
@@ -39,7 +39,7 @@ A passing umbrella run ends with:
 Aletheia tests passed
 ```
 
-It includes Aqua/JET checks and the runnable examples. `[`AletheiaSole`](compatibility.md)` owns
+It includes Aqua/JET checks and the runnable examples. [`AletheiaSole`](compatibility.md) owns
 `SoleLogics`, so compatibility code is imported as `using AletheiaSole.SoleLogics`
 (or, through the umbrella, `using Aletheia.SoleLogics`).
 
@@ -98,8 +98,8 @@ SOLELOGICS_PATH=/path/to/SoleLogics.jl julia --project=benchmark benchmark/run.j
 Use `--deep` for the expanded, slower sweeps. The run writes raw values and
 provenance (including load average and per-cell sample counts) to
 `data/benchmark-run/run.txt`; measured, timed-out, and failed cells remain visible in the
-terminal report. Failed child cases make the run non-publishable. The complete
-measurement harness can take tens of minutes.
+terminal report. Failed or timed-out child cases make the run non-publishable.
+The complete measurement harness can take tens of minutes.
 
 ## Differential correctness
 
@@ -138,7 +138,7 @@ Documentation across Aletheia follows a single uniform notation and terminology 
   - `callback path`
   - `knowledge graph`
   - `distribution semantics`
-  - Package names: `[`AletheiaCore`](api.md)`, `[`AletheiaData`](families.md)`, `[`AletheiaLearn`](learning.md)`, `[`AletheiaSole`](compatibility.md)`, `[`AletheiaCircuits`](circuits.md)`, `[`AletheiaGraphs`](graphs.md)`, `[`AletheiaAudit`](audit.md)`, `[`AletheiaNeSy`](nesy.md)`, `Aletheia`.
+  - Package names: [`AletheiaCore`](api.md), [`AletheiaData`](families.md), [`AletheiaLearn`](learning.md), [`AletheiaSole`](compatibility.md), [`AletheiaCircuits`](circuits.md), [`AletheiaGraphs`](graphs.md), [`AletheiaAudit`](audit.md), [`AletheiaNeSy`](nesy.md), `Aletheia`.
 - **Headings**: sentence case throughout headings.
 - **Cross-references**: every mention of a package or documentation page links once per section to its corresponding page.
 

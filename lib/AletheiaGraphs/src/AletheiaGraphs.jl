@@ -12,6 +12,7 @@ KGEntity{Symbol, Symbol, @NamedTuple{}}(:e1, :entity, NamedTuple())
 module AletheiaGraphs
 
 using AletheiaCore
+import AletheiaCore: _immutable_copy
 using AletheiaAudit
 using Graphs
 using MetaGraphsNext
@@ -27,7 +28,8 @@ struct KGEntity{I,K,M} <: AbstractKGEntity
     kind::K
     metadata::M
     function KGEntity(id::I, kind::K, metadata::M) where {I,K,M}
-        return new{I,K,M}(id, kind, deepcopy(metadata))
+        owned = _immutable_copy(metadata)
+        return new{I,K,typeof(owned)}(id, kind, owned)
     end
 end
 KGEntity(id; kind=:entity, metadata=NamedTuple()) = KGEntity(id, kind, metadata)
@@ -39,7 +41,8 @@ struct KGRelation{I,D,R,M} <: AbstractKGRelation
     range::R
     metadata::M
     function KGRelation(id::I, domain::D, range::R, metadata::M) where {I,D,R,M}
-        return new{I,D,R,M}(id, domain, range, deepcopy(metadata))
+        owned = _immutable_copy(metadata)
+        return new{I,D,R,typeof(owned)}(id, domain, range, owned)
     end
 end
 function KGRelation(id; domain=:Any, range=:Any, metadata=NamedTuple())
@@ -52,6 +55,21 @@ struct KGProvenance{S,L,T,H}
     locator::L
     timestamp::T
     content_hash::H
+    function KGProvenance(
+        source::S, locator::L, timestamp::T, content_hash::H
+    ) where {S,L,T,H}
+        return new{
+            typeof(_immutable_copy(source)),
+            typeof(_immutable_copy(locator)),
+            typeof(_immutable_copy(timestamp)),
+            typeof(_immutable_copy(content_hash)),
+        }(
+            _immutable_copy(source),
+            _immutable_copy(locator),
+            _immutable_copy(timestamp),
+            _immutable_copy(content_hash),
+        )
+    end
 end
 function KGProvenance(source; locator=nothing, timestamp=nothing, content_hash=nothing)
     return KGProvenance(source, locator, timestamp, content_hash)
@@ -76,7 +94,7 @@ function KGEdge(
 end
 
 """A validated collection of entities, relation schemas, edges, and graph provenance."""
-struct KnowledgeGraph{E,R,G,P}
+struct KnowledgeGraph{E<:Tuple,R<:Tuple,G,P}
     entities::E
     relations::R
     edges::G
@@ -84,16 +102,29 @@ struct KnowledgeGraph{E,R,G,P}
 end
 
 """A replayable path.  Provenance is kept per traversed edge."""
-struct KGPath{E,R,P}
+struct KGPath{E<:Tuple,R<:Tuple,P<:Tuple}
     entities::E
     relations::R
     edge_provenance::P
 end
+function KGPath(entities, relations, edge_provenance)
+    return KGPath(
+        tuple((_immutable_copy(x) for x in entities)...),
+        tuple((_immutable_copy(x) for x in relations)...),
+        tuple((_immutable_copy(x) for x in edge_provenance)...),
+    )
+end
 
 """A bounded reachable subgraph returned by [`subgraphs`](@ref)."""
-struct KGSubgraph{E,G}
+struct KGSubgraph{E<:Tuple,G<:Tuple}
     entities::E
     edges::G
+end
+function KGSubgraph(entities, edges)
+    return KGSubgraph(
+        tuple((_immutable_copy(x) for x in entities)...),
+        tuple((_immutable_copy(x) for x in edges)...),
+    )
 end
 
 function _asvector(xs, name)
@@ -129,9 +160,14 @@ function KnowledgeGraph(entities, relations, edges; provenance=())
     relation_set = Set(rs)
     for edge in gs
         edge isa KGEdge || throw(ArgumentError("edges must be KGEdge values"))
-        haskey(entity_by_id, edge.source.id) && isequal(entity_by_id[edge.source.id], edge.source) &&
-            haskey(entity_by_id, edge.target.id) && isequal(entity_by_id[edge.target.id], edge.target) ||
-            throw(ArgumentError("every edge endpoint must match a graph entity by full identity (id and value)"))
+        haskey(entity_by_id, edge.source.id) &&
+            isequal(entity_by_id[edge.source.id], edge.source) &&
+            haskey(entity_by_id, edge.target.id) &&
+            isequal(entity_by_id[edge.target.id], edge.target) || throw(
+            ArgumentError(
+                "every edge endpoint must match a graph entity by full identity (id and value)",
+            ),
+        )
         edge.relation in relation_set ||
             throw(ArgumentError("every edge relation must belong to the graph"))
         _kind_matches(edge.relation.domain, edge.source.kind) ||
@@ -139,10 +175,18 @@ function KnowledgeGraph(entities, relations, edges; provenance=())
         _kind_matches(edge.relation.range, edge.target.kind) ||
             throw(ArgumentError("edge target kind violates relation range"))
     end
-    owned_entities, owned_relations, owned_edges, owned_provenance =
-        AletheiaCore._boundary_copy((es, rs, gs, provenance))
-    return KnowledgeGraph{typeof(owned_entities),typeof(owned_relations),typeof(owned_edges),typeof(owned_provenance)}(
-        owned_entities, owned_relations, owned_edges, owned_provenance)
+    owned_entities = _immutable_copy(tuple(es...))
+    owned_relations = _immutable_copy(tuple(rs...))
+    owned_edges = deepcopy(gs)
+    owned_provenance = _immutable_copy(provenance)
+    return KnowledgeGraph{
+        typeof(owned_entities),
+        typeof(owned_relations),
+        typeof(owned_edges),
+        typeof(owned_provenance),
+    }(
+        owned_entities, owned_relations, owned_edges, owned_provenance
+    )
 end
 function KnowledgeGraph(entities, relations, edge::KGEdge; provenance=())
     return KnowledgeGraph(entities, relations, [edge]; provenance=provenance)
@@ -263,9 +307,9 @@ function path_valid(path::KGPath, graph::KnowledgeGraph)
         any(
             edge ->
                 isequal(edge.source, path.entities[i]) &&
-                isequal(edge.target, path.entities[i + 1]) &&
-                isequal(edge.relation, path.relations[i]) &&
-                isequal(edge.provenance, path.edge_provenance[i]),
+                    isequal(edge.target, path.entities[i + 1]) &&
+                    isequal(edge.relation, path.relations[i]) &&
+                    isequal(edge.provenance, path.edge_provenance[i]),
             graph.edges,
         ) || return false
     end
@@ -275,7 +319,9 @@ end
 """Alias for [`path_valid`](@ref), naming the graph-membership field explicitly."""
 path_validity(path::KGPath, graph::KnowledgeGraph) = path_valid(path, graph)
 
-AletheiaAudit._trace_context_valid(graph::KnowledgeGraph, path::KGPath) = path_valid(path, graph)
+function AletheiaAudit._trace_context_valid(graph::KnowledgeGraph, path::KGPath)
+    return path_valid(path, graph)
+end
 
 """Enumerate one bounded reachable subgraph from `source`, retaining traversed edges."""
 function subgraphs(graph::KnowledgeGraph, source; max_hops)

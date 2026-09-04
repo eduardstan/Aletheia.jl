@@ -64,7 +64,10 @@ Instances frequently differ only in their valuation. [`uniform_frame`](@ref)
 returns a representative frame when every instance's frame is semantically
 equal, and `nothing` otherwise; [`isuniform`](@ref) is the predicate form.
 Equality is checked on the frames themselves; `ModelFamily` canonicalizes equal
-frames so uniform models share one adjacency cache.
+frames so uniform models share one adjacency cache. Callable valuations still
+receive the world object from their original model: family reuse translates the
+representative world back before invoking the callback, so callback results do
+not depend on which equal frame was selected.
 
 ```jldoctest families
 println(isuniform(family))

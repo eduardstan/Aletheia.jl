@@ -97,7 +97,7 @@ end
 julia> using AletheiaCircuits
 
 julia> CircuitCertificate(Dict(), (), Dict(), true, true)
-CircuitCertificate(Dict{Any, Any}(), (), Dict{Any, Any}(), true, true, Dict{Int64, Any}())
+CircuitCertificate(AletheiaCore.FrozenDict{Any, Any}(), (), AletheiaCore.FrozenDict{Any, Any}(), true, true, AletheiaCore.FrozenDict{Int64, Any}())
 ```
 """
 struct CircuitCertificate
@@ -107,11 +107,22 @@ struct CircuitCertificate
     determinism::Bool
     smoothness::Bool
     provenance::Any
+    function CircuitCertificate(
+        support, variable_order, decomposition, determinism, smoothness, provenance
+    )
+        return new(
+            _immutable_copy(support),
+            _immutable_copy(variable_order),
+            _immutable_copy(decomposition),
+            determinism,
+            smoothness,
+            _immutable_copy(provenance),
+        )
+    end
 end
 function CircuitCertificate(support, variable_order, decomposition, determinism, smoothness)
     return CircuitCertificate(
-        _boundary_copy(support), _boundary_copy(variable_order),
-        _boundary_copy(decomposition), determinism, smoothness, Dict{Int,Any}()
+        support, variable_order, decomposition, determinism, smoothness, Dict{Int,Any}()
     )
 end
 
@@ -133,16 +144,31 @@ struct CertifiedCircuit{N,R,C<:CircuitCertificate} <: AbstractEventCircuit
     certificate::C
     variables::Tuple
     alternatives::Tuple
+    function CertifiedCircuit(
+        nodes, roots, certificate::C, variables::Tuple, alternatives::Tuple
+    ) where {C<:CircuitCertificate}
+        owned_nodes = _immutable_copy(nodes)
+        owned_roots = _immutable_copy(roots)
+        owned_certificate = _immutable_copy(certificate)
+        owned_variables = _immutable_copy(variables)
+        owned_alternatives = _immutable_copy(alternatives)
+        return new{typeof(owned_nodes),typeof(owned_roots),typeof(owned_certificate)}(
+            owned_nodes, owned_roots, owned_certificate, owned_variables, owned_alternatives
+        )
+    end
 end
 function CertifiedCircuit(
     nodes, roots, certificate::CircuitCertificate; variables=(), alternatives=()
 )
-    return CertifiedCircuit{typeof(nodes),typeof(roots),typeof(certificate)}(
-        _boundary_copy(nodes),
-        _boundary_copy(roots isa Tuple ? roots : tuple(roots...)),
-        _boundary_copy(certificate),
-        _boundary_copy(variables isa Tuple ? variables : tuple(variables...)),
-        _boundary_copy(alternatives isa Tuple ? alternatives : tuple(alternatives...)),
+    owned_nodes = _immutable_copy(nodes)
+    owned_roots = _immutable_copy(roots isa Tuple ? roots : tuple(roots...))
+    owned_certificate = _immutable_copy(certificate)
+    owned_variables = _immutable_copy(variables isa Tuple ? variables : tuple(variables...))
+    owned_alternatives = _immutable_copy(
+        alternatives isa Tuple ? alternatives : tuple(alternatives...)
+    )
+    return CertifiedCircuit(
+        owned_nodes, owned_roots, owned_certificate, owned_variables, owned_alternatives
     )
 end
 
@@ -193,7 +219,9 @@ julia> variable_order(ev.circuit)
 (:c1,)
 ```
 """
-variable_order(circuit::CertifiedCircuit) = _boundary_copy(circuit.certificate.variable_order)
+function variable_order(circuit::CertifiedCircuit)
+    return _boundary_copy(circuit.certificate.variable_order)
+end
 variable_order(circuit::BDD) = _boundary_copy(circuit.variables)
 
 function _node_index(circuit, node::Integer)
@@ -467,9 +495,9 @@ function _raw_bdd(program::DSProgram, assignments, truth)
             children[1]
         else
             begin
-            push!(ns, BDDNode(level, childtuple))
-            length(ns)
-        end
+                push!(ns, BDDNode(level, childtuple))
+                length(ns)
+            end
         end
         memo[key] = nodeid
         return nodeid
@@ -710,7 +738,11 @@ function _same_program(left::CompiledEvent, right::CompiledEvent)
 end
 
 function _event_truth(event::CompiledEvent)
-    event.evidence_truth === nothing ? event.query_truth : event.query_truth .& event.evidence_truth
+    return if event.evidence_truth === nothing
+        event.query_truth
+    else
+        event.query_truth .& event.evidence_truth
+    end
 end
 
 function _joint(left::CompiledEvent, right::CompiledEvent)
