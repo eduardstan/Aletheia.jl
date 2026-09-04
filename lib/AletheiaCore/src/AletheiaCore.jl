@@ -33,11 +33,29 @@ Base.:(==)(left::AbstractArray, right::FrozenArray) = right == left
 """An immutable dictionary snapshot used in certified public values."""
 struct FrozenDict{K,V} <: AbstractDict{K,V}
     entries::Tuple
+    slots::Tuple
 end
 function _field_typejoin(entries::Tuple, field::Symbol, fallback=Any)
     isempty(entries) && return fallback
     return reduce(typejoin, (typeof(getproperty(entry, field)) for entry in entries))
 end
+function _frozen_dict_slots(entries::Tuple)
+    isempty(entries) && return ()
+    capacity = nextpow(2, 2 * length(entries))
+    slots = zeros(Int, capacity)
+    for (entry_index, entry) in enumerate(entries)
+        slot = Int(mod(hash(entry.first), UInt(capacity))) + 1
+        while slots[slot] != 0
+            slot = mod1(slot + 1, capacity)
+        end
+        slots[slot] = entry_index
+    end
+    return tuple(slots...)
+end
+function FrozenDict{K,V}(entries::Tuple) where {K,V}
+    return FrozenDict{K,V}(entries, _frozen_dict_slots(entries))
+end
+FrozenDict{K,V}() where {K,V} = FrozenDict{K,V}(())
 function FrozenDict(entries::Tuple)
     isempty(entries) && return FrozenDict{Any,Any}(entries)
     return FrozenDict{
@@ -54,13 +72,26 @@ Base.length(value::FrozenDict) = length(value.entries)
 Base.iterate(value::FrozenDict, state...) = iterate(value.entries, state...)
 Base.keys(value::FrozenDict) = (entry.first for entry in value.entries)
 Base.values(value::FrozenDict) = (entry.second for entry in value.entries)
-Base.haskey(value::FrozenDict, key) = any(entry -> isequal(entry.first, key), value.entries)
-Base.get(value::FrozenDict, key, default) = haskey(value, key) ? value[key] : default
-function Base.getindex(value::FrozenDict, key)
-    for entry in value.entries
-        isequal(entry.first, key) && return entry.second
+function _frozen_dict_entry(value::FrozenDict, key)
+    isempty(value.slots) && return 0
+    slot = Int(mod(hash(key), UInt(length(value.slots)))) + 1
+    for _ in eachindex(value.slots)
+        entry_index = value.slots[slot]
+        entry_index == 0 && return 0
+        isequal(value.entries[entry_index].first, key) && return entry_index
+        slot = mod1(slot + 1, length(value.slots))
     end
-    return throw(KeyError(key))
+    return 0
+end
+Base.haskey(value::FrozenDict, key) = _frozen_dict_entry(value, key) != 0
+function Base.get(value::FrozenDict, key, default)
+    entry_index = _frozen_dict_entry(value, key)
+    return entry_index == 0 ? default : value.entries[entry_index].second
+end
+function Base.getindex(value::FrozenDict, key)
+    entry_index = _frozen_dict_entry(value, key)
+    entry_index == 0 && throw(KeyError(key))
+    return value.entries[entry_index].second
 end
 function Base.:(==)(left::FrozenDict, right::FrozenDict)
     return length(left) == length(right) &&

@@ -6,6 +6,15 @@ using AletheiaAudit
 
 struct UnsupportedAuditArtifact <: SymbolicArtifact end
 
+struct AuditCopyProbe
+    value::Int
+end
+const AUDIT_COPY_PROBES = Ref(0)
+function Base.deepcopy_internal(value::AuditCopyProbe, ::IdDict)
+    AUDIT_COPY_PROBES[] += 1
+    return value
+end
+
 @testset "typed artifact protocol" begin
     @test test_interface(RuleArtifact)
     @test test_interface(TreeArtifact)
@@ -97,6 +106,10 @@ end
     @test RuleArtifact([ArtifactRule(x -> x > 0, true)]; default=false)(1)
     @test RuleArtifact([Dict(:x => true) => :hit])(:x) == :hit
     @test RuleArtifact([1 => (x -> x + 1)])(1) == 2
+    scan_artifact = RuleArtifact([[AuditCopyProbe(i)] => i for i in 1:64])
+    AUDIT_COPY_PROBES[] = 0
+    @test scan_artifact([AuditCopyProbe(64)]) == 64
+    @test AUDIT_COPY_PROBES[] == 0
     trace = ExecutionTrace([TraceStep(:test, nothing, nothing, :ok)], Provenance(), :ok)
     @test replay(trace, :anything).valid
     @test MetricValue(1, 1, 1, :global).applicable

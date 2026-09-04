@@ -80,6 +80,16 @@ end
 struct BadIndexData end
 Base.getindex(::BadIndexData, ::Any) = error("bad index")
 
+struct FrozenDictProbeKey
+    value::Int
+end
+const FROZEN_DICT_PROBES = Ref(0)
+Base.hash(key::FrozenDictProbeKey, ::UInt) = UInt(key.value)
+function Base.isequal(left::FrozenDictProbeKey, right::FrozenDictProbeKey)
+    FROZEN_DICT_PROBES[] += 1
+    return left.value == right.value
+end
+
 @testset "frames and lazy accessibility" begin
     f = Frame((:w1, :w2), Dict(:G => Dict(:w1 => [:w2], :w2 => [:w2]),
                                :H => [(:w1, :w1)]); index=true)
@@ -188,6 +198,12 @@ end
     @test_throws ArgumentError interpret(p, Model(f, 1), :w1)
     @test_throws ArgumentError interpret(p, Model(f, Dict("p"=>Dict(:w1=>true)), GodelAlgebra()), :w1)
     @test_throws MethodError interpret(branch(pool, ¬, p), boolmodel, :w1)
+
+    indexed_values = Dict(FrozenDictProbeKey(i) => i for i in 1:512)
+    frozen_values = getfield(Valuation(indexed_values), :data)
+    FROZEN_DICT_PROBES[] = 0
+    @test !haskey(frozen_values, FrozenDictProbeKey(513))
+    @test FROZEN_DICT_PROBES[] < 16
 end
 
 

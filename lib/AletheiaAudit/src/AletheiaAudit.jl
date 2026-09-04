@@ -271,7 +271,7 @@ end
 function TreeArtifact(nodes=ArtifactRule[]; default=missing, provenance=Provenance())
     prepared = RuleArtifact(nodes; default=default, provenance=provenance)
     return TreeArtifact(
-        _immutable_copy(tuple(prepared.rules...)),
+        _immutable_copy(tuple(getfield(prepared, :rules)...)),
         _immutable_copy(default),
         _immutable_copy(provenance),
     )
@@ -290,7 +290,8 @@ end
 stable_hash(value) = _stable_hash(value)
 
 """Return an artifact's provenance."""
-provenance(a::Union{RuleArtifact,TreeArtifact}) = _boundary_copy(a.provenance)
+provenance(a::Union{RuleArtifact,TreeArtifact}) =
+    _boundary_copy(getfield(a, :provenance))
 """Return an artifact's ordered rules/nodes."""
 rules(a::RuleArtifact) = [r for r in getfield(a, :rules)]
 nodes(a::TreeArtifact) = [r for r in getfield(a, :nodes)]
@@ -317,11 +318,23 @@ end
 _output(output, state) = output isa Function ? output(state) : output
 (artifact::Union{RuleArtifact,TreeArtifact})(state) = _predict(artifact, state)
 
-function _predict(artifact::Union{RuleArtifact,TreeArtifact}, state)
-    for rule in (artifact isa RuleArtifact ? artifact.rules : artifact.nodes)
-        _matches(rule.condition, state) && return _output(rule.output, state)
+_artifact_entries(artifact::RuleArtifact) = getfield(artifact, :rules)
+_artifact_entries(artifact::TreeArtifact) = getfield(artifact, :nodes)
+function _selected_rule(artifact::Union{RuleArtifact,TreeArtifact}, state)
+    for (index, rule) in enumerate(_artifact_entries(artifact))
+        _matches(getfield(rule, :condition), state) && return index, rule
     end
-    return artifact.default
+    return missing, nothing
+end
+function _predict(artifact::Union{RuleArtifact,TreeArtifact}, state)
+    _, rule = _selected_rule(artifact, state)
+    rule === nothing && return getfield(artifact, :default)
+    return _output(_boundary_copy(getfield(rule, :output)), state)
+end
+function _predict_internal(artifact::Union{RuleArtifact,TreeArtifact}, state)
+    _, rule = _selected_rule(artifact, state)
+    rule === nothing && return getfield(artifact, :default)
+    return _output(getfield(rule, :output), state)
 end
 
 """Evaluate a typed artifact and emit a deterministic trace by default."""
@@ -334,15 +347,9 @@ function eval_artifact(
 )
     scope in (:global, :local) ||
         throw(ArgumentError("trace scope must be :global or :local"))
-    result = _predict(artifact, state)
-    selected = missing
-    entries = artifact isa RuleArtifact ? artifact.rules : artifact.nodes
-    for (i, rule) in enumerate(entries)
-        if _matches(rule.condition, state)
-            selected = i
-            break
-        end
-    end
+    selected, rule = _selected_rule(artifact, state)
+    result = rule === nothing ? getfield(artifact, :default) :
+             _output(_boundary_copy(getfield(rule, :output)), state)
     step = TraceStep(
         :artifact_evaluation,
         (artifact=string(nameof(typeof(artifact))), selected=selected, profile=profile),
@@ -454,8 +461,8 @@ function _provenance_value(values, key::Symbol)
 end
 
 function _trace_provenance(artifact)
-    source = provenance(artifact)
-    hashes = source.hashes
+    source = getfield(artifact, :provenance)
+    hashes = getfield(source, :hashes)
     traced = if hashes isa NamedTuple
         merge(hashes, (artifact_id=_stable_hash(artifact), provenance_id=_stable_hash(source)))
     elseif hashes isa AbstractDict
@@ -471,12 +478,14 @@ function _trace_provenance(artifact)
         traced[:artifact_id] = _stable_hash(artifact)
         traced[:provenance_id] = _stable_hash(source)
     end
-    return Provenance(source.versions, source.sources, traced)
+    return Provenance(getfield(source, :versions), getfield(source, :sources), traced)
 end
 
 """Replay a trace and verify hashes, context, every step, and the reported result."""
 function replay(trace::ExecutionTrace, state; profile=nothing)
     failures = String[]
+    trace_artifact = getfield(trace, :artifact)
+    trace_provenance = getfield(trace, :provenance)
     expected_input = _stable_hash(state)
     trace.input_hash != "" &&
         trace.input_hash != expected_input &&
@@ -488,47 +497,40 @@ function replay(trace::ExecutionTrace, state; profile=nothing)
         if step.kind === :artifact_evaluation
             !isequal(step.inputs, expected_input) &&
                 push!(failures, "step input metadata mismatch")
-            trace.artifact === nothing &&
+            trace_artifact === nothing &&
                 push!(failures, "artifact is required to replay an artifact verdict")
             if !(step.payload isa NamedTuple) ||
                !hasproperty(step.payload, :artifact) ||
                !hasproperty(step.payload, :selected) ||
                !hasproperty(step.payload, :profile)
                 push!(failures, "step payload metadata malformed")
-            elseif trace.artifact !== nothing
-                trace.artifact isa Union{RuleArtifact,TreeArtifact} ||
+            elseif trace_artifact !== nothing
+                trace_artifact isa Union{RuleArtifact,TreeArtifact} ||
                     push!(failures, "artifact context has an unsupported type")
-                if trace.artifact isa Union{RuleArtifact,TreeArtifact}
-                    artifact_id = _provenance_value(trace.provenance.hashes, :artifact_id)
+                if trace_artifact isa Union{RuleArtifact,TreeArtifact}
+                    provenance_hashes = getfield(trace_provenance, :hashes)
+                    artifact_id = _provenance_value(provenance_hashes, :artifact_id)
                     provenance_id = _provenance_value(
-                        trace.provenance.hashes, :provenance_id
+                        provenance_hashes, :provenance_id
                     )
                     artifact_id === nothing &&
                         push!(failures, "artifact identity metadata missing")
                     provenance_id === nothing &&
                         push!(failures, "artifact provenance metadata missing")
                     artifact_id !== nothing &&
-                        !isequal(artifact_id, _stable_hash(trace.artifact)) &&
+                        !isequal(artifact_id, _stable_hash(trace_artifact)) &&
                         push!(failures, "artifact identity mismatch")
                     provenance_id !== nothing &&
-                        !isequal(provenance_id, _stable_hash(provenance(trace.artifact))) &&
+                        !isequal(
+                            provenance_id,
+                            _stable_hash(getfield(trace_artifact, :provenance)),
+                        ) &&
                         push!(failures, "artifact provenance mismatch")
-                    trace.provenance != _trace_provenance(trace.artifact) &&
+                    trace_provenance != _trace_provenance(trace_artifact) &&
                         push!(failures, "artifact provenance mismatch")
-                    entries = if trace.artifact isa RuleArtifact
-                        trace.artifact.rules
-                    else
-                        trace.artifact.nodes
-                    end
-                    selected = missing
-                    for (i, rule) in enumerate(entries)
-                        if _matches(rule.condition, state)
-                            selected = i
-                            break
-                        end
-                    end
+                    selected, _ = _selected_rule(trace_artifact, state)
                     !isequal(
-                        step.payload.artifact, string(nameof(typeof(trace.artifact)))
+                        step.payload.artifact, string(nameof(typeof(trace_artifact)))
                     ) && push!(failures, "step artifact metadata mismatch")
                     !isequal(step.payload.selected, selected) &&
                         push!(failures, "step selection metadata mismatch")
@@ -538,27 +540,27 @@ function replay(trace::ExecutionTrace, state; profile=nothing)
                     elseif profile === nothing || !isequal(step.payload.profile, profile)
                         push!(failures, "step profile metadata mismatch")
                     end
-                    predicted = _predict(trace.artifact, state)
+                    predicted = _predict_internal(trace_artifact, state)
                     !isequal(step.output, predicted) &&
                         push!(failures, "step result mismatch")
                 end
             end
         elseif step.kind === :graph_path
-            graph_hash = _provenance_value(trace.provenance.hashes, :graph)
+            graph_hash = _provenance_value(getfield(trace_provenance, :hashes), :graph)
             (!isequal(step.inputs, state) && !isequal(step.inputs, expected_input)) &&
                 push!(failures, "graph step input metadata mismatch")
-            if trace.artifact === nothing ||
+            if trace_artifact === nothing ||
                 graph_hash === nothing ||
                 !(step.payload isa NamedTuple) ||
                 !hasproperty(step.payload, :path)
                 push!(failures, "graph trace context, hash, or path metadata missing")
             else
-                !isequal(graph_hash, _stable_hash(trace.artifact)) &&
+                !isequal(graph_hash, _stable_hash(trace_artifact)) &&
                     push!(failures, "graph context hash mismatch")
-                !_trace_context_valid(trace.artifact, step.payload.path) &&
+                !_trace_context_valid(trace_artifact, step.payload.path) &&
                     push!(failures, "graph path is not valid in the recorded graph")
             end
-        elseif trace.artifact !== nothing
+        elseif trace_artifact !== nothing
             push!(failures, "step kind mismatch")
         end
     end
@@ -680,9 +682,9 @@ function metric_bundle(
     end
     complexity = MetricValue(
         Float64(
-            artifact isa RuleArtifact ? length(artifact.rules) : length(artifact.nodes)
+            length(_artifact_entries(artifact))
         ),
-        artifact isa RuleArtifact ? length(artifact.rules) : length(artifact.nodes),
+        length(_artifact_entries(artifact)),
         1,
         scope,
         true,
