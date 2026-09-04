@@ -141,3 +141,18 @@ environments are removed on exit.  For run-order diagnostics, set
 `DATASET_CONSUMER_CASE_ORDER` to a comma-separated permutation of `1:18`; the
 case seeds and shapes remain unchanged while the timing order is recorded in
 the result header.  No SoleData dependency is added to Aletheia itself.
+
+
+## Elysium quick validation (Julia 1.12.7)
+
+On the office machine, use `~/fm/projects/Aletheia.jl` as the shared `main`
+reference and `~/fm/projects/Aletheia.jl-al-elysium-julia` as the task clone.
+Instantiate each `lib/*`, the umbrella, and `benchmark` with `julia --project=<p> -e 'using Pkg; Pkg.instantiate()'`.
+Run the suite with the audit loop from the repository root. For a benchmark quick
+run, clone `aclai-lab/SoleLogics.jl`, set `SOLELOGICS_PATH`, and run
+`benchmark/run.jl --quick` with one task-spooler slot. The observed suite times
+were Core 208.77s, Data 50.49s, Learn 28.61s, Sole 50.97s, Circuits 47.96s,
+Graphs 47.30s, Audit 24.58s, NeSy 23.28s, umbrella 75.72s. The quick benchmark
+ran 358.7s but exited 1, so its results are not publishable. Load average was
+3.44/3.81/3.56 before and 4.03/4.29/3.91 after; the host was moderately busy,
+not quiet.
