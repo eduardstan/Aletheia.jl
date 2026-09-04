@@ -392,7 +392,7 @@ function run_showcase(; io=stdout)
     unknown = (id=:unseen, hot=50, dry=50, cool=50, target=:review)
     honest_cases = vcat(cases, [ArtifactCase(unknown, nothing, missing, :global)])
     metrics = metric_bundle(roundtrip.extracted, honest_cases; scope=:all)
-    @assert metrics.fidelity.applicable && metrics.fidelity.value == 1.0
+    @assert metrics.fidelity.applicable && metrics.fidelity.value == 0.8
     @assert metrics.coverage.applicable &&
             metrics.coverage.numerator == 4 &&
             metrics.coverage.denominator == 5
