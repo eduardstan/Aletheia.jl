@@ -179,14 +179,15 @@ end
 # tests.  Caches are implementation state, not semantic payload; a method for
 # their type is added next to its definition in semantics.jl.
 function _is_owned(value, seen=IdDict{Any,Bool}())
-    value isa Union{Nothing,Missing,Number,Symbol,Char,AbstractString,Type} && return true
+    T = typeof(value)
+    (isbitstype(T) || value isa Union{Nothing,Missing,Symbol,AbstractString,Type}) &&
+        return true
     value isa Function && return true # executable callbacks are not semantic payload
     value isa FrozenArray && return all(_is_owned(x, seen) for x in value.data)
     value isa FrozenDict && return all(_is_owned(x, seen) for pair in value for x in pair)
     value isa FrozenSet && return all(_is_owned(x, seen) for x in value)
     value isa Tuple && return all(_is_owned(x, seen) for x in value)
     (value isa AbstractArray || value isa AbstractDict || value isa AbstractSet) && return false
-    T = typeof(value)
     Base.ismutabletype(T) && return false
     fieldcount(T) == 0 && return true
     haskey(seen, value) && return true
