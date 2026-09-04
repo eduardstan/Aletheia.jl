@@ -106,9 +106,14 @@ end
     source[(:p, :w)] = true
     @test Aletheia.check(Aletheia.atom(:p), model, :w) === false
 
-    @test_throws Aletheia.OwnershipError Aletheia.Frame(
-        [ImmutableWorldBox([1])], Dict(); index=true
-    )
+    ownership_error = try
+        Aletheia.Frame([ImmutableWorldBox([1])], Dict(); index=true)
+    catch error
+        error
+    end
+    @test ownership_error isa Aletheia.OwnershipError
+    @test ownership_error.value_type === Vector{Int}
+    @test ownership_error.path == (:ref,)
     @test_throws Aletheia.OwnershipError Aletheia.Frame(
         [(ImmutableWorldBox([1]),)], Dict(); index=true
     )
