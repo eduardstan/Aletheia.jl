@@ -156,7 +156,7 @@ _converse_mismatches(relation, ws) =
 
     @testset "optimised successors agree with the generic predicate" begin
         interval_frames = [(interval_frame(b), _intervals_over(b)) for b in _INTERVAL_BOUNDARIES]
-        rectangle_frames = [(rectangle_frame(xb, yb),
+        rectangle_frames = Any[(rectangle_frame(xb, yb),
             [Rectangle(x, y) for x in _intervals_over(xb) for y in _intervals_over(yb)])
             for (xb, yb) in _RECTANGLE_BOUNDARIES]
         point_frames = [(point_frame(d), d) for d in _POINT_DOMAINS]

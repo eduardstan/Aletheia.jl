@@ -475,7 +475,9 @@ ordered collection of worlds together with one accessibility relation per
 relation name.  `relations` is normally a dictionary such as
 `Dict(:G => Dict(:w1 => [:w2], :w2 => [:w2]))`.  The `worlds` collection is
 stored in enumeration order, and `index=true` additionally stores a world to
-position dictionary for algorithms that use stable positions.  A one-world
+position dictionary for algorithms that use stable positions. Standard
+collections are recursively snapshotted; mutable opaque world values are
+rejected with `OwnershipError`. A one-world
 frame uses this same ordinary type; no propositional special case exists.
 See Blackburn, de Rijke, and Venema, *Modal Logic*, §1.3 [blackburn2001](@cite).
 
@@ -493,10 +495,20 @@ struct Frame{W<:Tuple,RS,I} <: AbstractMultiModalFrame{eltype(W)}
     relations::RS
     index::I
     cache::_ModelEvaluationCache
+    function Frame(
+        worlds::W, relations::RS, index::I, cache::_ModelEvaluationCache
+    ) where {W<:Tuple,RS,I}
+        owned_worlds = _immutable_copy(worlds)
+        owned_relations = _immutable_copy(relations)
+        owned_index = _immutable_copy(index)
+        return new{typeof(owned_worlds),typeof(owned_relations),typeof(owned_index)}(
+            owned_worlds, owned_relations, owned_index, cache
+        )
+    end
 end
 
 function _world_tuple(worlds)
-    result = tuple(worlds...)
+    result = tuple((_immutable_copy(world) for world in worlds)...)
     isempty(result) && throw(ArgumentError("a frame must contain at least one world"))
     length(unique(result)) == length(result) ||
         throw(ArgumentError("worlds must be unique"))
@@ -531,9 +543,9 @@ end
 function _targets(worlds::Tuple, target)
     _is_world(worlds, target) && return (target,)
     if target isa AbstractString ||
-       target isa Symbol ||
-       target isa Number ||
-       target isa Char
+        target isa Symbol ||
+        target isa Number ||
+        target isa Char
         return (target,)
     end
     try
@@ -600,10 +612,12 @@ function _normalize_relations(relations, worlds::Tuple)
     return result
 end
 
-function Frame(worlds, relations; index=false, world_index=nothing)
+function Frame(worlds, relations; index=false, world_index=nothing)::Frame
     worldtuple = _world_tuple(worlds)
     requested = world_index === nothing ? index : world_index
-    normalized = _immutable_copy(_normalize_relations(relations, worldtuple))
+    normalized = _normalize_relations(relations, worldtuple)
+    normalized isa Function || normalized isa _RelationProvider ||
+        (normalized = _immutable_copy(normalized))
     indexed = _immutable_copy(_world_index(worldtuple, requested))
     positions = if indexed === nothing
         Dict{Any,Int}(world => position for (position, world) in enumerate(worldtuple))
@@ -613,12 +627,10 @@ function Frame(worlds, relations; index=false, world_index=nothing)
     cache = _ModelEvaluationCache(
         positions, Dict{Any,_RelationAdjacency}(), ReentrantLock()
     )
-    return Frame{typeof(worldtuple),typeof(normalized),typeof(indexed)}(
-        worldtuple, normalized, indexed, cache
-    )
+    return Frame(worldtuple, normalized, indexed, cache)
 end
 
-function Frame(worlds; index=false, world_index=nothing)
+function Frame(worlds; index=false, world_index=nothing)::Frame
     return Frame(worlds, Dict(); index=index, world_index=world_index)
 end
 """Return the worlds of a frame in stable enumeration order.
@@ -1012,6 +1024,21 @@ function _lookup_atom(data::AbstractDict, atom::Atom, world)
     return _lookup_valuation(data, value(atom), world)
 end
 
+# Model dictionaries are stored as `FrozenDict`s.  Their key type lets the
+# common atom-value presentation skip probes for the much larger `Atom` key
+# and pair-key hashes before resolving the nested world set.
+function _lookup_atom(data::FrozenDict{K}, atom::Atom, world) where {K}
+    if !(typeof(atom) <: K)
+        atom_value = value(atom)
+        if haskey(data, atom_value)
+            nested = data[atom_value]
+            nested isa FrozenSet && return world in nested
+            return _nested_value(nested, world)
+        end
+    end
+    return invoke(_lookup_atom, Tuple{AbstractDict,Atom,Any}, data, atom, world)
+end
+
 function _lookup_atom(data::Valuation, atom::Atom, world)
     raw = data.data
     if raw isa AbstractDict
@@ -1034,6 +1061,7 @@ _lookup_atom(data::ValuationCallback, atom::Atom, world) = data(value(atom), wor
 function (valuation::Valuation)(atom_value, world)
     return _lookup_valuation(valuation.data, atom_value, world)
 end
+Base.getindex(valuation::Valuation, key) = getindex(valuation.data, key)
 
 """Return atom values in the supplied world order, using a batch callback when available.
 
@@ -1076,6 +1104,18 @@ struct Model{T,A<:TruthAlgebra{T},F<:Frame,V}
     algebra::A
     valuation::V
     cache::_ModelEvaluationCache
+    function Model(
+        frame::F, algebra::A, valuation::V, cache::_ModelEvaluationCache
+    ) where {T,A<:TruthAlgebra{T},F<:Frame,V}
+        owned = if valuation isa AbstractDict
+            Valuation(valuation).data
+        elseif valuation isa Valuation
+            valuation.data
+        else
+            _immutable_copy(valuation)
+        end
+        return new{T,A,F,typeof(owned)}(frame, algebra, owned, cache)
+    end
 end
 
 function Model(frame::Frame, algebra::TruthAlgebra, valuation)
@@ -1083,7 +1123,7 @@ function Model(frame::Frame, algebra::TruthAlgebra, valuation)
 end
 
 function Model(frame::Frame, valuation::AbstractDict, algebra::TruthAlgebra)
-    return Model(frame, algebra, valuation)
+    return Model(frame, algebra, Valuation(valuation))
 end
 function Model(frame::Frame, valuation::Function, algebra::TruthAlgebra)
     return Model(frame, algebra, valuation)
@@ -1119,7 +1159,9 @@ true
 """
 algebra(model::Model) = model.algebra
 
-"""Return the raw valuation carried by `model`.
+"""Return the owned valuation carried by `model`.
+
+Dictionary inputs are prepared through `Valuation` and recursively snapshotted before storage.
 
 # Examples
 ```jldoctest

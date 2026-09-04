@@ -12,8 +12,8 @@ Aletheia.negation(::TestSymbolAlgebra, ::Symbol) = :negation
     b = BooleanAlgebra()
     @test b isa TruthAlgebra{Bool}
     @test truth_type(b) === Bool &&
-          Aletheia.truthtype(b) === Bool &&
-          carrier(b) == (false, true)
+        Aletheia.truthtype(b) === Bool &&
+        carrier(b) == (false, true)
     @test top(b) && !bottom(b) && bot(b) == false
     @test meet(b, true, false) == false
     @test fusion(b, true, false) == false
@@ -51,7 +51,7 @@ Aletheia.negation(::TestSymbolAlgebra, ::Symbol) = :negation
     @test domain(LukasiewiczAlgebra(4)) == Tuple(collect(levels(LukasiewiczAlgebra(4))))
 
     @test Aletheia.GödelAlgebra === GodelAlgebra &&
-          Aletheia.ŁukasiewiczAlgebra === LukasiewiczAlgebra
+        Aletheia.ŁukasiewiczAlgebra === LukasiewiczAlgebra
     @test_throws ArgumentError GodelAlgebra(0)
     @test_throws ArgumentError GodelAlgebra(1)
     @test_throws ArgumentError LukasiewiczAlgebra(1)
@@ -102,8 +102,8 @@ end
     @test worlds(f) == (:w1, :w2) && length(f) == 2 && collect(f) == [:w1, :w2]
     @test relations(f) isa Dict && hasworldindex(f)
     @test Aletheia.world_index(f)[:w2] == 2 &&
-          world_position(f, :w1) == 1 &&
-          world_position(f, :w2) == 2
+        world_position(f, :w1) == 1 &&
+        world_position(f, :w2) == 2
     successors = accessible(f, :w1, :G)
     @test successors isa Base.Generator && collect(successors) == [:w2]
     @test collect(accessible(f, :w2, :G)) == [:w2]
@@ -163,6 +163,8 @@ end
     @test boolmodel.cache === same_frame_model.cache
     @test frame(boolmodel) === f && algebra(boolmodel) isa BooleanAlgebra
     @test valuation(boolmodel)["p"] == Set([:w1])
+    frozen_worlds = valuation(boolmodel)["p"]
+    @test :w1 in frozen_worlds && :w2 ∉ frozen_worlds
     @test interpret(p, boolmodel, :w1) === true
     @test interpret(p, boolmodel, :w2) === false
     @test collect(accessible(boolmodel, :w1, :G)) == [:w2]
@@ -229,6 +231,9 @@ end
 mutable struct MutableTruth
     value::Int
 end
+mutable struct MutableWorld
+    id::Int
+end
 struct MutableTruthAlgebra <: TruthAlgebra{MutableTruth} end
 Aletheia.truth_type(::Type{MutableTruthAlgebra}) = MutableTruth
 Aletheia.top(::MutableTruthAlgebra) = MutableTruth(10)
@@ -247,6 +252,17 @@ function Aletheia.implication(::MutableTruthAlgebra, a::MutableTruth, b::Mutable
 end
 Aletheia.negation(::MutableTruthAlgebra, a::MutableTruth) = MutableTruth(10 - a.value)
 
+@testset "owned semantic constructors reject mutable opaque values" begin
+    world = MutableWorld(1)
+    @test_throws OwnershipError Frame([world], Dict(); index=true)
+
+    source = Dict((:p, :w) => false)
+    model = Model(Frame([:w]), source)
+    @test getfield(model, :valuation) isa Aletheia.FrozenDict
+    source[(:p, :w)] = true
+    @test check(atom(:p), model, :w) === false
+end
+
 @testset "vectorized callbacks own mutable values" begin
     frame = Frame((:w,), Dict(); index=true)
     p = atom(:p)
@@ -263,6 +279,6 @@ Aletheia.negation(::MutableTruthAlgebra, a::MutableTruth) = MutableTruth(10 - a.
     )
     scalar_model = Model(frame, MutableTruthAlgebra(), Aletheia.ValuationCallback(scalar))
     @test extension(formula, vectorized)[1].value ==
-          extension(formula, scalar_model)[1].value ==
-          1
+        extension(formula, scalar_model)[1].value ==
+        1
 end

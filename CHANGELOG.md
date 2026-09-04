@@ -5,7 +5,9 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
 
 ## Unreleased
 
-- Replaced retained semantic collections with immutable storage and kept mutable frame caches explicitly internal. Frame relations, valuations, scalar values, audit payloads, graph paths, circuit nodes, algebra tables, and choice alternatives now snapshot inputs at construction; family callback reuse preserves world identity. Timed-out benchmark cells now make the run non-publishable and record the incomplete status.
+- Rejected mutable opaque values at owned semantic boundaries with `OwnershipError`, added inner constructors for frame, model, provenance, graph, and distribution-program records, and made dictionary Model routes and provenance snapshots use immutable storage. Timed-out benchmark cells now make the run non-publishable and record the incomplete status.
+
+- Replaced retained semantic collections with immutable storage and kept mutable frame caches explicitly internal. Frame relations, valuations, scalar values, audit payloads, graph paths, circuit nodes, algebra tables, and choice alternatives now snapshot inputs at construction; family callback reuse preserves world identity.
 
 - Applied one defensive-copy rule at public boundaries, including certified circuit nodes, finite algebra tables, extracted outputs, nested audit material, graph records, and scalar stores. Mutable numeric cycles are rejected, data-only traces replay after serialization, and callable artifacts are rejected at serialization with a documented portability limit.
 

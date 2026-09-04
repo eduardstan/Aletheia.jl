@@ -1,6 +1,6 @@
 struct EmptyFamily <: AbstractModelFamily end
 
-mutable struct IdentitySensitiveWorld
+struct IdentitySensitiveWorld
     id::Int
 end
 function Base.isequal(left::IdentitySensitiveWorld, right::IdentitySensitiveWorld)

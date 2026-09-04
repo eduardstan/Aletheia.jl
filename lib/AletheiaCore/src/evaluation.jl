@@ -599,8 +599,8 @@ end
     check(φ, model, world)
 
 Return the truth value of `φ` at `world`.  The result is exactly the carrier
-type of the model's algebra.  Evaluation uses the same DAG walk as
-[`extension`](@ref).
+type of the model's algebra. Compound formulas use the same DAG walk as
+[`extension`](@ref); atom formulas use the scalar interpretation directly.
 
 
 # Examples
@@ -611,10 +611,32 @@ julia> isdefined(AletheiaCore, Symbol("check"))
 true
 ```
 """
+function check(formula::Atom, model::Model{Bool,A}, ::AnyWorld; cache=nothing)::Bool where {A<:BooleanAlgebra}
+    any(extension(formula, model; cache=cache))
+end
+
+function check(formula::Atom, model::Model{Bool,A}, world; cache=nothing)::Bool where {A<:BooleanAlgebra}
+    cache === nothing && return interpret(formula, model, world)
+    position = world_position(frame(model), world)
+    values = _evaluate_with_cache(formula, model, BitVector, cache)
+    values[position]
+end
+
 function check(formula::Formula, model::Model{Bool,A}, world; cache=nothing)::Bool where {A<:BooleanAlgebra}
     position = world_position(frame(model), world)
     values = _evaluate_with_cache(formula, model, BitVector, cache)
     values[position]
+end
+
+function check(formula::Atom, model::Model{T}, ::AnyWorld; cache=nothing)::Bool where T
+    any(value -> value == top(algebra(model)), extension(formula, model; cache=cache))
+end
+
+function check(formula::Atom, model::Model{T}, world; cache=nothing)::T where T
+    cache === nothing && return interpret(formula, model, world)
+    position = world_position(frame(model), world)
+    values = _evaluate_with_cache(formula, model, Vector{T}, cache)
+    deepcopy(values[position])
 end
 
 function check(formula::Formula, model::Model{T}, world; cache=nothing)::T where T

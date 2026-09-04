@@ -3,7 +3,8 @@ module AletheiaAudit
 
 using SHA
 using Serialization
-using AletheiaCore: Formula, _boundary_copy, _immutable_copy
+using AletheiaCore: Formula, _boundary_copy
+import AletheiaCore: _immutable_copy
 
 const _CORE_FORMULA = Formula
 
@@ -14,7 +15,11 @@ abstract type ArtifactState end
 """Marker for artifact operations."""
 abstract type ArtifactOperation end
 
-"""A case with an input, optional state, expected output, and declared scope."""
+"""A case with an input, optional state, expected output, and declared scope.
+
+Standard collections in all retained values are recursively snapshotted. Mutable
+opaque user values are rejected with `AletheiaCore.OwnershipError`.
+"""
 struct ArtifactCase{I,S,O}
     input::I
     state::S
@@ -36,22 +41,24 @@ function ArtifactCase(input, state, output; scope=:global)
     return ArtifactCase(input, state, output, scope)
 end
 
-"""Version, source, and content-hash information attached to an artifact."""
+"""Version, source, and content-hash information attached to an artifact.
+
+Nested standard collections are immutable in the retained value. Dot access
+returns a mutable defensive snapshot for compatibility.
+"""
 struct Provenance
     versions::Any
     sources::Any
     hashes::Any
     function Provenance(versions, sources, hashes)
-        return new(
-            _boundary_copy(versions), _boundary_copy(sources), _boundary_copy(hashes)
-        )
+        owned = _immutable_copy((versions, sources, hashes))
+        return new(owned...)
     end
 end
 function Provenance(; versions=NamedTuple(), sources=NamedTuple(), hashes=NamedTuple())
-    return Provenance(
-        _boundary_copy(versions), _boundary_copy(sources), _boundary_copy(hashes)
-    )
+    return Provenance(versions, sources, hashes)
 end
+_immutable_copy(provenance::Provenance) = provenance
 function Base.:(==)(left::Provenance, right::Provenance)
     return left.versions == right.versions &&
            left.sources == right.sources &&
@@ -399,9 +406,9 @@ function _contains_callable(value, seen=IdDict{Any,Bool}())
                 (k, v) in value
             )
         elseif value isa AbstractArray ||
-               value isa AbstractSet ||
-               value isa Tuple ||
-               value isa NamedTuple
+            value isa AbstractSet ||
+            value isa Tuple ||
+            value isa NamedTuple
             return any(_contains_callable(x, seen) for x in value)
         end
         return any(
@@ -502,9 +509,9 @@ function replay(trace::ExecutionTrace, state; profile=nothing)
             trace_artifact === nothing &&
                 push!(failures, "artifact is required to replay an artifact verdict")
             if !(step.payload isa NamedTuple) ||
-               !hasproperty(step.payload, :artifact) ||
-               !hasproperty(step.payload, :selected) ||
-               !hasproperty(step.payload, :profile)
+                !hasproperty(step.payload, :artifact) ||
+                !hasproperty(step.payload, :selected) ||
+                !hasproperty(step.payload, :profile)
                 push!(failures, "step payload metadata malformed")
             elseif trace_artifact !== nothing
                 trace_artifact isa Union{RuleArtifact,TreeArtifact} ||
@@ -550,9 +557,9 @@ function replay(trace::ExecutionTrace, state; profile=nothing)
             (!isequal(step.inputs, state) && !isequal(step.inputs, expected_input)) &&
                 push!(failures, "graph step input metadata mismatch")
             if trace_artifact === nothing ||
-               graph_hash === nothing ||
-               !(step.payload isa NamedTuple) ||
-               !hasproperty(step.payload, :path)
+                graph_hash === nothing ||
+                !(step.payload isa NamedTuple) ||
+                !hasproperty(step.payload, :path)
                 push!(failures, "graph trace context, hash, or path metadata missing")
             else
                 !isequal(graph_hash, _stable_hash(trace_artifact)) &&

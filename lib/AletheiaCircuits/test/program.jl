@@ -55,6 +55,23 @@
     @test world(negative, Dict((:probabilistic_fact, :rain) => nothing)) == Set([:dry])
 end
 
+@testset "program constructors own collections" begin
+    choices = [ChoiceVariable(:c, (:a, :b), (0.5, 0.5))]
+    facts = ProbabilisticFact[]
+    rules = GroundRule[]
+    domain = [:a, :b]
+    program = DSProgram(choices, facts, rules, domain)
+    push!(choices, ChoiceVariable(:d, (:x, :y), (0.5, 0.5)))
+    push!(domain, :c)
+    @test length(getfield(program, :choices)) == 1
+    @test Tuple(getfield(program, :domain)) == (:a, :b)
+    @test_throws MethodError DSProgram{
+        typeof(choices),typeof(facts),typeof(rules),typeof(domain)
+    }(
+        choices, facts, rules, domain
+    )
+end
+
 @testset "grounding profile and event expressions" begin
     @test Not(:a).child == :a
     @test And(:a, :b).children == (:a, :b)
@@ -67,14 +84,15 @@ end
     @test_throws GroundingError world(p, Dict())
 end
 
-
 @testset "program validation closes the finite ground fragment" begin
     @test_throws GroundingError validate_program(
         DSProgram(rules=[GroundRule(nothing, (:a,))])
     )
     @test_throws UnsupportedFeatureError validate_program(
-        DSProgram(domain=Iterators.countfrom(1),
-            choices=[ChoiceVariable(:c, (:a, :b), (1//2, 1//2))])
+        DSProgram(
+            domain=Iterators.countfrom(1),
+            choices=[ChoiceVariable(:c, (:a, :b), (1//2, 1//2))],
+        ),
     )
     fn = x -> x
     @test_throws UnsupportedFeatureError validate_program(
