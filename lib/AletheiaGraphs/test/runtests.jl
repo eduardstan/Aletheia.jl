@@ -19,6 +19,15 @@ g = KnowledgeGraph(
     [KGEdge(alice, knows, bob, p1), KGEdge(bob, visits, carol, p2)],
 )
 
+mutable struct MutableGraphMetadata
+    value::Int
+end
+
+@testset "graph constructors reject mutable opaque metadata" begin
+    payload = MutableGraphMetadata(1)
+    @test_throws OwnershipError KGEntity(:payload; metadata=Dict(:payload => payload))
+end
+
 @testset "typed graph and replayable paths" begin
     ps = paths(g, :alice; max_hops=2, simple=true)
     @test length(ps) == 2
@@ -143,9 +152,20 @@ end
         Provenance(; hashes=(graph=stable_hash(local_graph),)), path.entities,
         stable_hash(:alice), stable_hash(path.entities), :global; artifact=local_graph)
     @test replay(trace, :alice).valid
-    empty!(trace.artifact.edges)
-    push!(trace.artifact.edges, KGEdge(alice, visits, carol, p2))
-    @test !replay(trace, :alice).valid
+    tampered_graph = KnowledgeGraph(
+        [alice, bob, carol], [knows, visits],
+        [KGEdge(alice, visits, carol, p2)],
+    )
+    tampered_trace = ExecutionTrace(
+        trace.steps,
+        trace.provenance,
+        trace.reported_result,
+        trace.input_hash,
+        trace.output_hash,
+        trace.scope;
+        artifact=tampered_graph,
+    )
+    @test !replay(tampered_trace, :alice).valid
 end
 
 @testset "graph metadata is owned" begin

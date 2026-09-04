@@ -411,6 +411,7 @@ include("ownership.jl")
             :InvalidCircuitError,
             :InvalidProbabilityError,
             :GroundingError,
+            :OwnershipError,
             :MixedAlgebraError,
             :AbstractCommutativeSemiring,
             :ProbabilitySemiring,

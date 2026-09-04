@@ -513,10 +513,10 @@ profiler warm-up and reports aggregated stack-frame file:line sites, bytes, and
 counts for the callback, native decision list, and dense-store path. The top
 vectorized callback site is [`AletheiaCore`](api.md)/`lib/AletheiaCore/src/evaluation.jl:321`
 (16,781,888 bytes), with [`AletheiaData`](families.md) source line
-[`lib/AletheiaData/src/dataset.jl:213`](https://github.com/eduardstan/Aletheia.jl/blob/0659a011f90937ec861419338398f6caa8702a3b/lib/AletheiaData/src/dataset.jl#L213)
+[`lib/AletheiaData/src/dataset.jl:217`](https://github.com/eduardstan/Aletheia.jl/blob/0659a011f90937ec861419338398f6caa8702a3b/lib/AletheiaData/src/dataset.jl#L217)
 next (15,733,020 bytes). The dense-store profile has the same evaluator sites
 (`lib/AletheiaCore/src/evaluation.jl:321`, 16,891,200 bytes; source line
-[`lib/AletheiaData/src/dataset.jl:213`](https://github.com/eduardstan/Aletheia.jl/blob/0659a011f90937ec861419338398f6caa8702a3b/lib/AletheiaData/src/dataset.jl#L213), 15,835,500 bytes). Native apply is led by
+[`lib/AletheiaData/src/dataset.jl:217`](https://github.com/eduardstan/Aletheia.jl/blob/0659a011f90937ec861419338398f6caa8702a3b/lib/AletheiaData/src/dataset.jl#L217), 15,835,500 bytes). Native apply is led by
 `SoleModels/.../other.jl:149` (5,554,802 bytes) and
 `SoleModels/.../other.jl:165` (5,501,874 bytes),
 with `SoleLogics/.../rule-and-branch.jl:490` next (5,501,570 bytes). The

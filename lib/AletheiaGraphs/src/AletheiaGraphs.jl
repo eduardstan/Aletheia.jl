@@ -14,6 +14,9 @@ module AletheiaGraphs
 using AletheiaCore
 import AletheiaCore: _immutable_copy
 using AletheiaAudit
+
+struct _OwnedGraphValue end
+const _OWNED_GRAPH_VALUE = _OwnedGraphValue()
 using Graphs
 using MetaGraphsNext
 
@@ -22,14 +25,22 @@ abstract type AbstractKGEntity end
 """Abstract supertype for typed graph relations."""
 abstract type AbstractKGRelation end
 
-"""A typed graph entity with an identifier, kind, and owned metadata."""
+"""A typed graph entity with an identifier, kind, and owned metadata.
+
+Standard collections are recursively snapshotted. Mutable opaque identifiers,
+kinds, or metadata values are rejected with `AletheiaCore.OwnershipError`.
+"""
 struct KGEntity{I,K,M} <: AbstractKGEntity
     id::I
     kind::K
     metadata::M
     function KGEntity(id::I, kind::K, metadata::M) where {I,K,M}
-        owned = _immutable_copy(metadata)
-        return new{I,K,typeof(owned)}(id, kind, owned)
+        owned_id = _immutable_copy(id)
+        owned_kind = _immutable_copy(kind)
+        owned_metadata = _immutable_copy(metadata)
+        return new{typeof(owned_id),typeof(owned_kind),typeof(owned_metadata)}(
+            owned_id, owned_kind, owned_metadata
+        )
     end
 end
 KGEntity(id; kind=:entity, metadata=NamedTuple()) = KGEntity(id, kind, metadata)
@@ -41,8 +52,13 @@ struct KGRelation{I,D,R,M} <: AbstractKGRelation
     range::R
     metadata::M
     function KGRelation(id::I, domain::D, range::R, metadata::M) where {I,D,R,M}
-        owned = _immutable_copy(metadata)
-        return new{I,D,R,typeof(owned)}(id, domain, range, owned)
+        owned_id = _immutable_copy(id)
+        owned_domain = _immutable_copy(domain)
+        owned_range = _immutable_copy(range)
+        owned_metadata = _immutable_copy(metadata)
+        return new{
+            typeof(owned_id),typeof(owned_domain),typeof(owned_range),typeof(owned_metadata)
+        }(owned_id, owned_domain, owned_range, owned_metadata)
     end
 end
 function KGRelation(id; domain=:Any, range=:Any, metadata=NamedTuple())
@@ -81,6 +97,15 @@ struct KGEdge{E,R,P}
     relation::R
     target::E
     provenance::P
+    function KGEdge(::_OwnedGraphValue, source, relation, target, provenance)
+        owned_source = _immutable_copy(source)
+        owned_relation = _immutable_copy(relation)
+        owned_target = _immutable_copy(target)
+        owned_provenance = _immutable_copy(provenance)
+        return new{typeof(owned_source),typeof(owned_relation),typeof(owned_provenance)}(
+            owned_source, owned_relation, owned_target, owned_provenance
+        )
+    end
 end
 function KGEdge(
     source::KGEntity,
@@ -88,17 +113,24 @@ function KGEdge(
     target::KGEntity,
     provenance=KGProvenance(:unknown),
 )
-    return KGEdge{typeof(source),typeof(relation),typeof(provenance)}(
-        source, relation, target, provenance
-    )
+    return KGEdge(_OWNED_GRAPH_VALUE, source, relation, target, provenance)
 end
 
 """A validated collection of entities, relation schemas, edges, and graph provenance."""
-struct KnowledgeGraph{E<:Tuple,R<:Tuple,G,P}
+struct KnowledgeGraph{E<:Tuple,R<:Tuple,G<:Tuple,P}
     entities::E
     relations::R
     edges::G
     provenance::P
+    function KnowledgeGraph(::_OwnedGraphValue, entities::E, relations::R, edges::G, provenance::P) where {E<:Tuple,R<:Tuple,G<:Tuple,P}
+        owned_entities = _immutable_copy(entities)
+        owned_relations = _immutable_copy(relations)
+        owned_edges = _immutable_copy(edges)
+        owned_provenance = _immutable_copy(provenance)
+        return new{typeof(owned_entities),typeof(owned_relations),typeof(owned_edges),typeof(owned_provenance)}(
+            owned_entities, owned_relations, owned_edges, owned_provenance
+        )
+    end
 end
 
 """A replayable path.  Provenance is kept per traversed edge."""
@@ -106,9 +138,18 @@ struct KGPath{E<:Tuple,R<:Tuple,P<:Tuple}
     entities::E
     relations::R
     edge_provenance::P
+    function KGPath(::_OwnedGraphValue, entities::E, relations::R, edge_provenance::P) where {E<:Tuple,R<:Tuple,P<:Tuple}
+        owned_entities = _immutable_copy(entities)
+        owned_relations = _immutable_copy(relations)
+        owned_provenance = _immutable_copy(edge_provenance)
+        return new{typeof(owned_entities),typeof(owned_relations),typeof(owned_provenance)}(
+            owned_entities, owned_relations, owned_provenance
+        )
+    end
 end
 function KGPath(entities, relations, edge_provenance)
     return KGPath(
+        _OWNED_GRAPH_VALUE,
         tuple((_immutable_copy(x) for x in entities)...),
         tuple((_immutable_copy(x) for x in relations)...),
         tuple((_immutable_copy(x) for x in edge_provenance)...),
@@ -119,9 +160,15 @@ end
 struct KGSubgraph{E<:Tuple,G<:Tuple}
     entities::E
     edges::G
+    function KGSubgraph(::_OwnedGraphValue, entities::E, edges::G) where {E<:Tuple,G<:Tuple}
+        owned_entities = _immutable_copy(entities)
+        owned_edges = _immutable_copy(edges)
+        return new{typeof(owned_entities),typeof(owned_edges)}(owned_entities, owned_edges)
+    end
 end
 function KGSubgraph(entities, edges)
     return KGSubgraph(
+        _OWNED_GRAPH_VALUE,
         tuple((_immutable_copy(x) for x in entities)...),
         tuple((_immutable_copy(x) for x in edges)...),
     )
@@ -177,15 +224,14 @@ function KnowledgeGraph(entities, relations, edges; provenance=())
     end
     owned_entities = _immutable_copy(tuple(es...))
     owned_relations = _immutable_copy(tuple(rs...))
-    owned_edges = deepcopy(gs)
+    owned_edges = _immutable_copy(tuple(gs...))
     owned_provenance = _immutable_copy(provenance)
-    return KnowledgeGraph{
-        typeof(owned_entities),
-        typeof(owned_relations),
-        typeof(owned_edges),
-        typeof(owned_provenance),
-    }(
-        owned_entities, owned_relations, owned_edges, owned_provenance
+    return KnowledgeGraph(
+        _OWNED_GRAPH_VALUE,
+        owned_entities,
+        owned_relations,
+        owned_edges,
+        owned_provenance,
     )
 end
 function KnowledgeGraph(entities, relations, edge::KGEdge; provenance=())

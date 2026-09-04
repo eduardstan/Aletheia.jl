@@ -428,7 +428,10 @@ abstract type AbstractDSProgram end
 
 `choices` are independent normalized alternatives, `facts` are retained as
 source records, and `rules` are already ground.  Probabilistic facts passed in
-`choices` or through `probabilistic_facts` are expanded into choices.
+`choices` or through `probabilistic_facts` are expanded into choices. All
+standard collections are snapshotted, mutable opaque values are rejected with
+`AletheiaCore.OwnershipError`, and the parametric constructor is intentionally
+not a public bypass.
 
 # Examples
 ```jldoctest
@@ -443,6 +446,15 @@ struct DSProgram{C,F,R,D} <: AbstractDSProgram
     facts::F
     rules::R
     domain::D
+    function DSProgram(choices::C, facts::F, rules::R, domain::D) where {C,F,R,D}
+        owned_choices = _immutable_copy(choices)
+        owned_facts = _immutable_copy(facts)
+        owned_rules = _immutable_copy(rules)
+        owned_domain = _immutable_copy(domain)
+        return new{typeof(owned_choices),typeof(owned_facts),typeof(owned_rules),typeof(owned_domain)}(
+            owned_choices, owned_facts, owned_rules, owned_domain
+        )
+    end
 end
 
 function _as_entries(x)
@@ -501,9 +513,7 @@ function DSProgram(
     else
         (domain,)
     end
-    return DSProgram{typeof(cs),typeof(fs),typeof(rs),typeof(ds)}(
-        _immutable_copy(cs), _immutable_copy(fs), _immutable_copy(rs), _immutable_copy(ds)
-    )
+    return DSProgram(cs, fs, rs, ds)
 end
 DSProgram(entries, rules, domain) = DSProgram(entries; rules=rules, domain=domain)
 function DSProgram(entries, rules; domain=(), probabilistic_facts=(), facts=())

@@ -3,10 +3,14 @@ using JET
 using Supposition
 using Test
 using AletheiaAudit
+using AletheiaCore
 
 struct UnsupportedAuditArtifact <: SymbolicArtifact end
 
 struct AuditCopyProbe
+    value::Int
+end
+mutable struct MutableAuditPayload
     value::Int
 end
 const AUDIT_COPY_PROBES = Ref(0)
@@ -245,6 +249,17 @@ end
         artifact=original,
     )
     @test !replay(combined, :yes).valid
+end
+
+@testset "public audit boundaries reject mutable opaque values" begin
+    payload = MutableAuditPayload(1)
+    @test_throws OwnershipError ArtifactCase(:input, payload, :output)
+
+    provenance = Provenance(; hashes=Dict(:x => [1]))
+    trace = ExecutionTrace((TraceStep(:test, nothing, nothing, :ok),), provenance, :ok,
+        "", "", :global, nothing)
+    @test getfield(trace, :provenance) === provenance
+    @test_throws CanonicalIndexError (getfield(getfield(trace, :provenance), :hashes)[:x][1] = 2)
 end
 
 @testset "public audit boundaries own nested values" begin

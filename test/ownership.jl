@@ -1,6 +1,13 @@
 using Test
 const _ALETHEIA_CORE = getfield(Aletheia, :AletheiaCore)
 
+mutable struct OwnershipWorld
+    id::Int
+end
+mutable struct OwnershipPayload
+    value::Int
+end
+
 """Discover loaded Aletheia package modules and their complete public bindings."""
 function _ownership_inventory()
     modules = Module[Aletheia]
@@ -99,4 +106,44 @@ end
     @test _structurally_owned(frame.worlds)
     mutable_probe = (payload=[1],)
     @test !_structurally_owned(mutable_probe.payload)
+
+    @test_throws Aletheia.OwnershipError Aletheia.Frame(
+        [OwnershipWorld(1)], Dict(); index=true
+    )
+    source = Dict((:p, :w) => false)
+    model = Aletheia.Model(Aletheia.Frame([:w]), source)
+    source[(:p, :w)] = true
+    @test Aletheia.check(Aletheia.atom(:p), model, :w) === false
+
+    payload = OwnershipPayload(1)
+    @test_throws Aletheia.OwnershipError Aletheia.ArtifactCase(:input, payload, :output)
+    @test_throws Aletheia.OwnershipError Aletheia.KGEntity(
+        :entity; metadata=Dict(:payload => payload)
+    )
+
+    provenance = Aletheia.Provenance(; hashes=Dict(:x => [1]))
+    trace = Aletheia.ExecutionTrace(
+        (Aletheia.TraceStep(:test, nothing, nothing, :ok),), provenance, :ok,
+        "", "", :global, nothing,
+    )
+    @test trace.provenance === provenance
+    @test_throws CanonicalIndexError (
+        getfield(getfield(trace, :provenance), :hashes)[:x][1] = 2
+    )
+
+    choices = [Aletheia.ChoiceVariable(:c, (:a, :b), (0.5, 0.5))]
+    facts = Aletheia.ProbabilisticFact[]
+    rules = Aletheia.GroundRule[]
+    domain = [:a, :b]
+    @test_throws MethodError Aletheia.DSProgram{
+        typeof(choices), typeof(facts), typeof(rules), typeof(domain)
+    }(choices, facts, rules, domain)
+
+    owned_types = (
+        typeof(frame), typeof(model), typeof(program), typeof(case), typeof(trace),
+        typeof(Aletheia.KGEntity(:x)), typeof(Aletheia.KGRelation(:r)),
+        typeof(Aletheia.KGEdge(Aletheia.KGEntity(:x), Aletheia.KGRelation(:r), Aletheia.KGEntity(:y))),
+        typeof(Aletheia.KnowledgeGraph([Aletheia.KGEntity(:x)], Aletheia.KGRelation[], Aletheia.KGEdge[])),
+    )
+    @test all(isempty(methods(T)) for T in owned_types if !isempty(T.parameters))
 end

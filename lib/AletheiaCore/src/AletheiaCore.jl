@@ -113,6 +113,23 @@ end
 Base.length(value::FrozenSet) = length(value.values)
 Base.iterate(value::FrozenSet, state...) = iterate(value.values, state...)
 Base.in(item, value::FrozenSet) = any(isequal(item, x) for x in value.values)
+function Base.:(==)(left::FrozenSet, right::FrozenSet)
+    return length(left) == length(right) && all(item -> item in right, left)
+end
+function Base.:(==)(left::FrozenSet, right::AbstractSet)
+    return length(left) == length(right) && all(item -> item in right, left)
+end
+Base.:(==)(left::AbstractSet, right::FrozenSet) = right == left
+
+"""Raised when a mutable opaque value crosses an owned semantic boundary."""
+struct OwnershipError <: Exception
+    value_type::DataType
+    requirement::String
+end
+OwnershipError(value) = OwnershipError(typeof(value), "semantic records require immutable opaque values")
+function Base.showerror(io::IO, error::OwnershipError)
+    return print(io, "ownership contract violated by mutable opaque value of type ", error.value_type, "; ", error.requirement)
+end
 
 _immutable_copy(value::Function) = value
 _immutable_copy(value::FrozenArray) = value
@@ -138,7 +155,11 @@ function _immutable_copy(value::AbstractSet)
     T = isempty(items) ? eltype(value) : eltype(items)
     return FrozenSet{T}(items)
 end
-_immutable_copy(value) = value
+function _immutable_copy(value)
+    T = typeof(value)
+    Base.ismutabletype(T) && fieldcount(T) > 0 && throw(OwnershipError(value))
+    return value
+end
 
 # Defensive copies are mutable snapshots for compatibility with callers that
 # intentionally edit a returned value. Internal certified fields use
@@ -306,7 +327,8 @@ export domain,
     succeeds,
     maximalmembers,
     minimalmembers,
-    AbstractFrame
+    AbstractFrame,
+    OwnershipError
 export AbstractUniModalFrame,
     AbstractMultiModalFrame,
     AbstractWorld,

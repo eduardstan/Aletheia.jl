@@ -475,7 +475,9 @@ ordered collection of worlds together with one accessibility relation per
 relation name.  `relations` is normally a dictionary such as
 `Dict(:G => Dict(:w1 => [:w2], :w2 => [:w2]))`.  The `worlds` collection is
 stored in enumeration order, and `index=true` additionally stores a world to
-position dictionary for algorithms that use stable positions.  A one-world
+position dictionary for algorithms that use stable positions. Standard
+collections are recursively snapshotted; mutable opaque world values are
+rejected with `OwnershipError`. A one-world
 frame uses this same ordinary type; no propositional special case exists.
 See Blackburn, de Rijke, and Venema, *Modal Logic*, §1.3 [blackburn2001](@cite).
 
@@ -493,10 +495,16 @@ struct Frame{W<:Tuple,RS,I} <: AbstractMultiModalFrame{eltype(W)}
     relations::RS
     index::I
     cache::_ModelEvaluationCache
+    function Frame(worlds::W, relations::RS, index::I, cache::_ModelEvaluationCache) where {W<:Tuple,RS,I}
+        owned_worlds = _immutable_copy(worlds)
+        owned_relations = _immutable_copy(relations)
+        owned_index = _immutable_copy(index)
+        return new{typeof(owned_worlds),typeof(owned_relations),typeof(owned_index)}(owned_worlds, owned_relations, owned_index, cache)
+    end
 end
 
 function _world_tuple(worlds)
-    result = tuple(worlds...)
+    result = tuple((_immutable_copy(world) for world in worlds)...)
     isempty(result) && throw(ArgumentError("a frame must contain at least one world"))
     length(unique(result)) == length(result) ||
         throw(ArgumentError("worlds must be unique"))
@@ -613,9 +621,7 @@ function Frame(worlds, relations; index=false, world_index=nothing)
     cache = _ModelEvaluationCache(
         positions, Dict{Any,_RelationAdjacency}(), ReentrantLock()
     )
-    return Frame{typeof(worldtuple),typeof(normalized),typeof(indexed)}(
-        worldtuple, normalized, indexed, cache
-    )
+    return Frame(worldtuple, normalized, indexed, cache)
 end
 
 function Frame(worlds; index=false, world_index=nothing)
@@ -1034,6 +1040,7 @@ _lookup_atom(data::ValuationCallback, atom::Atom, world) = data(value(atom), wor
 function (valuation::Valuation)(atom_value, world)
     return _lookup_valuation(valuation.data, atom_value, world)
 end
+Base.getindex(valuation::Valuation, key) = getindex(valuation.data, key)
 
 """Return atom values in the supplied world order, using a batch callback when available.
 
@@ -1076,6 +1083,10 @@ struct Model{T,A<:TruthAlgebra{T},F<:Frame,V}
     algebra::A
     valuation::V
     cache::_ModelEvaluationCache
+    function Model(frame::F, algebra::A, valuation::V, cache::_ModelEvaluationCache) where {T,A<:TruthAlgebra{T},F<:Frame,V}
+        owned = valuation isa AbstractDict ? Valuation(valuation).data : valuation isa Valuation ? valuation.data : _immutable_copy(valuation)
+        return new{T,A,F,typeof(owned)}(frame, algebra, owned, cache)
+    end
 end
 
 function Model(frame::Frame, algebra::TruthAlgebra, valuation)
@@ -1083,7 +1094,7 @@ function Model(frame::Frame, algebra::TruthAlgebra, valuation)
 end
 
 function Model(frame::Frame, valuation::AbstractDict, algebra::TruthAlgebra)
-    return Model(frame, algebra, valuation)
+    return Model(frame, algebra, Valuation(valuation))
 end
 function Model(frame::Frame, valuation::Function, algebra::TruthAlgebra)
     return Model(frame, algebra, valuation)
@@ -1119,7 +1130,9 @@ true
 """
 algebra(model::Model) = model.algebra
 
-"""Return the raw valuation carried by `model`.
+"""Return the owned valuation carried by `model`.
+
+Dictionary inputs are prepared through `Valuation` and recursively snapshotted before storage.
 
 # Examples
 ```jldoctest

@@ -4,6 +4,19 @@ This page records the choices that shape Aletheia's public architecture. Each
 entry gives the context, the choice, and the consequence for users and
 contributors.
 
+## 2026-09-05 — Reject mutable opaque semantic values
+
+**Context.** Recursive collection snapshots cannot copy arbitrary user structs safely,
+and generated parametric constructors could bypass the owned construction path.
+
+**Choice.** Public semantic constructors reject mutable opaque values with
+`OwnershipError`, add inner constructors where retained collections require them,
+and snapshot dictionary valuations and provenance before storage. Callback
+functions remain dynamic by design; their captured state is outside this guarantee.
+
+**Consequence.** Every accepted standard collection is owned by its record, and
+mutable opaque values fail loudly instead of changing a retained semantic record.
+
 ## 2026-09-04 — Immutable collection storage for public semantic values
 
 **Context.** Defensive copies at accessors did not protect direct public fields or
@@ -13,16 +26,29 @@ nested standard collections retained by semantic objects.
 immutable tuples and `AletheiaCore` frozen collection values. Certified circuit
 nodes, finite algebra tables, frame relations, valuations, scalar stores, audit
 payloads, and graph paths therefore retain standard collections in immutable
-language-level storage. Accessors still return ordinary mutable snapshots where
-the API historically returned arrays or maps.
+language-level storage. Opaque mutable user values are rejected with the typed
+`OwnershipError`; opaque immutable values are retained as supplied. Callable
+values remain an explicit dynamic boundary, so state captured by a callback is
+the caller's responsibility. Accessors still return ordinary mutable snapshots
+where the API historically returned arrays or maps.
 
 **Consequence and cost.** A caller cannot alter collection-backed semantic state
-through a field, accessor result, or original collection input. The
+through a field, accessor result, or original collection input, and mutable
+opaque values fail at construction rather than becoming live fields. The
 frame evaluation cache remains a deliberately mutable private cache because
 lock-protected lazy adjacency indexing is the measured hot-path optimization;
 it is not semantic input and is excluded from the immutable collection
 contract. Frame-sharing callback behavior is specified in [Many models, one
 formula](families.md#When-instances-share-a-frame).
+
+A local 32-world microbenchmark (Julia 1.12.7, 20 batches of 100 calls) measured
+`Frame` construction at 63.3 → 67.2 μs and dictionary-`Model` construction at
+0.29 → 2.63 μs. The associated direct dictionary `check` apply path measured
+4.17 → 83.9 μs per call (the new frozen-set membership is the cost of this
+synthetic route). This is not a deployed consumer result; the documented
+callback/data apply benchmarks remain the workload evidence. The direct
+route's slowdown is recorded rather than hidden, and should be revisited before
+making a performance claim about dictionary-valued models.
 
 ## 2026-09-04 — One defensive-copy rule at every public boundary
 
@@ -35,10 +61,12 @@ boundary**. `_boundary_copy` returns mutable snapshots for compatibility;
 explicitly rejected by `serialize_trace`, because Julia closures cannot be
 copied into a portable serialized representation.
 
-**Consequence and cost.** Boundary copies isolate accepted and returned values
-from caller-owned mutable material. Retained field storage follows the immutable
-collection decision above. Copying costs time and memory proportional to mutable
-material at each boundary; hot evaluation loops retain owned internal data.
+**Consequence and cost.** Boundary copies isolate accepted and returned standard
+collections from caller-owned mutable material. Retained field storage follows
+the immutable collection decision above; opaque mutable values are rejected, while
+callback-captured state remains outside the storage guarantee. Copying costs time
+and memory proportional to mutable material at each boundary; hot evaluation loops
+retain owned internal data.
 
 ## 2026-09-03 — Exact and owned boundary values
 

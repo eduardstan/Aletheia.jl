@@ -243,7 +243,11 @@ end
 
 @testset "cached scalar checks own mutable values" begin
     frame = Frame((:w,), Dict(); index=true)
-    model = Model(frame, MutableTruthAlgebra(), Dict((:w, :p) => MutableTruth(3)))
+    model = Model(
+        frame,
+        MutableTruthAlgebra(),
+        Aletheia.ValuationCallback((name, world) -> MutableTruth(3)),
+    )
     cache = EvaluationCache(model)
     value = check(atom(:p), model, :w; cache=cache)
     value.value = 99

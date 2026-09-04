@@ -229,6 +229,9 @@ end
 mutable struct MutableTruth
     value::Int
 end
+mutable struct MutableWorld
+    id::Int
+end
 struct MutableTruthAlgebra <: TruthAlgebra{MutableTruth} end
 Aletheia.truth_type(::Type{MutableTruthAlgebra}) = MutableTruth
 Aletheia.top(::MutableTruthAlgebra) = MutableTruth(10)
@@ -246,6 +249,17 @@ function Aletheia.implication(::MutableTruthAlgebra, a::MutableTruth, b::Mutable
     return MutableTruth(max(0, 10 - a.value + b.value))
 end
 Aletheia.negation(::MutableTruthAlgebra, a::MutableTruth) = MutableTruth(10 - a.value)
+
+@testset "owned semantic constructors reject mutable opaque values" begin
+    world = MutableWorld(1)
+    @test_throws OwnershipError Frame([world], Dict(); index=true)
+
+    source = Dict((:p, :w) => false)
+    model = Model(Frame([:w]), source)
+    @test getfield(model, :valuation) isa Aletheia.FrozenDict
+    source[(:p, :w)] = true
+    @test check(atom(:p), model, :w) === false
+end
 
 @testset "vectorized callbacks own mutable values" begin
     frame = Frame((:w,), Dict(); index=true)

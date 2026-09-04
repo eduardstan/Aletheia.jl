@@ -3,7 +3,8 @@ module AletheiaAudit
 
 using SHA
 using Serialization
-using AletheiaCore: Formula, _boundary_copy, _immutable_copy
+using AletheiaCore: Formula, _boundary_copy
+import AletheiaCore: _immutable_copy
 
 const _CORE_FORMULA = Formula
 
@@ -14,7 +15,11 @@ abstract type ArtifactState end
 """Marker for artifact operations."""
 abstract type ArtifactOperation end
 
-"""A case with an input, optional state, expected output, and declared scope."""
+"""A case with an input, optional state, expected output, and declared scope.
+
+Standard collections in all retained values are recursively snapshotted. Mutable
+opaque user values are rejected with `AletheiaCore.OwnershipError`.
+"""
 struct ArtifactCase{I,S,O}
     input::I
     state::S
@@ -36,22 +41,24 @@ function ArtifactCase(input, state, output; scope=:global)
     return ArtifactCase(input, state, output, scope)
 end
 
-"""Version, source, and content-hash information attached to an artifact."""
+"""Version, source, and content-hash information attached to an artifact.
+
+Nested standard collections are immutable in the retained value. Dot access
+returns a mutable defensive snapshot for compatibility.
+"""
 struct Provenance
     versions::Any
     sources::Any
     hashes::Any
     function Provenance(versions, sources, hashes)
-        return new(
-            _boundary_copy(versions), _boundary_copy(sources), _boundary_copy(hashes)
-        )
+        owned = _immutable_copy((versions, sources, hashes))
+        return new(owned...)
     end
 end
 function Provenance(; versions=NamedTuple(), sources=NamedTuple(), hashes=NamedTuple())
-    return Provenance(
-        _boundary_copy(versions), _boundary_copy(sources), _boundary_copy(hashes)
-    )
+    return Provenance(versions, sources, hashes)
 end
+_immutable_copy(provenance::Provenance) = provenance
 function Base.:(==)(left::Provenance, right::Provenance)
     return left.versions == right.versions &&
            left.sources == right.sources &&
