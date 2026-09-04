@@ -153,50 +153,133 @@ Base.:(==)(left::AbstractSet, right::FrozenSet) = right == left
 """Raised when a mutable opaque value crosses an owned semantic boundary."""
 struct OwnershipError <: Exception
     value_type::DataType
+    path::Tuple
     requirement::String
 end
-function OwnershipError(value)
-    return OwnershipError(typeof(value), "semantic records require immutable opaque values")
+OwnershipError(value) = OwnershipError(typeof(value), (), "semantic values must be structurally immutable")
+OwnershipError(value, path::Tuple) = OwnershipError(typeof(value), path, "semantic values must be structurally immutable")
+
+function _ownership_path(path::Tuple)
+    isempty(path) && return "<root>"
+    return join((part isa Symbol ? ".$(part)" : string(part) for part in path), "")
 end
 function Base.showerror(io::IO, error::OwnershipError)
     return print(
         io,
-        "ownership contract violated by mutable opaque value of type ",
+        "ownership contract violated by value of type ",
         error.value_type,
+        " at path ",
+        _ownership_path(error.path),
         "; ",
         error.requirement,
     )
 end
 
-_immutable_copy(value::Function) = value
-_immutable_copy(value::FrozenArray) = value
-_immutable_copy(value::FrozenDict) = value
-_immutable_copy(value::FrozenSet) = value
-_immutable_copy(value::Tuple) = tuple((_immutable_copy(x) for x in value)...)
-function _immutable_copy(value::NamedTuple{N}) where {N}
-    return NamedTuple{N}((_immutable_copy(x) for x in values(value)))
+# This is the single ownership predicate used by constructors and structural
+# tests.  Caches are implementation state, not semantic payload; a method for
+# their type is added next to its definition in semantics.jl.
+function _is_owned(value, seen=IdDict{Any,Bool}())
+    value isa Union{Nothing,Missing,Number,Symbol,Char,AbstractString,Type} && return true
+    value isa Function && return true # executable callbacks are not semantic payload
+    value isa FrozenArray && return all(_is_owned(x, seen) for x in value.data)
+    value isa FrozenDict && return all(_is_owned(x, seen) for pair in value for x in pair)
+    value isa FrozenSet && return all(_is_owned(x, seen) for x in value)
+    value isa Tuple && return all(_is_owned(x, seen) for x in value)
+    (value isa AbstractArray || value isa AbstractDict || value isa AbstractSet) && return false
+    T = typeof(value)
+    Base.ismutabletype(T) && return false
+    fieldcount(T) == 0 && return true
+    haskey(seen, value) && return true
+    seen[value] = true
+    try
+        return all(
+            _is_owned(getfield(value, field), seen) for
+            (field, _name, _type) in zip(1:fieldcount(T), fieldnames(T), fieldtypes(T))
+        )
+    finally
+        delete!(seen, value)
+    end
 end
-function _immutable_copy(value::AbstractArray)
-    items = tuple((_immutable_copy(x) for x in value)...)
+
+# The single recursive snapshot used at every owned semantic boundary.  It
+# snapshots standard collections and rebuilds immutable wrappers when their
+# fields can accept the resulting owned values; otherwise it reports the
+# offending leaf and its field path.
+_immutable_copy(value::Function, path::Tuple, seen::IdDict{Any,Bool}) = value
+
+function _immutable_copy(value, path::Tuple, seen::IdDict{Any,Bool})
+    _is_owned(value) && return value
+    T = typeof(value)
+    Base.ismutabletype(T) && throw(OwnershipError(value, path))
+    fieldcount(T) == 0 && return value
+    haskey(seen, value) && throw(OwnershipError(value, path))
+    seen[value] = true
+    try
+        fields = Any[]
+        changed = false
+        for (field, name, _type) in zip(1:fieldcount(T), fieldnames(T), fieldtypes(T))
+            original = getfield(value, field)
+            owned = _immutable_copy(original, (path..., name), seen)
+            push!(fields, owned)
+            changed |= owned !== original
+        end
+        !changed && return value
+        try
+            candidate = T(fields...)
+            _is_owned(candidate) && return candidate
+        catch
+            # The collection was snapshot-able, but the enclosing opaque type
+            # cannot retain the replacement without changing its field type.
+        end
+        for (field_number, name) in zip(1:fieldcount(T), fieldnames(T))
+            original = getfield(value, field_number)
+            owned = fields[field_number]
+            owned !== original && throw(OwnershipError(original, (path..., name)))
+        end
+        throw(OwnershipError(value, path))
+    finally
+        delete!(seen, value)
+    end
+end
+
+function _immutable_copy(value::Tuple, path::Tuple, seen::IdDict{Any,Bool})
+    return tuple((_immutable_copy(x, (path..., i), seen) for (i, x) in enumerate(value))...)
+end
+function _immutable_copy(value::NamedTuple{N}, path::Tuple, seen::IdDict{Any,Bool}) where {N}
+    return NamedTuple{N}(tuple((_immutable_copy(x, (path..., name), seen) for (name, x) in zip(N, values(value)))...))
+end
+function _immutable_copy(value::AbstractArray, path::Tuple, seen::IdDict{Any,Bool})
+    items = tuple((_immutable_copy(x, (path..., i), seen) for (i, x) in enumerate(value))...)
     T = isempty(items) ? eltype(value) : eltype(items)
     return FrozenArray{T,ndims(value)}(items, size(value))
 end
-function _immutable_copy(value::AbstractDict)
-    items = tuple((_immutable_copy(k) => _immutable_copy(v) for (k, v) in value)...)
+function _immutable_copy(value::AbstractDict, path::Tuple, seen::IdDict{Any,Bool})
+    items = tuple((
+        _immutable_copy(k, (path..., "{key}"), seen) =>
+        _immutable_copy(v, (path..., "[$(repr(k))]"), seen) for (k, v) in value
+    )...)
     K = _field_typejoin(items, :first, keytype(value))
     V = _field_typejoin(items, :second, valtype(value))
     return FrozenDict{K,V}(items)
 end
-function _immutable_copy(value::AbstractSet)
-    items = tuple((_immutable_copy(x) for x in value)...)
+function _immutable_copy(value::AbstractSet, path::Tuple, seen::IdDict{Any,Bool})
+    items = tuple((_immutable_copy(x, (path..., "{item}"), seen) for x in value)...)
     T = isempty(items) ? eltype(value) : eltype(items)
     return FrozenSet{T}(items)
 end
-function _immutable_copy(value)
-    T = typeof(value)
-    Base.ismutabletype(T) && fieldcount(T) > 0 && throw(OwnershipError(value))
-    return value
+function _immutable_copy(value::FrozenArray, path::Tuple, seen::IdDict{Any,Bool})
+    items = tuple((_immutable_copy(x, (path..., i), seen) for (i, x) in enumerate(value))...)
+    return items == value.data ? value : FrozenArray{eltype(items),ndims(value)}(items, size(value))
 end
+function _immutable_copy(value::FrozenDict, path::Tuple, seen::IdDict{Any,Bool})
+    items = tuple((_immutable_copy(k, (path..., "{key}"), seen) => _immutable_copy(v, (path..., "[$(repr(k))]"), seen) for (k, v) in value)...)
+    return items == value.entries ? value : FrozenDict(items)
+end
+function _immutable_copy(value::FrozenSet, path::Tuple, seen::IdDict{Any,Bool})
+    items = tuple((_immutable_copy(x, (path..., "{item}"), seen) for x in value)...)
+    return items == value.values ? value : FrozenSet(items)
+end
+_immutable_copy(value) = _immutable_copy(value, (), IdDict{Any,Bool}())
 
 # Defensive copies are mutable snapshots for compatibility with callers that
 # intentionally edit a returned value. Internal certified fields use

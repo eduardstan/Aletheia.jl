@@ -396,7 +396,8 @@ load_verdict = benchmark_load_verdict(
     start_load, end_load, recorded_seed_loads, Sys.CPU_THREADS
 )
 all_measurements = Iterators.flatten((
-    Iterators.flatten((row.incumbent_seeds, row.aletheia_seeds) for row in rows),
+    Iterators.flatten((row.incumbent_seeds for row in rows)),
+    Iterators.flatten((row.aletheia_seeds for row in rows)),
     Iterators.flatten(contraction_measurements),
 ))
 measurement_verdict = benchmark_measurement_verdict(all_measurements)

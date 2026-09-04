@@ -54,7 +54,8 @@ end
     ]
     global_metrics = metric_bundle(artifact, cases; scope=:global)
     @test global_metrics.fidelity.numerator == 1
-    @test global_metrics.fidelity.denominator == 1
+    @test global_metrics.fidelity.denominator == 2
+    @test global_metrics.fidelity.value == 0.5
     @test global_metrics.coverage.numerator == 1
     @test global_metrics.coverage.denominator == 2
     @test global_metrics.coverage.scope == :global
@@ -75,6 +76,18 @@ end
                value.denominator > 0 &&
                value.scope == :local
     end
+end
+
+@testset "fidelity includes uncovered selected cases" begin
+    rule = ArtifactRule(s -> haskey(s, :p) && s[:p], true)
+    artifact = RuleArtifact([rule]; default=missing)
+    cases = [ArtifactCase(:in, Dict(:p => false), true) for _ in 1:9]
+    push!(cases, ArtifactCase(:in, Dict(:p => true), true))
+    metrics = metric_bundle(artifact, cases)
+    @test metrics.fidelity.numerator == 1
+    @test metrics.fidelity.denominator == 10
+    @test metrics.coverage.numerator == 1
+    @test metrics.coverage.denominator == 10
 end
 
 @testset "verification, audit rendering, and injection" begin

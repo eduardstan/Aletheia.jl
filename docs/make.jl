@@ -20,6 +20,20 @@ Pkg.develop(local_packages)
 Pkg.instantiate()
 
 import SoleData
+
+function check_results_source_links()
+    results = read(joinpath(repo, "docs", "src", "results.md"), String)
+    pattern = r"https?://github\.com/[^/]+/[^/]+/blob/[^/]+/(lib/[^)# ]+\.jl)#L(\d+)"
+    for match in eachmatch(pattern, results)
+        source = joinpath(repo, match.captures[1])
+        line = parse(Int, match.captures[2])
+        isfile(source) || error("results.md source link targets missing file: $source")
+        line <= count(==('\n'), read(source, String)) + 1 ||
+            error("results.md source link targets missing line: $source:$line")
+    end
+end
+check_results_source_links()
+
 using Aletheia
 import AletheiaCore, AletheiaData, AletheiaCircuits, AletheiaGraphs, AletheiaLearn, AletheiaSole, AletheiaAudit, AletheiaNeSy
 using Documenter

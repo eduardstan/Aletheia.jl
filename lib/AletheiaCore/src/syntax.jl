@@ -435,7 +435,13 @@ julia> isdefined(AletheiaCore, Symbol("Formula"))
 true
 ```
 """
+# Formula identity is backed by the deliberately mutable intern pool; the pool
+# is implementation state and is not caller-owned semantic payload.
+_is_owned(::FormulaPool, seen=IdDict{Any,Bool}()) = true
 abstract type Formula end
+
+_is_owned(::Formula, seen=IdDict{Any,Bool}()) = true
+_immutable_copy(value::Formula, path::Tuple, seen::IdDict{Any,Bool}) = value
 
 # Pool nodes are trusted after interning.  This private tag selects the
 # allocation-only constructors used when rebuilding handles from those nodes;

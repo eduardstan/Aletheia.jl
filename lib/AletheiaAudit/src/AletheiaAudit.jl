@@ -629,7 +629,7 @@ function _metric(n, d, scope; applicable=(n !== missing && d !== missing && d > 
     end
 end
 
-"""Compute audit metrics while preserving uncovered populations as not applicable."""
+"""Compute audit metrics over all selected cases, with coverage reported separately."""
 function metric_bundle(
     artifact::SymbolicArtifact, cases; scope=:global, perturbations=(), versions=nothing
 )
@@ -638,7 +638,7 @@ function metric_bundle(
     cs = _cases(cases)
     selected = scope === :all ? cs : [c for c in cs if c.scope == scope]
     covered = 0
-    compared = 0
+    compared = length(selected)
     matching = 0
     valid_traces = 0
     for c in selected
@@ -646,9 +646,8 @@ function metric_bundle(
         out, tr = eval_artifact(artifact, state; scope=c.scope)
         out !== missing && (covered += 1)
         replay(tr, state).valid && (valid_traces += 1)
-        if c.oracle_output !== missing && out !== missing
-            compared += 1
-            isequal(out, c.oracle_output) && (matching += 1)
+        if c.oracle_output !== missing && out !== missing && isequal(out, c.oracle_output)
+            matching += 1
         end
     end
     fidelity = _metric(matching, compared, scope)
