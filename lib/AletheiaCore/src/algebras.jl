@@ -44,18 +44,18 @@ true
 ```
 """
 struct FiniteFLewAlgebra{N} <: TruthAlgebra{FiniteTruth}
-    join::Matrix{FiniteTruth}
-    meet::Matrix{FiniteTruth}
-    fusion::Matrix{FiniteTruth}
-    implication::Matrix{FiniteTruth}
+    join::FrozenArray{FiniteTruth,2}
+    meet::FrozenArray{FiniteTruth,2}
+    fusion::FrozenArray{FiniteTruth,2}
+    implication::FrozenArray{FiniteTruth,2}
     bot::FiniteTruth
     top::FiniteTruth
 
     # The only low-level constructor is marked with a private validation tag;
     # public constructors below always normalize and validate their input.
     function FiniteFLewAlgebra{N}(
-        join::Matrix{FiniteTruth}, meet::Matrix{FiniteTruth},
-        fusion::Matrix{FiniteTruth}, implication::Matrix{FiniteTruth},
+        join::FrozenArray{FiniteTruth,2}, meet::FrozenArray{FiniteTruth,2},
+        fusion::FrozenArray{FiniteTruth,2}, implication::FrozenArray{FiniteTruth,2},
         bot::FiniteTruth, top::FiniteTruth, ::_ValidatedFiniteFLew
     ) where N
         new{N}(join, meet, fusion, implication, bot, top)
@@ -89,7 +89,7 @@ function _finite_table(data, n::Int, name::AbstractString)
     result
 end
 
-@inline function _finite_leq(meet_table::Matrix{FiniteTruth}, x::FiniteTruth, y::FiniteTruth)
+@inline function _finite_leq(meet_table::AbstractMatrix{FiniteTruth}, x::FiniteTruth, y::FiniteTruth)
     meet_table[Int(x), Int(y)] == x
 end
 
@@ -184,7 +184,7 @@ function _make_flew(join_table, meet_table, fusion_table, bot, top, n::Int)
     _validate_lattice(join, lattice_meet, b, t, n)
     _validate_fusion(fusion, lattice_meet, t, n)
     implication = _derive_implication(join, lattice_meet, fusion, b, t, n)
-    FiniteFLewAlgebra{n}(join, lattice_meet, fusion, implication, b, t, _validated_flew)
+    FiniteFLewAlgebra{n}(_immutable_copy(join), _immutable_copy(lattice_meet), _immutable_copy(fusion), _immutable_copy(implication), b, t, _validated_flew)
 end
 
 function FiniteFLewAlgebra(join_table, meet_table, fusion_table, bot, top)
@@ -463,7 +463,7 @@ function Base.show(io::IO, ::MIME"text/plain", alg::LukasiewiczAlgebra{N}) where
 end
 
 """Render one operation table as element-labelled lines, in display order."""
-function _render_table_rows(op_symbol::String, matrix::Matrix{FiniteTruth}, order, labels)
+function _render_table_rows(op_symbol::String, matrix::AbstractMatrix{FiniteTruth}, order, labels)
     width = maximum(length, labels)
     cell(text) = lpad(text, width)
     lines = String[" " * cell(op_symbol) * " │ " * join((cell(labels[Int(y)]) for y in order), " ")]

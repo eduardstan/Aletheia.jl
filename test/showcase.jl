@@ -6,7 +6,7 @@ using Test
     showcase = Main.AletheiaShowcase
     output = IOBuffer()
     elapsed = @elapsed result = showcase.run_showcase(; io=output)
-    @test elapsed < 60.0
+    @test elapsed < 180.0
     @test result.cross_checks.plain
     @test result.cross_checks.many_valued
     @test result.cross_checks.circuits

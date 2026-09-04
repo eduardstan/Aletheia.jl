@@ -3,7 +3,7 @@ module AletheiaAudit
 
 using SHA
 using Serialization
-using AletheiaCore: Formula, _boundary_copy
+using AletheiaCore: Formula, _boundary_copy, _immutable_copy
 
 const _CORE_FORMULA = Formula
 
@@ -23,7 +23,12 @@ struct ArtifactCase{I,S,O}
     function ArtifactCase(input::I, state::S, output::O, scope::Symbol) where {I,S,O}
         scope in (:global, :local) ||
             throw(ArgumentError("artifact case scope must be :global or :local"))
-        return new{I,S,O}(input, state, output, scope)
+        owned_input = _immutable_copy(input)
+        owned_state = _immutable_copy(state)
+        owned_output = _immutable_copy(output)
+        return new{typeof(owned_input),typeof(owned_state),typeof(owned_output)}(
+            owned_input, owned_state, owned_output, scope
+        )
     end
 end
 ArtifactCase(input, output; scope=:global) = ArtifactCase(input, nothing, output, scope)
@@ -37,15 +42,27 @@ struct Provenance
     sources::Any
     hashes::Any
     function Provenance(versions, sources, hashes)
-        new(_boundary_copy(versions), _boundary_copy(sources), _boundary_copy(hashes))
+        return new(
+            _boundary_copy(versions), _boundary_copy(sources), _boundary_copy(hashes)
+        )
     end
 end
 function Provenance(; versions=NamedTuple(), sources=NamedTuple(), hashes=NamedTuple())
-    return Provenance(_boundary_copy(versions), _boundary_copy(sources), _boundary_copy(hashes))
+    return Provenance(
+        _boundary_copy(versions), _boundary_copy(sources), _boundary_copy(hashes)
+    )
 end
-Base.:(==)(left::Provenance, right::Provenance) =
-    left.versions == right.versions && left.sources == right.sources && left.hashes == right.hashes
+function Base.:(==)(left::Provenance, right::Provenance)
+    return left.versions == right.versions &&
+           left.sources == right.sources &&
+           left.hashes == right.hashes
+end
 Base.isequal(left::Provenance, right::Provenance) = left == right
+function Base.getproperty(provenance::Provenance, name::Symbol)
+    name in (:versions, :sources, :hashes) &&
+        return _boundary_copy(getfield(provenance, name))
+    return getfield(provenance, name)
+end
 
 """One deterministic step in an artifact execution."""
 struct TraceStep
@@ -53,6 +70,11 @@ struct TraceStep
     payload::Any
     inputs::Any
     output::Any
+    function TraceStep(kind::Symbol, payload, inputs, output)
+        return new(
+            kind, _immutable_copy(payload), _immutable_copy(inputs), _immutable_copy(output)
+        )
+    end
 end
 """A minimal deterministic execution trace."""
 struct ExecutionTrace
@@ -63,17 +85,49 @@ struct ExecutionTrace
     output_hash::String
     scope::Symbol
     artifact::Any
-    function ExecutionTrace(steps::Tuple, provenance::Provenance, result,
-        input_hash::String, output_hash::String, scope::Symbol, artifact)
-        new(steps, provenance, result, input_hash, output_hash, scope, artifact)
+    function ExecutionTrace(
+        steps::Tuple,
+        provenance::Provenance,
+        result,
+        input_hash::String,
+        output_hash::String,
+        scope::Symbol,
+        artifact,
+    )
+        scope in (:global, :local) ||
+            throw(ArgumentError("trace scope must be :global or :local"))
+        return new(
+            _immutable_copy(steps),
+            _immutable_copy(provenance),
+            _immutable_copy(result),
+            input_hash,
+            output_hash,
+            scope,
+            _boundary_copy(artifact),
+        )
     end
 end
-function ExecutionTrace(steps, provenance, result, input_hash::String, output_hash::String, scope::Symbol; artifact=nothing)
-    owned_steps, owned_provenance, owned_result, owned_artifact = _boundary_copy(
-        (tuple(steps...), provenance, result, artifact)
+function ExecutionTrace(
+    steps,
+    provenance,
+    result,
+    input_hash::String,
+    output_hash::String,
+    scope::Symbol;
+    artifact=nothing,
+)
+    owned_steps, owned_provenance, owned_result, owned_artifact = _boundary_copy((
+        tuple(steps...), provenance, result, artifact
+    ))
+    return ExecutionTrace(
+        owned_steps,
+        owned_provenance,
+        owned_result,
+        input_hash,
+        output_hash,
+        scope,
+        owned_artifact,
     )
-    return ExecutionTrace(owned_steps, owned_provenance, owned_result, input_hash, output_hash, scope,
-        owned_artifact)
 end
 function ExecutionTrace(steps, provenance, result)
     return ExecutionTrace(
@@ -147,11 +201,24 @@ struct AuditRecord
     provenance::Provenance
     metrics::MetricBundle
 end
-function AuditRecord(artifact_id::String, input_hashes, output_hashes, state_hashes,
-    trace, provenance::Provenance, metrics::MetricBundle)
-    return AuditRecord(_boundary_copy(artifact_id), _boundary_copy(tuple(input_hashes...)),
-        _boundary_copy(tuple(output_hashes...)), _boundary_copy(tuple(state_hashes...)),
-        _boundary_copy(tuple(trace...)), _boundary_copy(provenance), _boundary_copy(metrics))
+function AuditRecord(
+    artifact_id::String,
+    input_hashes,
+    output_hashes,
+    state_hashes,
+    trace,
+    provenance::Provenance,
+    metrics::MetricBundle,
+)
+    return AuditRecord(
+        _boundary_copy(artifact_id),
+        _boundary_copy(tuple(input_hashes...)),
+        _boundary_copy(tuple(output_hashes...)),
+        _boundary_copy(tuple(state_hashes...)),
+        _boundary_copy(tuple(trace...)),
+        _boundary_copy(provenance),
+        _boundary_copy(metrics),
+    )
 end
 function Base.getproperty(record::AuditRecord, name::Symbol)
     name in (:input_hashes, :output_hashes, :state_hashes, :trace) &&
@@ -164,11 +231,18 @@ end
 struct ArtifactRule
     condition::Any
     output::Any
+    function ArtifactRule(condition, output)
+        return new(_immutable_copy(condition), _immutable_copy(output))
+    end
+end
+function Base.getproperty(rule::ArtifactRule, name::Symbol)
+    name in (:condition, :output) && return _boundary_copy(getfield(rule, name))
+    return getfield(rule, name)
 end
 
 """An artifact consisting of ordered, exact rules and an optional default."""
 struct RuleArtifact <: SymbolicArtifact
-    rules::Vector{ArtifactRule}
+    rules::Tuple
     default::Any
     provenance::Provenance
 end
@@ -183,18 +257,24 @@ function RuleArtifact(rules=ArtifactRule[]; default=missing, provenance=Provenan
         (rule isa ArtifactRule || rule isa Pair || (rule isa Tuple && length(rule) == 2)) ||
             throw(ArgumentError("rules must be ArtifactRule, Pair, or two-tuples"))
     end
-    return RuleArtifact(_boundary_copy(converted), _boundary_copy(default), _boundary_copy(provenance))
+    return RuleArtifact(
+        tuple(converted...), _immutable_copy(default), _immutable_copy(provenance)
+    )
 end
 
 """A typed tree artifact. Its nodes use the same exact rule protocol as rules."""
 struct TreeArtifact <: SymbolicArtifact
-    nodes::Vector{ArtifactRule}
+    nodes::Any
     default::Any
     provenance::Provenance
 end
 function TreeArtifact(nodes=ArtifactRule[]; default=missing, provenance=Provenance())
     prepared = RuleArtifact(nodes; default=default, provenance=provenance)
-    return TreeArtifact(_boundary_copy(prepared.rules), _boundary_copy(default), _boundary_copy(provenance))
+    return TreeArtifact(
+        _immutable_copy(tuple(prepared.rules...)),
+        _immutable_copy(default),
+        _immutable_copy(provenance),
+    )
 end
 
 """Stable serialized hash used by traces and audit records."""
@@ -212,8 +292,19 @@ stable_hash(value) = _stable_hash(value)
 """Return an artifact's provenance."""
 provenance(a::Union{RuleArtifact,TreeArtifact}) = _boundary_copy(a.provenance)
 """Return an artifact's ordered rules/nodes."""
-rules(a::RuleArtifact) = _boundary_copy(a.rules)
-nodes(a::TreeArtifact) = _boundary_copy(a.nodes)
+rules(a::RuleArtifact) = [r for r in getfield(a, :rules)]
+nodes(a::TreeArtifact) = [r for r in getfield(a, :nodes)]
+function Base.getproperty(artifact::TreeArtifact, name::Symbol)
+    name === :nodes && return nodes(artifact)
+    name === :provenance && return _boundary_copy(getfield(artifact, :provenance))
+    return getfield(artifact, name)
+end
+function Base.getproperty(artifact::RuleArtifact, name::Symbol)
+    name === :rules && return rules(artifact)
+    name === :nodes && return rules(artifact)
+    name === :provenance && return _boundary_copy(getfield(artifact, :provenance))
+    return getfield(artifact, name)
+end
 
 function _matches(condition, state)
     if condition isa Function
@@ -259,10 +350,19 @@ function eval_artifact(
         result,
     )
     provenance_value = _trace_provenance(artifact)
-    tr = trace ? ExecutionTrace(
-        [step], provenance_value, result, _stable_hash(state), _stable_hash(result), scope;
+    tr = if trace
+        ExecutionTrace(
+        [step],
+        provenance_value,
+        result,
+        _stable_hash(state),
+        _stable_hash(result),
+        scope;
         artifact=artifact,
-    ) : nothing
+    )
+    else
+        nothing
+    end
     return result, tr
 end
 function eval_artifact(::SymbolicArtifact, state; kwargs...)
@@ -273,18 +373,32 @@ function _contains_callable(value, seen=IdDict{Any,Bool}())
     value isa Function && return true
     value isa Union{Nothing,Missing,Bool,Symbol,Char,AbstractString,Number} && return false
     value isa Type && return false
-    traversable = value isa AbstractArray || value isa AbstractDict || value isa AbstractSet ||
-        value isa Tuple || value isa NamedTuple || isstructtype(typeof(value))
+    traversable =
+        value isa AbstractArray ||
+        value isa AbstractDict ||
+        value isa AbstractSet ||
+        value isa Tuple ||
+        value isa NamedTuple ||
+        isstructtype(typeof(value))
     traversable || return false
     haskey(seen, value) && return false
     seen[value] = true
     try
         if value isa AbstractDict
-            return any(_contains_callable(k, seen) || _contains_callable(v, seen) for (k, v) in value)
-        elseif value isa AbstractArray || value isa AbstractSet || value isa Tuple || value isa NamedTuple
+            return any(
+                _contains_callable(k, seen) || _contains_callable(v, seen) for
+                (k, v) in value
+            )
+        elseif value isa AbstractArray ||
+            value isa AbstractSet ||
+            value isa Tuple ||
+            value isa NamedTuple
             return any(_contains_callable(x, seen) for x in value)
         end
-        return any(_contains_callable(getfield(value, field), seen) for field in 1:fieldcount(typeof(value)))
+        return any(
+            _contains_callable(getfield(value, field), seen) for
+            field in 1:fieldcount(typeof(value))
+        )
     finally
         delete!(seen, value)
     end
@@ -296,8 +410,11 @@ Callable rule conditions and outputs are intentionally not serialization-portabl
 They are rejected here, while the in-memory trace remains replayable.
 """
 function serialize_trace(trace::ExecutionTrace)
-    _contains_callable(trace) && throw(ArgumentError(
-        "traces containing callable artifact conditions or outputs are not serialization-portable"))
+    _contains_callable(trace) && throw(
+        ArgumentError(
+            "traces containing callable artifact conditions or outputs are not serialization-portable",
+        ),
+    )
     io = IOBuffer()
     serialize(io, trace)
     return take!(io)
@@ -324,7 +441,7 @@ function _encoded_input(encoder, atom, world)
     encoder === nothing && return world
     applicable(encoder, atom, world) && return encoder(atom, world)
     applicable(encoder, world) && return encoder(world)
-    throw(ArgumentError("encoder must accept (atom, world) or (world)"))
+    return throw(ArgumentError("encoder must accept (atom, world) or (world)"))
 end
 
 """Validate a context-specific trace payload."""
@@ -344,7 +461,11 @@ function _trace_provenance(artifact)
     elseif hashes isa AbstractDict
         Dict{Any,Any}(hashes)
     else
-        (provided=hashes, artifact_id=_stable_hash(artifact), provenance_id=_stable_hash(source))
+        (
+            provided=hashes,
+            artifact_id=_stable_hash(artifact),
+            provenance_id=_stable_hash(source),
+        )
     end
     if traced isa AbstractDict
         traced[:artifact_id] = _stable_hash(artifact)
@@ -357,7 +478,8 @@ end
 function replay(trace::ExecutionTrace, state; profile=nothing)
     failures = String[]
     expected_input = _stable_hash(state)
-    trace.input_hash != "" && trace.input_hash != expected_input &&
+    trace.input_hash != "" &&
+        trace.input_hash != expected_input &&
         push!(failures, "input hash mismatch")
     isempty(trace.steps) && push!(failures, "trace has no execution step")
     for step in trace.steps
@@ -378,16 +500,26 @@ function replay(trace::ExecutionTrace, state; profile=nothing)
                     push!(failures, "artifact context has an unsupported type")
                 if trace.artifact isa Union{RuleArtifact,TreeArtifact}
                     artifact_id = _provenance_value(trace.provenance.hashes, :artifact_id)
-                    provenance_id = _provenance_value(trace.provenance.hashes, :provenance_id)
-                    artifact_id === nothing && push!(failures, "artifact identity metadata missing")
-                    provenance_id === nothing && push!(failures, "artifact provenance metadata missing")
-                    artifact_id !== nothing && !isequal(artifact_id, _stable_hash(trace.artifact)) &&
+                    provenance_id = _provenance_value(
+                        trace.provenance.hashes, :provenance_id
+                    )
+                    artifact_id === nothing &&
+                        push!(failures, "artifact identity metadata missing")
+                    provenance_id === nothing &&
+                        push!(failures, "artifact provenance metadata missing")
+                    artifact_id !== nothing &&
+                        !isequal(artifact_id, _stable_hash(trace.artifact)) &&
                         push!(failures, "artifact identity mismatch")
-                    provenance_id !== nothing && !isequal(provenance_id, _stable_hash(provenance(trace.artifact))) &&
+                    provenance_id !== nothing &&
+                        !isequal(provenance_id, _stable_hash(provenance(trace.artifact))) &&
                         push!(failures, "artifact provenance mismatch")
                     trace.provenance != _trace_provenance(trace.artifact) &&
                         push!(failures, "artifact provenance mismatch")
-                    entries = trace.artifact isa RuleArtifact ? trace.artifact.rules : trace.artifact.nodes
+                    entries = if trace.artifact isa RuleArtifact
+                        trace.artifact.rules
+                    else
+                        trace.artifact.nodes
+                    end
                     selected = missing
                     for (i, rule) in enumerate(entries)
                         if _matches(rule.condition, state)
@@ -395,25 +527,30 @@ function replay(trace::ExecutionTrace, state; profile=nothing)
                             break
                         end
                     end
-                    !isequal(step.payload.artifact, string(nameof(typeof(trace.artifact)))) &&
-                        push!(failures, "step artifact metadata mismatch")
+                    !isequal(
+                        step.payload.artifact, string(nameof(typeof(trace.artifact)))
+                    ) && push!(failures, "step artifact metadata mismatch")
                     !isequal(step.payload.selected, selected) &&
                         push!(failures, "step selection metadata mismatch")
                     if step.payload.profile === nothing
-                        profile !== nothing && push!(failures, "step profile metadata mismatch")
+                        profile !== nothing &&
+                            push!(failures, "step profile metadata mismatch")
                     elseif profile === nothing || !isequal(step.payload.profile, profile)
                         push!(failures, "step profile metadata mismatch")
                     end
                     predicted = _predict(trace.artifact, state)
-                    !isequal(step.output, predicted) && push!(failures, "step result mismatch")
+                    !isequal(step.output, predicted) &&
+                        push!(failures, "step result mismatch")
                 end
             end
         elseif step.kind === :graph_path
             graph_hash = _provenance_value(trace.provenance.hashes, :graph)
             (!isequal(step.inputs, state) && !isequal(step.inputs, expected_input)) &&
                 push!(failures, "graph step input metadata mismatch")
-            if trace.artifact === nothing || graph_hash === nothing ||
-               !(step.payload isa NamedTuple) || !hasproperty(step.payload, :path)
+            if trace.artifact === nothing ||
+                graph_hash === nothing ||
+                !(step.payload isa NamedTuple) ||
+                !hasproperty(step.payload, :path)
                 push!(failures, "graph trace context, hash, or path metadata missing")
             else
                 !isequal(graph_hash, _stable_hash(trace.artifact)) &&
@@ -458,13 +595,19 @@ function verify_artifact(artifact::SymbolicArtifact, cases; oracle=nothing, prof
         elseif expected !== missing && !isequal(out, expected)
             push!(failures, "case $i output mismatch")
         end
-        replay(tr, state; profile=profile).valid || push!(failures, "case $i trace failed replay")
+        replay(tr, state; profile=profile).valid ||
+            push!(failures, "case $i trace failed replay")
     end
     applicable = [outputs[i] !== missing for i in eachindex(outputs)]
     return VerificationReport(
         isempty(failures),
-        (outputs=outputs, expected_outputs=expected_outputs, traces=traces,
-            cases=length(cs), applicability=applicable),
+        (
+            outputs=outputs,
+            expected_outputs=expected_outputs,
+            traces=traces,
+            cases=length(cs),
+            applicability=applicable,
+        ),
         failures,
     )
 end
@@ -509,10 +652,15 @@ function metric_bundle(
         MetricValue(missing, missing, missing, scope, false)
     else
         # Canonicalize the baseline by stable state hash, not caller order.
-        baseline_case = first(sort(selected; by=c -> _stable_hash(
-            c.state === nothing ? c.input : c.state)))
+        baseline_case = first(
+            sort(selected; by=c -> _stable_hash(c.state === nothing ? c.input : c.state)),
+        )
         baseline = begin
-            state = baseline_case.state === nothing ? baseline_case.input : baseline_case.state
+            state = if baseline_case.state === nothing
+                baseline_case.input
+            else
+                baseline_case.state
+            end
             eval_artifact(artifact, state; scope=baseline_case.scope)[1]
         end
         if baseline === missing
@@ -521,7 +669,9 @@ function metric_bundle(
             matches = 0
             total = 0
             for perturbation in perturbations
-                value = eval_artifact(artifact, perturbation; scope=scope === :local ? :local : :global)[1]
+                value = eval_artifact(
+                    artifact, perturbation; scope=scope === :local ? :local : :global
+                )[1]
                 total += 1
                 isequal(value, baseline) && (matches += 1)
             end

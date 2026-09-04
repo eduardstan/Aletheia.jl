@@ -31,7 +31,7 @@ julia> instance_count(fam)
 ```
 """
 function instance_count(family::AbstractModelFamily)
-    throw(MethodError(instance_count, (family,)))
+    return throw(MethodError(instance_count, (family,)))
 end
 
 """
@@ -65,7 +65,7 @@ julia> instance_model(fam, 1)
 ```
 """
 function instance_model(family::AbstractModelFamily, instance)
-    throw(MethodError(instance_model, (family, instance)))
+    return throw(MethodError(instance_model, (family, instance)))
 end
 
 """
@@ -83,7 +83,9 @@ julia> instance_frame(fam, 1) isa AbstractFrame
 true
 ```
 """
-instance_frame(family::AbstractModelFamily, instance) = frame(instance_model(family, instance))
+function instance_frame(family::AbstractModelFamily, instance)
+    return frame(instance_model(family, instance))
+end
 
 """
     ModelFamily(models)
@@ -106,6 +108,45 @@ struct ModelFamily{M} <: AbstractModelFamily
     models::M
 end
 
+# Canonical frame reuse must not change the world object observed by a
+# callable valuation. Translate the canonical representative back to the
+# original frame before invoking such callbacks.
+function _original_world(original::Frame, representative::Frame, world)
+    position = findfirst(candidate -> isequal(candidate, world), worlds(representative))
+    position === nothing && throw(KeyError(world))
+    return worlds(original)[position]
+end
+function _rebase_valuation(original::Frame, representative::Frame, valuation::Function)
+    return (atom, world) ->
+        valuation(atom, _original_world(original, representative, world))
+end
+function _rebase_valuation(
+    original::Frame, representative::Frame, valuation::ValuationCallback
+)
+    scalar =
+        (atom, world) ->
+            valuation.scalar(atom, _original_world(original, representative, world))
+    batch = if valuation.vectorized === nothing
+        nothing
+    else
+        (atom, worlds_value) -> valuation.vectorized(
+        atom,
+        tuple(
+            (_original_world(original, representative, world) for world in worlds_value)...,
+        ),
+    )
+    end
+    return ValuationCallback(scalar; vectorized=batch)
+end
+function _rebase_valuation(original::Frame, representative::Frame, valuation::Valuation)
+    return if valuation.data isa Function
+        Valuation(_rebase_valuation(original, representative, valuation.data))
+    else
+        valuation
+    end
+end
+_rebase_valuation(::Frame, ::Frame, valuation) = valuation
+
 # Canonicalize semantically equal model frames at the family boundary so a
 # uniform family uses one Core adjacency cache.
 function _canonical_model_vector(models)
@@ -119,15 +160,26 @@ function _canonical_model_vector(models)
     end
     for model in models
         model_frame = frame(model)
-        representative = findfirst(candidate -> _same_frame(candidate, model_frame), representatives)
+        representative = findfirst(
+            candidate -> _same_frame(candidate, model_frame), representatives
+        )
         if representative === nothing
             push!(representatives, model_frame)
             push!(result, model)
         else
-            push!(result, Model(representatives[representative], algebra(model), valuation(model)))
+            push!(
+                result,
+                Model(
+                    representatives[representative],
+                    algebra(model),
+                    _rebase_valuation(
+                        model_frame, representatives[representative], valuation(model)
+                    ),
+                ),
+            )
         end
     end
-    result
+    return result
 end
 function ModelFamily(models::AbstractVector)
     # Route every model collection through the checked constructor, including
@@ -140,7 +192,7 @@ function ModelFamily(models::AbstractVector)
 end
 function ModelFamily(models::Tuple{Vararg{<:Model}})
     canonical = _canonical_model_vector(models)
-    ModelFamily{typeof(canonical)}(canonical)
+    return ModelFamily{typeof(canonical)}(canonical)
 end
 
 instance_count(family::ModelFamily) = length(family.models)
@@ -158,7 +210,7 @@ function _same_frame(left::Frame, right::Frame)
     # Frame identity is intentionally irrelevant here: an equal world order and
     # relation mapping provide the same evaluation plan.  The world index is an
     # implementation detail and does not change frame semantics.
-    isequal(worlds(left), worlds(right)) &&
+    return isequal(worlds(left), worlds(right)) &&
         isequal(relations(left), relations(right))
 end
 
@@ -168,15 +220,14 @@ function _share_frames(frames)
     representatives = Any[]
     for position in eachindex(frames)
         candidate = frames[position]
-        representative = findfirst(frame -> _same_frame(frame, candidate),
-            representatives)
+        representative = findfirst(frame -> _same_frame(frame, candidate), representatives)
         if representative === nothing
             push!(representatives, candidate)
         else
             frames[position] = representatives[representative]
         end
     end
-    frames
+    return frames
 end
 
 """
@@ -232,12 +283,14 @@ true
 isuniform(family::AbstractModelFamily) = !isnothing(uniform_frame(family))
 
 """Evaluate a formula's extension for one instance in a model family."""
-extension(formula::Formula, family::AbstractModelFamily, instance) =
-    extension(formula, instance_model(family, instance))
+function extension(formula::Formula, family::AbstractModelFamily, instance)
+    return extension(formula, instance_model(family, instance))
+end
 
 """Evaluate a formula's extension for every instance, in instance order."""
-extension(formula::Formula, family::AbstractModelFamily) =
-    [extension(formula, family, instance) for instance in eachinstance(family)]
+function extension(formula::Formula, family::AbstractModelFamily)
+    return [extension(formula, family, instance) for instance in eachinstance(family)]
+end
 
 """
     extension(formulas, family)
@@ -255,8 +308,10 @@ function _batch_extension(normalized::Vector{Formula}, family::ModelFamily)
     last_frame = frame(first_model)
     plan = _evaluation_plan(nodes, first_model)
     first_batch = _batch_evaluate(normalized, nodes, positions, first_model, plan)
-    results = [Vector{typeof(first_batch[position])}(undef, length(models))
-        for position in eachindex(normalized)]
+    results = [
+        Vector{typeof(first_batch[position])}(undef, length(models)) for
+        position in eachindex(normalized)
+    ]
     for position in eachindex(normalized)
         results[position][1] = first_batch[position]
     end
@@ -272,13 +327,13 @@ function _batch_extension(normalized::Vector{Formula}, family::ModelFamily)
             results[position][instance] = batch[position]
         end
     end
-    results
+    return results
 end
 
 function extension(formulas::AbstractVector, family::ModelFamily)
     normalized = _batch_formulas(formulas)
     isempty(normalized) && return Vector{Any}[]
-    _batch_extension(normalized, family)
+    return _batch_extension(normalized, family)
 end
 
 # Retain the protocol fallback for custom family implementations.
@@ -290,7 +345,9 @@ function extension(formulas::AbstractVector, family::AbstractModelFamily)
     state === nothing && return [Any[] for _ in normalized]
     first_instance, iterator_state = state
     first_batch = extension(normalized, instance_model(family, first_instance))
-    results = [Vector{typeof(first_batch[position])}() for position in eachindex(normalized)]
+    results = [
+        Vector{typeof(first_batch[position])}() for position in eachindex(normalized)
+    ]
     for position in eachindex(normalized)
         push!(results[position], first_batch[position])
     end
@@ -303,13 +360,15 @@ function extension(formulas::AbstractVector, family::AbstractModelFamily)
             push!(results[position], batch[position])
         end
     end
-    results
+    return results
 end
 
 """Evaluate all formulas for one instance of a model family."""
-extension(formulas::AbstractVector, family::AbstractModelFamily, instance) =
-    extension(formulas, instance_model(family, instance))
+function extension(formulas::AbstractVector, family::AbstractModelFamily, instance)
+    return extension(formulas, instance_model(family, instance))
+end
 
 """Check a formula at one world of one instance in a model family."""
-check(formula::Formula, family::AbstractModelFamily, instance, world) =
-    check(formula, instance_model(family, instance), world)
+function check(formula::Formula, family::AbstractModelFamily, instance, world)
+    return check(formula, instance_model(family, instance), world)
+end

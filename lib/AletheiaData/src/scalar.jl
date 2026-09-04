@@ -111,12 +111,12 @@ julia> size(store)
 """
 struct DenseFeatureStore{U,W,A,F,I} <: AbstractScalarDataset
     values::A
-    worlds::Vector{W}
-    features::Vector{F}
-    instances::Vector{I}
-    world_positions::Dict{Any,Int}
-    feature_positions::Dict{Any,Int}
-    instance_positions::Dict{Any,Int}
+    worlds::Any
+    features::Any
+    instances::Any
+    world_positions::Any
+    feature_positions::Any
+    instance_positions::Any
     version::UInt64
 end
 
@@ -125,17 +125,17 @@ function DenseFeatureStore(values::AbstractArray, worlds, features;
         version::Integer=0)
     ndims(values) == 3 || throw(ArgumentError(
         "dense scalar feature values must have dimensions world × instance × feature"))
-    ws, fs, ins = AletheiaCore._boundary_copy((collect(worlds), collect(features), collect(instances)))
-    values = AletheiaCore._boundary_copy(values)
+    ws, fs, ins = _immutable_copy((collect(worlds), collect(features), collect(instances)))
+    values = _immutable_copy(values)
     size(values, 1) == length(ws) || throw(ArgumentError("world index length does not match values"))
     size(values, 2) == length(ins) || throw(ArgumentError("instance index length does not match values"))
     size(values, 3) == length(fs) || throw(ArgumentError("feature index length does not match values"))
     length(unique(ws)) == length(ws) || throw(ArgumentError("worlds must be unique"))
     length(unique(fs)) == length(fs) || throw(ArgumentError("features must be unique"))
     length(unique(ins)) == length(ins) || throw(ArgumentError("instances must be unique"))
-    wp = Dict{Any,Int}(world => i for (i, world) in enumerate(ws))
-    fp = Dict{Any,Int}(f => i for (i, f) in enumerate(fs))
-    ip = Dict{Any,Int}(instance => i for (i, instance) in enumerate(ins))
+    wp = _immutable_copy(Dict{Any,Int}(world => i for (i, world) in enumerate(ws)))
+    fp = _immutable_copy(Dict{Any,Int}(f => i for (i, f) in enumerate(fs)))
+    ip = _immutable_copy(Dict{Any,Int}(instance => i for (i, instance) in enumerate(ins)))
     DenseFeatureStore{eltype(values),eltype(ws),typeof(values),eltype(fs),eltype(ins)}(
         values, ws, fs, ins, wp, fp, ip, UInt64(version))
 end
@@ -251,7 +251,8 @@ julia> feature_value(store, 1, :w1, :f1)
 0.0
 ```
 """
-feature_value(store::DenseFeatureStore, instance, world, feature) = store[instance, world, feature]
+feature_value(store::DenseFeatureStore, instance, world, feature) =
+    _boundary_copy(store[instance, world, feature])
 
 """
 Versioned global and relation-specific aggregate memo tables.

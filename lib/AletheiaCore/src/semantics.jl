@@ -573,8 +573,8 @@ end
 function Frame(worlds, relations; index=false, world_index=nothing)
     worldtuple = _world_tuple(worlds)
     requested = world_index === nothing ? index : world_index
-    normalized = _normalize_relations(relations, worldtuple)
-    indexed = _world_index(worldtuple, requested)
+    normalized = _immutable_copy(_normalize_relations(relations, worldtuple))
+    indexed = _immutable_copy(_world_index(worldtuple, requested))
     positions = indexed === nothing ?
         Dict{Any,Int}(world => position for (position, world) in enumerate(worldtuple)) :
         Dict{Any,Int}(world => Int(indexed[world]) for world in worldtuple)
@@ -606,7 +606,7 @@ julia> isdefined(AletheiaCore, Symbol("relations"))
 true
 ```
 """
-relations(frame::Frame) = frame.relations
+relations(frame::Frame) = _boundary_copy(frame.relations)
 
 """Return the optional world-to-position index, or `nothing` when absent.
 
@@ -618,7 +618,7 @@ julia> isdefined(AletheiaCore, Symbol("world_index"))
 true
 ```
 """
-world_index(frame::Frame) = frame.index
+world_index(frame::Frame) = _boundary_copy(frame.index)
 
 """Return whether a frame carries an explicit world-to-position index.
 
@@ -850,6 +850,10 @@ true
 """
 struct Valuation{V}
     data::V
+    function Valuation(data)
+        owned = _immutable_copy(data)
+        new{typeof(owned)}(owned)
+    end
 end
 
 """

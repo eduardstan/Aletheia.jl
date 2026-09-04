@@ -4,25 +4,40 @@ This page records the choices that shape Aletheia's public architecture. Each
 entry gives the context, the choice, and the consequence for users and
 contributors.
 
+## 2026-09-05 — Immutable storage for certified public values
+
+**Context.** Defensive copies at accessors did not protect direct public fields or
+nested values retained by semantic objects.
+
+**Choice.** Constructors snapshot mutable inputs into immutable tuples and
+`AletheiaCore` frozen collection values. Certified circuit nodes, finite algebra
+tables, frame relations, valuations, scalar stores, audit payloads, and graph
+paths therefore have immutable language-level storage. Accessors still return
+ordinary mutable snapshots where the API historically returned arrays or maps.
+
+**Consequence and cost.** A caller cannot alter certified semantics through a
+field, accessor result, or original constructor input. The frame evaluation
+cache remains a deliberately mutable private cache because lock-protected lazy
+adjacency indexing is the measured hot-path optimization; it is not semantic
+input and is excluded from the immutable value contract. Family frame reuse
+retains callback world identity by translating representative worlds back to
+the original frame.
+
 ## 2026-09-04 — One defensive-copy rule at every public boundary
 
 **Context.** Values crossing a public constructor, accessor, retained record, or
 callback boundary must not remain aliases of caller-owned mutable material.
 
 **Choice.** Aletheia uses one repository-wide rule: **defensive copying at the
-boundary**. The shared `AletheiaCore._boundary_copy` mechanism deep-copies
-nested material when it is accepted, retained, or returned. Immutable values
-are naturally unchanged. Callable artifacts are explicitly rejected by
-`serialize_trace`, because Julia closures cannot be copied into a portable
-serialized representation; they remain valid for in-memory replay.
+boundary**. `_boundary_copy` returns mutable snapshots for compatibility;
+`_immutable_copy` is used for retained semantic fields. Callable artifacts are
+explicitly rejected by `serialize_trace`, because Julia closures cannot be
+copied into a portable serialized representation.
 
 **Consequence and cost.** Public values cannot mutate certified semantics,
 extracted outputs, audit records, graph metadata, or algebra tables through an
 alias. Copying costs time and memory proportional to mutable material at each
-boundary; the hot evaluation loops retain their existing owned internal data
-and do not copy per-node results. The ownership inventory test derives its
-constructor and accessor set from each loaded package's public exports, so a
-new mutable boundary must use this mechanism before the test passes.
+boundary; hot evaluation loops retain owned internal data.
 
 ## 2026-09-03 — Exact and owned boundary values
 

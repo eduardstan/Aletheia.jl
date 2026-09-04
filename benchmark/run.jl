@@ -208,13 +208,16 @@ for measurements in contraction_measurements
         if measurement.load !== missing && isfinite(measurement.load)])
 end
 load_verdict = benchmark_load_verdict(start_load, end_load, recorded_seed_loads, Sys.CPU_THREADS)
+# A timeout is an incomplete measurement, so it is a failed run for
+# publication even when no child process returned an ordinary error.
+measurement_failed(measurement) = measurement.status in (:failed, :timeout)
 run_has_failures = let failed = false
     for row in rows
-        failed |= any(m -> m.status === :failed, row.incumbent_seeds)
-        failed |= any(m -> m.status === :failed, row.aletheia_seeds)
+        failed |= any(measurement_failed, row.incumbent_seeds)
+        failed |= any(measurement_failed, row.aletheia_seeds)
     end
     for measurements in contraction_measurements
-        failed |= any(m -> m.status === :failed, measurements)
+        failed |= any(measurement_failed, measurements)
     end
     failed
 end
@@ -226,7 +229,7 @@ load_marker = load_verdict.publishable ? "" : ALLOW_CONTENDED ?
     "!!! BENCHMARK NON-PUBLISHABLE (OVERRIDE): load gate $(load_verdict.reason) !!!" :
     "!!! BENCHMARK REFUSED: NON-PUBLISHABLE; load gate $(load_verdict.reason) !!!"
 failure_marker = run_has_failures ?
-    "!!! BENCHMARK REFUSED: NON-PUBLISHABLE; one or more cases failed !!!" : ""
+    "!!! BENCHMARK REFUSED: NON-PUBLISHABLE; one or more measurements failed or timed out !!!" : ""
 open(artifact, "w") do io
     println(io, "julia=$(VERSION)")
     println(io, "cpu=$(Sys.CPU_NAME)")
@@ -240,7 +243,7 @@ open(artifact, "w") do io
     println(io, "load_publishability=$(load_status)")
     println(io, "load_gate_reason=$(load_verdict.reason)")
     println(io, "failure_publishability=$(run_has_failures ? "non-publishable" : "publishable")")
-    println(io, "failure_gate_reason=$(run_has_failures ? "failed_case" : "none")")
+    println(io, "failure_gate_reason=$(run_has_failures ? "failed_or_incomplete_measurement" : "none")")
     println(io, "publishability=$(overall_status)")
     isempty(load_marker) || println(io, load_marker)
     isempty(failure_marker) || println(io, failure_marker)
@@ -281,7 +284,7 @@ if run_has_failures
     println(failure_marker)
     exit(1)
 elseif load_verdict.publishable
-    println("benchmark publishability: PASS (load gate; no failed cases)")
+    println("benchmark publishability: PASS (load and measurement gates)")
 else
     println(load_marker)
     ALLOW_CONTENDED || exit(1)

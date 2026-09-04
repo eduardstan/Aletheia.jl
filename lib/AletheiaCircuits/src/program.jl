@@ -97,10 +97,13 @@ probabilities.  The alternatives may be atoms, `nothing` (no atom), or any
 other finite ground value whose scalar numbers are immutable, except `Bool`, which is reserved for event constants.
 """
 function ChoiceVariable(id, alternatives, weights)
-    a = _boundary_copy(alternatives isa Tuple ? alternatives : tuple(alternatives...))
-    w = _boundary_copy(weights isa Tuple ? weights : tuple(weights...))
-    _validate_choice(id, a, w)
-    return ChoiceVariable{typeof(id),typeof(a),typeof(w)}(id, a, w)
+    raw_a = alternatives isa Tuple ? alternatives : tuple(alternatives...)
+    raw_w = weights isa Tuple ? weights : tuple(weights...)
+    _validate_choice(id, raw_a, raw_w)
+    a = _immutable_copy(raw_a)
+    w = _immutable_copy(raw_w)
+    owned_id = _immutable_copy(id)
+    return ChoiceVariable{typeof(owned_id),typeof(a),typeof(w)}(owned_id, a, w)
 end
 ChoiceVariable(id, alternatives; weights) = ChoiceVariable(id, alternatives, weights)
 
@@ -498,7 +501,9 @@ function DSProgram(
     else
         (domain,)
     end
-    return DSProgram{typeof(cs),typeof(fs),typeof(rs),typeof(ds)}(cs, fs, rs, ds)
+    return DSProgram{typeof(cs),typeof(fs),typeof(rs),typeof(ds)}(
+        _immutable_copy(cs), _immutable_copy(fs), _immutable_copy(rs), _immutable_copy(ds)
+    )
 end
 DSProgram(entries, rules, domain) = DSProgram(entries; rules=rules, domain=domain)
 function DSProgram(entries, rules; domain=(), probabilistic_facts=(), facts=())
@@ -594,7 +599,8 @@ function _contains_feature(value, seen=IdDict{Any,Bool}())
     value isa AletheiaCore.FunctionTerm && return :function_symbols
     value isa AletheiaCore.Variable && return :variables
     value isa AletheiaCore.Predicate && return _first_feature(value.arguments, seen)
-    value isa AletheiaCore.Equality && return _first_feature((value.left, value.right), seen)
+    value isa AletheiaCore.Equality &&
+        return _first_feature((value.left, value.right), seen)
     value isa Union{
         AletheiaCore.FONegation,
         AletheiaCore.FOConjunction,
@@ -610,7 +616,10 @@ function _contains_feature(value, seen=IdDict{Any,Bool}())
     value isa Pair && return _first_feature((value.first, value.second), seen)
     value isa NamedTuple && return _first_feature(values(value), seen)
     value isa Tuple && return _first_feature(value, seen)
-    value isa AbstractArray || value isa AbstractSet || value isa AbstractDict || return nothing
+    value isa AbstractArray ||
+        value isa AbstractSet ||
+        value isa AbstractDict ||
+        return nothing
     haskey(seen, value) && return nothing
     seen[value] = true
     feature = if value isa AbstractDict
@@ -662,7 +671,10 @@ function _ground_value(value, seen=IdDict{Any,Bool}())
         haskey(seen, value) && return false
         seen[value] = true
         valid = try
-            all(_ground_value(getfield(value, field), seen) for field in 1:fieldcount(typeof(value)))
+            all(
+                _ground_value(getfield(value, field), seen) for
+                field in 1:fieldcount(typeof(value))
+            )
         finally
             delete!(seen, value)
         end
@@ -671,13 +683,16 @@ function _ground_value(value, seen=IdDict{Any,Bool}())
     value isa Union{Bool,Symbol,Char,AbstractString,Missing} && return true
     value isa Function && return false
     value isa AletheiaCore.Constant && return _ground_value(value.value, seen)
-    value isa Union{EventNot,EventAnd,EventOr} && return _ground_value(
-        value isa EventNot ? value.child : value.children, seen
-    )
-    value isa Pair && return _ground_value(value.first, seen) && _ground_value(value.second, seen)
+    value isa Union{EventNot,EventAnd,EventOr} &&
+        return _ground_value(value isa EventNot ? value.child : value.children, seen)
+    value isa Pair &&
+        return _ground_value(value.first, seen) && _ground_value(value.second, seen)
     value isa Tuple && return all(x -> _ground_value(x, seen), value)
     value isa NamedTuple && return all(x -> _ground_value(x, seen), values(value))
-    value isa AbstractArray || value isa AbstractSet || value isa AbstractDict || return false
+    value isa AbstractArray ||
+        value isa AbstractSet ||
+        value isa AbstractDict ||
+        return false
     # Mutable containers are tracked while descending. A revisit before the
     # container is removed is a cycle, not a finite shared subvalue.
     haskey(seen, value) && return false
