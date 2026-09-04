@@ -121,7 +121,6 @@ end
     end
 end
 
-
 @testset "graph path traces require graph context" begin
     path = paths(g, :alice; target=:bob, max_hops=1)[1]
     trace = ExecutionTrace([TraceStep(:graph_path, (path=path,), :alice, path.entities)],
@@ -133,7 +132,6 @@ end
     @test !replay(forged_trace, :alice).valid
     @test !replay(ExecutionTrace([TraceStep(:graph_path, (path=path,), :alice, path.entities)], Provenance(), path.entities, stable_hash(:alice), stable_hash(path.entities), :global), :alice).valid
 end
-
 
 @testset "graph replay authenticates graph context" begin
     local_graph = KnowledgeGraph(
@@ -167,4 +165,10 @@ end
     positional_relation = KGRelation(:positional, :Any, :Any, positional_relation_metadata)
     positional_relation_metadata[:source] = "after"
     @test positional_relation.metadata[:source] == "before"
+end
+
+@testset "default concept metadata representations are symmetric" begin
+    tagged = KGEntity(:tagged; metadata=(concepts=Set([:trusted]),))
+    graph = KnowledgeGraph([tagged], KGRelation[], KGEdge[])
+    @test concept_extension(atom(:trusted), graph) == [true]
 end

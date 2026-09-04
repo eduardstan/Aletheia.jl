@@ -57,7 +57,6 @@ struct EmptyFamily <: AbstractModelFamily end
     @test_throws MethodError instance_model(EmptyFamily(), 1)
 end
 
-
 @testset "family apply allocation budget" begin
     sig = Signature((¬, Diamond(:R)))
     pool = FormulaPool(sig)
@@ -80,7 +79,6 @@ end
     fresh_bytes = @allocated extension(formulas, fresh_family)
     @test fresh_bytes <= 1_500_000
 end
-
 
 @testset "dense scalar family apply allocation budget" begin
     sig = Signature((¬, Diamond(:R)))
@@ -116,10 +114,16 @@ end
     @test fresh_bytes <= 1_500_000
 end
 
-
 @testset "model families have one truth algebra" begin
     frame = Frame((:w,), Dict(); index=true)
     boolean_model = Model(frame, BOOLEAN, Dict((:w, :p) => true))
     godel_model = Model(frame, GodelAlgebra(), Dict((:w, :p) => 0.5))
     @test_throws MixedAlgebraError ModelFamily([boolean_model, godel_model])
+end
+
+@testset "model-family algebra validation covers erased vectors" begin
+    frame = Frame((:w,), Dict(); index=true)
+    boolean_model = Model(frame, BOOLEAN, Dict((:w, :p) => true))
+    godel_model = Model(frame, GodelAlgebra(), Dict((:w, :p) => 0.5))
+    @test_throws MixedAlgebraError ModelFamily(Any[boolean_model, godel_model])
 end

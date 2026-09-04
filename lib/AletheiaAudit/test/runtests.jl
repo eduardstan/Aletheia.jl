@@ -15,7 +15,7 @@ struct UnsupportedAuditArtifact <: SymbolicArtifact end
         for state in (1, 2, 3)
             output, trace = eval_artifact(artifact, state; profile=:exact)
             restored = deserialize_trace(serialize_trace(trace))
-            @test replay(restored, state).valid
+            @test replay(restored, state; profile=:exact).valid
             @test isequal(restored.reported_result, output)
             tampered = ExecutionTrace(
                 trace.steps,
@@ -147,7 +147,6 @@ end
     )
 end
 
-
 @testset "stability baseline is permutation invariant and hashes identify states" begin
     artifact = RuleArtifact([1 => true]; default=false)
     first = [ArtifactCase(1, true), ArtifactCase(2, false)]
@@ -159,7 +158,6 @@ end
     @test record.input_hashes[1] != record.state_hashes[1]
 end
 
-
 @testset "replay requires artifact and graph context" begin
     artifact = RuleArtifact([:yes => true])
     _, trace = eval_artifact(artifact, :yes)
@@ -167,4 +165,32 @@ end
         (artifact="RuleArtifact", selected=999, profile=nothing), stable_hash(:yes), false)],
         trace.provenance, false, stable_hash(:yes), stable_hash(false), :global)
     @test !replay(forged, :yes).valid
+end
+
+@testset "audit records and traces own their public sequences" begin
+    record = audit(RuleArtifact([:yes => true]), [ArtifactCase(:yes, true)])
+    @test record.input_hashes isa Vector
+    @test record.output_hashes isa Vector
+    @test record.state_hashes isa Vector
+    @test record.trace isa Vector
+    @test record.trace[1].steps isa Tuple
+    inputs = record.input_hashes
+    push!(inputs, "forged")
+    @test length(record.input_hashes) == 1
+    @test_throws MethodError push!(record.trace[1].steps,
+        TraceStep(:forged, nothing, nothing, nothing))
+end
+
+@testset "replay authenticates artifact identity and every step" begin
+    original = RuleArtifact([:yes => true])
+    substitute = RuleArtifact([:yes => true, :no => false])
+    _, trace = eval_artifact(original, :yes)
+    replaced = ExecutionTrace(trace.steps, trace.provenance, trace.reported_result,
+        trace.input_hash, trace.output_hash, trace.scope; artifact=substitute)
+    @test !replay(replaced, :yes).valid
+    combined = ExecutionTrace([
+        TraceStep(:forged, (anything="bad",), "bad", false), trace.steps[1]],
+        trace.provenance, trace.reported_result, trace.input_hash, trace.output_hash,
+        trace.scope; artifact=original)
+    @test !replay(combined, :yes).valid
 end

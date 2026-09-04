@@ -240,3 +240,12 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
     extension(p, boolean; cache=pool_cache)
     @test_throws ArgumentError extension(other_p, boolean; cache=pool_cache)
 end
+
+@testset "cached scalar checks own mutable values" begin
+    frame = Frame((:w,), Dict(); index=true)
+    model = Model(frame, MutableTruthAlgebra(), Dict((:w, :p) => MutableTruth(3)))
+    cache = EvaluationCache(model)
+    value = check(atom(:p), model, :w; cache=cache)
+    value.value = 99
+    @test check(atom(:p), model, :w; cache=cache).value == 3
+end

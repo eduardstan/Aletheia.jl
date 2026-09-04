@@ -360,10 +360,14 @@ function _default_concept(concept, world)
     kind = world.kind
     kind === concept && return true
     metadata = world.metadata
-    if metadata isa AbstractDict && haskey(metadata, :concepts)
-        concepts = metadata[:concepts]
-        return concepts isa AbstractSet ? concept in concepts : concept in concepts
+    concepts = if metadata isa AbstractDict && haskey(metadata, :concepts)
+        metadata[:concepts]
+    elseif metadata isa NamedTuple && hasproperty(metadata, :concepts)
+        getproperty(metadata, :concepts)
+    else
+        nothing
     end
+    concepts === nothing || return concept in concepts
     return false
 end
 
