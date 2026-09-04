@@ -957,14 +957,17 @@ true
 struct ValuationCallback{S,B}
     scalar::S
     vectorized::B
+    function ValuationCallback{S,B}(scalar, vectorized) where {S,B}
+        owned_scalar = _immutable_copy(scalar)
+        owned_vectorized = vectorized === nothing ? nothing : _immutable_copy(vectorized)
+        return new{typeof(owned_scalar),typeof(owned_vectorized)}(
+            owned_scalar, owned_vectorized
+        )
+    end
 end
 
 function ValuationCallback(scalar; vectorized=nothing)
-    owned_scalar = _immutable_copy(scalar)
-    owned_vectorized = vectorized === nothing ? nothing : _immutable_copy(vectorized)
-    return ValuationCallback{typeof(owned_scalar),typeof(owned_vectorized)}(
-        owned_scalar, owned_vectorized
-    )
+    return ValuationCallback{typeof(scalar),typeof(vectorized)}(scalar, vectorized)
 end
 
 function (valuation::ValuationCallback)(atom_value, world)
