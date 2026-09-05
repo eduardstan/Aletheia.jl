@@ -95,6 +95,7 @@ AletheiaData.instance_model(family::SoleDataFamily, i_instance) =
 # world × instance × feature layout.
 struct _SoleDataSource{D}
     dataset::D
+    _SoleDataSource{D}(dataset::D, ::Val{:snapshot}) where D = new{D}(dataset)
 end
 function _SoleDataSource(dataset::SoleData.AbstractModalLogiset)
     snapshot = try
@@ -104,7 +105,7 @@ function _SoleDataSource(dataset::SoleData.AbstractModalLogiset)
             dataset, (), "SoleData sources must be snapshot-able before preparation"
         ))
     end
-    return _SoleDataSource{typeof(snapshot)}(snapshot)
+    return _SoleDataSource{typeof(snapshot)}(snapshot, Val(:snapshot))
 end
 # The source is kept only in the prepared-state registry. Prepared semantic
 # records contain dense values and a deep-copied SoleData source snapshot, not
