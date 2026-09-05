@@ -301,7 +301,7 @@ end
 @testset "frame cache lifetime" begin
     function cached_frame()
         frame = Frame((:a, :b), Dict(:R => Dict(:a => [:b], :b => [])); index=true)
-        _frame_cache(frame)
+        AletheiaCore._frame_cache(frame)
         WeakRef(frame)
     end
     reference = cached_frame()
@@ -311,8 +311,8 @@ end
     @test length(AletheiaCore._frame_caches) == 0
 
     frame = Frame((:a,), Dict(); index=true)
-    _frame_cache(frame)
+    AletheiaCore._frame_cache(frame)
     @test length(AletheiaCore._frame_caches) == 1
-    release!(frame)
+    AletheiaCore.release!(frame)
     @test length(AletheiaCore._frame_caches) == 0
 end
