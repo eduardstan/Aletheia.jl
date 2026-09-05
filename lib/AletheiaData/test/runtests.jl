@@ -9,6 +9,12 @@ include("dataset.jl")
 include("scalar.jl")
 include("scalar_extended.jl")
 
+@testset "documented cleanup names are exported" begin
+    for name in (:clear!,)
+        @test name in names(AletheiaData, all=false)
+    end
+end
+
 @testset "AletheiaData quality" begin
     Aqua.test_all(AletheiaData)
     if pkgversion(JET) < v"0.11"

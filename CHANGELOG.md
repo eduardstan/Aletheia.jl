@@ -5,6 +5,8 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
 
 ## Unreleased
 
+- Moved formula arena storage into its owning append-only arena, made formula-pool indexing read-only outside locked interning, and added formula-pool and audit-trace serialization round trips.
+- Added value equality and hashing for owned frames and models, shared adjacency caches across equal frames, exported `clear!` from `AletheiaData`, and documented the Julia ownership contract.
 - Sealed interned formula arenas against node replacement, released prepared scalar and frame cache state with its owning records, synchronized aggregate memo reads, and corrected the SoleData scalar bridge and cache documentation.
 
 - Closed recursive ownership escapes for `Core.SimpleVector`, dimensional interval providers, and prepared scalar data. Interval inputs and scalar relation indexes are frozen, aggregate memos and frame adjacency live only in evaluator-side caches, and fieldless mutable values are refused.

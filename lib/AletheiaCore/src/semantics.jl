@@ -476,14 +476,15 @@ struct _WeakFrameCacheEntry
     cache::_ModelEvaluationCache
 end
 mutable struct _WeakFrameCacheRegistry
-    entries::Dict{UInt,_WeakFrameCacheEntry}
+    entries::Dict{UInt,Vector{_WeakFrameCacheEntry}}
 end
-_WeakFrameCacheRegistry() = _WeakFrameCacheRegistry(Dict{UInt,_WeakFrameCacheEntry}())
+_WeakFrameCacheRegistry() = _WeakFrameCacheRegistry(Dict{UInt,Vector{_WeakFrameCacheEntry}}())
 const _frame_cache_lock = ReentrantLock()
 const _frame_caches = _WeakFrameCacheRegistry()
 function _prune_frame_caches!()
-    for (key, entry) in collect(_frame_caches.entries)
-        entry.frame.value === nothing && delete!(_frame_caches.entries, key)
+    for (key, bucket) in collect(_frame_caches.entries)
+        filter!(entry -> entry.frame.value !== nothing, bucket)
+        isempty(bucket) && delete!(_frame_caches.entries, key)
     end
     return nothing
 end
@@ -491,7 +492,7 @@ Base.length(registry::_WeakFrameCacheRegistry) = begin
     lock(_frame_cache_lock)
     try
         _prune_frame_caches!()
-        length(registry.entries)
+        sum(length, values(registry.entries); init=0)
     finally
         unlock(_frame_cache_lock)
     end
@@ -500,10 +501,12 @@ function _frame_cache(frame)
     lock(_frame_cache_lock)
     try
         _prune_frame_caches!()
-        key = objectid(frame)
-        entry = get(_frame_caches.entries, key, nothing)
-        if entry !== nothing && entry.frame.value === frame
-            return entry.cache
+        key = hash(frame)
+        bucket = get!(_frame_caches.entries, key) do
+            _WeakFrameCacheEntry[]
+        end
+        for entry in bucket
+            entry.frame.value !== nothing && isequal(entry.frame.value, frame) && return entry.cache
         end
         cache = _ModelEvaluationCache(
             Dict{Any,Int}(
@@ -511,7 +514,7 @@ function _frame_cache(frame)
             ),
             Dict{Any,_RelationAdjacency}(), ReentrantLock()
         )
-        _frame_caches.entries[key] = _WeakFrameCacheEntry(WeakRef(frame), cache)
+        push!(bucket, _WeakFrameCacheEntry(WeakRef(frame), cache))
         return cache
     finally
         unlock(_frame_cache_lock)
@@ -555,10 +558,27 @@ struct Frame{W<:Tuple,RS,I} <: AbstractMultiModalFrame{eltype(W)}
     end
 end
 
+# Frames are owned semantic values. Equality includes every owned field, while
+# evaluator caches remain separate and are shared by equal frames.
+function Base.:(==)(left::Frame, right::Frame)
+    return isequal(left.worlds, right.worlds) &&
+           isequal(left.relations, right.relations) &&
+           isequal(left.index, right.index)
+end
+Base.isequal(left::Frame, right::Frame) = left == right
+function Base.hash(frame::Frame, seed::UInt)
+    return hash(frame.index, hash(frame.relations, hash(frame.worlds, seed)))
+end
+
 function release!(frame::Frame)
     lock(_frame_cache_lock)
     try
-        delete!(_frame_caches.entries, objectid(frame))
+        key = hash(frame)
+        bucket = get(_frame_caches.entries, key, nothing)
+        if bucket !== nothing
+            filter!(entry -> entry.frame.value !== nothing && !isequal(entry.frame.value, frame), bucket)
+            isempty(bucket) && delete!(_frame_caches.entries, key)
+        end
     finally
         unlock(_frame_cache_lock)
     end
@@ -1185,6 +1205,16 @@ struct Model{T,A<:TruthAlgebra{T},F<:Frame,V}
         end
         return new{T,A,F,typeof(owned)}(frame, algebra, owned)
     end
+end
+
+function Base.:(==)(left::Model, right::Model)
+    return isequal(left.frame, right.frame) &&
+           isequal(left.algebra, right.algebra) &&
+           isequal(left.valuation, right.valuation)
+end
+Base.isequal(left::Model, right::Model) = left == right
+function Base.hash(model::Model, seed::UInt)
+    return hash(model.valuation, hash(model.algebra, hash(model.frame, seed)))
 end
 
 function Model(frame::Frame, algebra::TruthAlgebra, valuation)
