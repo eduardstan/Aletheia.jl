@@ -345,7 +345,11 @@ struct ScalarRelationIndex{F}
     frames::Tuple{Vararg{F}}
     relations::Tuple
 end
-ScalarRelationIndex(frames, relations) = ScalarRelationIndex(tuple(frames...), tuple(relations...))
+function ScalarRelationIndex(frames, relations)
+    frame_tuple = tuple(frames...)
+    frame_type = isempty(frame_tuple) ? Any : typeof(first(frame_tuple))
+    return ScalarRelationIndex{frame_type}(frame_tuple, tuple(relations...))
+end
 
 """
 Prepared source, dense feature store, relation index, and aggregate memos.
