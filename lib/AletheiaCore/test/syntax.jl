@@ -275,17 +275,17 @@ end
 
     # Arena storage and pool records are serialized as ordinary owned fields.
     formula_buffer = IOBuffer()
-    serialize(formula_buffer, formula)
+    Serialization.serialize(formula_buffer, formula)
     seekstart(formula_buffer)
-    restored_formula = deserialize(formula_buffer)
+    restored_formula = Serialization.deserialize(formula_buffer)
     @test syntaxstring(restored_formula) == syntaxstring(formula)
     restored_model = Model(Frame((1,), Dict(); index=true), Dict((1, :p) => false))
     @test check(restored_formula, restored_model, 1)
 
     pool_buffer = IOBuffer()
-    serialize(pool_buffer, pool)
+    Serialization.serialize(pool_buffer, pool)
     seekstart(pool_buffer)
-    restored_pool = deserialize(pool_buffer)
+    restored_pool = Serialization.deserialize(pool_buffer)
     @test syntaxstring(atom(restored_pool, :p)) == "p"
     @test length(restored_pool.nodes) == length(pool.nodes)
 
