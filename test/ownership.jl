@@ -16,6 +16,16 @@ end
 struct IdentityWorldBox
     payload::Any
 end
+struct EqualWorldBox
+    payload::Any
+end
+Base.:(==)(left::EqualWorldBox, right::EqualWorldBox) = left.payload == right.payload
+Base.hash(value::EqualWorldBox, seed::UInt) = hash(value.payload, seed)
+struct UnhashableWorldBox
+    payload::Any
+end
+Base.:(==)(left::UnhashableWorldBox, right::UnhashableWorldBox) = true
+Base.hash(::UnhashableWorldBox, ::UInt) = error("hash intentionally unavailable")
 
 """Discover loaded Aletheia package modules and their complete public bindings."""
 function _ownership_inventory()
@@ -161,6 +171,21 @@ end
     @test Aletheia.world_position(identity_frame, owned_identity) == 1
     identity_model = Aletheia.Model(identity_frame, Dict((:p, owned_identity) => true))
     @test Aletheia.check(Aletheia.atom(:p), identity_model, owned_identity) === true
+
+    equal_world = EqualWorldBox([:a, :b])
+    equal_frame = Aletheia.Frame([equal_world]; index=true)
+    @test worlds(equal_frame)[1] !== equal_world
+    @test Aletheia.world_position(equal_frame, equal_world) == 1
+    equal_model = Aletheia.Model(equal_frame, Dict((:p, equal_world) => true))
+    @test Aletheia.check(Aletheia.atom(:p), equal_model, equal_world) === true
+
+    unhashable_error = try
+        Aletheia.Frame([UnhashableWorldBox([:a])]; index=true)
+    catch error
+        error
+    end
+    @test unhashable_error isa Aletheia.OwnershipError
+    @test occursin("define == and hash", sprint(showerror, unhashable_error))
 
     # Exercise the same boundaries over generated collection/capture variants.
     for payload in ([1], Dict(:a => 1), Set([:a]))

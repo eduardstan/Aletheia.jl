@@ -86,7 +86,9 @@ jobs:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     name: Line coverage
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Coverage runs every package suite with instrumentation; keep the same
+    # headroom as the test matrix so the floor check can always execute.
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
