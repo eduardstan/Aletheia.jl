@@ -136,6 +136,7 @@ AletheiaData.feature_value(s::ScalarPropertySource, i, w, ::Val{:x}) = s.values[
     @test aggregate_value(prep, 1, (:a, :b), :R, Val(:x), maximum) == 2.0
     @test clear!(prep) === prep
     @test clear!(AggregateMemoStore()) isa AggregateMemoStore
+    prep = prepare_scalar(props; features=[Val(:x)], frames=[fr], instances=[1])
 
     sig = Signature((¬, ∧, ∨, →, Diamond(:R), Box(:R)))
     p = FormulaPool(sig)

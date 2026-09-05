@@ -96,8 +96,19 @@ AletheiaData.instance_model(family::SoleDataFamily, i_instance) =
 struct _SoleDataSource{D}
     dataset::D
 end
+function _SoleDataSource(dataset::SoleData.AbstractModalLogiset)
+    snapshot = try
+        deepcopy(dataset)
+    catch
+        throw(AletheiaCore.OwnershipError(
+            dataset, (), "SoleData sources must be snapshot-able before preparation"
+        ))
+    end
+    return _SoleDataSource{typeof(snapshot)}(snapshot)
+end
 # The source is kept only in the prepared-state registry. Prepared semantic
-# records contain the dense snapshot, not this mutable adapter.
+# records contain dense values and a deep-copied SoleData source snapshot, not
+# the caller's mutable adapter.
 AletheiaData.feature_value(source::_SoleDataSource, instance, world, feature) =
     SoleData.featvalue(feature, source.dataset, instance, world)
 

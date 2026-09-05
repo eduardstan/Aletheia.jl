@@ -296,3 +296,23 @@ end
         extension(formula, scalar_model)[1].value ==
         1
 end
+
+
+@testset "frame cache lifetime" begin
+    function cached_frame()
+        frame = Frame((:a, :b), Dict(:R => Dict(:a => [:b], :b => [])); index=true)
+        _frame_cache(frame)
+        WeakRef(frame)
+    end
+    reference = cached_frame()
+    GC.gc()
+    GC.gc()
+    @test reference.value === nothing
+    @test length(AletheiaCore._frame_caches) == 0
+
+    frame = Frame((:a,), Dict(); index=true)
+    _frame_cache(frame)
+    @test length(AletheiaCore._frame_caches) == 1
+    release!(frame)
+    @test length(AletheiaCore._frame_caches) == 0
+end
