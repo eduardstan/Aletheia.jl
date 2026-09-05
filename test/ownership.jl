@@ -193,10 +193,11 @@ end
             [IdentityWorldBox(payload)]; index=true
         )
     end
-    for make_callback in (
-        () -> let state = Ref([2]); (world, relation) -> state[] end,
-        () -> let state = Ref(Dict(:R => [2])); (world, relation) -> state[] end,
-    )
+    for make_callback in (() -> let state = Ref([2])
+        (world, relation) -> state[]
+    end, () -> let state = Ref(Dict(:R => [2]))
+        (world, relation) -> state[]
+    end)
         callback = make_callback()
         @test !_structurally_owned(callback)
         @test_throws Aletheia.OwnershipError Aletheia.Frame([1, 2], callback)
