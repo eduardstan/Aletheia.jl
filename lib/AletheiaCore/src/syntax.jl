@@ -401,7 +401,9 @@ end
 function _pool_nodes(arena::_PoolArena)
     lock(_pool_arena_lock)
     try
-        return _pool_arena_storage[arena]
+        get!(_pool_arena_storage, arena) do
+            _PoolNode[]
+        end
     finally
         unlock(_pool_arena_lock)
     end
