@@ -1,5 +1,5 @@
 using Test
-using Serialization
+const Serialization = AletheiaCore.Serialization
 using Random
 using Aqua
 using JET

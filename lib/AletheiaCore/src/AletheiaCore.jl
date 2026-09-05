@@ -1,6 +1,8 @@
 """Dependency-free syntax and semantic foundations for Aletheia."""
 module AletheiaCore
 
+using Serialization
+
 """An immutable array snapshot used in certified public values."""
 struct FrozenArray{T,N} <: AbstractArray{T,N}
     data::Tuple
