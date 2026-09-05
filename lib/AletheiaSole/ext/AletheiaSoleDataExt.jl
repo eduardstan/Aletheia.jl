@@ -125,10 +125,18 @@ function AletheiaData.prepare_scalar(dataset::SoleData.AbstractModalLogiset;
     n = SoleData.ninstances(dataset)
     labels = instances === nothing ? collect(1:n) : collect(instances)
     source_frames = [SoleData.frame(dataset, i) for i in labels]
+    function sole_accessibles(fr, w)
+        isnothing(relation) || return SoleData.accessibles(fr, w, relation)
+        try
+            SoleData.accessibles(fr, w)
+        catch error
+            error isa MethodError || rethrow()
+            ()
+        end
+    end
     converted = AletheiaData._share_frames([Aletheia.Frame(collect(SoleData.allworlds(fr)),
-        Dict(:R => Dict(w => Tuple(isnothing(relation) ?
-            SoleData.accessibles(fr, w) : SoleData.accessibles(fr, w, relation))
-            for w in SoleData.allworlds(fr))); index=true) for fr in source_frames])
+        Dict(:R => Dict(w => Tuple(sole_accessibles(fr, w)) for w in SoleData.allworlds(fr)));
+            index=true) for fr in source_frames])
     feature_list = _sole_features(dataset, features)
     AletheiaData.prepare_scalar(_SoleDataSource(dataset); features=feature_list,
         frames=converted, relations=isempty(relations) ? (:R,) : relations,
