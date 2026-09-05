@@ -486,7 +486,8 @@ function model(
     graph::KnowledgeGraph; algebra=BOOLEAN, concept_valuation=nothing, relation_map=identity
 )
     f = frame(graph; relation_map=relation_map)
-    callback = concept_valuation === nothing ? _default_concept : concept_valuation
+    callback = concept_valuation === nothing ? _default_concept :
+        concept_valuation isa Function ? concept_valuation : AletheiaCore._immutable_copy(concept_valuation)
     valuation = AletheiaCore.ValuationCallback(
         (concept, world) -> _lookup_concept(callback, concept, world);
         vectorized=(concept, worldset) ->
