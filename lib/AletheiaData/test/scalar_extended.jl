@@ -13,6 +13,9 @@
         frames=[fr1, fr2], instances=[1, 2], relations=(:R,),
         precompute_aggregates=[(Val(:x), maximum)])
     @test prepared isa PreparedScalarData
+    @test AletheiaCore._is_owned(prepared)
+    @test !hasproperty(prepared, :one_step_memos)
+    @test prepared.relation_index.frames isa Tuple
     @test size(prepared.store.values) == (3, 2, 2)
     @test feature_index(prepared.store, Val(:twice)) == 2
     @test instance_index(prepared.store, 2) == 2
@@ -81,7 +84,6 @@ AletheiaData.feature_value(s::ScalarPropertySource, i, w, ::Val{:x}) = s.values[
     @test AletheiaData.features(prep.store) == (Val(:x),)
     @test source(prep) === props
     @test store(prep) === prep.store
-    @test one_step_memos(prep) === prep.one_step_memos
     @test relation_index(prep) === prep.relation_index
     @test data_version(prep) == 0
     @test size(prep.store) == (2, 1, 1)
@@ -174,9 +176,12 @@ struct OtherScalarCondition <: AbstractScalarCondition end
     count_source = CountScalarSource(2)
     count_prep2 = prepare_scalar(count_source; features=[Val(:x)], worlds=[1, 2], instances=nothing)
     @test count_prep2.store.values[:, 2, 1] == Any[3, 4]
-    @test prepare_scalar(props2; features=[Val(:x)], precompute_aggregates=true).one_step_memos.global_values !== nothing
-    @test prepare_scalar(props2; features=[Val(:x)], precompute_aggregates=:all).one_step_memos.global_values !== nothing
-    @test prepare_scalar(props2; features=[Val(:x)], precompute_aggregates=[Val(:x) => maximum]).one_step_memos.global_values !== nothing
+    eager_max = prepare_scalar(props2; features=[Val(:x)], precompute_aggregates=true)
+    @test aggregate_value(eager_max, 1, globalrel, globalrel, Val(:x), maximum) == 2.0
+    eager_all = prepare_scalar(props2; features=[Val(:x)], precompute_aggregates=:all)
+    @test aggregate_value(eager_all, 1, globalrel, globalrel, Val(:x), minimum) == 1.0
+    eager_pair = prepare_scalar(props2; features=[Val(:x)], precompute_aggregates=[Val(:x) => maximum])
+    @test aggregate_value(eager_pair, 1, globalrel, globalrel, Val(:x), maximum) == 2.0
     @test_throws ArgumentError prepare_scalar(props2; features=[Val(:x)], precompute_aggregates=[:bad])
     @test_throws ArgumentError prepare_scalar(props2; features=[Val(:x)], precompute_aggregates=[(:x, maximum, :extra)])
 

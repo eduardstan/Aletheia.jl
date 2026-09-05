@@ -10,6 +10,25 @@ connective operations, while `Frame` and `Model` supply worlds, accessibility,
 and valuation. The frame/model boundary is the Kripke interpretation described
 by Blackburn et al. [blackburn2001; §1.3, pp. 16–20](@cite).
 
+## Structural ownership
+
+Every value a user supplies to a semantic constructor is structurally owned to
+any depth. Bits values, known immutable atoms, tuples, and frozen collections
+are accepted only when their contents are recursively owned. Fieldless mutable
+values are refused; `Core.SimpleVector` is checked through its elements.
+Standard arrays, dictionaries, and sets are recursively snapshotted. Mutable
+opaque values and closures with mutable captured fields are refused with a
+path-aware `OwnershipError`. Immutable wrappers are rebuilt only when their
+replacement preserves `isequal` and `hash`; otherwise construction is refused.
+
+Frame adjacency and scalar aggregate memos are evaluator-side caches. They are
+not fields of, or reachable from, semantic values: frame adjacency is keyed by
+frame identity, and scalar memos by the hash of `PreparedScalarData`. A prepared
+scalar record stores only a source token; its external source adapter is kept in
+the evaluator-side registry rather than in the record. Frame caches need no
+invalidation because frames are immutable; scalar memos are cleared by `clear!`
+and replaced when the prepared source version changes.
+
 ## Truth algebras
 
 [`TruthAlgebra`](@ref) is the semantic protocol. The built-ins are

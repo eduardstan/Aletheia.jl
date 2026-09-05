@@ -340,8 +340,13 @@ julia> index.relations
 ```
 """
 struct ScalarRelationIndex{F}
-    frames::Vector{F}
+    frames::F
     relations::Tuple
+    function ScalarRelationIndex(frames, relations)
+        owned_frames = _immutable_copy(tuple(frames...))
+        owned_relations = _immutable_copy(relations isa Tuple ? relations : tuple(relations...))
+        return new{typeof(owned_frames)}(owned_frames, owned_relations)
+    end
 end
 
 """
@@ -359,17 +364,54 @@ julia> prep isa PreparedScalarData
 true
 ```
 """
-struct PreparedScalarData{D,S,M,R} <: AbstractScalarDataset
-    source::D
+struct PreparedScalarData{S,R} <: AbstractScalarDataset
+    source_key::UInt
     store::S
-    one_step_memos::M
     relation_index::R
     version::UInt64
 end
-# Prepared scalar data owns its private memo/index state and validates source
-# versions when read; it is the immutable callback context, not a public mutable
-# payload.
-AletheiaCore._is_owned(::PreparedScalarData, seen=IdDict{Any,Bool}()) = true
+
+# Source adapters and aggregate memo tables are evaluator state, not semantic
+# payload. Neither registry is reachable through a prepared value's fields.
+const _prepared_state_lock = ReentrantLock()
+const _prepared_sources = Dict{UInt,Any}()
+const _prepared_memos = Dict{UInt,AggregateMemoStore}()
+const _next_source_key = Ref{UInt}(0)
+function _register_source(source)
+    lock(_prepared_state_lock)
+    try
+        _next_source_key[] += UInt(1)
+        key = _next_source_key[]
+        _prepared_sources[key] = source
+        return key
+    finally
+        unlock(_prepared_state_lock)
+    end
+end
+function _prepared_source(data::PreparedScalarData)
+    lock(_prepared_state_lock)
+    try
+        return _prepared_sources[data.source_key]
+    finally
+        unlock(_prepared_state_lock)
+    end
+end
+# Aggregate memo tables are keyed by the hash of the owned prepared record.
+function _aggregate_memos(data::PreparedScalarData)
+    key = hash(data)
+    lock(_prepared_state_lock)
+    try
+        memo = get!(_prepared_memos, key) do
+            AggregateMemoStore(data.version)
+        end
+        if memo.version != data.version
+            memo = (_prepared_memos[key] = AggregateMemoStore(data.version))
+        end
+        return memo
+    finally
+        unlock(_prepared_state_lock)
+    end
+end
 
 ScalarEvaluationCache(data::PreparedScalarData) = ScalarEvaluationCache(data.version)
 
@@ -377,7 +419,7 @@ function feature_value(data::PreparedScalarData, instance, world, feature)
     begin
         _check_scalar_version(data)
         value = feature_value(data.store, instance, world, feature)
-        value === missing ? feature_value(data.source, instance, world, feature) : value
+        value === missing ? feature_value(_prepared_source(data), instance, world, feature) : value
     end
 end
 
@@ -396,7 +438,7 @@ julia> source(prep) === store
 true
 ```
 """
-source(data::PreparedScalarData) = data.source
+source(data::PreparedScalarData) = _prepared_source(data)
 """
 Return the underlying dense feature store of a prepared scalar dataset.
 
@@ -413,22 +455,6 @@ true
 ```
 """
 store(data::PreparedScalarData) = data.store
-"""
-Return the aggregate memo store of a prepared scalar dataset.
-
-# Examples
-```jldoctest
-julia> using AletheiaData
-
-julia> store = DenseFeatureStore(zeros(1, 1, 1), [:w1], [:f1]);
-
-julia> prep = prepare_scalar(store);
-
-julia> one_step_memos(prep) isa AggregateMemoStore
-true
-```
-"""
-one_step_memos(data::PreparedScalarData) = data.one_step_memos
 """
 Return the scalar relation index of a prepared scalar dataset.
 
@@ -461,7 +487,7 @@ function data_version(data)
 end
 
 function _check_scalar_version(data::PreparedScalarData)
-    current = data_version(data.source)
+    current = data_version(_prepared_source(data))
     # A nonzero source version is an opt-in freshness contract.  Explicit
     # preparation versions remain usable for sources that do not expose one.
     (current == 0 && data.version != 0) ||
@@ -471,7 +497,7 @@ function _check_scalar_version(data::PreparedScalarData)
                 "prepared scalar data is stale (prepared version $(data.version), source version $current); re-run prepare_scalar",
             ),
         )
-    data.one_step_memos.version == data.version ||
+    _aggregate_memos(data).version == data.version ||
         throw(ArgumentError("scalar aggregate memos are stale; re-run prepare_scalar"))
     return nothing
 end
@@ -496,7 +522,7 @@ function clear!(cache::ScalarEvaluationCache)
     return cache
 end
 function clear!(data::PreparedScalarData)
-    clear!(data.one_step_memos)
+    clear!(_aggregate_memos(data))
     return data
 end
 
@@ -720,7 +746,7 @@ function prepare_scalar(
         isempty(relations) && (relations = data.relation_index.relations)
         frames === nothing && (frames = data.relation_index.frames)
         return prepare_scalar(
-            data.source;
+            _prepared_source(data);
             features=features,
             frames=frames,
             relations=relations,
@@ -794,10 +820,11 @@ function prepare_scalar(
         instances=instance_labels,
         version=prepared_version,
     )
-    memo = AggregateMemoStore(prepared_version)
     relation_tuple = relations isa Tuple ? relations : Tuple(collect(relations))
-    index = ScalarRelationIndex(frames_list, relation_tuple)
-    prepared = PreparedScalarData(source, dense, memo, index, prepared_version)
+    index = ScalarRelationIndex(tuple(frames_list...), relation_tuple)
+    prepared = PreparedScalarData(
+        _register_source(source), dense, index, prepared_version
+    )
     for (f, aggregator) in _aggregate_specs(precompute_aggregates, feature_list)
         for instance in instance_labels
             aggregate_value(prepared, instance, globalrel, globalrel, f, aggregator)
@@ -942,12 +969,12 @@ function aggregate_value(
         world_or_worlds isa AbstractSet
     if relation isa GlobalRelation
         key = _global_memo_key(instance, feature, aggregate)
-        lock(data.one_step_memos.lock)
+        lock(_aggregate_memos(data).lock)
         try
-            haskey(data.one_step_memos.global_values, key) &&
-                return data.one_step_memos.global_values[key]
+            haskey(_aggregate_memos(data).global_values, key) &&
+                return _aggregate_memos(data).global_values[key]
         finally
-            unlock(data.one_step_memos.lock)
+            unlock(_aggregate_memos(data).lock)
         end
         ws = collect(worlds(_frame(data, instance)))
         reps = representative_worlds(
@@ -956,11 +983,11 @@ function aggregate_value(
         result = _aggregate_values(
             _feature_values(data, instance, reps, feature), aggregate
         )
-        lock(data.one_step_memos.lock)
+        lock(_aggregate_memos(data).lock)
         try
-            data.one_step_memos.global_values[key] = result
+            _aggregate_memos(data).global_values[key] = result
         finally
-            unlock(data.one_step_memos.lock)
+            unlock(_aggregate_memos(data).lock)
         end
         return result
     elseif is_worlds
@@ -969,22 +996,22 @@ function aggregate_value(
         return _aggregate_values(_feature_values(data, instance, reps, feature), aggregate)
     end
     key = _memo_key(instance, world_or_worlds, relation, feature, aggregate)
-    lock(data.one_step_memos.lock)
+    lock(_aggregate_memos(data).lock)
     try
-        haskey(data.one_step_memos.relational_values, key) &&
-            return data.one_step_memos.relational_values[key]
+        haskey(_aggregate_memos(data).relational_values, key) &&
+            return _aggregate_memos(data).relational_values[key]
     finally
-        unlock(data.one_step_memos.lock)
+        unlock(_aggregate_memos(data).lock)
     end
     reps = representative_worlds(
         data, instance, world_or_worlds, relation, feature, aggregate
     )
     result = _aggregate_values(_feature_values(data, instance, reps, feature), aggregate)
-    lock(data.one_step_memos.lock)
+    lock(_aggregate_memos(data).lock)
     try
-        data.one_step_memos.relational_values[key] = result
+        _aggregate_memos(data).relational_values[key] = result
     finally
-        unlock(data.one_step_memos.lock)
+        unlock(_aggregate_memos(data).lock)
     end
     return result
 end
@@ -1265,12 +1292,12 @@ function _scalar_evaluate(
                     [
                         if relation(connective) isa GlobalRelation
                             haskey(
-                                data.one_step_memos.global_values,
+                                _aggregate_memos(data).global_values,
                                 _global_memo_key(instance, feature(leaf), aggregate),
                             )
                         else
                             haskey(
-                                data.one_step_memos.relational_values,
+                                _aggregate_memos(data).relational_values,
                                 _memo_key(
                                     instance,
                                     world,
@@ -1475,8 +1502,8 @@ function batch_apply(
         formula=cache === nothing ? :cold : :available,
         features=:dense,
         aggregates=(
-            if isempty(data.one_step_memos.global_values) &&
-               isempty(data.one_step_memos.relational_values)
+            if isempty(_aggregate_memos(data).global_values) &&
+               isempty(_aggregate_memos(data).relational_values)
                 :cold
             else
                 :warm

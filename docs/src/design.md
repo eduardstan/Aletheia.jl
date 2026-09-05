@@ -12,6 +12,24 @@ cosmetic. It lets one pooled formula DAG be evaluated in Boolean, Gödel,
 special atom values. The distinction follows the syntax and satisfaction
 boundary in Blackburn et al. [blackburn2001; §§1.2–1.3, pp. 9–26](@cite).
 
+## Structural ownership at semantic boundaries
+
+Every value a user supplies to a semantic constructor is structurally owned to
+any depth. Bits values, known immutable atoms, tuples, and frozen collections
+are accepted only when their contents are recursively owned. Fieldless mutable
+values are refused; `Core.SimpleVector` is checked through its elements.
+Standard arrays, dictionaries, and sets are recursively snapshotted. Mutable
+opaque values and closures with mutable captured fields are refused with a
+path-aware `OwnershipError`. Immutable wrappers are rebuilt only when their
+replacement preserves `isequal` and `hash`; otherwise construction is refused.
+
+Evaluator caches are separate from semantic values. Frame adjacency is keyed by
+frame identity, and scalar aggregate memos are keyed by the hash of
+`PreparedScalarData`. Neither cache is a field of, or reachable from, a semantic
+value. Frame caches need no invalidation because frames are immutable; scalar
+memos are cleared by `clear!` and replaced when the prepared source version
+changes.
+
 ## Similarity types and pooled DAGs
 
 `Signature` is a finite, value-based similarity type. `Diamond(:R)` and

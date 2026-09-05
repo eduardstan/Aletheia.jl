@@ -241,7 +241,6 @@ include("ownership.jl")
         :batch_apply,
         :source,
         :store,
-        :one_step_memos,
         :relation_index,
         :feature_index,
         :instance_index,

@@ -187,8 +187,17 @@ function _is_owned(value, seen=IdDict{Any,Bool}())
     value isa FrozenDict && return all(_is_owned(x, seen) for pair in value for x in pair)
     value isa FrozenSet && return all(_is_owned(x, seen) for x in value)
     value isa Tuple && return all(_is_owned(x, seen) for x in value)
+    value isa Core.SimpleVector && return all(_is_owned(x, seen) for x in value)
     (value isa AbstractArray || value isa AbstractDict || value isa AbstractSet) && return false
-    fieldcount(T) == 0 && return true
+    # Fieldless mutable values have hidden state despite exposing no fields.
+    # A few atomic Julia values report mutable types for runtime reasons but
+    # have no mutable payload; SimpleVector is handled above because its
+    # elements are its payload.
+    if fieldcount(T) == 0
+        return !Base.ismutabletype(T) || value isa Symbol || value isa AbstractString ||
+               value isa Function || value isa Type || value isa Module ||
+               value isa Nothing || value isa Missing
+    end
     Base.ismutabletype(T) && return false
     haskey(seen, value) && return true
     seen[value] = true
@@ -259,6 +268,9 @@ function _immutable_copy(value, path::Tuple, seen::IdDict{Any,Bool})
     end
 end
 
+function _immutable_copy(value::Core.SimpleVector, path::Tuple, seen::IdDict{Any,Bool})
+    return tuple((_immutable_copy(x, (path..., i), seen) for (i, x) in enumerate(value))...)
+end
 function _immutable_copy(value::Tuple, path::Tuple, seen::IdDict{Any,Bool})
     return tuple((_immutable_copy(x, (path..., i), seen) for (i, x) in enumerate(value))...)
 end

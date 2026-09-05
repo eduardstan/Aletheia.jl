@@ -383,7 +383,6 @@ export ScalarEvaluationCache,
     batch_apply
 export source,
     store,
-    one_step_memos,
     relation_index,
     feature_index,
     instance_index,
