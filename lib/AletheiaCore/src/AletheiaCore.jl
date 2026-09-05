@@ -188,8 +188,8 @@ function _is_owned(value, seen=IdDict{Any,Bool}())
     value isa FrozenSet && return all(_is_owned(x, seen) for x in value)
     value isa Tuple && return all(_is_owned(x, seen) for x in value)
     (value isa AbstractArray || value isa AbstractDict || value isa AbstractSet) && return false
-    Base.ismutabletype(T) && return false
     fieldcount(T) == 0 && return true
+    Base.ismutabletype(T) && return false
     haskey(seen, value) && return true
     seen[value] = true
     try
