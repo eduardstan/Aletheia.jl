@@ -387,7 +387,7 @@ mutable struct _PoolArena <: AbstractVector{_PoolNode}
     _PoolArena(::Val{:new}) = new(0x00)
 end
 const _pool_arena_lock = ReentrantLock()
-const _pool_arena_storage = WeakKeyDict{_PoolArena,Vector{_PoolNode}}()
+const _pool_arena_storage = IdDict{_PoolArena,Vector{_PoolNode}}()
 function _PoolArena()
     arena = _PoolArena(Val(:new))
     lock(_pool_arena_lock)
@@ -405,6 +405,15 @@ function _pool_nodes(arena::_PoolArena)
     finally
         unlock(_pool_arena_lock)
     end
+end
+function _release_pool_arena(pool)
+    lock(_pool_arena_lock)
+    try
+        delete!(_pool_arena_storage, pool.nodes)
+    finally
+        unlock(_pool_arena_lock)
+    end
+    return nothing
 end
 Base.isequal(left::_PoolArena, right::_PoolArena) = left === right
 Base.hash(arena::_PoolArena, h::UInt) = hash(objectid(arena), h)
@@ -441,7 +450,10 @@ mutable struct FormulaPool{S<:Signature} <: _SealedArena
 end
 
 function FormulaPool(signature::Signature)
-    FormulaPool(signature, Dict{Any,Int}(), _PoolArena(), ReentrantLock())
+    arena = _PoolArena()
+    pool = FormulaPool(signature, Dict{Any,Int}(), arena, ReentrantLock())
+    finalizer(_release_pool_arena, pool)
+    pool
 end
 
 # The arena's mutable state is intentionally outside semantic identity. Its
