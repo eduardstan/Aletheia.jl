@@ -8,9 +8,20 @@ contributors.
 
 **Context.** Shallow checks allowed immutable wrappers to retain mutable values.
 
-**Choice.** An accepted value is owned exactly when it is structurally immutable to any depth: immutable bits types, strings, symbols, frozen collections, and immutable structs whose fields are recursively owned; mutable values and mutable descendants are snapshotted when they are standard collections, otherwise rejected with `OwnershipError` naming the offending type and field path.
+**Choice.** An accepted value is owned exactly when it is a bits type or a
+fieldless value, a frozen collection whose elements are recursively owned, a
+tuple whose elements are recursively owned, or a nonmutable value whose fields
+are recursively owned. The same walk therefore accepts `String`, `SubString`
+with owned fields, plain functions, and closures over owned values; it rejects
+mutable strings such as `Base.LazyString`, string wrappers with mutable fields
+such as `Base.AnnotatedString`, and closures with mutable captured fields.
+Standard arrays, dictionaries, and sets are snapshotted recursively. An
+immutable wrapper is rebuilt only when its replacement preserves `isequal` and
+`hash`; wrappers whose snapshot would change lookup identity (including the
+default identity-equality case) are refused with `OwnershipError`, which tells
+users to define `==` and `hash` or pass owned fields.
 
-**Consequence.** Every retained semantic value uses this one predicate and recursive snapshot at construction.
+**Consequence.** Every retained semantic value uses this one predicate and recursive snapshot at construction, and every accepted caller instance remains usable for lookup.
 
 ## 2026-09-04 — Immutable collection storage for public semantic values
 

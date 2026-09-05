@@ -6,6 +6,7 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
 ## Unreleased
 
 - Enforced one recursive ownership predicate and snapshot across semantic constructors, including nested immutable wrappers and typed field paths; scalar callback results are copied, audit fidelity covers the selected population, and benchmark measurement aggregation and provenance links are checked.
+- Removed string and function ownership exemptions. The recursive walk now inspects concrete string wrappers and captured callback fields, and refuses snapshot replacements that would change an immutable wrapper's lookup identity.
 
 - Rejected mutable opaque values at owned semantic boundaries with `OwnershipError`, added inner constructors for frame, model, provenance, graph, and distribution-program records, and made dictionary Model routes and provenance snapshots use immutable storage. Timed-out benchmark cells now make the run non-publishable and record the incomplete status.
 
