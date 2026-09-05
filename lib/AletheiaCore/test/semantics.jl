@@ -251,6 +251,16 @@ function Aletheia.implication(::MutableTruthAlgebra, a::MutableTruth, b::Mutable
     return MutableTruth(max(0, 10 - a.value + b.value))
 end
 Aletheia.negation(::MutableTruthAlgebra, a::MutableTruth) = MutableTruth(10 - a.value)
+const REUSABLE_MUTABLE_TRUTH = MutableTruth(0)
+function reusable_mutable_truth(name, world)
+    REUSABLE_MUTABLE_TRUTH.value = world === :w2 ? 1 : 0
+    return REUSABLE_MUTABLE_TRUTH
+end
+const VECTORIZED_MUTABLE_TRUTH = [MutableTruth(0)]
+function vectorized_mutable_truth(name, worlds)
+    VECTORIZED_MUTABLE_TRUTH[1].value = name === :p ? 1 : 2
+    return VECTORIZED_MUTABLE_TRUTH
+end
 
 @testset "owned semantic constructors reject mutable opaque values" begin
     world = MutableWorld(1)
@@ -264,10 +274,7 @@ Aletheia.negation(::MutableTruthAlgebra, a::MutableTruth) = MutableTruth(10 - a.
 end
 
 @testset "scalar callbacks copy reusable mutable values" begin
-    buffer = MutableTruth(0)
-    callback = Aletheia.ValuationCallback(
-        (name, world) -> (buffer.value = world === :w2 ? 1 : 0; buffer)
-    )
+    callback = Aletheia.ValuationCallback(reusable_mutable_truth)
     values = Aletheia.atom_values(callback, atom(:p), (:w1, :w2))
     @test values[1] !== values[2]
     @test values[1].value == 0
@@ -279,12 +286,8 @@ end
     p = atom(:p)
     q = atom(:q)
     formula = Conjunction()(p, q)
-    buffer = [MutableTruth(0)]
     scalar = (name, world) -> name === :p ? MutableTruth(1) : MutableTruth(2)
-    batch = (name, worlds) -> begin
-        buffer[1].value = name === :p ? 1 : 2
-        buffer
-    end
+    batch = vectorized_mutable_truth
     vectorized = Model(
         frame, MutableTruthAlgebra(), Aletheia.ValuationCallback(scalar; vectorized=batch)
     )

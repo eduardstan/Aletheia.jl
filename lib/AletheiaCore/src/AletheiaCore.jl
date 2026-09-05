@@ -158,6 +158,8 @@ struct OwnershipError <: Exception
 end
 OwnershipError(value) = OwnershipError(typeof(value), (), "semantic values must be structurally immutable")
 OwnershipError(value, path::Tuple) = OwnershipError(typeof(value), path, "semantic values must be structurally immutable")
+OwnershipError(value, path::Tuple, requirement::String) =
+    OwnershipError(typeof(value), path, requirement)
 
 function _ownership_path(path::Tuple)
     isempty(path) && return "<root>"
@@ -180,16 +182,14 @@ end
 # their type is added next to its definition in semantics.jl.
 function _is_owned(value, seen=IdDict{Any,Bool}())
     T = typeof(value)
-    (isbitstype(T) || value isa Union{Nothing,Missing,Symbol,AbstractString,Type}) &&
-        return true
-    value isa Function && return true # executable callbacks are not semantic payload
+    isbitstype(T) && return true
     value isa FrozenArray && return all(_is_owned(x, seen) for x in value.data)
     value isa FrozenDict && return all(_is_owned(x, seen) for pair in value for x in pair)
     value isa FrozenSet && return all(_is_owned(x, seen) for x in value)
     value isa Tuple && return all(_is_owned(x, seen) for x in value)
     (value isa AbstractArray || value isa AbstractDict || value isa AbstractSet) && return false
-    Base.ismutabletype(T) && return false
     fieldcount(T) == 0 && return true
+    Base.ismutabletype(T) && return false
     haskey(seen, value) && return true
     seen[value] = true
     try
@@ -206,7 +206,13 @@ end
 # snapshots standard collections and rebuilds immutable wrappers when their
 # fields can accept the resulting owned values; otherwise it reports the
 # offending leaf and its field path.
-_immutable_copy(value::Function, path::Tuple, seen::IdDict{Any,Bool}) = value
+function _lookup_equivalent(left, right)
+    try
+        return isequal(left, right) && hash(left) == hash(right)
+    catch
+        return false
+    end
+end
 
 function _immutable_copy(value, path::Tuple, seen::IdDict{Any,Bool})
     _is_owned(value) && return value
@@ -225,12 +231,22 @@ function _immutable_copy(value, path::Tuple, seen::IdDict{Any,Bool})
             changed |= owned !== original
         end
         !changed && return value
-        try
-            candidate = T(fields...)
-            _is_owned(candidate) && return candidate
+        candidate = try
+            T(fields...)
         catch
             # The collection was snapshot-able, but the enclosing opaque type
             # cannot retain the replacement without changing its field type.
+            nothing
+        end
+        if candidate !== nothing && _is_owned(candidate)
+            _lookup_equivalent(value, candidate) || throw(
+                OwnershipError(
+                    value,
+                    path,
+                    "snapshot would change lookup identity; define == and hash for this type or pass owned fields",
+                ),
+            )
+            return candidate
         end
         for (field_number, name) in zip(1:fieldcount(T), fieldnames(T))
             original = getfield(value, field_number)

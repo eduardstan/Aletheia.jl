@@ -7,6 +7,33 @@ function Base.isequal(left::IdentitySensitiveWorld, right::IdentitySensitiveWorl
     return left.id == right.id
 end
 Base.hash(world::IdentitySensitiveWorld, seed::UInt) = hash(world.id, seed)
+const DATASET_CALLBACK_CALLS = Ref(0)
+const DATASET_CALLBACK_BATCHES = Ref(0)
+function dataset_scalar_callback(name, world)
+    DATASET_CALLBACK_CALLS[] += 1
+    return name == "p" && world == 2
+end
+function dataset_batch_callback(name, worlds)
+    DATASET_CALLBACK_BATCHES[] += 1
+    return BitVector([name == "p" && world == 2 for world in worlds])
+end
+const DATASET_FUNCTION_WORLD = Ref{Any}(nothing)
+const DATASET_CALLBACK_WORLD = Ref{Any}(nothing)
+const DATASET_WRAPPED_WORLD = Ref{Any}(nothing)
+const DATASET_FUNCTION_SEEN = Ref(false)
+const DATASET_SCALAR_SEEN = Ref(false)
+const DATASET_BATCH_SEEN = Ref(false)
+const DATASET_WRAPPED_SEEN = Ref(false)
+dataset_function_callback(name, world) =
+    (DATASET_FUNCTION_SEEN[] = world === DATASET_FUNCTION_WORLD[]; true)
+dataset_identity_scalar(name, world) =
+    (DATASET_SCALAR_SEEN[] = world === DATASET_CALLBACK_WORLD[]; true)
+function dataset_identity_batch(name, worlds)
+    DATASET_BATCH_SEEN[] = only(worlds) === DATASET_CALLBACK_WORLD[]
+    return [true]
+end
+dataset_wrapped_callback(name, world) =
+    (DATASET_WRAPPED_SEEN[] = world === DATASET_WRAPPED_WORLD[]; true)
 
 @testset "instance families and vectorized valuation callbacks" begin
     sig = Signature((¬, ∧, Diamond(:R)))
@@ -14,17 +41,10 @@ Base.hash(world::IdentitySensitiveWorld, seed::UInt) = hash(world.id, seed)
     p = atom(pool, "p")
     modal = branch(pool, Diamond(:R), p)
     frame = Frame((1, 2), Dict(:R => Dict(1 => [2], 2 => [2])); index=true)
-    calls = Ref(0)
-    batches = Ref(0)
+    DATASET_CALLBACK_CALLS[] = 0
+    DATASET_CALLBACK_BATCHES[] = 0
     callback = Aletheia.ValuationCallback(
-        (name, world) -> begin
-            calls[] += 1
-            name == "p" && world == 2
-        end;
-        vectorized=(name, worlds) -> begin
-            batches[] += 1
-            BitVector([name == "p" && world == 2 for world in worlds])
-        end,
+        dataset_scalar_callback; vectorized=dataset_batch_callback
     )
     first_model = Model(frame, BOOLEAN, callback)
     second_frame = Frame((1, 2), Dict(:R => Dict(1 => [1], 2 => [1])); index=true)
@@ -39,10 +59,10 @@ Base.hash(world::IdentitySensitiveWorld, seed::UInt) = hash(world.id, seed)
     @test uniform_frame(family) === nothing
 
     @test extension(modal, family, 1) == BitVector([true, true])
-    @test batches[] == 1
+    @test DATASET_CALLBACK_BATCHES[] == 1
     @test check(modal, family, 1, 1) === true
     @test interpret(p, first_model, 1) === false
-    @test calls[] == 1
+    @test DATASET_CALLBACK_CALLS[] == 1
     @test extension(p, family) == [BitVector([false, true]), BitVector([true, false])]
 
     uniform = ModelFamily((first_model, Model(frame, BOOLEAN, Dict("p" => Set([2])))))
@@ -84,29 +104,28 @@ end
         Frame([world], Dict(); index=true) for
         world in (representative_world, function_world, callback_world, wrapped_world)
     ]
-    function_seen = Ref(false)
-    scalar_seen = Ref(false)
-    batch_seen = Ref(false)
-    wrapped_seen = Ref(false)
+    DATASET_FUNCTION_WORLD[] = function_world
+    DATASET_CALLBACK_WORLD[] = callback_world
+    DATASET_WRAPPED_WORLD[] = wrapped_world
+    DATASET_FUNCTION_SEEN[] = false
+    DATASET_SCALAR_SEEN[] = false
+    DATASET_BATCH_SEEN[] = false
+    DATASET_WRAPPED_SEEN[] = false
     callback = Aletheia.ValuationCallback(
-        (name, world) -> (scalar_seen[] = world === callback_world; true);
-        vectorized=(name, worlds) -> begin
-            batch_seen[] = only(worlds) === callback_world
-            [true]
-        end,
+        dataset_identity_scalar; vectorized=dataset_identity_batch
     )
     family = ModelFamily([
         Model(frames[1], BOOLEAN, (name, world) -> true),
         Model(
             frames[2],
             BOOLEAN,
-            (name, world) -> (function_seen[] = world === function_world; true),
+            dataset_function_callback,
         ),
         Model(frames[3], BOOLEAN, callback),
         Model(
             frames[4],
             BOOLEAN,
-            Valuation((name, world) -> (wrapped_seen[] = world === wrapped_world; true)),
+            Valuation(dataset_wrapped_callback),
         ),
     ])
     p = atom(:identity_probe)
@@ -115,13 +134,13 @@ end
         instance_frame(family, instance) === instance_frame(family, 1) for instance in 2:4
     )
     @test interpret(p, instance_model(family, 2), representative_world)
-    @test function_seen[]
+    @test DATASET_FUNCTION_SEEN[]
     @test interpret(p, instance_model(family, 3), representative_world)
-    @test scalar_seen[]
+    @test DATASET_SCALAR_SEEN[]
     @test extension(p, family, 3) == Bool[true]
-    @test batch_seen[]
+    @test DATASET_BATCH_SEEN[]
     @test interpret(p, instance_model(family, 4), representative_world)
-    @test wrapped_seen[]
+    @test DATASET_WRAPPED_SEEN[]
 end
 
 @testset "family apply allocation budget" begin

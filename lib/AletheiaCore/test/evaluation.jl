@@ -15,6 +15,28 @@ Aletheia.fusion(::VectorAlgebra, left::BitVector, right::BitVector) = left .& ri
 Aletheia.join(::VectorAlgebra, left::BitVector, right::BitVector) = left .| right
 Aletheia.implication(::VectorAlgebra, left::BitVector, right::BitVector) = (.!left) .| right
 Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
+const EVALUATION_SCALAR_CALLS = Ref(0)
+const EVALUATION_RELATION_STATE = Ref(true)
+const EVALUATION_CALLBACK_CALLS = Ref(0)
+const EVALUATION_COUNTED_CALLS = Ref(0)
+const EVALUATION_BATCH_CALLS = Ref(0)
+const EVALUATION_SHARED_BUFFER = Ref{Any}(nothing)
+evaluation_scalar_callback(value, world) = (EVALUATION_SCALAR_CALLS[] += 1; true)
+evaluation_relation_callback(world, relation) =
+    EVALUATION_RELATION_STATE[] && world == :a ? (:b,) : ()
+evaluation_cached_callback(value, world) =
+    (EVALUATION_CALLBACK_CALLS[] += 1; world == :w2)
+evaluation_counted_callback(value, world) =
+    (EVALUATION_COUNTED_CALLS[] += 1; value == "p" ? world != :w3 : world != :w1)
+evaluation_counted_batch(value, world) =
+    (EVALUATION_BATCH_CALLS[] += 1; value == "p" ? world != :w3 : world != :w1)
+function evaluation_shared_batch(value, callback_worlds)
+    buffer = EVALUATION_SHARED_BUFFER[]
+    for (slot, world) in enumerate(callback_worlds)
+        buffer[slot] = value == "p" ? world != :w3 : world != :w1
+    end
+    return buffer
+end
 
 @testset "evaluation" begin
     sig = Signature((¬, ∧, ⊗, ∨, →, Diamond(:G), Box(:G), Diamond(:missing), Box(:missing)))
@@ -30,10 +52,10 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
     one = Frame((:only,); index=true)
     propositional = Model(one, BOOLEAN, Dict("p" => Set([:only]), "q" => Set{Symbol}()))
     @test @inferred(check(p, propositional, :only)) === true
-    scalar_calls = Ref(0)
-    scalar_model = Model(Frame((:only,)), (value, world) -> (scalar_calls[] += 1; true), BOOLEAN)
+    EVALUATION_SCALAR_CALLS[] = 0
+    scalar_model = Model(Frame((:only,)), evaluation_scalar_callback, BOOLEAN)
     @test check(p, scalar_model, :only) === true
-    @test scalar_calls[] == 1
+    @test EVALUATION_SCALAR_CALLS[] == 1
     @test @inferred(check(conjunction, propositional, :only)) === false
     @test @inferred(check(fusion_formula, propositional, :only)) === false
     @test @inferred(extension(p, propositional)) == BitVector([true])
@@ -95,10 +117,10 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
         "q" => Dict(:w1 => 0.4, :w2 => 0.8, :w3 => 0.1))), :w1) === 0.5
 
     shared = branch(pool, ∨, conjunction, conjunction)
-    calls = Ref(0)
-    counted = Model(frame, (value, world) -> (calls[] += 1; value == "p" ? world != :w3 : world != :w1), BOOLEAN)
+    EVALUATION_COUNTED_CALLS[] = 0
+    counted = Model(frame, evaluation_counted_callback, BOOLEAN)
     @test extension(shared, counted) == BitVector([false, true, false])
-    @test calls[] == 2 * length(worlds(frame))
+    @test EVALUATION_COUNTED_CALLS[] == 2 * length(worlds(frame))
 
     # A fixed seed keeps the batch exactness corpus reproducible.
     Random.seed!(0xA1E7)
@@ -121,29 +143,22 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
         for name in ("p", "q")))
     @test extension(batch_forms, batch_boolean) == [extension(formula, batch_boolean) for formula in batch_forms]
     @test extension(batch_forms, batch_godel) == [extension(formula, batch_godel) for formula in batch_forms]
-    batch_calls = Ref(0)
-    counted_batch = Model(frame, BOOLEAN, Aletheia.ValuationCallback(
-        (value, world) -> (batch_calls[] += 1; value == "p" ? world != :w3 : world != :w1)))
+    EVALUATION_BATCH_CALLS[] = 0
+    counted_batch = Model(frame, BOOLEAN, Aletheia.ValuationCallback(evaluation_counted_batch))
     batch_shared = [conjunction, disjunction, branch(pool, →, p, q)]
     batch_shared_result = extension(batch_shared, counted_batch)
     @test @inferred(extension(batch_shared, batch_boolean)) ==
         [extension(formula, batch_boolean) for formula in batch_shared]
-    shared_buffer = falses(length(worlds(frame)))
-    shared_batch = (value, callback_worlds) -> begin
-        for (slot, world) in enumerate(callback_worlds)
-            shared_buffer[slot] = value == "p" ? world != :w3 : world != :w1
-        end
-        shared_buffer
-    end
+    EVALUATION_SHARED_BUFFER[] = falses(length(worlds(frame)))
     shared_model = Model(frame, BOOLEAN, Aletheia.ValuationCallback(
         (value, world) -> value == "p" ? world != :w3 : world != :w1;
-        vectorized=shared_batch))
+        vectorized=evaluation_shared_batch))
     scalar_model = Model(frame, BOOLEAN, Aletheia.ValuationCallback(
         (value, world) -> value == "p" ? world != :w3 : world != :w1))
     @test extension([conjunction], shared_model) == extension([conjunction], scalar_model)
     plain_counted = Model(frame, BOOLEAN, Dict("p" => Set([:w1, :w2]), "q" => Set([:w2, :w3])))
     @test batch_shared_result == [extension(formula, plain_counted) for formula in batch_shared]
-    @test batch_calls[] == 2 * length(worlds(frame))
+    @test EVALUATION_BATCH_CALLS[] == 2 * length(worlds(frame))
 
     batch_boolean_other = Model(frame, BOOLEAN, Dict(
         "p" => Set(world for world in worlds(frame) if rand(batch_rng, Bool)),
@@ -202,12 +217,11 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
                             Dict("p" => Dict(:a => 0.0, :b => 0.6)))
     @test extension(box, duplicate_model)[1] ≈ 0.6
 
-    relation_state = Ref(true)
-    relation_frame = Frame((:a, :b), (world, relation) ->
-        relation_state[] && world == :a ? (:b,) : (); index=true)
+    EVALUATION_RELATION_STATE[] = true
+    relation_frame = Frame((:a, :b), evaluation_relation_callback; index=true)
     relation_model = Model(relation_frame, BOOLEAN, Dict("p" => Set([:b])))
     @test extension(diamond, relation_model) == BitVector([true, false])
-    relation_state[] = false
+    EVALUATION_RELATION_STATE[] = false
     @test extension(diamond, relation_model) == BitVector([false, false])
 
     custom_pool = FormulaPool(Signature((¬, ∧, ∨, →, Diamond(:G), Box(:G), TestXor())))
@@ -230,13 +244,13 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
         clear!(cache)
         @test extension(nested, cached_model; cache=cache) == extension(nested, cached_model)
     end
-    callback_calls = Ref(0)
-    cached_callback_model = Model(frame, (value, world) -> (callback_calls[] += 1; world == :w2), BOOLEAN)
+    EVALUATION_CALLBACK_CALLS[] = 0
+    cached_callback_model = Model(frame, evaluation_cached_callback, BOOLEAN)
     callback_cache = EvaluationCache(cached_callback_model)
     @test check(nested, cached_callback_model, :w1; cache=callback_cache) === false
-    cold_calls = callback_calls[]
+    cold_calls = EVALUATION_CALLBACK_CALLS[]
     @test check(nested, cached_callback_model, :w1; cache=callback_cache) === false
-    @test callback_calls[] == cold_calls
+    @test EVALUATION_CALLBACK_CALLS[] == cold_calls
     @test_throws ArgumentError extension(nested, boolean; cache=EvaluationCache(godel))
     other_pool = FormulaPool(sig)
     other_p = atom(other_pool, "p")

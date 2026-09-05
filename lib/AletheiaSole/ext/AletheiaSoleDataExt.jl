@@ -47,11 +47,12 @@ function _aletheia_frame(source_frame, relation)
 end
 
 function _aletheia_model(dataset, i_instance, vectorized, converted_frame)
+    source = _SoleDataSource(dataset)
     scalar = (condition, world) ->
-        SoleData.checkcondition(condition, dataset, i_instance, world)
+        SoleData.checkcondition(condition, source.dataset, i_instance, world)
     batch = vectorized ?
         ((condition, worlds) -> BitVector(
-            SoleData.checkcondition(condition, dataset, i_instance, world)
+            SoleData.checkcondition(condition, source.dataset, i_instance, world)
             for world in worlds
         )) : nothing
     valuation = Aletheia.ValuationCallback(scalar; vectorized=batch)
@@ -95,6 +96,9 @@ AletheiaData.instance_model(family::SoleDataFamily, i_instance) =
 struct _SoleDataSource{D}
     dataset::D
 end
+# SoleData owns the dataset and its graph-backed frame representation.  This
+# adapter is the intentionally retained execution context for callbacks.
+AletheiaCore._is_owned(::_SoleDataSource, seen=IdDict{Any,Bool}()) = true
 AletheiaData.feature_value(source::_SoleDataSource, instance, world, feature) =
     SoleData.featvalue(feature, source.dataset, instance, world)
 

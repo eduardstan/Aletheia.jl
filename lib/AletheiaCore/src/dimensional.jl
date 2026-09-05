@@ -526,9 +526,9 @@ true
 ```
 """
 function rectangle_frame(x, y=x; index=true)
-    xb, yb = _boundaries(x), _boundaries(y)
+    xb, yb = _immutable_copy(_boundaries(x)), _immutable_copy(_boundaries(y))
     ws = _rectangle_worlds(xb, yb)
-    xworlds, yworlds = collect(_interval_worlds(xb)), collect(_interval_worlds(yb))
+    xworlds, yworlds = tuple(_interval_worlds(xb)...), tuple(_interval_worlds(yb)...)
     relation_map = (source, relation) -> begin
         targets = relation isa RectangleRelation ?
             _rectangle_relation_successors(relation, source, xb, yb, xworlds, yworlds) :
@@ -568,11 +568,13 @@ function point_frame(domain, ydomain=nothing; index=true)
             throw(ArgumentError("point values must be strictly increasing"))
         ws = tuple((Point(x, y) for x in xvalues for y in yvalues)...)
     end
-    relation_map = (source, relation) -> begin
-        targets = relation_successors(relation, source, ws)
-        targets === nothing &&
-            (targets = (target for target in ws if _dimensional_relation_holds(relation, source, target, ws)))
-        targets
+    relation_map = let worlds = ws
+        (source, relation) -> begin
+            targets = relation_successors(relation, source, worlds)
+            targets === nothing &&
+                (targets = (target for target in worlds if _dimensional_relation_holds(relation, source, target, worlds)))
+            targets
+        end
     end
     Frame(ws, relation_map; index=index)
 end

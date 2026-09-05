@@ -352,7 +352,7 @@ function run_showcase(; io=stdout)
 
     # e. A fixed neural boundary, exact finite extraction, and an honest metric population.
     network = FixedNetwork((1.0, 1.0, 0.0), -0.8)
-    row_by_id = Dict(row.id => row for row in rows)
+    row_by_id = Aletheia.AletheiaCore._immutable_copy(Dict(row.id => row for row in rows))
     encoder = x -> x isa Symbol ? row_values(row_by_id[x]) : row_values(x)
     neural = neural_valuation(network, encoder; algebra=BOOLEAN)
     direct_outputs = [network(encoder(row)) for row in rows]

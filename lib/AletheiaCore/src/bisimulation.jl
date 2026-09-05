@@ -326,8 +326,8 @@ true
 ```
 """
 function bisimulation_contraction(model::Model; atoms=nothing, relations=nothing)
-    atom_names = atoms === nothing ? _valuation_atoms(model) : collect(atoms)
-    relation_names = relations === nothing ? _model_relation_names(frame(model)) : collect(relations)
+    atom_names = atoms === nothing ? tuple(_valuation_atoms(model)...) : tuple(atoms...)
+    relation_names = relations === nothing ? tuple(_model_relation_names(frame(model))...) : tuple(relations...)
     quotient_classes = _classes_for_model(model, atom_names, relation_names)
     mapping = Dict{Any,Any}()
     for class in quotient_classes

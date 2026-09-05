@@ -13,6 +13,19 @@ end
 struct NestedWorldBox
     inner::ImmutableWorldBox
 end
+struct IdentityWorldBox
+    payload::Any
+end
+struct EqualWorldBox
+    payload::Any
+end
+Base.:(==)(left::EqualWorldBox, right::EqualWorldBox) = left.payload == right.payload
+Base.hash(value::EqualWorldBox, seed::UInt) = hash(value.payload, seed)
+struct UnhashableWorldBox
+    payload::Any
+end
+Base.:(==)(left::UnhashableWorldBox, right::UnhashableWorldBox) = true
+Base.hash(::UnhashableWorldBox, ::UInt) = error("hash intentionally unavailable")
 
 """Discover loaded Aletheia package modules and their complete public bindings."""
 function _ownership_inventory()
@@ -97,6 +110,98 @@ end
     @test _structurally_owned(model)
     mutable_probe = (payload=[1],)
     @test !_structurally_owned(mutable_probe.payload)
+
+    # Atomic ownership follows the same field walk: fieldless strings and
+    # functions pass, while composite strings and captured mutable state do not.
+    @test _structurally_owned("owned string")
+    @test _structurally_owned(SubString("owned substring", 1, 5))
+    plain_callback = (x -> x)
+    immutable_callback = let offset = 1
+        x -> x + offset
+    end
+    @test _structurally_owned(plain_callback)
+    @test _structurally_owned(immutable_callback)
+
+    lazy = Base.LazyString("data: ", [1, 2, 3])
+    @test !_structurally_owned(lazy)
+    @test_throws Aletheia.OwnershipError Aletheia.KGEntity(
+        :lazy; metadata=Dict(:tag => lazy)
+    )
+    if isdefined(Base, :AnnotatedString)
+        annotated_type = getfield(Base, :AnnotatedString)
+        annotated = annotated_type("world1", [(1:3, :label, "A")])
+        @test !_structurally_owned(annotated)
+        annotation_error = try
+            Aletheia.Frame([annotated]; index=true)
+        catch error
+            error
+        end
+        @test annotation_error isa Aletheia.OwnershipError
+        @test annotation_error.path == (:annotations,)
+    end
+
+    ref_callback = let state = Ref([2])
+        (world, relation) -> (relation === :R ? state[] : ())
+    end
+    @test !_structurally_owned(ref_callback)
+    callback_error = try
+        Aletheia.Frame([1, 2], ref_callback)
+    catch error
+        error
+    end
+    @test callback_error isa Aletheia.OwnershipError
+    @test callback_error.path == (:state,)
+
+    # Rebuilding an immutable wrapper around a collection changes identity
+    # equality. Refuse that boundary rather than making the caller's world
+    # impossible to look up after construction.
+    identity_error = try
+        Aletheia.Frame([IdentityWorldBox([:a, :b])]; index=true)
+    catch error
+        error
+    end
+    @test identity_error isa Aletheia.OwnershipError
+    @test identity_error.value_type === IdentityWorldBox
+    @test identity_error.path == ()
+    @test occursin("define == and hash", sprint(showerror, identity_error))
+
+    owned_identity = IdentityWorldBox((:a, :b))
+    identity_frame = Aletheia.Frame([owned_identity]; index=true)
+    @test worlds(identity_frame)[1] === owned_identity
+    @test Aletheia.world_position(identity_frame, owned_identity) == 1
+    identity_model = Aletheia.Model(identity_frame, Dict((:p, owned_identity) => true))
+    @test Aletheia.check(Aletheia.atom(:p), identity_model, owned_identity) === true
+
+    equal_world = EqualWorldBox([:a, :b])
+    equal_frame = Aletheia.Frame([equal_world]; index=true)
+    @test worlds(equal_frame)[1] !== equal_world
+    @test Aletheia.world_position(equal_frame, equal_world) == 1
+    equal_model = Aletheia.Model(equal_frame, Dict((:p, equal_world) => true))
+    @test Aletheia.check(Aletheia.atom(:p), equal_model, equal_world) === true
+
+    unhashable_error = try
+        Aletheia.Frame([UnhashableWorldBox([:a])]; index=true)
+    catch error
+        error
+    end
+    @test unhashable_error isa Aletheia.OwnershipError
+    @test occursin("define == and hash", sprint(showerror, unhashable_error))
+
+    # Exercise the same boundaries over generated collection/capture variants.
+    for payload in ([1], Dict(:a => 1), Set([:a]))
+        @test_throws Aletheia.OwnershipError Aletheia.Frame(
+            [IdentityWorldBox(payload)]; index=true
+        )
+    end
+    for make_callback in (() -> let state = Ref([2])
+        (world, relation) -> state[]
+    end, () -> let state = Ref(Dict(:R => [2]))
+        (world, relation) -> state[]
+    end)
+        callback = make_callback()
+        @test !_structurally_owned(callback)
+        @test_throws Aletheia.OwnershipError Aletheia.Frame([1, 2], callback)
+    end
 
     @test_throws Aletheia.OwnershipError Aletheia.Frame(
         [OwnershipWorld(1)], Dict(); index=true

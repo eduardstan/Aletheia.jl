@@ -366,6 +366,10 @@ struct PreparedScalarData{D,S,M,R} <: AbstractScalarDataset
     relation_index::R
     version::UInt64
 end
+# Prepared scalar data owns its private memo/index state and validates source
+# versions when read; it is the immutable callback context, not a public mutable
+# payload.
+AletheiaCore._is_owned(::PreparedScalarData, seen=IdDict{Any,Bool}()) = true
 
 ScalarEvaluationCache(data::PreparedScalarData) = ScalarEvaluationCache(data.version)
 
