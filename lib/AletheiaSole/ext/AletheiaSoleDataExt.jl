@@ -117,8 +117,19 @@ function _sole_features(dataset, requested)
     if requested !== nothing && !isempty(requested)
         return collect(requested)
     end
-    available = SoleData.features(dataset)
-    available === nothing ? nothing : collect(available)
+    available = try
+        SoleData.features(dataset)
+    catch error
+        (error isa MethodError || error isa ErrorException) || rethrow()
+        nothing
+    end
+    available !== nothing && return collect(available)
+    hasfield(typeof(dataset), :d) || return nothing
+    found = Set{Any}()
+    for (channels, _) in getfield(dataset, :d), world_values in Base.values(channels), feature in keys(world_values)
+        push!(found, feature)
+    end
+    collect(found)
 end
 
 """Prepare a SoleData modal logiset through Aletheia's scalar protocol."""
