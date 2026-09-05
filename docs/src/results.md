@@ -174,8 +174,8 @@ and scores hypotheses over all interpretations through the check/eval loop.
 
 Aletheia evaluates each extension formula DAG once into a `BitVector`, while the
 equivalent SoleLogics all-world loop performs one shared-memo evaluation per
-invocation. Aletheia's relation adjacency is cached on the reused `Model` after
-its first check, while SoleLogics rebuilds its structural memo per call. Thus the
+invocation. Aletheia's relation adjacency is held in the weak evaluator-side registry keyed by
+frame identity after its first check, while SoleLogics rebuilds its structural memo per call. Thus the
 modal rows are warm repeated-model measurements, not first-call comparisons; the
 asymmetry is intentional and labelled.
 

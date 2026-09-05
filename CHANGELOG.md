@@ -5,6 +5,8 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
 
 ## Unreleased
 
+- Sealed interned formula arenas against node replacement, released prepared scalar and frame cache state with its owning records, synchronized aggregate memo reads, and corrected the SoleData scalar bridge and cache documentation.
+
 - Closed recursive ownership escapes for `Core.SimpleVector`, dimensional interval providers, and prepared scalar data. Interval inputs and scalar relation indexes are frozen, aggregate memos and frame adjacency live only in evaluator-side caches, and fieldless mutable values are refused.
 - Enforced one recursive ownership predicate and snapshot across semantic constructors, including nested immutable wrappers and typed field paths; scalar callback results are copied, audit fidelity covers the selected population, and benchmark measurement aggregation and provenance links are checked.
 - Removed string and function ownership exemptions. The recursive walk now inspects concrete string wrappers and captured callback fields, and refuses snapshot replacements that would change an immutable wrapper's lookup identity.

@@ -9,26 +9,7 @@ contributors.
 **Context.** Shallow checks allowed immutable wrappers to retain mutable values,
 and fieldless runtime containers could hide mutable elements.
 
-**Choice.** Every value a user supplies to a semantic constructor is
-structurally owned to any depth. Bits values, known immutable atoms, tuples, and
-frozen collections are accepted only when their contents are recursively owned;
-fieldless mutable values are refused, while `Core.SimpleVector` is inspected
-through its elements. Standard arrays, dictionaries, and sets are snapshotted
-recursively. Mutable opaque values and closures with mutable captured fields are
-refused with a path-aware `OwnershipError`. An immutable wrapper is rebuilt only
-when its replacement preserves `isequal` and `hash`; otherwise construction is
-refused with guidance to define `==` and `hash` or pass owned fields.
-
-**Consequence.** Every retained semantic value uses this one predicate and
-recursive snapshot at construction, and every accepted caller instance remains
-usable for lookup. Frame adjacency is an evaluator-side cache keyed by frame
-identity, and scalar aggregate memos are an evaluator-side cache keyed by the
-hash of `PreparedScalarData`; neither cache is a field of, or reachable from, a
-semantic value. A prepared scalar record stores only a source token; its
-external source adapter is kept in the evaluator-side registry rather than in
-the record. Frame caches have no invalidation because frames are immutable;
-scalar caches are cleared by `clear!` and replaced when the prepared source
-version changes.
+**Choice.** Every value a user supplies to a semantic constructor is structurally owned to any depth. The constructor recursively snapshots standard arrays, dictionaries, and sets; accepts only recursively owned immutable wrappers; and refuses a mutable opaque value, mutable closure capture, or an immutable wrapper whose required snapshot cannot preserve `isequal` and `hash`, with a path-aware `OwnershipError`. The formula intern arena's mutable node storage and the evaluator caches are implementation state: the arena is named separately from the frame-adjacency cache and scalar aggregate-memo cache, and none of that mutable state is part of any semantic value's identity, hash, or equality. Interned node records are immutable and append-only under the pool lock, so an existing node cannot be overwritten. The frame-adjacency registry uses weak frame references and a `release!` operation; its entry lasts only while its frame is live. The scalar registry uses a per-prepared-record token, releases its source and memo entries at token finalization or through `release!`/`clear!`, and never silently replaces stale data: a source-version mismatch throws `ArgumentError` instructing the caller to re-run `prepare_scalar`.
 
 ## 2026-09-04 — Immutable collection storage for public semantic values
 

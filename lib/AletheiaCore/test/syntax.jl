@@ -255,3 +255,28 @@ end
     @test_throws ArgumentError parse(pool, "¬(p,q)")
     @test_throws ArgumentError parse(pool, "z(p)")
 end
+
+
+@testset "sealed formula arena ownership" begin
+    pool = FormulaPool(Signature((¬,)))
+    p = atom(pool, :p)
+    formula = branch(pool, ¬, p)
+    @test !(pool.nodes isa Vector)
+    @test_throws Exception setindex!(pool.nodes, AletheiaCore._PoolNode(0x01, :poison, ()), p.id)
+    frame = Frame((1,), Dict(); index=true)
+    model = Model(frame, Dict((1, :p) => false))
+    @test check(formula, model, 1)
+    @test AletheiaCore._is_owned(formula)
+
+    mutable struct HandMadeMutableState
+        value::Int
+    end
+    @test !AletheiaCore._is_owned(HandMadeMutableState(1))
+
+    root = normpath(@__DIR__, "../../..")
+    source_files = String[]
+    for (directory, _, files) in walkdir(joinpath(root, "lib"))
+        append!(source_files, joinpath.(directory, files[endswith.(files, ".jl")]))
+    end
+    @test all(text -> !occursin(r"_is_owned\s*\([^)]*::[^)]*\)\s*=\s*true", read(text, String)), source_files)
+end

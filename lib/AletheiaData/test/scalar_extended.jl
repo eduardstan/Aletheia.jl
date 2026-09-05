@@ -53,7 +53,11 @@
     @test clear!(cache) === cache
     traced = batch_apply([modal], prepared; trace=true)
     @test any(entry -> entry.kind == :aggregate_memo_hit, traced.traces)
-    clear!(prepared)
+    release!(prepared)
+    @test !haskey(AletheiaData._prepared_sources, prepared.source_key)
+    @test !haskey(AletheiaData._prepared_memos, prepared.source_key)
+    prepared = prepare_scalar(source; features=[Val(:x), Val(:twice)],
+        frames=[fr1, fr2], instances=[1, 2], relations=(:R,))
     traced_cold = batch_apply([modal], prepared; trace=true)
     @test any(entry -> entry.kind == :representative_aggregation, traced_cold.traces)
     source.version = 2
@@ -73,6 +77,27 @@ struct ScalarPropertySource
     instances::Vector{Int}
 end
 AletheiaData.feature_value(s::ScalarPropertySource, i, w, ::Val{:x}) = s.values[(i, w)]
+
+
+@testset "prepared state lifetime and concurrent memo reads" begin
+    source = ScalarPropertySource(Dict((1, :a) => 1.0, (1, :b) => 2.0),
+        [Frame((:a, :b), Dict(:R => Dict(:a => [:b], :b => [])); index=true)], [1])
+    prepared = prepare_scalar(source; features=[Val(:x)], precompute_features=true)
+    Threads.@threads for i in 1:64
+        @assert aggregate_value(prepared, 1, :a, :R, Val(:x), maximum) == 2.0
+    end
+    key = prepared.source_key
+    prepared = nothing
+    for _ in 1:20
+        GC.gc()
+        (!haskey(AletheiaData._prepared_sources, key) &&
+            !haskey(AletheiaData._prepared_memos, key)) && break
+        yield()
+    end
+    @test !haskey(AletheiaData._prepared_sources, key)
+    @test !haskey(AletheiaData._prepared_memos, key)
+end
+
 
 @testset "scalar protocol edge cases" begin
     fr = Frame((:a, :b), Dict(:R => Dict(:a => [:b], :b => [])); index=true)
@@ -116,6 +141,7 @@ AletheiaData.feature_value(s::ScalarPropertySource, i, w, ::Val{:x}) = s.values[
     @test aggregate_value(prep, 1, (:a, :b), :R, Val(:x), maximum) == 2.0
     @test clear!(prep) === prep
     @test clear!(AggregateMemoStore()) isa AggregateMemoStore
+    prep = prepare_scalar(props; features=[Val(:x)], frames=[fr], instances=[1])
 
     sig = Signature((¬, ∧, ∨, →, Diamond(:R), Box(:R)))
     p = FormulaPool(sig)

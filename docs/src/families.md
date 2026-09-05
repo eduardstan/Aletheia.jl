@@ -56,7 +56,8 @@ true
 `extension(φ, family)` returns one extension per instance, in instance order;
 `extension(φ, family, i)` and `check(φ, family, i, world)` address a single
 instance. Extension results are not cached across instances; relation adjacency
-on a shared `Frame` may be cached and reused.
+is held in the weak evaluator-side registry and may be reused while a shared
+`Frame` remains live.
 
 ## When instances share a frame
 
@@ -79,8 +80,9 @@ true
 true
 ```
 
-This matters for cost, not just for description: relation adjacency is cached
-on the `Frame`, so uniform `ModelFamily` instances reuse one adjacency index. External adapters
+This matters for cost, not just for description: relation adjacency is held in the
+weak evaluator-side registry keyed by frame identity, so uniform `ModelFamily` instances
+reuse one adjacency index while the frame remains live. External adapters
 that provide equal but distinct frames should not assume identity-level sharing.
 
 ## Adapting an external dataset

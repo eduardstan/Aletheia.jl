@@ -47,12 +47,12 @@ function _aletheia_frame(source_frame, relation)
 end
 
 function _aletheia_model(dataset, i_instance, vectorized, converted_frame)
-    source = _SoleDataSource(dataset)
+    prepared = AletheiaData.prepare_scalar(dataset; instances=[i_instance])
     scalar = (condition, world) ->
-        SoleData.checkcondition(condition, source.dataset, i_instance, world)
+        AletheiaData.scalar_check(condition, prepared, i_instance, world)
     batch = vectorized ?
         ((condition, worlds) -> BitVector(
-            SoleData.checkcondition(condition, source.dataset, i_instance, world)
+            AletheiaData.scalar_check(condition, prepared, i_instance, world)
             for world in worlds
         )) : nothing
     valuation = Aletheia.ValuationCallback(scalar; vectorized=batch)
@@ -95,15 +95,41 @@ AletheiaData.instance_model(family::SoleDataFamily, i_instance) =
 # world × instance × feature layout.
 struct _SoleDataSource{D}
     dataset::D
+    _SoleDataSource{D}(dataset::D, ::Val{:snapshot}) where D = new{D}(dataset)
 end
-# SoleData owns the dataset and its graph-backed frame representation.  This
-# adapter is the intentionally retained execution context for callbacks.
-AletheiaCore._is_owned(::_SoleDataSource, seen=IdDict{Any,Bool}()) = true
+function _SoleDataSource(dataset::SoleData.AbstractModalLogiset)
+    snapshot = try
+        deepcopy(dataset)
+    catch
+        throw(AletheiaCore.OwnershipError(
+            dataset, (), "SoleData sources must be snapshot-able before preparation"
+        ))
+    end
+    return _SoleDataSource{typeof(snapshot)}(snapshot, Val(:snapshot))
+end
+# The source is kept only in the prepared-state registry. Prepared semantic
+# records contain dense values and a deep-copied SoleData source snapshot, not
+# the caller's mutable adapter.
 AletheiaData.feature_value(source::_SoleDataSource, instance, world, feature) =
     SoleData.featvalue(feature, source.dataset, instance, world)
 
 function _sole_features(dataset, requested)
-    requested === nothing || !isempty(requested) ? collect(requested) : collect(SoleData.features(dataset))
+    if requested !== nothing && !isempty(requested)
+        return collect(requested)
+    end
+    available = try
+        SoleData.features(dataset)
+    catch error
+        (error isa MethodError || error isa ErrorException) || rethrow()
+        nothing
+    end
+    available !== nothing && return collect(available)
+    hasfield(typeof(dataset), :d) || return nothing
+    found = Set{Any}()
+    for (channels, _) in getfield(dataset, :d), world_values in Base.values(channels), feature in keys(world_values)
+        push!(found, feature)
+    end
+    collect(found)
 end
 
 """Prepare a SoleData modal logiset through Aletheia's scalar protocol."""
@@ -114,10 +140,18 @@ function AletheiaData.prepare_scalar(dataset::SoleData.AbstractModalLogiset;
     n = SoleData.ninstances(dataset)
     labels = instances === nothing ? collect(1:n) : collect(instances)
     source_frames = [SoleData.frame(dataset, i) for i in labels]
+    function sole_accessibles(fr, w)
+        isnothing(relation) || return SoleData.accessibles(fr, w, relation)
+        try
+            SoleData.accessibles(fr, w)
+        catch error
+            error isa MethodError || rethrow()
+            ()
+        end
+    end
     converted = AletheiaData._share_frames([Aletheia.Frame(collect(SoleData.allworlds(fr)),
-        Dict(:R => Dict(w => Tuple(isnothing(relation) ?
-            SoleData.accessibles(fr, w) : SoleData.accessibles(fr, w, relation))
-            for w in SoleData.allworlds(fr))); index=true) for fr in source_frames])
+        Dict(:R => Dict(w => Tuple(sole_accessibles(fr, w)) for w in SoleData.allworlds(fr)));
+            index=true) for fr in source_frames])
     feature_list = _sole_features(dataset, features)
     AletheiaData.prepare_scalar(_SoleDataSource(dataset); features=feature_list,
         frames=converted, relations=isempty(relations) ? (:R,) : relations,
@@ -126,14 +160,18 @@ function AletheiaData.prepare_scalar(dataset::SoleData.AbstractModalLogiset;
         worlds=worlds, version=version)
 end
 
-# Existing SoleData condition payloads remain usable in pooled atoms.  The
-# adapter deliberately delegates the single-world predicate to SoleData while
-# all formula and aggregate traversal stays in Aletheia.
+# Existing SoleData condition payloads remain usable in pooled atoms.  Read
+# through the prepared snapshot so callers use Aletheia's integer world order.
 function AletheiaData.scalar_check(condition::SoleData.AbstractScalarCondition,
         data::AletheiaData.PreparedScalarData, instance, world)
-    source = data.source
+    source = AletheiaData.source(data)
     source isa _SoleDataSource || throw(ArgumentError("prepared data was not built from SoleData"))
-    SoleData.checkcondition(condition, source.dataset, instance, world)
+    frame = AletheiaData._frame(data, instance)
+    world_key = world isa Integer ? Aletheia.worlds(frame)[world] : world
+    SoleData.test_operator(condition)(
+        AletheiaData.feature_value(data, instance, world_key, SoleData.feature(condition)),
+        SoleData.threshold(condition),
+    )
 end
 
 # Install convenient aliases after the extension is loaded.  Parent modules are

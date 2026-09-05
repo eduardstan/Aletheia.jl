@@ -380,6 +380,54 @@ struct _PoolNode
     children::Tuple{Vararg{Int}}
 end
 
+# Interned nodes are append-only. The arena intentionally has no `setindex!`
+# method, so a formula handle cannot replace an existing node through its pool.
+mutable struct _PoolArena <: AbstractVector{_PoolNode}
+    const marker::UInt8
+    _PoolArena(::Val{:new}) = new(0x00)
+end
+const _pool_arena_lock = ReentrantLock()
+const _pool_arena_storage = IdDict{_PoolArena,Vector{_PoolNode}}()
+function _PoolArena()
+    arena = _PoolArena(Val(:new))
+    lock(_pool_arena_lock)
+    try
+        _pool_arena_storage[arena] = _PoolNode[]
+    finally
+        unlock(_pool_arena_lock)
+    end
+    return arena
+end
+function _pool_nodes(arena::_PoolArena)
+    lock(_pool_arena_lock)
+    try
+        get!(_pool_arena_storage, arena) do
+            _PoolNode[]
+        end
+    finally
+        unlock(_pool_arena_lock)
+    end
+end
+function _release_pool_arena(pool)
+    lock(_pool_arena_lock)
+    try
+        delete!(_pool_arena_storage, pool.nodes)
+    finally
+        unlock(_pool_arena_lock)
+    end
+    return nothing
+end
+Base.isequal(left::_PoolArena, right::_PoolArena) = left === right
+Base.hash(arena::_PoolArena, h::UInt) = hash(objectid(arena), h)
+Base.size(arena::_PoolArena) = (length(_pool_nodes(arena)),)
+Base.length(arena::_PoolArena) = length(_pool_nodes(arena))
+Base.getindex(arena::_PoolArena, index::Int) = _pool_nodes(arena)[index]
+function _append_node!(arena::_PoolArena, node::_PoolNode)
+    storage = _pool_nodes(arena)
+    push!(storage, node)
+    return length(storage)
+end
+
 """
     FormulaPool(signature)
 
@@ -396,16 +444,23 @@ julia> isdefined(AletheiaCore, Symbol("FormulaPool"))
 true
 ```
 """
-mutable struct FormulaPool{S<:Signature}
+mutable struct FormulaPool{S<:Signature} <: _SealedArena
     signature::S
     index::Dict{Any,Int}
-    nodes::Vector{_PoolNode}
+    nodes::_PoolArena
     lock::ReentrantLock
 end
 
 function FormulaPool(signature::Signature)
-    FormulaPool(signature, Dict{Any,Int}(), _PoolNode[], ReentrantLock())
+    arena = _PoolArena()
+    pool = FormulaPool(signature, Dict{Any,Int}(), arena, ReentrantLock())
+    finalizer(_release_pool_arena, pool)
+    pool
 end
+
+# The arena's mutable state is intentionally outside semantic identity. Its
+# only mutation is append-only interning under the pool lock.
+_sealed_arena_owned(::FormulaPool, seen) = true
 
 """Return the signature associated with a formula pool.
 
@@ -435,12 +490,40 @@ julia> isdefined(AletheiaCore, Symbol("Formula"))
 true
 ```
 """
-# Formula identity is backed by the deliberately mutable intern pool; the pool
-# is implementation state and is not caller-owned semantic payload.
-_is_owned(::FormulaPool, seen=IdDict{Any,Bool}()) = true
-abstract type Formula end
+abstract type Formula <: _InternedFormula end
 
-_is_owned(::Formula, seen=IdDict{Any,Bool}()) = true
+# A handle is owned when its sealed arena record still agrees with its
+# immutable fields. Child ids are stable references into the append-only arena.
+function _interned_formula_owned(value::Formula, seen)
+    hasproperty(value, :pool) && hasproperty(value, :id) || return false
+    pool = value.pool
+    pool isa FormulaPool || return false
+    _sealed_arena_owned(pool, seen) || return false
+    lock(pool.lock)
+    try
+        1 <= value.id <= length(pool.nodes) || return false
+        node = pool.nodes[value.id]
+        if node.kind == 0x01
+            payload = hasproperty(value, :value) ? value.value :
+                (hasproperty(value, :payload) ? value.payload : return false)
+            return isequal(node.payload, payload) && _is_owned(payload, seen)
+        end
+        hasproperty(value, :connective) || return false
+        connective = value.connective
+        ids = if hasproperty(value, :children)
+            value.children
+        elseif hasproperty(value, :childview)
+            value.childview.ids
+        else
+            return false
+        end
+        return node.kind == 0x02 && isequal(node.payload, connective) &&
+            node.children == ids &&
+            all(1 <= child <= length(pool.nodes) for child in ids)
+    finally
+        unlock(pool.lock)
+    end
+end
 _immutable_copy(value::Formula, path::Tuple, seen::IdDict{Any,Bool}) = value
 
 # Pool nodes are trusted after interning.  This private tag selects the
@@ -753,7 +836,7 @@ function _intern!(pool::FormulaPool, kind::UInt8, payload, childids::Tuple{Varar
         existing = get(pool.index, key, 0)
         existing != 0 && return existing
         new_id = length(pool.nodes) + 1
-        push!(pool.nodes, _PoolNode(kind, payload, childids))
+        _append_node!(pool.nodes, _PoolNode(kind, payload, childids))
         pool.index[key] = new_id
         return new_id
     finally

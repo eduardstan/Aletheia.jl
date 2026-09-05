@@ -364,19 +364,33 @@ julia> prep isa PreparedScalarData
 true
 ```
 """
+mutable struct _PreparedLifetime <: AletheiaCore._OwnedImplementationState end
+
 struct PreparedScalarData{S,R} <: AbstractScalarDataset
     source_key::UInt
     store::S
     relation_index::R
     version::UInt64
+    lifetime::_PreparedLifetime
 end
 
 # Source adapters and aggregate memo tables are evaluator state, not semantic
-# payload. Neither registry is reachable through a prepared value's fields.
+# payload. Each entry is keyed by a unique prepared record token and released
+# by that token's finalizer or by `release!`/`clear!`.
 const _prepared_state_lock = ReentrantLock()
 const _prepared_sources = Dict{UInt,Any}()
 const _prepared_memos = Dict{UInt,AggregateMemoStore}()
 const _next_source_key = Ref{UInt}(0)
+function _release_prepared_key(key::UInt)
+    lock(_prepared_state_lock)
+    try
+        pop!(_prepared_sources, key, nothing)
+        pop!(_prepared_memos, key, nothing)
+    finally
+        unlock(_prepared_state_lock)
+    end
+    return nothing
+end
 function _register_source(source)
     lock(_prepared_state_lock)
     try
@@ -391,14 +405,15 @@ end
 function _prepared_source(data::PreparedScalarData)
     lock(_prepared_state_lock)
     try
-        return _prepared_sources[data.source_key]
+        return get(_prepared_sources, data.source_key) do
+            throw(ArgumentError("prepared scalar data has been released; re-run prepare_scalar"))
+        end
     finally
         unlock(_prepared_state_lock)
     end
 end
-# Aggregate memo tables are keyed by the hash of the owned prepared record.
 function _aggregate_memos(data::PreparedScalarData)
-    key = hash(data)
+    key = data.source_key
     lock(_prepared_state_lock)
     try
         memo = get!(_prepared_memos, key) do
@@ -410,6 +425,33 @@ function _aggregate_memos(data::PreparedScalarData)
         return memo
     finally
         unlock(_prepared_state_lock)
+    end
+end
+
+function AletheiaCore._is_owned(data::PreparedScalarData, seen=IdDict{Any,Bool}())
+    return AletheiaCore._is_owned(data.store, seen) &&
+        AletheiaCore._is_owned(data.relation_index, seen) &&
+        data.lifetime isa _PreparedLifetime
+end
+function _memo_contains(data::PreparedScalarData, field::Symbol, key)
+    memo = _aggregate_memos(data)
+    lock(memo.lock)
+    try
+        table = field === :global_values ? memo.global_values :
+            field === :relational_values ? memo.relational_values :
+            throw(ArgumentError("unknown scalar memo table: $field"))
+        return haskey(table, key)
+    finally
+        unlock(memo.lock)
+    end
+end
+function _memos_empty(data::PreparedScalarData)
+    memo = _aggregate_memos(data)
+    lock(memo.lock)
+    try
+        return isempty(memo.global_values) && isempty(memo.relational_values)
+    finally
+        unlock(memo.lock)
     end
 end
 
@@ -521,9 +563,12 @@ function clear!(cache::ScalarEvaluationCache)
     end
     return cache
 end
-function clear!(data::PreparedScalarData)
-    clear!(_aggregate_memos(data))
+function release!(data::PreparedScalarData)
+    _release_prepared_key(data.source_key)
     return data
+end
+function clear!(data::PreparedScalarData)
+    return release!(data)
 end
 
 # Generic raw feature protocol.  User data types should specialize this
@@ -822,9 +867,12 @@ function prepare_scalar(
     )
     relation_tuple = relations isa Tuple ? relations : Tuple(collect(relations))
     index = ScalarRelationIndex(tuple(frames_list...), relation_tuple)
-    prepared = PreparedScalarData(
-        _register_source(source), dense, index, prepared_version
-    )
+    key = _register_source(source)
+    lifetime = _PreparedLifetime()
+    finalizer(lifetime) do _
+        _release_prepared_key(key)
+    end
+    prepared = PreparedScalarData(key, dense, index, prepared_version, lifetime)
     for (f, aggregator) in _aggregate_specs(precompute_aggregates, feature_list)
         for instance in instance_labels
             aggregate_value(prepared, instance, globalrel, globalrel, f, aggregator)
@@ -1291,13 +1339,13 @@ function _scalar_evaluate(
                 prior_hits = if trace && aggregate !== nothing
                     [
                         if relation(connective) isa GlobalRelation
-                            haskey(
-                                _aggregate_memos(data).global_values,
+                            _memo_contains(
+                                data, :global_values,
                                 _global_memo_key(instance, feature(leaf), aggregate),
                             )
                         else
-                            haskey(
-                                _aggregate_memos(data).relational_values,
+                            _memo_contains(
+                                data, :relational_values,
                                 _memo_key(
                                     instance,
                                     world,
@@ -1501,14 +1549,7 @@ function batch_apply(
     cache_state = (
         formula=cache === nothing ? :cold : :available,
         features=:dense,
-        aggregates=(
-            if isempty(_aggregate_memos(data).global_values) &&
-               isempty(_aggregate_memos(data).relational_values)
-                :cold
-            else
-                :warm
-            end
-        ),
+        aggregates=_memos_empty(data) ? :cold : :warm,
     )
     return (values=values, traces=traces, cache_state=cache_state)
 end
