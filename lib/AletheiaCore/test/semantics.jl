@@ -307,8 +307,11 @@ end
         reference
     end
     reference = cached_frame()
-    GC.gc()
-    GC.gc()
+    for _ in 1:20
+        GC.gc()
+        reference.value === nothing && break
+        yield()
+    end
     @test reference.value === nothing
     @test length(AletheiaCore._frame_caches) == 0
 

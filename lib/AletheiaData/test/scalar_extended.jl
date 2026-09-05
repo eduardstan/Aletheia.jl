@@ -88,8 +88,12 @@ AletheiaData.feature_value(s::ScalarPropertySource, i, w, ::Val{:x}) = s.values[
     end
     key = prepared.source_key
     prepared = nothing
-    GC.gc()
-    GC.gc()
+    for _ in 1:20
+        GC.gc()
+        (!haskey(AletheiaData._prepared_sources, key) &&
+            !haskey(AletheiaData._prepared_memos, key)) && break
+        yield()
+    end
     @test !haskey(AletheiaData._prepared_sources, key)
     @test !haskey(AletheiaData._prepared_memos, key)
 end
