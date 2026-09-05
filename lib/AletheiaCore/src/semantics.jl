@@ -733,8 +733,7 @@ function Frame(worlds, relations; index=false, world_index=nothing)::Frame
     worldtuple = _world_tuple(worlds)
     requested = world_index === nothing ? index : world_index
     normalized = _normalize_relations(relations, worldtuple)
-    normalized isa Function || normalized isa _RelationProvider ||
-        (normalized = _immutable_copy(normalized))
+    normalized = _immutable_copy(normalized)
     indexed = _immutable_copy(_world_index(worldtuple, requested))
     positions = if indexed === nothing
         Dict{Any,Int}(world => position for (position, world) in enumerate(worldtuple))
