@@ -10,7 +10,7 @@ contributors.
 
 **Choice.** `AletheiaCore` owns the shared accessor generics (`frame`, `model`, `relations`, `domain`, `evaluate`, `nodes`, `rules`, and `provenance`); focused packages import and extend those bindings. A `Frame` computes and stores its hash once from its owned fields, and cache registries use that stored value.
 
-**Consequence.** `using Aletheia` and `using Aletheia, AletheiaGraphs` expose one method-bearing binding for every shared accessor. Evaluation does not structurally hash the frame on each call, while frame ownership and value-based cache sharing remain unchanged.
+**Consequence.** `using Aletheia` and `using Aletheia, AletheiaGraphs` expose one method-bearing binding for every shared accessor. Evaluation does not structurally hash the frame on each call, while frame ownership and value-based cache sharing remain unchanged. Construction reuses the owned snapshots, and benchmark-sized allocation and timing budgets in the Core tests guard these paths.
 
 ## 2026-09-05 — One recursive ownership rule
 

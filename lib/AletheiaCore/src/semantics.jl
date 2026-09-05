@@ -500,7 +500,8 @@ end
 function _frame_cache(frame)
     lock(_frame_cache_lock)
     try
-        _prune_frame_caches!()
+        # Weak entries are pruned by `length`/`release!`; lookup must stay on
+        # the evaluator's allocation-free hot path.
         key = frame.frame_hash
         bucket = get!(_frame_caches.entries, key) do
             _WeakFrameCacheEntry[]
