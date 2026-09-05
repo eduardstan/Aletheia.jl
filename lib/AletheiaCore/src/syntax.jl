@@ -383,15 +383,38 @@ end
 # Interned nodes are append-only. The arena intentionally has no `setindex!`
 # method, so a formula handle cannot replace an existing node through its pool.
 mutable struct _PoolArena <: AbstractVector{_PoolNode}
-    const storage::Vector{_PoolNode}
+    const marker::UInt8
+    _PoolArena(::Val{:new}) = new(0x00)
 end
-_PoolArena() = _PoolArena(_PoolNode[])
-Base.size(arena::_PoolArena) = (length(arena.storage),)
-Base.length(arena::_PoolArena) = length(arena.storage)
-Base.getindex(arena::_PoolArena, index::Int) = arena.storage[index]
+const _pool_arena_lock = ReentrantLock()
+const _pool_arena_storage = WeakKeyDict{_PoolArena,Vector{_PoolNode}}()
+function _PoolArena()
+    arena = _PoolArena(Val(:new))
+    lock(_pool_arena_lock)
+    try
+        _pool_arena_storage[arena] = _PoolNode[]
+    finally
+        unlock(_pool_arena_lock)
+    end
+    return arena
+end
+function _pool_nodes(arena::_PoolArena)
+    lock(_pool_arena_lock)
+    try
+        return _pool_arena_storage[arena]
+    finally
+        unlock(_pool_arena_lock)
+    end
+end
+Base.isequal(left::_PoolArena, right::_PoolArena) = left === right
+Base.hash(arena::_PoolArena, h::UInt) = hash(objectid(arena), h)
+Base.size(arena::_PoolArena) = (length(_pool_nodes(arena)),)
+Base.length(arena::_PoolArena) = length(_pool_nodes(arena))
+Base.getindex(arena::_PoolArena, index::Int) = _pool_nodes(arena)[index]
 function _append_node!(arena::_PoolArena, node::_PoolNode)
-    push!(arena.storage, node)
-    return length(arena.storage)
+    storage = _pool_nodes(arena)
+    push!(storage, node)
+    return length(storage)
 end
 
 """
