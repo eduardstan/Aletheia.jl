@@ -583,8 +583,8 @@ end
 
 @testset "SoleData prepared scalar bridge" begin
     if Base.find_package("SoleData") !== nothing
-        @eval using SoleData
-        @eval using AletheiaData
+        @eval import SoleData
+        @eval import AletheiaData
         logiset = SoleData.scalarlogiset([[1.0], [2.0]])
         prepared = AletheiaData.prepare_scalar(logiset)
         condition = SoleData.ScalarCondition(SoleData.VariableValue(1), >, 1.5)
