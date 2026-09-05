@@ -149,14 +149,16 @@ function AletheiaData.prepare_scalar(dataset::SoleData.AbstractModalLogiset;
         worlds=worlds, version=version)
 end
 
-# Existing SoleData condition payloads remain usable in pooled atoms.  The
-# adapter deliberately delegates the single-world predicate to SoleData while
-# all formula and aggregate traversal stays in Aletheia.
+# Existing SoleData condition payloads remain usable in pooled atoms.  Read
+# through the prepared snapshot so callers use Aletheia's integer world order.
 function AletheiaData.scalar_check(condition::SoleData.AbstractScalarCondition,
         data::AletheiaData.PreparedScalarData, instance, world)
     source = AletheiaData.source(data)
     source isa _SoleDataSource || throw(ArgumentError("prepared data was not built from SoleData"))
-    SoleData.checkcondition(condition, source.dataset, instance, world)
+    SoleData.test_operator(condition)(
+        AletheiaData.feature_value(data, instance, world, SoleData.feature(condition)),
+        SoleData.threshold(condition),
+    )
 end
 
 # Install convenient aliases after the extension is loaded.  Parent modules are
