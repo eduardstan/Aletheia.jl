@@ -47,12 +47,12 @@ function _aletheia_frame(source_frame, relation)
 end
 
 function _aletheia_model(dataset, i_instance, vectorized, converted_frame)
-    source = _SoleDataSource(dataset)
+    prepared = AletheiaData.prepare_scalar(dataset; instances=[i_instance])
     scalar = (condition, world) ->
-        SoleData.checkcondition(condition, source.dataset, i_instance, world)
+        AletheiaData.scalar_check(condition, prepared, i_instance, world)
     batch = vectorized ?
         ((condition, worlds) -> BitVector(
-            SoleData.checkcondition(condition, source.dataset, i_instance, world)
+            AletheiaData.scalar_check(condition, prepared, i_instance, world)
             for world in worlds
         )) : nothing
     valuation = Aletheia.ValuationCallback(scalar; vectorized=batch)
