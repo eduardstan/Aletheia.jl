@@ -114,9 +114,9 @@ Formula ids are used as keys within the formula's pool. A cache rejects another
 model or formula pool rather than risking a false hit. It does not inspect the
 model for changes, so the valuation, frame, algebra, and mutable data reachable
 from them must remain unchanged while entries are live. If a model is changed,
-discard the cache; `clear!` cannot repair relation adjacency already cached by
-the `Frame`. Uncached calls remain the default and retain their existing
-behavior.
+discard the cache; `clear!` cannot repair relation adjacency already held in the
+external evaluator registry. Uncached calls remain the default and retain their
+existing behavior.
 
 ## API boundary
 
