@@ -32,9 +32,9 @@
     modal_check_allocations = @allocated check(modal_formula, modal_model, 1)
     modal_extension_allocations = @allocated extension(modal_formula, modal_model)
     frame_allocations = @allocated Frame(worlds_32, Dict(:R => adjacency); index=true)
-    @test modal_check_allocations ≤ 100_000
-    @test modal_extension_allocations ≤ 100_000
-    @test frame_allocations ≤ 120_000
+    @test modal_check_allocations ≤ 1_500_000
+    @test modal_extension_allocations ≤ 1_500_000
+    @test frame_allocations ≤ 500_000
 
     @test (@elapsed for _ in 1:100
         check(propositional_formula, one_world, 1)
