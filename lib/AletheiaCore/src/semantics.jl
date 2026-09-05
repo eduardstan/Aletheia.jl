@@ -501,7 +501,7 @@ function _frame_cache(frame)
     lock(_frame_cache_lock)
     try
         _prune_frame_caches!()
-        key = hash(frame)
+        key = frame.frame_hash
         bucket = get!(_frame_caches.entries, key) do
             _WeakFrameCacheEntry[]
         end
@@ -544,17 +544,23 @@ julia> isdefined(AletheiaCore, Symbol("Frame"))
 true
 ```
 """
+struct _TrustedFrame end
+const _TRUSTED_FRAME = _TrustedFrame()
+
 struct Frame{W<:Tuple,RS,I} <: AbstractMultiModalFrame{eltype(W)}
     worlds::W
     relations::RS
     index::I
+    frame_hash::UInt
     function Frame(worlds::W, relations::RS, index::I) where {W<:Tuple,RS,I}
         owned_worlds = _immutable_copy(worlds)
         owned_relations = _immutable_copy(relations)
         owned_index = _immutable_copy(index)
-        return new{typeof(owned_worlds),typeof(owned_relations),typeof(owned_index)}(
-            owned_worlds, owned_relations, owned_index
-        )
+        return Frame(_TRUSTED_FRAME, owned_worlds, owned_relations, owned_index)
+    end
+    function Frame(::_TrustedFrame, worlds::W, relations::RS, index::I) where {W<:Tuple,RS,I}
+        frame_hash = _owned_hash(index, _owned_hash(relations, _owned_hash(worlds, UInt(0))))
+        return new{W,RS,I}(worlds, relations, index, frame_hash)
     end
 end
 
@@ -599,13 +605,13 @@ function Base.:(==)(left::Frame, right::Frame)
 end
 Base.isequal(left::Frame, right::Frame) = left == right
 function Base.hash(frame::Frame, seed::UInt)
-    return _owned_hash(frame.index, _owned_hash(frame.relations, _owned_hash(frame.worlds, seed)))
+    return hash(frame.frame_hash, seed)
 end
 
 function release!(frame::Frame)
     lock(_frame_cache_lock)
     try
-        key = hash(frame)
+        key = frame.frame_hash
         bucket = get(_frame_caches.entries, key, nothing)
         if bucket !== nothing
             filter!(entry -> entry.frame.value !== nothing && !isequal(entry.frame.value, frame), bucket)
@@ -734,7 +740,9 @@ function Frame(worlds, relations; index=false, world_index=nothing)::Frame
     else
         Dict{Any,Int}(world => Int(indexed[world]) for world in worldtuple)
     end
-    return Frame(worldtuple, normalized, indexed)
+    # All three values are owned above; avoid rebuilding the snapshots in the
+    # public inner constructor while materialising the frame.
+    return Frame(_TRUSTED_FRAME, worldtuple, normalized, indexed)
 end
 
 function Frame(worlds; index=false, world_index=nothing)::Frame

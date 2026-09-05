@@ -4,7 +4,7 @@ module AletheiaAudit
 using SHA
 using Serialization
 using AletheiaCore: Formula, _boundary_copy
-import AletheiaCore: _immutable_copy
+import AletheiaCore: _immutable_copy, nodes, provenance, rules
 
 const _CORE_FORMULA = Formula
 

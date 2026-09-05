@@ -12,7 +12,7 @@ KGEntity{Symbol, Symbol, @NamedTuple{}}(:e1, :entity, NamedTuple())
 module AletheiaGraphs
 
 using AletheiaCore
-import AletheiaCore: _immutable_copy
+import AletheiaCore: _immutable_copy, frame, model, relations, provenance
 using AletheiaAudit
 
 struct _OwnedGraphValue end

@@ -6,6 +6,36 @@ using Aletheia
 
 include("ownership.jl")
 
+@testset "single-import focused accessors" begin
+    alice = KGEntity(:alice)
+    bob = KGEntity(:bob)
+    edge_relation = KGRelation(:knows)
+    graph = KnowledgeGraph([alice, bob], [edge_relation], [KGEdge(alice, edge_relation, bob)])
+    @test frame(graph) isa Frame
+    @test model(graph) isa Model
+    @test relations(graph) == (edge_relation,)
+    @test provenance(graph) isa NamedTuple
+
+    program = DSProgram([ProbabilisticFact(:rain, 1//2)])
+    @test domain(program) == ()
+    artifact = RuleArtifact([ArtifactRule(:rain, true)])
+    @test rules(artifact) isa Vector
+
+    graph_exports = Set(names(AletheiaGraphs; all=false))
+    umbrella_exports = Set(names(Aletheia; all=false))
+    shared = intersect(graph_exports, umbrella_exports)
+    @test all(getfield(Aletheia, name) === getfield(AletheiaGraphs, name) for name in shared)
+
+    Base.eval(Main, quote
+        module AletheiaGraphsImportSmoke
+        using Aletheia
+        using AletheiaGraphs
+        end
+    end)
+    smoke = getfield(Main, :AletheiaGraphsImportSmoke)
+    @test all(isdefined(smoke, name) for name in shared)
+end
+
 @testset "umbrella public API" begin
     expected = Set{Symbol}([
         :Signature,

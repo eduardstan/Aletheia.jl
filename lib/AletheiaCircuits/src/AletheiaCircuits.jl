@@ -11,7 +11,7 @@ true
 module AletheiaCircuits
 
 using AletheiaCore
-import AletheiaCore: _boundary_copy, _immutable_copy
+import AletheiaCore: _boundary_copy, _immutable_copy, domain, evaluate, nodes, rules
 import Base: zero, one
 
 include("errors.jl")

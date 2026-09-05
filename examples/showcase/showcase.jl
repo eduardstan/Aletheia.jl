@@ -286,12 +286,12 @@ function run_showcase(; io=stdout)
             edge.source.id == :r1 &&
                 edge.relation.id == :has_concept &&
                 edge.target.id == :alert,
-        Aletheia.AletheiaGraphs.edges(graph),
+        edges(graph),
     )
     similar_oracle = any(
         edge ->
             edge.source.id == :r1 && edge.relation.id == :similar && edge.target.id == :r2,
-        Aletheia.AletheiaGraphs.edges(graph),
+        edges(graph),
     )
     @assert path_valid(alert_path, graph) && path_oracle
     @assert path_valid(similar_path, graph) && similar_oracle
@@ -303,7 +303,7 @@ function run_showcase(; io=stdout)
     )
     concept_oracle = BitVector(
         entity.kind == :record && :alert in entity.metadata.concepts for
-        entity in Aletheia.AletheiaGraphs.entities(graph)
+        entity in entities(graph)
     )
     @assert concept_values == concept_oracle "graph concept oracle mismatch"
     graph_trace_provenance = Provenance(;

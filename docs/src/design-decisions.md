@@ -4,6 +4,14 @@ This page records the choices that shape Aletheia's public architecture. Each
 entry gives the context, the choice, and the consequence for users and
 contributors.
 
+## 2026-09-06 — Shared accessors and construction-time frame identity
+
+**Context.** Focused packages exported accessors with the same names but different function bindings, which made the documented umbrella workflow ambiguous. Evaluator cache lookup also recomputed an owned frame hash on every check.
+
+**Choice.** `AletheiaCore` owns the shared accessor generics (`frame`, `model`, `relations`, `domain`, `evaluate`, `nodes`, `rules`, and `provenance`); focused packages import and extend those bindings. A `Frame` computes and stores its hash once from its owned fields, and cache registries use that stored value.
+
+**Consequence.** `using Aletheia` and `using Aletheia, AletheiaGraphs` expose one method-bearing binding for every shared accessor. Evaluation does not structurally hash the frame on each call, while frame ownership and value-based cache sharing remain unchanged.
+
 ## 2026-09-05 — One recursive ownership rule
 
 **Context.** Shallow checks allowed immutable wrappers to retain mutable values,
