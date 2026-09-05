@@ -65,8 +65,8 @@ copied into a portable serialized representation.
 
 **Consequence and cost.** Boundary copies isolate accepted and returned standard
 collections from caller-owned mutable material. Retained field storage follows
-the immutable collection decision above; opaque mutable values are rejected, while
-callback-captured state remains outside the storage guarantee. Copying costs time
+the immutable collection decision above; opaque mutable values and callbacks
+with mutable captured fields are rejected. Copying costs time
 and memory proportional to mutable material at each boundary; hot evaluation loops
 retain owned internal data.
 
