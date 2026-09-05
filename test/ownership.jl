@@ -117,15 +117,18 @@ end
     @test_throws Aletheia.OwnershipError Aletheia.KGEntity(
         :lazy; metadata=Dict(:tag => lazy)
     )
-    annotated = Base.AnnotatedString("world1", [(1:3, :label, "A")])
-    @test !_structurally_owned(annotated)
-    annotation_error = try
-        Aletheia.Frame([annotated]; index=true)
-    catch error
-        error
+    if isdefined(Base, :AnnotatedString)
+        annotated_type = getfield(Base, :AnnotatedString)
+        annotated = annotated_type("world1", [(1:3, :label, "A")])
+        @test !_structurally_owned(annotated)
+        annotation_error = try
+            Aletheia.Frame([annotated]; index=true)
+        catch error
+            error
+        end
+        @test annotation_error isa Aletheia.OwnershipError
+        @test annotation_error.path == (:annotations,)
     end
-    @test annotation_error isa Aletheia.OwnershipError
-    @test annotation_error.path == (:annotations,)
 
     ref_callback = let state = Ref([2])
         (world, relation) -> (relation === :R ? state[] : ())
