@@ -90,7 +90,7 @@ end
         @test normalized_occurs(name, compatibility)
     end
     @test normalized_occurs("Extension results are not cached across instances", families)
-    @test normalized_occurs("relation adjacency\non a shared `Frame` may be cached and reused", families)
+    @test normalized_occurs("relation adjacency\nis held in the weak evaluator-side registry", families)
     @test !normalized_occurs("one or more named accessibility relations", quickstart)
     @test !normalized_occurs("one or more\nnamed accessibility relations", semantics)
     @test normalized_occurs("zero or more", quickstart)
