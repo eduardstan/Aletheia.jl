@@ -526,7 +526,7 @@ true
 ```
 """
 function rectangle_frame(x, y=x; index=true)
-    xb, yb = tuple(_boundaries(x)...), tuple(_boundaries(y)...)
+    xb, yb = _immutable_copy(_boundaries(x)), _immutable_copy(_boundaries(y))
     ws = _rectangle_worlds(xb, yb)
     xworlds, yworlds = tuple(_interval_worlds(xb)...), tuple(_interval_worlds(yb)...)
     relation_map = (source, relation) -> begin
