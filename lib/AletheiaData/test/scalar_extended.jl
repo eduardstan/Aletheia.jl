@@ -71,6 +71,14 @@
 end
 
 
+struct ScalarPropertySource
+    values::Dict{Tuple{Int,Symbol},Float64}
+    frames::Vector{Frame}
+    instances::Vector{Int}
+end
+AletheiaData.feature_value(s::ScalarPropertySource, i, w, ::Val{:x}) = s.values[(i, w)]
+
+
 @testset "prepared state lifetime and concurrent memo reads" begin
     source = ScalarPropertySource(Dict((1, :a) => 1.0, (1, :b) => 2.0),
         [Frame((:a, :b), Dict(:R => Dict(:a => [:b], :b => [])); index=true)], [1])
@@ -86,13 +94,6 @@ end
     @test !haskey(AletheiaData._prepared_memos, key)
 end
 
-
-struct ScalarPropertySource
-    values::Dict{Tuple{Int,Symbol},Float64}
-    frames::Vector{Frame}
-    instances::Vector{Int}
-end
-AletheiaData.feature_value(s::ScalarPropertySource, i, w, ::Val{:x}) = s.values[(i, w)]
 
 @testset "scalar protocol edge cases" begin
     fr = Frame((:a, :b), Dict(:R => Dict(:a => [:b], :b => [])); index=true)
