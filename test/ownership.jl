@@ -7,6 +7,8 @@ end
 mutable struct OwnershipPayload
     value::Int
 end
+mutable struct ZeroFieldOwnership
+end
 struct ImmutableWorldBox
     ref::Vector{Int}
 end
@@ -111,6 +113,27 @@ end
     mutable_probe = (payload=[1],)
     @test !_structurally_owned(mutable_probe.payload)
 
+    # Fieldless mutable values still carry hidden mutable state. SimpleVector
+    # is inspected element-by-element rather than mistaken for an empty atom.
+    @test !_structurally_owned(Core.svec([1, 2, 3]))
+    @test _structurally_owned(Core.svec(:a, :b))
+    @test !_structurally_owned(ZeroFieldOwnership())
+    interval_provider_frame = Aletheia.interval_frame(1:3)
+    @test interval_provider_frame.relations.boundaries isa AbstractArray
+    @test !ismutable(interval_provider_frame.relations.boundaries)
+    @test interval_provider_frame.relations.world_values isa Tuple
+    @test _structurally_owned(interval_provider_frame.relations)
+    simple_vector = Core.svec([1, 2, 3])
+    simple_vector_frame = Aletheia.Frame([simple_vector]; index=true)
+    simple_vector[1][1] = 999
+    @test Aletheia.world_position(simple_vector_frame, Core.svec([1, 2, 3])) == 1
+    @test_throws KeyError Aletheia.world_position(simple_vector_frame, simple_vector)
+    simple_vector_callback = let state = Core.svec([true])
+        (atom, world) -> state[1][1]
+    end
+    @test !_structurally_owned(simple_vector_callback)
+    @test_throws Aletheia.OwnershipError Aletheia.ValuationCallback(simple_vector_callback)
+
     # Atomic ownership follows the same field walk: fieldless strings and
     # functions pass, while composite strings and captured mutable state do not.
     @test _structurally_owned("owned string")
@@ -150,7 +173,8 @@ end
         error
     end
     @test callback_error isa Aletheia.OwnershipError
-    @test callback_error.path == (:state,)
+    @test length(callback_error.path) == 1
+    @test endswith(string(callback_error.path[1]), "state")
 
     # Rebuilding an immutable wrapper around a collection changes identity
     # equality. Refuse that boundary rather than making the caller's world

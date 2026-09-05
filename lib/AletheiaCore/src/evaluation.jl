@@ -74,7 +74,7 @@ end
 
 function _evaluation_plan(nodes::Vector{_EvaluationNode}, model::Model)
     frame = model.frame
-    cache = model.cache
+    cache = _frame_cache(frame)
     adjacency = Dict{Any,_RelationAdjacency}()
     for relation_name in _relation_names(nodes)
         if !_cache_relation(frame, relation_name)

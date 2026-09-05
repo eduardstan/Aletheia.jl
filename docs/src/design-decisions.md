@@ -6,22 +6,29 @@ contributors.
 
 ## 2026-09-05 — One recursive ownership rule
 
-**Context.** Shallow checks allowed immutable wrappers to retain mutable values.
+**Context.** Shallow checks allowed immutable wrappers to retain mutable values,
+and fieldless runtime containers could hide mutable elements.
 
-**Choice.** An accepted value is owned exactly when it is a bits type or a
-fieldless value, a frozen collection whose elements are recursively owned, a
-tuple whose elements are recursively owned, or a nonmutable value whose fields
-are recursively owned. The same walk therefore accepts `String`, `SubString`
-with owned fields, plain functions, and closures over owned values; it rejects
-mutable strings such as `Base.LazyString`, string wrappers with mutable fields
-such as `Base.AnnotatedString`, and closures with mutable captured fields.
-Standard arrays, dictionaries, and sets are snapshotted recursively. An
-immutable wrapper is rebuilt only when its replacement preserves `isequal` and
-`hash`; wrappers whose snapshot would change lookup identity (including the
-default identity-equality case) are refused with `OwnershipError`, which tells
-users to define `==` and `hash` or pass owned fields.
+**Choice.** Every value a user supplies to a semantic constructor is
+structurally owned to any depth. Bits values, known immutable atoms, tuples, and
+frozen collections are accepted only when their contents are recursively owned;
+fieldless mutable values are refused, while `Core.SimpleVector` is inspected
+through its elements. Standard arrays, dictionaries, and sets are snapshotted
+recursively. Mutable opaque values and closures with mutable captured fields are
+refused with a path-aware `OwnershipError`. An immutable wrapper is rebuilt only
+when its replacement preserves `isequal` and `hash`; otherwise construction is
+refused with guidance to define `==` and `hash` or pass owned fields.
 
-**Consequence.** Every retained semantic value uses this one predicate and recursive snapshot at construction, and every accepted caller instance remains usable for lookup.
+**Consequence.** Every retained semantic value uses this one predicate and
+recursive snapshot at construction, and every accepted caller instance remains
+usable for lookup. Frame adjacency is an evaluator-side cache keyed by frame
+identity, and scalar aggregate memos are an evaluator-side cache keyed by the
+hash of `PreparedScalarData`; neither cache is a field of, or reachable from, a
+semantic value. A prepared scalar record stores only a source token; its
+external source adapter is kept in the evaluator-side registry rather than in
+the record. Frame caches have no invalidation because frames are immutable;
+scalar caches are cleared by `clear!` and replaced when the prepared source
+version changes.
 
 ## 2026-09-04 — Immutable collection storage for public semantic values
 
@@ -38,11 +45,11 @@ where the API historically returned arrays or maps.
 **Consequence and cost.** A caller cannot alter collection-backed semantic state
 through a field, accessor result, or original collection input, and mutable
 opaque values fail at construction rather than becoming live fields. The
-frame evaluation cache remains a deliberately mutable private cache because
+frame adjacency remains a deliberately mutable evaluator-side cache because
 lock-protected lazy adjacency indexing is the measured hot-path optimization;
-it is not semantic input and is excluded from the immutable collection
-contract. Frame-sharing callback behavior is specified in [Many models, one
-formula](families.md#When-instances-share-a-frame).
+it is not a field of a semantic value and is excluded from the immutable
+collection contract. Frame-sharing callback behavior is specified in [Many
+models, one formula](families.md#When-instances-share-a-frame).
 
 A local 32-world microbenchmark (Julia 1.12.7, 20 batches of 100 calls) measured
 `Frame` construction at 63.3 → 67.2 μs and dictionary-`Model` construction at

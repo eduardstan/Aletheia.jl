@@ -467,9 +467,26 @@ mutable struct _ModelEvaluationCache
     lock::ReentrantLock
 end
 
-# The cache is mutable execution state and is intentionally outside the owned
-# semantic payload checked by `_is_owned`.
-_is_owned(::_ModelEvaluationCache, seen=IdDict{Any,Bool}()) = true
+# Relation indexes are evaluator state, not semantic payload. Keep them in an
+# evaluator-side registry so no public Frame or Model field can reach mutable
+# dictionaries.
+const _frame_cache_lock = ReentrantLock()
+const _frame_caches = IdDict{Any,_ModelEvaluationCache}()
+function _frame_cache(frame)
+    lock(_frame_cache_lock)
+    try
+        return get!(_frame_caches, frame) do
+            _ModelEvaluationCache(
+                Dict{Any,Int}(
+                    world => position for (position, world) in enumerate(frame.worlds)
+                ),
+                Dict{Any,_RelationAdjacency}(), ReentrantLock()
+            )
+        end
+    finally
+        unlock(_frame_cache_lock)
+    end
+end
 
 """
     Frame(worlds, relations; index=false)
@@ -498,15 +515,12 @@ struct Frame{W<:Tuple,RS,I} <: AbstractMultiModalFrame{eltype(W)}
     worlds::W
     relations::RS
     index::I
-    cache::_ModelEvaluationCache
-    function Frame(
-        worlds::W, relations::RS, index::I, cache::_ModelEvaluationCache
-    ) where {W<:Tuple,RS,I}
+    function Frame(worlds::W, relations::RS, index::I) where {W<:Tuple,RS,I}
         owned_worlds = _immutable_copy(worlds)
         owned_relations = _immutable_copy(relations)
         owned_index = _immutable_copy(index)
         return new{typeof(owned_worlds),typeof(owned_relations),typeof(owned_index)}(
-            owned_worlds, owned_relations, owned_index, cache
+            owned_worlds, owned_relations, owned_index
         )
     end
 end
@@ -628,10 +642,7 @@ function Frame(worlds, relations; index=false, world_index=nothing)::Frame
     else
         Dict{Any,Int}(world => Int(indexed[world]) for world in worldtuple)
     end
-    cache = _ModelEvaluationCache(
-        positions, Dict{Any,_RelationAdjacency}(), ReentrantLock()
-    )
-    return Frame(worldtuple, normalized, indexed, cache)
+    return Frame(worldtuple, normalized, indexed)
 end
 
 function Frame(worlds; index=false, world_index=nothing)::Frame
@@ -697,10 +708,16 @@ true
 """
 function world_position(frame::Frame, world)
     if frame.index !== nothing
-        haskey(frame.index, world) || throw(KeyError(world))
-        return frame.index[world]
+        haskey(frame.index, world) && return frame.index[world]
+        # Worlds containing standard mutable collections are stored in their
+        # frozen representation. Normalize an equivalent lookup value too.
+        owned_world = _immutable_copy(world)
+        haskey(frame.index, owned_world) || throw(KeyError(world))
+        return frame.index[owned_world]
     end
     position = findfirst(candidate -> isequal(candidate, world), frame.worlds)
+    position === nothing && (owned_world = _immutable_copy(world);
+        position = findfirst(candidate -> isequal(candidate, owned_world), frame.worlds))
     position === nothing && throw(KeyError(world))
     return position
 end
@@ -1116,9 +1133,8 @@ struct Model{T,A<:TruthAlgebra{T},F<:Frame,V}
     frame::F
     algebra::A
     valuation::V
-    cache::_ModelEvaluationCache
     function Model(
-        frame::F, algebra::A, valuation::V, cache::_ModelEvaluationCache
+        ::Val{:owned}, frame::F, algebra::A, valuation::V
     ) where {T,A<:TruthAlgebra{T},F<:Frame,V}
         owned = if valuation isa AbstractDict
             Valuation(valuation).data
@@ -1127,12 +1143,12 @@ struct Model{T,A<:TruthAlgebra{T},F<:Frame,V}
         else
             _immutable_copy(valuation)
         end
-        return new{T,A,F,typeof(owned)}(frame, algebra, owned, cache)
+        return new{T,A,F,typeof(owned)}(frame, algebra, owned)
     end
 end
 
 function Model(frame::Frame, algebra::TruthAlgebra, valuation)
-    return Model(frame, algebra, valuation, frame.cache)
+    return Model(Val(:owned), frame, algebra, valuation)
 end
 
 function Model(frame::Frame, valuation::AbstractDict, algebra::TruthAlgebra)
