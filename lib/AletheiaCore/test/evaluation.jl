@@ -18,11 +18,25 @@ Aletheia.negation(::VectorAlgebra, value::BitVector) = .!value
 const EVALUATION_SCALAR_CALLS = Ref(0)
 const EVALUATION_RELATION_STATE = Ref(true)
 const EVALUATION_CALLBACK_CALLS = Ref(0)
+const EVALUATION_COUNTED_CALLS = Ref(0)
+const EVALUATION_BATCH_CALLS = Ref(0)
+const EVALUATION_SHARED_BUFFER = Ref{Any}(nothing)
 evaluation_scalar_callback(value, world) = (EVALUATION_SCALAR_CALLS[] += 1; true)
 evaluation_relation_callback(world, relation) =
     EVALUATION_RELATION_STATE[] && world == :a ? (:b,) : ()
 evaluation_cached_callback(value, world) =
     (EVALUATION_CALLBACK_CALLS[] += 1; world == :w2)
+evaluation_counted_callback(value, world) =
+    (EVALUATION_COUNTED_CALLS[] += 1; value == "p" ? world != :w3 : world != :w1)
+evaluation_counted_batch(value, world) =
+    (EVALUATION_BATCH_CALLS[] += 1; value == "p" ? world != :w3 : world != :w1)
+function evaluation_shared_batch(value, callback_worlds)
+    buffer = EVALUATION_SHARED_BUFFER[]
+    for (slot, world) in enumerate(callback_worlds)
+        buffer[slot] = value == "p" ? world != :w3 : world != :w1
+    end
+    return buffer
+end
 
 @testset "evaluation" begin
     sig = Signature((¬, ∧, ⊗, ∨, →, Diamond(:G), Box(:G), Diamond(:missing), Box(:missing)))
@@ -103,10 +117,10 @@ evaluation_cached_callback(value, world) =
         "q" => Dict(:w1 => 0.4, :w2 => 0.8, :w3 => 0.1))), :w1) === 0.5
 
     shared = branch(pool, ∨, conjunction, conjunction)
-    calls = Ref(0)
-    counted = Model(frame, (value, world) -> (calls[] += 1; value == "p" ? world != :w3 : world != :w1), BOOLEAN)
+    EVALUATION_COUNTED_CALLS[] = 0
+    counted = Model(frame, evaluation_counted_callback, BOOLEAN)
     @test extension(shared, counted) == BitVector([false, true, false])
-    @test calls[] == 2 * length(worlds(frame))
+    @test EVALUATION_COUNTED_CALLS[] == 2 * length(worlds(frame))
 
     # A fixed seed keeps the batch exactness corpus reproducible.
     Random.seed!(0xA1E7)
@@ -129,29 +143,22 @@ evaluation_cached_callback(value, world) =
         for name in ("p", "q")))
     @test extension(batch_forms, batch_boolean) == [extension(formula, batch_boolean) for formula in batch_forms]
     @test extension(batch_forms, batch_godel) == [extension(formula, batch_godel) for formula in batch_forms]
-    batch_calls = Ref(0)
-    counted_batch = Model(frame, BOOLEAN, Aletheia.ValuationCallback(
-        (value, world) -> (batch_calls[] += 1; value == "p" ? world != :w3 : world != :w1)))
+    EVALUATION_BATCH_CALLS[] = 0
+    counted_batch = Model(frame, BOOLEAN, Aletheia.ValuationCallback(evaluation_counted_batch))
     batch_shared = [conjunction, disjunction, branch(pool, →, p, q)]
     batch_shared_result = extension(batch_shared, counted_batch)
     @test @inferred(extension(batch_shared, batch_boolean)) ==
         [extension(formula, batch_boolean) for formula in batch_shared]
-    shared_buffer = falses(length(worlds(frame)))
-    shared_batch = (value, callback_worlds) -> begin
-        for (slot, world) in enumerate(callback_worlds)
-            shared_buffer[slot] = value == "p" ? world != :w3 : world != :w1
-        end
-        shared_buffer
-    end
+    EVALUATION_SHARED_BUFFER[] = falses(length(worlds(frame)))
     shared_model = Model(frame, BOOLEAN, Aletheia.ValuationCallback(
         (value, world) -> value == "p" ? world != :w3 : world != :w1;
-        vectorized=shared_batch))
+        vectorized=evaluation_shared_batch))
     scalar_model = Model(frame, BOOLEAN, Aletheia.ValuationCallback(
         (value, world) -> value == "p" ? world != :w3 : world != :w1))
     @test extension([conjunction], shared_model) == extension([conjunction], scalar_model)
     plain_counted = Model(frame, BOOLEAN, Dict("p" => Set([:w1, :w2]), "q" => Set([:w2, :w3])))
     @test batch_shared_result == [extension(formula, plain_counted) for formula in batch_shared]
-    @test batch_calls[] == 2 * length(worlds(frame))
+    @test EVALUATION_BATCH_CALLS[] == 2 * length(worlds(frame))
 
     batch_boolean_other = Model(frame, BOOLEAN, Dict(
         "p" => Set(world for world in worlds(frame) if rand(batch_rng, Bool)),
