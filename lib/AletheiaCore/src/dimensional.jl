@@ -528,7 +528,7 @@ true
 function rectangle_frame(x, y=x; index=true)
     xb, yb = _boundaries(x), _boundaries(y)
     ws = _rectangle_worlds(xb, yb)
-    xworlds, yworlds = collect(_interval_worlds(xb)), collect(_interval_worlds(yb))
+    xworlds, yworlds = tuple(_interval_worlds(xb)...), tuple(_interval_worlds(yb)...)
     relation_map = (source, relation) -> begin
         targets = relation isa RectangleRelation ?
             _rectangle_relation_successors(relation, source, xb, yb, xworlds, yworlds) :
