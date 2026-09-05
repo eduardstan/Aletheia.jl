@@ -114,7 +114,11 @@ AletheiaData.feature_value(source::_SoleDataSource, instance, world, feature) =
     SoleData.featvalue(feature, source.dataset, instance, world)
 
 function _sole_features(dataset, requested)
-    requested === nothing || !isempty(requested) ? collect(requested) : collect(SoleData.features(dataset))
+    if requested !== nothing && !isempty(requested)
+        return collect(requested)
+    end
+    available = SoleData.features(dataset)
+    available === nothing ? nothing : collect(available)
 end
 
 """Prepare a SoleData modal logiset through Aletheia's scalar protocol."""
