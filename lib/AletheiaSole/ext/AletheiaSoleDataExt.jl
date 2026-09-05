@@ -155,8 +155,10 @@ function AletheiaData.scalar_check(condition::SoleData.AbstractScalarCondition,
         data::AletheiaData.PreparedScalarData, instance, world)
     source = AletheiaData.source(data)
     source isa _SoleDataSource || throw(ArgumentError("prepared data was not built from SoleData"))
+    frame = AletheiaData._frame(data, instance)
+    world_key = world isa Integer ? Aletheia.worlds(frame)[world] : world
     SoleData.test_operator(condition)(
-        AletheiaData.feature_value(data, instance, world, SoleData.feature(condition)),
+        AletheiaData.feature_value(data, instance, world_key, SoleData.feature(condition)),
         SoleData.threshold(condition),
     )
 end
