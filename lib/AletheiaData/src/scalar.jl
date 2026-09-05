@@ -437,7 +437,10 @@ function _memo_contains(data::PreparedScalarData, field::Symbol, key)
     memo = _aggregate_memos(data)
     lock(memo.lock)
     try
-        return haskey(getfield(memo, field), key)
+        table = field === :global_values ? memo.global_values :
+            field === :relational_values ? memo.relational_values :
+            throw(ArgumentError("unknown scalar memo table: $field"))
+        return haskey(table, key)
     finally
         unlock(memo.lock)
     end
