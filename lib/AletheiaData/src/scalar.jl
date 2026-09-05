@@ -299,7 +299,7 @@ mutable struct AggregateMemoStore <: AbstractAggregateMemo
     lock::ReentrantLock
 end
 # Memo tables are private execution state, not semantic callback payload.
-AletheiaCore._is_owned(::_AggregateMemoStore, seen=IdDict{Any,Bool}()) = true
+AletheiaCore._is_owned(::AggregateMemoStore, seen=IdDict{Any,Bool}()) = true
 function AggregateMemoStore(version::Integer=0)
     return AggregateMemoStore(
         Dict{Any,Any}(), Dict{Any,Any}(), UInt64(version), ReentrantLock()
