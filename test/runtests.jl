@@ -4,6 +4,11 @@ using Aqua
 using JET
 using Aletheia
 
+module AletheiaGraphsImportSmoke
+using Aletheia
+using AletheiaGraphs
+end
+
 include("ownership.jl")
 
 @testset "single-import focused accessors" begin
@@ -14,7 +19,7 @@ include("ownership.jl")
     @test frame(graph) isa Frame
     @test model(graph) isa Model
     @test relations(graph) == (edge_relation,)
-    @test provenance(graph) isa NamedTuple
+    @test provenance(graph) == ()
 
     program = DSProgram([ProbabilisticFact(:rain, 1//2)])
     @test domain(program) == ()
@@ -26,14 +31,7 @@ include("ownership.jl")
     shared = intersect(graph_exports, umbrella_exports)
     @test all(getfield(Aletheia, name) === getfield(AletheiaGraphs, name) for name in shared)
 
-    Base.eval(Main, quote
-        module AletheiaGraphsImportSmoke
-        using Aletheia
-        using AletheiaGraphs
-        end
-    end)
-    smoke = getfield(Main, :AletheiaGraphsImportSmoke)
-    @test all(isdefined(smoke, name) for name in shared)
+    @test all(isdefined(AletheiaGraphsImportSmoke, name) for name in shared)
 end
 
 @testset "umbrella public API" begin
