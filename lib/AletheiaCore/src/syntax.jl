@@ -458,7 +458,9 @@ abstract type Formula <: _InternedFormula end
 # A handle is owned when its sealed arena record still agrees with its
 # immutable fields. Child ids are stable references into the append-only arena.
 function _interned_formula_owned(value::Formula, seen)
+    hasproperty(value, :pool) && hasproperty(value, :id) || return false
     pool = value.pool
+    pool isa FormulaPool || return false
     _sealed_arena_owned(pool, seen) || return false
     lock(pool.lock)
     try
