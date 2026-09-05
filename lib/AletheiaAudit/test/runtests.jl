@@ -312,8 +312,9 @@ end
     result, trace = eval_artifact(artifact, formula)
     restored = deserialize_trace(serialize_trace(trace))
     @test result
-    restored_formula = restored.artifact.rules[1].condition
-    restored_result, _ = eval_artifact(restored.artifact, restored_formula)
+    restored_artifact = getfield(restored, :artifact)
+    restored_formula = getfield(getfield(restored_artifact, :rules)[1], :condition)
+    restored_result, _ = eval_artifact(restored_artifact, restored_formula)
     @test restored_result
     @test syntaxstring(restored_formula) == syntaxstring(formula)
     @test restored_formula.pool !== formula.pool
