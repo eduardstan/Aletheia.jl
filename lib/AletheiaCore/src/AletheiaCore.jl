@@ -180,8 +180,18 @@ end
 # This is the single ownership predicate used by constructors and structural
 # tests.  Caches are implementation state, not semantic payload; a method for
 # their type is added next to its definition in semantics.jl.
+# Internal state markers are deliberately closed: only types defined by Aletheia
+# can opt into these contracts. A user-defined mutable struct cannot become
+# owned merely by having a similar shape.
+abstract type _OwnedImplementationState end
+abstract type _SealedArena end
+abstract type _InternedFormula end
+
 function _is_owned(value, seen=IdDict{Any,Bool}())
     T = typeof(value)
+    value isa _OwnedImplementationState && return true
+    value isa _SealedArena && return _sealed_arena_owned(value, seen)
+    value isa _InternedFormula && return _interned_formula_owned(value, seen)
     isbitstype(T) && return true
     value isa FrozenArray && return all(_is_owned(x, seen) for x in value.data)
     value isa FrozenDict && return all(_is_owned(x, seen) for pair in value for x in pair)

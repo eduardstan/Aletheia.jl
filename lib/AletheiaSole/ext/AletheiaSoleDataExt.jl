@@ -96,9 +96,8 @@ AletheiaData.instance_model(family::SoleDataFamily, i_instance) =
 struct _SoleDataSource{D}
     dataset::D
 end
-# SoleData owns the dataset and its graph-backed frame representation.  This
-# adapter is the intentionally retained execution context for callbacks.
-AletheiaCore._is_owned(::_SoleDataSource, seen=IdDict{Any,Bool}()) = true
+# The source is kept only in the prepared-state registry. Prepared semantic
+# records contain the dense snapshot, not this mutable adapter.
 AletheiaData.feature_value(source::_SoleDataSource, instance, world, feature) =
     SoleData.featvalue(feature, source.dataset, instance, world)
 
@@ -131,7 +130,7 @@ end
 # all formula and aggregate traversal stays in Aletheia.
 function AletheiaData.scalar_check(condition::SoleData.AbstractScalarCondition,
         data::AletheiaData.PreparedScalarData, instance, world)
-    source = data.source
+    source = AletheiaData.source(data)
     source isa _SoleDataSource || throw(ArgumentError("prepared data was not built from SoleData"))
     SoleData.checkcondition(condition, source.dataset, instance, world)
 end

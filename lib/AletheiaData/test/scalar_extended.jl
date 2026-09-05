@@ -53,7 +53,11 @@
     @test clear!(cache) === cache
     traced = batch_apply([modal], prepared; trace=true)
     @test any(entry -> entry.kind == :aggregate_memo_hit, traced.traces)
-    clear!(prepared)
+    release!(prepared)
+    @test !haskey(AletheiaData._prepared_sources, prepared.source_key)
+    @test !haskey(AletheiaData._prepared_memos, prepared.source_key)
+    prepared = prepare_scalar(source; features=[Val(:x), Val(:twice)],
+        frames=[fr1, fr2], instances=[1, 2], relations=(:R,))
     traced_cold = batch_apply([modal], prepared; trace=true)
     @test any(entry -> entry.kind == :representative_aggregation, traced_cold.traces)
     source.version = 2
@@ -64,6 +68,22 @@
     @test scalar_check(ThresholdCondition(Val(:x), >, 0.5), lazy, 1, 2)
     @test batch_apply([atom(FormulaPool(Signature((¬,))), ThresholdCondition(Val(:x), >, 0.5))], lazy)[1][1] == BitVector([0, 1, 0])
     @test_throws ArgumentError batch_apply([modal], prepared; cache=EvaluationCache(instance_model(family, 1)))
+end
+
+
+@testset "prepared state lifetime and concurrent memo reads" begin
+    source = ScalarPropertySource(Dict((1, :a) => 1.0, (1, :b) => 2.0),
+        [Frame((:a, :b), Dict(:R => Dict(:a => [:b], :b => [])); index=true)], [1])
+    prepared = prepare_scalar(source; features=[Val(:x)], precompute_features=true)
+    Threads.@threads for i in 1:64
+        @assert aggregate_value(prepared, 1, :a, :R, Val(:x), maximum) == 2.0
+    end
+    key = prepared.source_key
+    prepared = nothing
+    GC.gc()
+    GC.gc()
+    @test !haskey(AletheiaData._prepared_sources, key)
+    @test !haskey(AletheiaData._prepared_memos, key)
 end
 
 

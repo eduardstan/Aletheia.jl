@@ -469,20 +469,50 @@ end
 
 # Relation indexes are evaluator state, not semantic payload. Keep them in an
 # evaluator-side registry so no public Frame or Model field can reach mutable
-# dictionaries.
+# dictionaries. Weak references make an entry disappear with its frame; the
+# registry prunes dead references whenever it is accessed or measured.
+struct _WeakFrameCacheEntry
+    frame::WeakRef
+    cache::_ModelEvaluationCache
+end
+mutable struct _WeakFrameCacheRegistry
+    entries::Dict{UInt,_WeakFrameCacheEntry}
+end
+_WeakFrameCacheRegistry() = _WeakFrameCacheRegistry(Dict{UInt,_WeakFrameCacheEntry}())
 const _frame_cache_lock = ReentrantLock()
-const _frame_caches = IdDict{Any,_ModelEvaluationCache}()
+const _frame_caches = _WeakFrameCacheRegistry()
+function _prune_frame_caches!()
+    for (key, entry) in collect(_frame_caches.entries)
+        entry.frame.value === nothing && delete!(_frame_caches.entries, key)
+    end
+    return nothing
+end
+Base.length(registry::_WeakFrameCacheRegistry) = begin
+    lock(_frame_cache_lock)
+    try
+        _prune_frame_caches!()
+        length(registry.entries)
+    finally
+        unlock(_frame_cache_lock)
+    end
+end
 function _frame_cache(frame)
     lock(_frame_cache_lock)
     try
-        return get!(_frame_caches, frame) do
-            _ModelEvaluationCache(
-                Dict{Any,Int}(
-                    world => position for (position, world) in enumerate(frame.worlds)
-                ),
-                Dict{Any,_RelationAdjacency}(), ReentrantLock()
-            )
+        _prune_frame_caches!()
+        key = objectid(frame)
+        entry = get(_frame_caches.entries, key, nothing)
+        if entry !== nothing && entry.frame.value === frame
+            return entry.cache
         end
+        cache = _ModelEvaluationCache(
+            Dict{Any,Int}(
+                world => position for (position, world) in enumerate(frame.worlds)
+            ),
+            Dict{Any,_RelationAdjacency}(), ReentrantLock()
+        )
+        _frame_caches.entries[key] = _WeakFrameCacheEntry(WeakRef(frame), cache)
+        return cache
     finally
         unlock(_frame_cache_lock)
     end
@@ -523,6 +553,16 @@ struct Frame{W<:Tuple,RS,I} <: AbstractMultiModalFrame{eltype(W)}
             owned_worlds, owned_relations, owned_index
         )
     end
+end
+
+function release!(frame::Frame)
+    lock(_frame_cache_lock)
+    try
+        delete!(_frame_caches.entries, objectid(frame))
+    finally
+        unlock(_frame_cache_lock)
+    end
+    return frame
 end
 
 function _world_tuple(worlds)
