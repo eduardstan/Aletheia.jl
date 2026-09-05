@@ -263,6 +263,17 @@ Aletheia.negation(::MutableTruthAlgebra, a::MutableTruth) = MutableTruth(10 - a.
     @test check(atom(:p), model, :w) === false
 end
 
+@testset "scalar callbacks copy reusable mutable values" begin
+    buffer = MutableTruth(0)
+    callback = Aletheia.ValuationCallback(
+        (name, world) -> (buffer.value = world === :w2 ? 1 : 0; buffer)
+    )
+    values = Aletheia.atom_values(callback, atom(:p), (:w1, :w2))
+    @test values[1] !== values[2]
+    @test values[1].value == 0
+    @test values[2].value == 1
+end
+
 @testset "vectorized callbacks own mutable values" begin
     frame = Frame((:w,), Dict(); index=true)
     p = atom(:p)

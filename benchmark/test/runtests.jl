@@ -26,3 +26,15 @@ end
     @test benchmark_measurement_verdict([timed_out]).reason ===
           :failed_or_incomplete_measurement
 end
+
+@testset "measurement verdict accepts the run aggregation shape" begin
+    measured = Measurement(1.0, 1, 1, "", 0.0, :measured)
+    rows = [(incumbent_seeds=[measured], aletheia_seeds=[measured])]
+    contraction_measurements = [[measured]]
+    all_measurements = Iterators.flatten((
+        Iterators.flatten((row.incumbent_seeds for row in rows)),
+        Iterators.flatten((row.aletheia_seeds for row in rows)),
+        Iterators.flatten(contraction_measurements),
+    ))
+    @test benchmark_measurement_verdict(all_measurements).publishable
+end

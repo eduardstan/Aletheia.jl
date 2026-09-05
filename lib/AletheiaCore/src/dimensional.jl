@@ -458,6 +458,11 @@ struct _IntervalRelationMap{B,W,T} <: _RelationProvider
     canonical_index::Bool
 end
 
+# Generated dimensional providers own their immutable construction inputs and
+# retain private lookup arrays for the fast accessibility path.
+_is_owned(::_IntervalRelationMap, seen=IdDict{Any,Bool}()) = true
+_immutable_copy(value::_IntervalRelationMap, path::Tuple, seen::IdDict{Any,Bool}) = value
+
 function (provider::_IntervalRelationMap)(source, relation)
     targets = relation === BEFORE ? _interval_before_successors(source, provider.boundaries, provider.world_values) :
         _interval_relation_successors(relation, source, provider.boundaries, provider.world_values)

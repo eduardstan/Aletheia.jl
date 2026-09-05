@@ -4,18 +4,13 @@ This page records the choices that shape Aletheia's public architecture. Each
 entry gives the context, the choice, and the consequence for users and
 contributors.
 
-## 2026-09-05 — Reject mutable opaque semantic values
+## 2026-09-05 — One recursive ownership rule
 
-**Context.** Recursive collection snapshots cannot copy arbitrary user structs safely,
-and generated parametric constructors could bypass the owned construction path.
+**Context.** Shallow checks allowed immutable wrappers to retain mutable values.
 
-**Choice.** Public semantic constructors reject mutable opaque values with
-`OwnershipError`, add inner constructors where retained collections require them,
-and snapshot dictionary valuations and provenance before storage. Callback
-functions remain dynamic by design; their captured state is outside this guarantee.
+**Choice.** An accepted value is owned exactly when it is structurally immutable to any depth: immutable bits types, strings, symbols, frozen collections, and immutable structs whose fields are recursively owned; mutable values and mutable descendants are snapshotted when they are standard collections, otherwise rejected with `OwnershipError` naming the offending type and field path.
 
-**Consequence.** Every accepted standard collection is owned by its record, and
-mutable opaque values fail loudly instead of changing a retained semantic record.
+**Consequence.** Every retained semantic value uses this one predicate and recursive snapshot at construction.
 
 ## 2026-09-04 — Immutable collection storage for public semantic values
 
@@ -26,10 +21,7 @@ nested standard collections retained by semantic objects.
 immutable tuples and `AletheiaCore` frozen collection values. Certified circuit
 nodes, finite algebra tables, frame relations, valuations, scalar stores, audit
 payloads, and graph paths therefore retain standard collections in immutable
-language-level storage. Opaque mutable user values are rejected with the typed
-`OwnershipError`; opaque immutable values are retained as supplied. Callable
-values remain an explicit dynamic boundary, so state captured by a callback is
-the caller's responsibility. Accessors still return ordinary mutable snapshots
+language-level storage. Accessors still return ordinary mutable snapshots
 where the API historically returned arrays or maps.
 
 **Consequence and cost.** A caller cannot alter collection-backed semantic state

@@ -43,9 +43,11 @@ treating a trace as a logical proof.
 ## Explicit metric scope
 
 `MetricValue` keeps a value with its numerator, denominator, scope, and
-applicability. An uncovered or otherwise inapplicable case is represented by
-`missing`, not silently counted as a negative. `metric_bundle` reports fidelity, coverage, stability, complexity, constraints,
-trace validity, and resource cost as separate fields. Scope is restricted to
+applicability. `metric_bundle` reports fidelity over all selected cases, counting
+uncovered cases as non-matches, while coverage reports the covered subset as a
+separate number. An empty selected population is represented by `missing`, not
+silently counted as a negative. It also reports stability, complexity,
+constraints, trace validity, and resource cost as separate fields. Scope is restricted to
 `:all`, `:global`, or `:local`; stability is computed from supplied perturbations
 and is otherwise inapplicable. With perturbations, stability uses the artifact
 output for the selected case whose evaluated-state hash is lexicographically

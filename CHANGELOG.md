@@ -5,6 +5,8 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
 
 ## Unreleased
 
+- Enforced one recursive ownership predicate and snapshot across semantic constructors, including nested immutable wrappers and typed field paths; scalar callback results are copied, audit fidelity covers the selected population, and benchmark measurement aggregation and provenance links are checked.
+
 - Rejected mutable opaque values at owned semantic boundaries with `OwnershipError`, added inner constructors for frame, model, provenance, graph, and distribution-program records, and made dictionary Model routes and provenance snapshots use immutable storage. Timed-out benchmark cells now make the run non-publishable and record the incomplete status.
 
 - Replaced retained semantic collections with immutable storage and kept mutable frame caches explicitly internal. Frame relations, valuations, scalar values, audit payloads, graph paths, circuit nodes, algebra tables, and choice alternatives now snapshot inputs at construction; family callback reuse preserves world identity.

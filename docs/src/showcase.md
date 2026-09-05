@@ -99,12 +99,12 @@ round-trip verification: true; trace replay after serialization: true
 The full metric bundle records fidelity, coverage, stability, complexity,
 constraints, trace validity, and resource cost. The unseen fifth input is
 uncovered: coverage is applicable at `4/5`, while fidelity is applicable at
-`4/4`; the constraint metric is explicitly not applicable rather than being
+`4/5`; the constraint metric is explicitly not applicable rather than being
 reported as zero. This separation follows the audit metric contract for
 symbolic explanations [stan2026; pp. 1–60](@cite).
 
 ```text
-fidelity: value=1.0, population=4/4, applicable=true, scope=all
+fidelity: value=0.8, population=4/5, applicable=true, scope=all
 coverage: value=0.8, population=4/5, applicable=true, scope=all
 stability: value=missing, population=missing/missing, applicable=false, scope=all
 complexity: value=4.0, population=4/1, applicable=true, scope=all
@@ -164,7 +164,7 @@ e. neural leaves/direct outputs: Bool[1, 1, 0, 1]
    exact extraction rules: 4
    round-trip verification: true; trace replay after serialization: true
    metric bundle:
-  fidelity: value=1.0, population=4/4, applicable=true, scope=all
+  fidelity: value=0.8, population=4/5, applicable=true, scope=all
   coverage: value=0.8, population=4/5, applicable=true, scope=all
   stability: value=missing, population=missing/missing, applicable=false, scope=all
   complexity: value=4.0, population=4/1, applicable=true, scope=all

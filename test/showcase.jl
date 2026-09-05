@@ -13,7 +13,7 @@ using Test
     @test result.cross_checks.graph
     @test result.cross_checks.neural
     @test result.crisp_labels == [:alert, :review, :calm, :calm]
-    @test result.metrics.fidelity.value == 1.0
+    @test result.metrics.fidelity.value == 0.8
     @test result.metrics.coverage.value == 0.8
     @test !result.metrics.constraints.applicable
     @test result.trace_replay.valid

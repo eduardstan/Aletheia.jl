@@ -467,6 +467,10 @@ mutable struct _ModelEvaluationCache
     lock::ReentrantLock
 end
 
+# The cache is mutable execution state and is intentionally outside the owned
+# semantic payload checked by `_is_owned`.
+_is_owned(::_ModelEvaluationCache, seen=IdDict{Any,Bool}()) = true
+
 """
     Frame(worlds, relations; index=false)
 
@@ -953,6 +957,13 @@ true
 struct ValuationCallback{S,B}
     scalar::S
     vectorized::B
+    function ValuationCallback{S,B}(scalar, vectorized) where {S,B}
+        owned_scalar = _immutable_copy(scalar)
+        owned_vectorized = vectorized === nothing ? nothing : _immutable_copy(vectorized)
+        return new{typeof(owned_scalar),typeof(owned_vectorized)}(
+            owned_scalar, owned_vectorized
+        )
+    end
 end
 
 function ValuationCallback(scalar; vectorized=nothing)
@@ -1075,7 +1086,9 @@ end
 
 function atom_values(valuation::ValuationCallback, atom::Atom, worlds)
     batch = valuation.vectorized
-    batch === nothing && return [valuation.scalar(value(atom), world) for world in worlds]
+    batch === nothing && return [
+        _owned_callback_value(valuation.scalar(value(atom), world)) for world in worlds
+    ]
     result = batch(value(atom), worlds)
     values = result isa AbstractVector ? result : collect(result)
     return [_owned_callback_value(value) for value in values]
