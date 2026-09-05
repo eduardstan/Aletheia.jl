@@ -164,9 +164,9 @@ const _CompatFormula = Union{Atom,_CompatBranch}
 # asymmetry silently disarmed the tableau closure rules that test
 # `Tuple{Truth,Truth}`.
 const _CompatCacheEntry = Union{Nothing,Atom,_CompatBranch,Truth}
-const _WRAPPER_CACHE = IdDict{Aletheia.FormulaPool,Vector{_CompatCacheEntry}}()
+const _WRAPPER_CACHE = IdDict{Any,Vector{_CompatCacheEntry}}()
 const _WRAPPER_CACHE_LOCK = ReentrantLock()
-const _NEGATION_CACHE = IdDict{Aletheia.FormulaPool,Vector{Int}}()
+const _NEGATION_CACHE = IdDict{Any,Vector{Int}}()
 const _NEGATION_CACHE_LOCK = ReentrantLock()
 const SyntaxLeaf = Atom
 const AbstractAtom = Atom
@@ -186,15 +186,17 @@ Base.isequal(left::Atom, right::Atom) = left == right
 Base.isequal(left::_CompatBranch, right::_CompatBranch) = left == right
 Base.hash(formula::Atom, h::UInt) = hash(objectid(formula.pool), hash(formula.id, h))
 Base.hash(formula::_CompatBranch, h::UInt) = hash(objectid(formula.pool), hash(formula.id, h))
+@inline _pool_cache_key(pool::Aletheia.FormulaPool) = pool.nodes
 @inline function _wrap_id(pool::P, id::Int) where {P<:Aletheia.FormulaPool}
-    cache = get(_WRAPPER_CACHE, pool, nothing)
+    key = _pool_cache_key(pool)
+    cache = get(_WRAPPER_CACHE, key, nothing)
     if cache !== nothing && id <= length(cache)
         cached = cache[id]
         cached === nothing || return cached
     end
     lock(_WRAPPER_CACHE_LOCK)
     try
-        cache = get!(_WRAPPER_CACHE, pool) do
+        cache = get!(_WRAPPER_CACHE, key) do
             _CompatCacheEntry[]
         end
         while id > length(cache)
@@ -325,14 +327,15 @@ end
 @inline _compat_child_id(child, pool) = 0
 
 @inline function _compat_negation(pool::P, child_id::Int) where {P<:Aletheia.FormulaPool}
-    cache = get(_NEGATION_CACHE, pool, nothing)
+    key = _pool_cache_key(pool)
+    cache = get(_NEGATION_CACHE, key, nothing)
     if cache !== nothing && child_id <= length(cache)
         branch_id = cache[child_id]
         branch_id != 0 && return _wrap_id(pool, branch_id)
     end
     lock(_NEGATION_CACHE_LOCK)
     try
-        cache = get!(_NEGATION_CACHE, pool) do
+        cache = get!(_NEGATION_CACHE, key) do
             Int[]
         end
         while child_id > length(cache)

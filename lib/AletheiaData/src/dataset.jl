@@ -210,11 +210,7 @@ for an empty or non-uniform family.  Equality is checked on the frames rather
 than assumed from the family type.
 """
 function _same_frame(left::Frame, right::Frame)
-    # Frame identity is intentionally irrelevant here: an equal world order and
-    # relation mapping provide the same evaluation plan.  The world index is an
-    # implementation detail and does not change frame semantics.
-    return isequal(worlds(left), worlds(right)) &&
-           isequal(relations(left), relations(right))
+    return isequal(left, right)
 end
 
 # Retain the first frame for each equal world/relation signature.  This is

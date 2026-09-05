@@ -380,52 +380,47 @@ struct _PoolNode
     children::Tuple{Vararg{Int}}
 end
 
-# Interned nodes are append-only. The arena intentionally has no `setindex!`
-# method, so a formula handle cannot replace an existing node through its pool.
+# Interned nodes are append-only. The arena owns its storage so standard
+# serialization preserves every node. The only supported mutation is the locked
+# append used by the pool's interning path; AbstractVector has no replacement or
+# resizing methods for this wrapper.
 mutable struct _PoolArena <: AbstractVector{_PoolNode}
-    const marker::UInt8
-    _PoolArena(::Val{:new}) = new(0x00)
+    const storage::Vector{_PoolNode}
+    _PoolArena(::Val{:new}) = new(_PoolNode[])
 end
 const _pool_arena_lock = ReentrantLock()
-const _pool_arena_storage = IdDict{_PoolArena,Vector{_PoolNode}}()
-function _PoolArena()
-    arena = _PoolArena(Val(:new))
-    lock(_pool_arena_lock)
-    try
-        _pool_arena_storage[arena] = _PoolNode[]
-    finally
-        unlock(_pool_arena_lock)
-    end
-    return arena
-end
-function _pool_nodes(arena::_PoolArena)
-    lock(_pool_arena_lock)
-    try
-        get!(_pool_arena_storage, arena) do
-            _PoolNode[]
-        end
-    finally
-        unlock(_pool_arena_lock)
-    end
-end
-function _release_pool_arena(pool)
-    lock(_pool_arena_lock)
-    try
-        delete!(_pool_arena_storage, pool.nodes)
-    finally
-        unlock(_pool_arena_lock)
-    end
-    return nothing
-end
+_PoolArena() = _PoolArena(Val(:new))
+_pool_nodes(arena::_PoolArena) = arena.storage
 Base.isequal(left::_PoolArena, right::_PoolArena) = left === right
 Base.hash(arena::_PoolArena, h::UInt) = hash(objectid(arena), h)
 Base.size(arena::_PoolArena) = (length(_pool_nodes(arena)),)
 Base.length(arena::_PoolArena) = length(_pool_nodes(arena))
 Base.getindex(arena::_PoolArena, index::Int) = _pool_nodes(arena)[index]
 function _append_node!(arena::_PoolArena, node::_PoolNode)
-    storage = _pool_nodes(arena)
-    push!(storage, node)
-    return length(storage)
+    lock(_pool_arena_lock)
+    try
+        push!(_pool_nodes(arena), node)
+        return length(arena)
+    finally
+        unlock(_pool_arena_lock)
+    end
+end
+
+
+# The index wrapper deliberately exposes no mutating dictionary interface. Its
+# backing dictionary is changed only by `_insert_index!`, while the pool lock is
+# held by `_intern!`.
+struct _PoolIndex <: AbstractDict{Any,Int}
+    data::Dict{Any,Int}
+end
+Base.length(index::_PoolIndex) = length(index.data)
+Base.iterate(index::_PoolIndex, state...) = iterate(index.data, state...)
+Base.getindex(index::_PoolIndex, key) = getindex(index.data, key)
+Base.haskey(index::_PoolIndex, key) = haskey(index.data, key)
+Base.get(index::_PoolIndex, key, default) = get(index.data, key, default)
+function _insert_index!(index::_PoolIndex, key, id::Int)
+    index.data[key] = id
+    return id
 end
 
 """
@@ -444,18 +439,15 @@ julia> isdefined(AletheiaCore, Symbol("FormulaPool"))
 true
 ```
 """
-mutable struct FormulaPool{S<:Signature} <: _SealedArena
+struct FormulaPool{S<:Signature} <: _SealedArena
     signature::S
-    index::Dict{Any,Int}
+    _index::_PoolIndex
     nodes::_PoolArena
     lock::ReentrantLock
 end
 
 function FormulaPool(signature::Signature)
-    arena = _PoolArena()
-    pool = FormulaPool(signature, Dict{Any,Int}(), arena, ReentrantLock())
-    finalizer(_release_pool_arena, pool)
-    pool
+    return FormulaPool(signature, _PoolIndex(Dict{Any,Int}()), _PoolArena(), ReentrantLock())
 end
 
 # The arena's mutable state is intentionally outside semantic identity. Its
@@ -827,17 +819,28 @@ function isgrounded(formula::Formula)
         all(isgrounded, children(formula))
 end
 
+function _index_node_matches(pool::FormulaPool, id::Int, kind::UInt8, payload, childids)
+    1 <= id <= length(pool.nodes) || return false
+    node = pool.nodes[id]
+    return node.kind == kind && isequal(node.payload, payload) && node.children == childids
+end
+
 function _intern!(pool::FormulaPool, kind::UInt8, payload, childids::Tuple{Vararg{Int}})
     role = kind == 0x01 ? "atom payload" : "branch connective"
     _require_immutable_payload(payload, role)
     key = kind == 0x01 ? (:atom, payload) : (:branch, payload, childids)
     lock(pool.lock)
     try
-        existing = get(pool.index, key, 0)
-        existing != 0 && return existing
+        existing = get(pool._index, key, 0)
+        if existing != 0
+            _index_node_matches(pool, existing, kind, payload, childids) || throw(
+                ArgumentError("FormulaPool index is inconsistent for key $(repr(key))")
+            )
+            return existing
+        end
         new_id = length(pool.nodes) + 1
         _append_node!(pool.nodes, _PoolNode(kind, payload, childids))
-        pool.index[key] = new_id
+        _insert_index!(pool._index, key, new_id)
         return new_id
     finally
         unlock(pool.lock)

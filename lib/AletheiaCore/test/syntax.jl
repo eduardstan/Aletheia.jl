@@ -262,11 +262,32 @@ end
     p = atom(pool, :p)
     formula = branch(pool, ¬, p)
     @test !(pool.nodes isa Vector)
+    @test !hasproperty(pool, :index)
     @test_throws Exception setindex!(pool.nodes, AletheiaCore._PoolNode(0x01, :poison, ()), p.id)
+    @test syntaxstring(p) == "p"
+    forged_index = getfield(getfield(pool, :_index), :data)
+    forged_index[(:atom, :q)] = p.id
+    @test_throws ArgumentError atom(pool, :q)
     frame = Frame((1,), Dict(); index=true)
     model = Model(frame, Dict((1, :p) => false))
     @test check(formula, model, 1)
     @test AletheiaCore._is_owned(formula)
+
+    # Arena storage and pool records are serialized as ordinary owned fields.
+    formula_buffer = IOBuffer()
+    Serialization.serialize(formula_buffer, formula)
+    seekstart(formula_buffer)
+    restored_formula = Serialization.deserialize(formula_buffer)
+    @test syntaxstring(restored_formula) == syntaxstring(formula)
+    restored_model = Model(Frame((1,), Dict(); index=true), Dict((1, :p) => false))
+    @test check(restored_formula, restored_model, 1)
+
+    pool_buffer = IOBuffer()
+    Serialization.serialize(pool_buffer, pool)
+    seekstart(pool_buffer)
+    restored_pool = Serialization.deserialize(pool_buffer)
+    @test syntaxstring(atom(restored_pool, :p)) == "p"
+    @test length(restored_pool.nodes) == length(pool.nodes)
 
     mutable struct HandMadeMutableState
         value::Int

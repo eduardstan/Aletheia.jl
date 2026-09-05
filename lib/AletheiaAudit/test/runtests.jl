@@ -304,3 +304,18 @@ end
     @test record.trace[1].artifact.rules[1].output == [1]
     @test record.provenance.hashes[:tag] == :original
 end
+
+
+@testset "formula trace serialization" begin
+    formula = atom(:trace_formula)
+    artifact = RuleArtifact([formula => true])
+    result, trace = eval_artifact(artifact, formula)
+    restored = deserialize_trace(serialize_trace(trace))
+    @test result
+    restored_artifact = getfield(restored, :artifact)
+    restored_formula = getfield(getfield(restored_artifact, :rules)[1], :condition)
+    restored_result, _ = eval_artifact(restored_artifact, restored_formula)
+    @test restored_result
+    @test syntaxstring(restored_formula) == syntaxstring(formula)
+    @test restored_formula.pool !== formula.pool
+end

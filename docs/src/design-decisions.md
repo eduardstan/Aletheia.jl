@@ -9,7 +9,22 @@ contributors.
 **Context.** Shallow checks allowed immutable wrappers to retain mutable values,
 and fieldless runtime containers could hide mutable elements.
 
-**Choice.** Every value a user supplies to a semantic constructor is structurally owned to any depth. The constructor recursively snapshots standard arrays, dictionaries, and sets; accepts only recursively owned immutable wrappers; and refuses a mutable opaque value, mutable closure capture, or an immutable wrapper whose required snapshot cannot preserve `isequal` and `hash`, with a path-aware `OwnershipError`. The formula intern arena's mutable node storage and the evaluator caches are implementation state: the arena is named separately from the frame-adjacency cache and scalar aggregate-memo cache, and none of that mutable state is part of any semantic value's identity, hash, or equality. Interned node records are immutable and append-only under the pool lock, so an existing node cannot be overwritten. The frame-adjacency registry uses weak frame references and a `release!` operation; its entry lasts only while its frame is live. The scalar registry uses a per-prepared-record token, releases its source and memo entries at token finalization or through `release!`/`clear!`, and never silently replaces stale data: a source-version mismatch throws `ArgumentError` instructing the caller to re-run `prepare_scalar`.
+**Choice.** Every value a user supplies to a semantic constructor is structurally owned to any depth. The constructor recursively snapshots standard arrays, dictionaries, and sets; accepts only recursively owned immutable wrappers; and refuses a mutable opaque value, mutable closure capture, or an immutable wrapper whose required snapshot cannot preserve `isequal` and `hash`, with a path-aware `OwnershipError`. Julia has no private fields: `getfield` reaches every internal of every package, so “cannot be mutated” can only mean “cannot be mutated through any exported name, documented accessor, constructor, iterator, copy, convert, show, serialization or callback route, and every internal type is named with a leading underscore and documented as outside the contract”. The ownership tests exercise original inputs, public fields and accessors, iteration, copying and conversion, display, serialization, and callback return values. The formula intern arena owns mutable node storage and exposes only locked append through its private implementation type; its index is likewise changed only by the locked interning path, which verifies an existing entry before using it. Frame and Model equality and hashing derive only from their owned fields; arena, frame-adjacency, and scalar aggregate-memo state are excluded. The frame-adjacency registry uses weak frame references and a `release!` operation; its entry lasts only while its frame is live. The scalar registry uses a per-prepared-record token, releases its source and memo entries at token finalization or through `release!`/`clear!`, and never silently replaces stale data: a source-version mismatch throws `ArgumentError` instructing the caller to re-run `prepare_scalar`.
+
+## 2026-09-06 — Value identity for owned semantic records
+
+**Context.** Structurally identical frames previously compared according to
+Julia's default field identity behavior, while the evaluator registry keyed
+caches by object identity.
+
+**Choice.** `Frame` and `Model` use value equality and hashes derived from their
+owned fields. The weak frame-cache registry uses hash buckets and value
+comparison, so equal frames share adjacency state without retaining frames.
+
+**Consequence.** Model-family and direct frame comparisons agree, and equal
+frames reuse the same cache. Since constructors own their fields, callers
+cannot mutate a frame or model after construction to change its equality or
+hash.
 
 ## 2026-09-04 — Immutable collection storage for public semantic values
 

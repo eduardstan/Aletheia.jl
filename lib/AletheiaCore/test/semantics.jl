@@ -298,6 +298,30 @@ end
 end
 
 
+@testset "frame and model value equality" begin
+    struct EqualityWorld
+        id::Int
+        tag::Symbol
+    end
+    Base.:(==)(left::EqualityWorld, right::EqualityWorld) = left.id == right.id
+    Base.hash(world::EqualityWorld, seed::UInt) = hash(world.id, seed)
+
+    first = Frame([EqualityWorld(1, :first)], Dict(); index=true)
+    second = Frame([EqualityWorld(1, :second)], Dict(); index=true)
+    @test first == second
+    @test isequal(first, second)
+    @test hash(first) == hash(second)
+    @test AletheiaCore._frame_cache(first) === AletheiaCore._frame_cache(second)
+
+    model_first = Model(first, Dict((EqualityWorld(1, :first), :p) => true))
+    model_second = Model(second, Dict((EqualityWorld(1, :second), :p) => true))
+    @test model_first == model_second
+    @test isequal(model_first, model_second)
+    @test hash(model_first) == hash(model_second)
+
+    AletheiaCore.release!(first)
+end
+
 @testset "frame cache lifetime" begin
     function cached_frame()
         holder = Ref{Any}(Frame((:a, :b), Dict(:R => Dict(:a => [:b], :b => [])); index=true))

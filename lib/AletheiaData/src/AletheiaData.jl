@@ -76,7 +76,8 @@ export AggregateMemoStore,
     aggregate_value,
     representative_worlds,
     data_version,
-    release!
+    release!,
+    clear!
 export batch_apply,
     source,
     store,
