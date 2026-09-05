@@ -182,7 +182,7 @@ end
 # their type is added next to its definition in semantics.jl.
 function _is_owned(value, seen=IdDict{Any,Bool}())
     T = typeof(value)
-    (isbitstype(T) || fieldcount(T) == 0) && return true
+    isbitstype(T) && return true
     value isa FrozenArray && return all(_is_owned(x, seen) for x in value.data)
     value isa FrozenDict && return all(_is_owned(x, seen) for pair in value for x in pair)
     value isa FrozenSet && return all(_is_owned(x, seen) for x in value)
