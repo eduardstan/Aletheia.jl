@@ -319,7 +319,7 @@ end
     @test isequal(model_first, model_second)
     @test hash(model_first) == hash(model_second)
 
-    release!(first)
+    AletheiaCore.release!(first)
 end
 
 @testset "frame cache lifetime" begin
