@@ -298,8 +298,6 @@ mutable struct AggregateMemoStore <: AbstractAggregateMemo
     version::UInt64
     lock::ReentrantLock
 end
-# Memo tables are private execution state, not semantic callback payload.
-AletheiaCore._is_owned(::AggregateMemoStore, seen=IdDict{Any,Bool}()) = true
 function AggregateMemoStore(version::Integer=0)
     return AggregateMemoStore(
         Dict{Any,Any}(), Dict{Any,Any}(), UInt64(version), ReentrantLock()
@@ -342,13 +340,8 @@ julia> index.relations
 ```
 """
 struct ScalarRelationIndex{F}
-    frames::Tuple{Vararg{F}}
+    frames::Vector{F}
     relations::Tuple
-end
-function ScalarRelationIndex(frames, relations)
-    frame_tuple = tuple(frames...)
-    frame_type = isempty(frame_tuple) ? Any : reduce(typejoin, typeof.(frame_tuple))
-    return ScalarRelationIndex{frame_type}(frame_tuple, tuple(relations...))
 end
 
 """
@@ -373,6 +366,10 @@ struct PreparedScalarData{D,S,M,R} <: AbstractScalarDataset
     relation_index::R
     version::UInt64
 end
+# Prepared scalar data owns its private memo/index state and validates source
+# versions when read; it is the immutable callback context, not a public mutable
+# payload.
+AletheiaCore._is_owned(::PreparedScalarData, seen=IdDict{Any,Bool}()) = true
 
 ScalarEvaluationCache(data::PreparedScalarData) = ScalarEvaluationCache(data.version)
 
