@@ -558,6 +558,38 @@ struct Frame{W<:Tuple,RS,I} <: AbstractMultiModalFrame{eltype(W)}
     end
 end
 
+# Hash immutable collection snapshots according to their equality rather than
+# their storage order. This keeps equal owned frames in the same cache bucket.
+function _owned_hash(value::FrozenDict, seed::UInt)
+    result = hash(length(value), seed)
+    for entry in value
+        result ⊻= hash((_owned_hash(entry.first, UInt(0)), _owned_hash(entry.second, UInt(0))), UInt(0))
+    end
+    return result
+end
+function _owned_hash(value::FrozenSet, seed::UInt)
+    result = hash(length(value), seed)
+    for item in value
+        result ⊻= _owned_hash(item, UInt(0))
+    end
+    return result
+end
+function _owned_hash(value::FrozenArray, seed::UInt)
+    result = hash(size(value), seed)
+    for item in value
+        result = _owned_hash(item, result)
+    end
+    return result
+end
+function _owned_hash(value::Tuple, seed::UInt)
+    result = hash(length(value), seed)
+    for item in value
+        result = _owned_hash(item, result)
+    end
+    return result
+end
+_owned_hash(value, seed::UInt) = hash(value, seed)
+
 # Frames are owned semantic values. Equality includes every owned field, while
 # evaluator caches remain separate and are shared by equal frames.
 function Base.:(==)(left::Frame, right::Frame)
@@ -567,7 +599,7 @@ function Base.:(==)(left::Frame, right::Frame)
 end
 Base.isequal(left::Frame, right::Frame) = left == right
 function Base.hash(frame::Frame, seed::UInt)
-    return hash(frame.index, hash(frame.relations, hash(frame.worlds, seed)))
+    return _owned_hash(frame.index, _owned_hash(frame.relations, _owned_hash(frame.worlds, seed)))
 end
 
 function release!(frame::Frame)
@@ -1214,7 +1246,7 @@ function Base.:(==)(left::Model, right::Model)
 end
 Base.isequal(left::Model, right::Model) = left == right
 function Base.hash(model::Model, seed::UInt)
-    return hash(model.valuation, hash(model.algebra, hash(model.frame, seed)))
+    return _owned_hash(model.valuation, _owned_hash(model.algebra, _owned_hash(model.frame, seed)))
 end
 
 function Model(frame::Frame, algebra::TruthAlgebra, valuation)
