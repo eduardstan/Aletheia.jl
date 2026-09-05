@@ -347,7 +347,7 @@ struct ScalarRelationIndex{F}
 end
 function ScalarRelationIndex(frames, relations)
     frame_tuple = tuple(frames...)
-    frame_type = isempty(frame_tuple) ? Any : typeof(first(frame_tuple))
+    frame_type = isempty(frame_tuple) ? Any : reduce(typejoin, typeof.(frame_tuple))
     return ScalarRelationIndex{frame_type}(frame_tuple, tuple(relations...))
 end
 
