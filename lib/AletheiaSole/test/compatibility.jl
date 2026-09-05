@@ -587,7 +587,7 @@ end
         @eval using AletheiaData
         logiset = SoleData.scalarlogiset([[1.0; 2.0], [3.0; 4.0]])
         prepared = AletheiaData.prepare_scalar(logiset)
-        condition = SoleData.ScalarCondition(1, >, 1.5)
+        condition = SoleData.ScalarCondition(SoleData.VariableValue(1), >, 1.5)
         @test AletheiaData.scalar_check(condition, prepared, 1, 1) === false
         @test AletheiaData.scalar_check(condition, prepared, 1, 2) === true
     end
