@@ -1,10 +1,10 @@
 using Test
-const Serialization = AletheiaCore.Serialization
 using Random
 using Aqua
 using JET
 using Supposition
 using AletheiaCore
+const Serialization = AletheiaCore.Serialization
 const Aletheia = AletheiaCore
 
 include("syntax.jl")
