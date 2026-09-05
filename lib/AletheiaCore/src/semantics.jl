@@ -522,6 +522,9 @@ function _frame_cache(frame)
     end
 end
 
+struct _TrustedFrame end
+const _TRUSTED_FRAME = _TrustedFrame()
+
 """
     Frame(worlds, relations; index=false)
 
@@ -545,9 +548,6 @@ julia> isdefined(AletheiaCore, Symbol("Frame"))
 true
 ```
 """
-struct _TrustedFrame end
-const _TRUSTED_FRAME = _TrustedFrame()
-
 struct Frame{W<:Tuple,RS,I} <: AbstractMultiModalFrame{eltype(W)}
     worlds::W
     relations::RS
