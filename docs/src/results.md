@@ -52,9 +52,19 @@ publication; they predate the fixes in this branch.
 | allocations per propositional check | 36,920 bytes | 67,704 bytes | 1.8× |
 | allocations per modal check | 23,552 bytes | 108,048 bytes | 4.6× |
 
-The office quick run for this branch is subject to the measurement law. If the
-host is not quiet or the harness refuses publication, its refusal remains
-provenance rather than a performance claim.
+The office quick run for this branch was refused as non-publishable. Run
+`quick-bench-12` on Elysium (2026-09-05, Julia 1.12.7, `arrowlake-s`, 24
+threads; branch commit `a3d134a`) recorded load `3.17, 2.73, 2.85`, GPU
+utilization 72%, and exited 1 with:
+
+```
+!!! BENCHMARK REFUSED: NON-PUBLISHABLE; one or more measurements failed or timed out !!!
+```
+
+Its contraction rows timed out for all five seeds. The run is retained at
+`~/fm/runs/aletheia/20260905T221044Z-quick-bench-12`; it is not used to
+republish any table. The page therefore keeps the historical tables with their
+per-table provenance and the paired same-machine regression measurements above.
 
 ## How to read a row
 
