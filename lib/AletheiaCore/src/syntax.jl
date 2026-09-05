@@ -406,22 +406,7 @@ function _append_node!(arena::_PoolArena, node::_PoolNode)
     end
 end
 
-"""
-    FormulaPool(signature)
 
-Create an explicit, thread-safe hash-consing pool for formulas over `signature`.
-Pools are explicit rather than global: formulas from different pools cannot be
-mistaken for one another, while a pool may safely be shared by threads.
-
-
-# Examples
-```jldoctest
-julia> using AletheiaCore
-
-julia> isdefined(AletheiaCore, Symbol("FormulaPool"))
-true
-```
-"""
 # The index wrapper deliberately exposes no mutating dictionary interface. Its
 # backing dictionary is changed only by `_insert_index!`, while the pool lock is
 # held by `_intern!`.
@@ -438,6 +423,22 @@ function _insert_index!(index::_PoolIndex, key, id::Int)
     return id
 end
 
+"""
+    FormulaPool(signature)
+
+Create an explicit, thread-safe hash-consing pool for formulas over `signature`.
+Pools are explicit rather than global: formulas from different pools cannot be
+mistaken for one another, while a pool may safely be shared by threads.
+
+
+# Examples
+```jldoctest
+julia> using AletheiaCore
+
+julia> isdefined(AletheiaCore, Symbol("FormulaPool"))
+true
+```
+"""
 struct FormulaPool{S<:Signature} <: _SealedArena
     signature::S
     _index::_PoolIndex
