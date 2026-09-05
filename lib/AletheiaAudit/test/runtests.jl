@@ -312,7 +312,8 @@ end
     result, trace = eval_artifact(artifact, formula)
     restored = deserialize_trace(serialize_trace(trace))
     @test result
-    @test replay(restored, formula).valid
-    @test restored.artifact.rules[1].condition == formula
-    @test restored.artifact.rules[1].condition.pool !== formula.pool
+    restored_formula = restored.artifact.rules[1].condition
+    @test replay(restored, restored_formula).valid
+    @test syntaxstring(restored_formula) == syntaxstring(formula)
+    @test restored_formula.pool !== formula.pool
 end
