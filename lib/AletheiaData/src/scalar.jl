@@ -298,6 +298,8 @@ mutable struct AggregateMemoStore <: AbstractAggregateMemo
     version::UInt64
     lock::ReentrantLock
 end
+# Memo tables are private execution state, not semantic callback payload.
+AletheiaCore._is_owned(::_AggregateMemoStore, seen=IdDict{Any,Bool}()) = true
 function AggregateMemoStore(version::Integer=0)
     return AggregateMemoStore(
         Dict{Any,Any}(), Dict{Any,Any}(), UInt64(version), ReentrantLock()
@@ -340,9 +342,10 @@ julia> index.relations
 ```
 """
 struct ScalarRelationIndex{F}
-    frames::Vector{F}
+    frames::Tuple{Vararg{F}}
     relations::Tuple
 end
+ScalarRelationIndex(frames, relations) = ScalarRelationIndex(tuple(frames...), tuple(relations...))
 
 """
 Prepared source, dense feature store, relation index, and aggregate memos.
