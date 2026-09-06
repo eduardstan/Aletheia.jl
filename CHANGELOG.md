@@ -5,7 +5,7 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
 
 ## Unreleased
 
-- Unified the shared graph, circuit, and audit accessor generics in `AletheiaCore`, so focused packages extend one umbrella binding and single-import workflows remain unambiguous.
+- Added the umbrella exports `entities` and `edges`, and unified the shared graph, circuit, and audit accessor generics in `AletheiaCore` (`frame`, `model`, `relations`, `domain`, `evaluate`, `nodes`, `rules`, and `provenance`), so focused packages extend one binding and single-import workflows remain unambiguous.
 - Stored the owned frame hash at construction and reused it for evaluator cache lookup, avoiding repeated structural hashing during evaluation; frame construction now passes already-owned snapshots without rebuilding them, and benchmark-sized allocation/timing budgets guard the hot paths.
 
 - Moved formula arena storage into its owning append-only arena, made formula-pool indexing read-only outside locked interning, and added formula-pool and audit-trace serialization round trips.

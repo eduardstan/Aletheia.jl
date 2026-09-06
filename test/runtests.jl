@@ -381,6 +381,8 @@ end
             :path_provenance,
             :concept_atoms,
             :concept_extension,
+            :entities,
+            :edges,
             :ChoiceVariable,
             :AbstractChoiceVariable,
             :ChoiceAlternative,
