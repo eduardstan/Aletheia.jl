@@ -1,4 +1,5 @@
 [deps]
+AletheiaGraphs = "a4b1a79e-6d5e-4d0f-9c1d-2c6c8e2f4a31"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 AllocCheck = "9b6a8646-10ed-4001-bbdc-1d2f46dfbb1a"
 Coverage = "a2441757-f6aa-5fb2-8edb-039e3f45d037"
