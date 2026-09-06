@@ -1,5 +1,12 @@
 # Measured results
 
+The tables in this page are historical measurements, not claims about the
+current checkout. The primary synthetic tables were measured at commit
+`6ebaa998d00e8d4b172c7142fc0c9fbc81298f5e` on 2026-08-31 on the `alderlake`
+host. The cold package-load row from that artifact is retracted: it does not
+match the current eight-package umbrella. Current paired measurements are
+listed below with their exact provenance.
+
 Reproducing these measurements needs a local checkout of SoleLogics, because
 Aletheia deliberately does not depend on it:
 
@@ -18,13 +25,46 @@ between rows. Per-seed load readings are retained in the raw run artefact.
 Each section runs in a warmed child Julia process; GNU `timeout` kills a section
 at the printed hard bound (120 s quick, 180 s deep). `--deep` expands the size
 and ratio sweeps. A timeout is reported as data, not silently dropped. Cold-load rows are measured in fresh processes.
-The load and failure gates passed. All quick rows, including interval subset RCC5, measured across five seeds; no row timed out.
+The load and failure gates passed for the historical artifact. All quick rows, including interval subset RCC5, measured across five seeds; no row timed out. These results must not be read as current performance claims.
 The ratio is SoleLogics/Aletheia; allocations are `count / bytes`. Every ratio
 cell shows the median, mean ± standard deviation, and the observed per-seed
 range. The range is descriptive, not a confidence interval. `[no clear winner]`
 means that the mean ± standard deviation band contains `1.00×`. The raw run is retained in
 [`data/benchmark-run/run.txt`](https://github.com/eduardstan/Aletheia.jl/blob/main/data/benchmark-run/run.txt),
 
+
+## Current paired measurements
+
+The audit measured the historical artifact commit against current main on the
+same `alderlake` laptop using `nice -n 15`, one Julia process at a time, and
+200-batch medians. The current side was commit `36c269e` on 2026-09-05. These
+numbers are descriptive evidence for the regression and are not a benchmark
+publication; they predate the fixes in this branch.
+
+**Provenance:** audit section 4.4, script `evalmicro.jl`, host `alderlake`, measured 2026-09-05.
+
+| measurement | `6ebaa998` (2026-08-31) | `36c269e` (2026-09-05) | current / artifact |
+| --- | ---: | ---: | ---: |
+| propositional depth-6 `check` | 43,060 ns | 187,800 ns | 4.4× slower |
+| modal 32-world `check` | 10,974 ns | 112,961 ns | 10.3× slower |
+| modal 32-world `extension` | 14,004 ns | 103,859 ns | 7.4× slower |
+| `Frame` construction, 32 worlds | 12,445 ns | 207,971 ns | 16.7× slower |
+| allocations per propositional check | 36,920 bytes | 67,704 bytes | 1.8× |
+| allocations per modal check | 23,552 bytes | 108,048 bytes | 4.6× |
+
+The office quick run for this branch was refused as non-publishable. Run
+`quick-bench-12` on Elysium (2026-09-05, Julia 1.12.7, `arrowlake-s`, 24
+threads; branch commit `a3d134a`) recorded load `3.17, 2.73, 2.85`, GPU
+utilization 72%, and exited 1 with:
+
+```
+!!! BENCHMARK REFUSED: NON-PUBLISHABLE; one or more measurements failed or timed out !!!
+```
+
+Its contraction rows timed out for all five seeds. The run is retained at
+`~/fm/runs/aletheia/20260905T221044Z-quick-bench-12`; it is not used to
+republish any table. The page therefore keeps the historical tables with their
+per-table provenance and the paired same-machine regression measurements above.
 
 ## How to read a row
 
@@ -82,6 +122,8 @@ values). The cold rows are different by design: each side is loaded in a fresh
 process, once for package load and once for load plus parsing/printing one atom;
 there is no allocation sample for those wall-clock measurements.
 
+**Provenance:** commit `6ebaa998d00e8d4b172c7142fc0c9fbc81298f5e`, measured 2026-08-31 on `alderlake`.
+
 | case | SoleLogics median (mean ± std) | Aletheia median (mean ± std) | ratio median (mean ± std, range) | allocations |
 | --- | ---: | ---: | ---: | ---: |
 | construction, depth 2 (unshared) | 5.40 μs (mean 5.18 μs ± 1.25 μs) | 2.01 μs (mean 2.28 μs ± 741.8 ns) | 2.36× (mean 2.37× ± 0.60×, range 1.56-3.08×) | 37 / 1,312 bytes ; 56 / 2,656 bytes |
@@ -90,11 +132,11 @@ there is no allocation sample for those wall-clock measurements.
 | printing, depth 2 | 11.72 μs (mean 14.95 μs ± 8.25 μs) | 4.02 μs (mean 4.61 μs ± 1.50 μs) | 2.92× (mean 3.07× ± 0.78×, range 2.30-4.26×) | 45 / 1,792 bytes ; 19 / 864 bytes |
 | round-trip, depth 2 | 59.60 μs (mean 63.28 μs ± 12.66 μs) | 13.71 μs (mean 13.30 μs ± 2.48 μs) | 5.14× (mean 4.82× ± 0.89×, range 3.61-5.88×) | 340 / 14,400 bytes ; 81 / 4,624 bytes |
 | `isequal`, chain 16 | 3.36 μs (mean 3.40 μs ± 533.6 ns) | 22.0 ns (mean 23.8 ns ± 7.8 ns) | 165.75× (mean 151.33× ± 38.20×, range 95.94-188.95×) | 32 / 1,504 bytes ; 0 / 0 bytes |
-| cold package load | 953.620 ms (mean 970.130 ms ± 49.910 ms) | 16.970 ms (mean 17.580 ms ± 1.330 ms) | 55.60× (mean 55.38× ± 4.30×, range 48.83-60.83×) | —/— |
 | cold time to first result | 3,464.170 ms (mean 3,431.090 ms ± 92.830 ms) | 1,216.440 ms (mean 1,219.820 ms ± 110.990 ms) | 2.69× (mean 2.83× ± 0.29×, range 2.53-3.22×) | —/— |
 
-The load ratio is measured across fresh processes and is not attributed to the
-evaluator. The equality ratio is the pool-local integer identity path versus
+The retracted cold-load row is intentionally omitted. The load ratio in the
+historical artifact was measured across fresh processes and is not attributed
+to the evaluator. The equality ratio is the pool-local integer identity path versus
 SoleLogics' structural comparison; it is not a claim that the APIs have the
 same representation.
 
@@ -140,6 +182,8 @@ construction APIs. The ILP row is supported by the [raw benchmark artefact](http
 it scores four hypotheses against eight seeded models (32 pairs; models have
 4–7 worlds and edge probability .35).
 
+**Provenance:** commit `6ebaa998d00e8d4b172c7142fc0c9fbc81298f5e`, measured 2026-08-31 on `alderlake`.
+
 | case | SoleLogics median (mean ± std) | Aletheia median (mean ± std) | ratio median (mean ± std, range) | allocations |
 | --- | ---: | ---: | ---: | ---: |
 | propositional check, depth 2 | 3.06 μs (mean 3.12 μs ± 869.1 ns) | 2.34 μs (mean 2.34 μs ± 300.7 ns) | 1.31× (mean 1.37× ± 0.49×, range 0.88-1.97×) [no clear winner] | 29 / 752 bytes ; 48 / 2,544 bytes |
@@ -175,7 +219,7 @@ and scores hypotheses over all interpretations through the check/eval loop.
 Aletheia evaluates each extension formula DAG once into a `BitVector`, while the
 equivalent SoleLogics all-world loop performs one shared-memo evaluation per
 invocation. Aletheia's relation adjacency is held in the weak evaluator-side registry keyed by
-frame identity after its first check, while SoleLogics rebuilds its structural memo per call. Thus the
+frame value equality after its first check, while SoleLogics rebuilds its structural memo per call. Thus the
 modal rows are warm repeated-model measurements, not first-call comparisons; the
 asymmetry is intentional and labelled.
 
@@ -186,6 +230,8 @@ A naive implementation compares every candidate world against the source
 generated interval frames instead expose the successor set as an arithmetic
 range, while `accessible` stays lazy. The effect grows with the domain size
 (the quick n=6 row uses 200 samples; the deep-only sweep uses 500 samples):
+
+**Provenance:** commit `20a9f78c5254aadd223435e028ca26e63de464ee`, measured 2026-08-26.
 
 | n | SoleLogics | Aletheia | ratio | allocations (SoleLogics ; Aletheia) |
 | ---: | ---: | ---: | ---: | ---: |
@@ -262,6 +308,8 @@ and allocations/bytes come from the sample nearest each phase's median time.
 Timings are reported per phase because a single averaged figure would conflate
 first-use construction with steady-state reuse.
 
+**Provenance:** commit `eac3e2c090324a8db475e6226891840baf9bc533`, measured 2026-08-24.
+
 | representative case | first use min / median / max (ms) | steady min / median / max (ms) | churn min / median / max (ms) |
 | --- | ---: | ---: | ---: |
 | 16 rules, depth 4, 1 instance | 1.394 / 1.864 / 14.554 | 0.233 / 0.327 / 1.818 | 1.358 / 1.655 / 2.481 |
@@ -329,6 +377,8 @@ disagreement fails tests rather than becoming a performance result.
 the original and the quotient model; `K*` is the number of formulas at which
 contraction pays for itself.
 
+**Provenance:** commit `6ebaa998d00e8d4b172c7142fc0c9fbc81298f5e`, measured 2026-08-31 on `alderlake`.
+
 | original n | quotient q | q/n | C (median; mean ± std) | P_orig (median; mean ± std) | P_quot (median; mean ± std) | K* (median; mean ± std; range) |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | 48 | 1 | 0.021 | C=268.06 μs (mean 272.24 μs ± 17.73 μs) | P_orig=8.80 μs (mean 8.74 μs ± 1.12 μs) | P_quot=2.48 μs (mean 2.54 μs ± 642.3 ns) | K*=42.8 (mean 47.6 ± 17.4, range 33.6-76.1) |
@@ -340,18 +390,20 @@ remains ∞.
 
 ## What these results tell you
 
-**Where the design wins.** The `isequal` row is the clearest representation
-win: formulas interned in one pool carry pooled integer identity, so equality
-is an integer comparison rather than SoleLogics' structural walk. The extension
-rows show a smaller but still measurable mechanism: Aletheia walks the formula
-DAG once into a `BitVector`, while the explicitly labelled SoleLogics equivalent
-performs an all-world check loop. The interval size sweep is a separate win:
-canonical generated interval domains expose arithmetic successor ranges. The
-comparison charges both sides for position lookup. The depth-4/6 propositional
-rows and the modal rows also benefit from DAG evaluation and from doing no
-per-call normalisation; modal traversal still makes the graph's world count and
+**What the historical artifact showed.** The `isequal` row is the clearest
+representation win: formulas interned in one pool carry pooled integer identity, so equality
+is an integer comparison rather than SoleLogics' structural walk. The historical
+extension rows showed a smaller mechanism: Aletheia walked the formula DAG once
+into a `BitVector`, while the explicitly labelled SoleLogics equivalent performed
+an all-world check loop. The interval size sweep was a separate historical result:
+canonical generated interval domains exposed arithmetic successor ranges. The
+comparison charged both sides for position lookup. The historical depth-4/6
+propositional rows and modal rows also benefited from DAG evaluation and from doing
+no per-call normalisation; modal traversal still made the graph's world count and
 density matter. The ILP row's repeated hypotheses × interpretations score loop
-reuses that evaluator path, but its magnitude varies by seed.
+reused that historical evaluator path, but its magnitude varied by seed. None of
+these statements describes the current checkout; the paired current measurements
+above show the evaluator regression directly.
 
 **Where it loses.** The propositional depth-2 row is near parity. One shallow
 check is too little work to repay Aletheia's model/valuation and DAG walk setup,
@@ -361,7 +413,7 @@ marker identifies ratios where the mean ± standard deviation band contains
 recipe conversion, and repooling are fixed costs even after eliminating
 traversal allocations. The one cold real-dataset loss above
 has the same shape: a small formula does not repay callback and adapter setup;
-memoized repeated checks remove that fixed-cost disadvantage.
+memoized repeated checks removed that fixed-cost disadvantage in the historical artifact.
 
 **Where a win does not generalise.** Contraction amortisation is workload
 specific: the K* table shows the crossover for a highly redundant model, while
@@ -425,6 +477,10 @@ reuse. The published values below are scope-limited.
 
 ### Before allocation fix (baseline)
 
+**Provenance:** commit `3acd508d6974ca6064b74fe7ee9ef142dd8f657c`, measured 2026-09-02.
+
+**Provenance:** commit `6af8646107d34183d6d1dbe4da44abd098ed9927`, measured 2026-09-02.
+
 | mode | warm reuse (ms; allocations / bytes) | fresh-dataset churn (ms; allocations / bytes) |
 | --- | ---: | ---: |
 | Sole formula-check | 11.517; 103,127 / 4,028,272 | 18.359; 222,979 / 10,762,736 |
@@ -442,6 +498,8 @@ reuse. The published values below are scope-limited.
 ### After allocation fix
 
 The rerun is retained in `data/benchmark-run/deployed-apply-after.txt`. The quiet-machine and differential gates passed (`load_gate=PASS start=1.21 end=1.67 peak=1.67`, `differential=PASS`). Recorded uptime was `uptime_before_differential= 14:27:01 up 3 days, 20:54,  1 user,  load average: 1.21, 1.30, 1.13` and `uptime_after_run= 14:49:57 up 3 days, 21:17,  1 user,  load average: 1.67, 1.57, 1.38`.
+
+**Provenance:** before values commit `3acd508d6974ca6064b74fe7ee9ef142dd8f657c`, after values commit `1927fb7d356db0460f6ab2e15806858e523967be`; both measured 2026-09-02.
 
 | mode | warm reuse (ms; allocations / bytes) (before → after) | fresh-dataset churn (ms; allocations / bytes) (before → after) |
 | --- | ---: | ---: |
@@ -489,6 +547,8 @@ skipped rather than imputed.
 
 ### Before allocation fix (baseline scale sweep)
 
+**Provenance:** commit `1ea253c22038ba9aef663abbc638e9bddc70957d`, measured 2026-09-02.
+
 | instances × points | native decision-list warm / churn (ms) | Aletheia scalar warm / churn (ms) | Aletheia vectorized warm / churn (ms) |
 | --- | ---: | ---: | ---: |
 | 32 × 8 | 8.804 / 23.152 ms | 1.933 / 41.266 ms | 1.645 / 36.654 ms |
@@ -500,6 +560,8 @@ skipped rather than imputed.
 ### After allocation fix
 
 The new scale cases are capped at 128 instances. The quiet-machine and differential gates passed (`load_gate=PASS start=1.21 end=1.67 peak=1.67`, `differential=PASS`).
+
+**Provenance:** before values commit `1ea253c22038ba9aef663abbc638e9bddc70957d`, after values commit `1927fb7d356db0460f6ab2e15806858e523967be`; both measured 2026-09-02.
 
 | instances × points | native warm / churn (ms; before → after) | Aletheia scalar warm / churn (ms; before → after) | Aletheia vectorized warm / churn (ms; before → after) | native allocations / bytes (warm; before → after) | Aletheia scalar allocations / bytes (warm; before → after) | Aletheia vectorized allocations / bytes (warm; before → after) | native allocations / bytes (churn; before → after) | Aletheia scalar allocations / bytes (churn; before → after) | Aletheia vectorized allocations / bytes (churn; before → after) |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |

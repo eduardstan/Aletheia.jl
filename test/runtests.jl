@@ -4,7 +4,35 @@ using Aqua
 using JET
 using Aletheia
 
+module AletheiaGraphsImportSmoke
+using Aletheia
+using AletheiaGraphs
+end
+
 include("ownership.jl")
+
+@testset "single-import focused accessors" begin
+    alice = KGEntity(:alice)
+    bob = KGEntity(:bob)
+    edge_relation = KGRelation(:knows)
+    graph = KnowledgeGraph([alice, bob], [edge_relation], [KGEdge(alice, edge_relation, bob)])
+    @test frame(graph) isa Frame
+    @test model(graph) isa Model
+    @test relations(graph) == (edge_relation,)
+    @test provenance(graph) == ()
+
+    program = DSProgram([ProbabilisticFact(:rain, 1//2)])
+    @test domain(program) == ()
+    artifact = RuleArtifact([ArtifactRule(:rain, true)])
+    @test rules(artifact) isa Vector
+
+    graph_exports = Set(names(AletheiaGraphs; all=false))
+    umbrella_exports = Set(names(Aletheia; all=false))
+    shared = intersect(graph_exports, umbrella_exports)
+    @test all(getfield(Aletheia, name) === getfield(AletheiaGraphs, name) for name in shared)
+
+    @test all(isdefined(AletheiaGraphsImportSmoke, name) for name in shared)
+end
 
 @testset "umbrella public API" begin
     expected = Set{Symbol}([
@@ -353,6 +381,8 @@ include("ownership.jl")
             :path_provenance,
             :concept_atoms,
             :concept_extension,
+            :entities,
+            :edges,
             :ChoiceVariable,
             :AbstractChoiceVariable,
             :ChoiceAlternative,

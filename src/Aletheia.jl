@@ -19,7 +19,9 @@ using AletheiaGraphs:
     path_validity,
     path_provenance,
     concept_atoms,
-    concept_extension
+    concept_extension,
+    entities,
+    edges
 using AletheiaData
 using AletheiaLearn
 using AletheiaSole
@@ -57,7 +59,9 @@ export AbstractKGEntity,
     path_validity,
     path_provenance,
     concept_atoms,
-    concept_extension
+    concept_extension,
+    entities,
+    edges
 const ChoiceVariable = AletheiaCircuits.ChoiceVariable
 const AbstractChoiceVariable = AletheiaCircuits.AbstractChoiceVariable
 const ChoiceAlternative = AletheiaCircuits.ChoiceAlternative
@@ -74,7 +78,7 @@ const weights = AletheiaCircuits.weights
 const choice_id = AletheiaCircuits.choice_id
 const facts = AletheiaCircuits.facts
 const choices = AletheiaCircuits.choices
-const rules = AletheiaCircuits.rules
+
 const total_choices = AletheiaCircuits.total_choices
 const choice_probability = AletheiaCircuits.choice_probability
 const ground = AletheiaCircuits.ground
@@ -96,7 +100,7 @@ const source_provenance = AletheiaCircuits.source_provenance
 const validate = AletheiaCircuits.validate
 const variable_order = AletheiaCircuits.variable_order
 const roots = AletheiaCircuits.roots
-const nodes = AletheiaCircuits.nodes
+
 const EventNot = AletheiaCircuits.EventNot
 const EventAnd = AletheiaCircuits.EventAnd
 const EventOr = AletheiaCircuits.EventOr

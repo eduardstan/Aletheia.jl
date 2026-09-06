@@ -349,6 +349,14 @@ include("normalforms.jl")
 include("bisimulation.jl")
 include("prover.jl")
 
+# Shared accessor generics extended by optional focused packages.  Keeping these
+# bindings in the dependency-free core makes the umbrella namespace unambiguous.
+function nodes end
+function rules end
+function provenance end
+
+export nodes, rules, provenance
+
 export Signature,
     Formula,
     FormulaPool,

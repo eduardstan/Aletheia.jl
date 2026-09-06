@@ -5,6 +5,9 @@ pre-release (`0.2.0-DEV`), so there is no released version yet.
 
 ## Unreleased
 
+- Added the umbrella exports `entities` and `edges`, and unified the shared graph, circuit, and audit accessor generics in `AletheiaCore` (`frame`, `model`, `relations`, `domain`, `evaluate`, `nodes`, `rules`, and `provenance`), so focused packages extend one binding and single-import workflows remain unambiguous.
+- Stored the owned frame hash at construction and reused it for evaluator cache lookup, avoiding repeated structural hashing during evaluation; frame construction now passes already-owned snapshots without rebuilding them, and benchmark-sized allocation/timing budgets guard the hot paths.
+
 - Moved formula arena storage into its owning append-only arena, made formula-pool indexing read-only outside locked interning, and added formula-pool and audit-trace serialization round trips.
 - Added value equality and hashing for owned frames and models, shared adjacency caches across equal frames, exported `clear!` from `AletheiaData`, and documented the Julia ownership contract.
 - Sealed interned formula arenas against node replacement, released prepared scalar and frame cache state with its owning records, synchronized aggregate memo reads, and corrected the SoleData scalar bridge and cache documentation.

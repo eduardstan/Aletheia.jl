@@ -81,9 +81,9 @@ true
 ```
 
 This matters for cost, not just for description: relation adjacency is held in the
-weak evaluator-side registry keyed by frame identity, so uniform `ModelFamily` instances
-reuse one adjacency index while the frame remains live. External adapters
-that provide equal but distinct frames should not assume identity-level sharing.
+weak evaluator-side registry keyed by frame value equality, so uniform `ModelFamily` instances
+reuse one adjacency index while either equal frame remains live. External adapters
+that provide equal frames share that index as well.
 
 ## Adapting an external dataset
 
